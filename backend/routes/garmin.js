@@ -16,7 +16,8 @@ const TYPE_RU = {
 }
 
 function clientFromToken(t) {
-  const c = new GarminConnect()
+  // Конструктор библиотеки требует креды, даже когда грузим готовый токен — даём заглушку
+  const c = new GarminConnect({ username: 'token', password: 'token' })
   c.loadToken(t.oauth1, t.oauth2)
   return c
 }
@@ -41,7 +42,7 @@ router.post('/connect', requireAuth, async (req, res) => {
   const { email, password } = req.body || {}
   if (!email || !password) return res.status(400).json({ success: false, message: 'Введите email и пароль' })
   try {
-    const c = new GarminConnect()
+    const c = new GarminConnect({ username: email, password })
     await c.login(email, password)
     const token = c.exportToken()
     await kvSet(TOKEN_KEY, token)
