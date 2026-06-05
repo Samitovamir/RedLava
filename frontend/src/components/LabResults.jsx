@@ -43,9 +43,48 @@ export default function LabResults() {
   const [chatBusy, setChatBusy] = useState(false)
   const chatEnd = useRef(null)
 
+  // Распознавание анализов из Яндекс.Диска (если подключён)
+  const [syncing, setSyncing] = useState(false)
+  const [syncTotal, setSyncTotal] = useState(0)
+  const [syncDone, setSyncDone] = useState(0)
+
   useEffect(() => {
     try { localStorage.setItem(STORE_KEY, JSON.stringify(reports)) } catch { /* ignore */ }
   }, [reports])
+
+  // При подключённом Яндекс.Диске: разбираем новые файлы по очереди и подставляем реальные анализы
+  useEffect(() => {
+    let alive = true
+    fetch('/api/labs/status').then(r => r.json()).then(async st => {
+      if (!alive || !st.connected) return
+      const fr = await fetch('/api/labs/files').then(r => r.json()).catch(() => null)
+      const files = fr?.files || []
+      if (!files.length) return
+      const todo = files.filter(f => !f.parsed)
+      if (todo.length) {
+        setSyncing(true); setSyncTotal(files.length); setSyncDone(files.length - todo.length)
+        for (const f of todo) {
+          if (!alive) return
+          await fetch('/api/labs/parse', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: f.path, modified: f.modified })
+          }).catch(() => {})
+          if (!alive) return
+          setSyncDone(d => d + 1)
+        }
+      }
+      const rep = await fetch('/api/labs/reports').then(r => r.json()).catch(() => null)
+      if (!alive || !rep?.reports?.length) { setSyncing(false); return }
+      // Приводим к формату фронта: значения — простые числа по стандартным названиям
+      const flat = rep.reports.map(r => ({
+        id: r.date, date: r.date, fileName: r.fileName || 'Яндекс.Диск',
+        values: Object.fromEntries(Object.entries(r.values).map(([k, val]) => [k, (val && typeof val === 'object') ? val.v : val]))
+      }))
+      setReports(flat)
+      setSyncing(false)
+    }).catch(() => {})
+    return () => { alive = false }
+  }, [])
 
   const history = useMemo(() => buildHistory(reports), [reports])
   const latestOf = name => history[name]?.[history[name].length - 1]
@@ -172,6 +211,16 @@ export default function LabResults() {
           Расшифровать всё
         </button>
       </div>
+
+      {syncing && (
+        <div className="lab-sync">
+          <div className="lab-sync-row">
+            <div className="lab-spinner" />
+            <span>ИИ распознаёт анализы из Яндекс.Диска: {syncDone} из {syncTotal}…</span>
+          </div>
+          <div className="lab-sync-bar"><div className="lab-sync-fill" style={{ width: `${syncTotal ? (syncDone / syncTotal) * 100 : 0}%` }} /></div>
+        </div>
+      )}
 
       {/* Зона загрузки */}
       <div
@@ -336,6 +385,10 @@ export default function LabResults() {
 
       <style>{`
         .lab-block { display: flex; flex-direction: column; gap: 18px; }
+        .lab-sync { display: flex; flex-direction: column; gap: 8px; background: var(--bg-secondary); border-radius: 12px; padding: 14px 16px; }
+        .lab-sync-row { display: flex; align-items: center; gap: 12px; font-size: 14px; color: var(--foreground); }
+        .lab-sync-bar { height: 6px; background: var(--bg-primary); border-radius: 3px; overflow: hidden; }
+        .lab-sync-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.3s; }
         .lab-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
         .lab-title { font-size: 17px; font-weight: 700; color: var(--foreground); }
         .lab-sub { font-size: 13px; margin-top: 3px; max-width: 560px; }

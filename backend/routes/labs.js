@@ -59,8 +59,17 @@ const EXTRACT_TOOL = [{
       kind: { type: 'string', description: 'Краткий тип исследования: общий анализ, биохимия, гормоны, витамины и т.п.' },
       values: {
         type: 'object',
-        description: 'Показатели: ключ — стандартное русское название, значение — число. Только числовые показатели. Если показателей нет (не анализ крови) — пустой объект.',
-        additionalProperties: { type: 'number' }
+        description: 'Показатели: ключ — стандартное русское название показателя. Значение — объект {v, unit, min, max}: v — число (результат), unit — единицы измерения, min/max — границы нормы ИЗ ДОКУМЕНТА (если указаны; иначе не заполняй). Бери только реально присутствующие числовые показатели. Если это не анализ — пустой объект.',
+        additionalProperties: {
+          type: 'object',
+          properties: {
+            v: { type: 'number', description: 'Результат (число)' },
+            unit: { type: 'string', description: 'Единицы измерения' },
+            min: { type: 'number', description: 'Нижняя граница нормы из документа' },
+            max: { type: 'number', description: 'Верхняя граница нормы из документа' }
+          },
+          required: ['v']
+        }
       }
     },
     required: ['date', 'values']

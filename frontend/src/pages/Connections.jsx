@@ -8,6 +8,7 @@ import { motion } from 'framer-motion'
 */
 
 const STORE = 'albert-connections'
+const YANDEX_DEFAULT = 'https://disk.yandex.ru/d/EXAMPLE'
 
 const SERVICES = [
   {
@@ -51,6 +52,20 @@ const SERVICES = [
         <circle cx="12" cy="12" r="6"/><path d="M12 9v3l2 1"/><path d="M9 2h6"/><path d="M9 22h6"/>
       </svg>
     )
+  },
+  {
+    id: 'yandex',
+    name: 'Яндекс.Диск (анализы)',
+    desc: 'Папка с анализами крови — ИИ распознаёт показатели и копит историю в разделе «Здоровье».',
+    kind: 'url',
+    live: true,
+    endpoints: { connect: '/api/labs/connect', disconnect: '/api/labs/disconnect', status: '/api/labs/status' },
+    color: '#ef4444',
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      </svg>
+    )
   }
 ]
 
@@ -62,6 +77,7 @@ export default function Connections() {
   const [busy, setBusy] = useState(null)
   const [openForm, setOpenForm] = useState(null)
   const [form, setForm] = useState({ email: '', password: '' })
+  const [urlForm, setUrlForm] = useState('')
   const [notice, setNotice] = useState('')
   const [resetOpen, setResetOpen] = useState(false)
   const [resetPw, setResetPw] = useState('')
@@ -133,6 +149,33 @@ export default function Connections() {
 
   function startLoginForm(svc) { setOpenForm(svc.id); setForm({ email: '', password: '' }) }
 
+  function startUrlForm(svc) {
+    setOpenForm(svc.id)
+    // подставим уже сохранённую ссылку, если есть
+    fetch(svc.endpoints.status).then(r => r.json()).then(d => setUrlForm(d.url || YANDEX_DEFAULT)).catch(() => setUrlForm(YANDEX_DEFAULT))
+  }
+
+  async function submitUrl(svc) {
+    const url = urlForm.trim()
+    if (!url) return
+    setBusy(svc.id)
+    try {
+      const r = await fetch(svc.endpoints.connect, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
+      })
+      const d = await r.json()
+      if (d.ok) {
+        setConns(c => ({ ...c, [svc.id]: { connected: true, account: 'Папка подключена' } }))
+        setNotice('Яндекс.Диск подключён ✓ Анализы начнут распознаваться в разделе «Здоровье».')
+        setOpenForm(null)
+      } else {
+        setNotice(d.message || 'Не удалось подключить Яндекс.Диск.')
+      }
+    } catch { setNotice('Нет связи с сервером.') }
+    setBusy(null)
+  }
+
   async function submitLogin(svc) {
     if (!form.email.trim() || !form.password.trim()) return
     setBusy(svc.id)
@@ -168,6 +211,7 @@ export default function Connections() {
         if (svc.id === 'google') localStorage.removeItem('albert-events')
         if (svc.id === 'whoop') localStorage.removeItem('albert-whoop-live')
         if (svc.id === 'garmin') localStorage.removeItem('albert-garmin-live')
+        if (svc.id === 'yandex') { localStorage.removeItem('albert-labs'); localStorage.removeItem('albert-labs-synced') }
       } catch { /* ignore */ }
       setConns(c => ({ ...c, [svc.id]: { connected: false, configured: c[svc.id]?.configured } }))
       // перезагружаем, чтобы данные исчезли везде (расписание, здоровье, спорт, ИИ)
@@ -228,12 +272,28 @@ export default function Connections() {
                       {isBusy ? 'Подключение…' : 'Подключить'}
                     </button>
                   ) : (
-                    <button className="conn-btn primary" disabled={isBusy} onClick={() => formOpen ? setOpenForm(null) : startLoginForm(svc)}>
+                    <button className="conn-btn primary" disabled={isBusy} onClick={() => formOpen ? setOpenForm(null) : (svc.kind === 'url' ? startUrlForm(svc) : startLoginForm(svc))}>
                       {formOpen ? 'Свернуть' : 'Подключить'}
                     </button>
                   )}
                 </div>
               </div>
+
+              {svc.kind === 'url' && formOpen && !connected && (
+                <motion.div className="conn-form" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
+                  <div className="conn-field">
+                    <label>Ссылка на публичную папку Яндекс.Диска</label>
+                    <input type="text" placeholder="https://disk.yandex.ru/d/..." value={urlForm}
+                      onChange={e => setUrlForm(e.target.value)} />
+                  </div>
+                  <div className="conn-form-foot">
+                    <span className="conn-note muted">🔒 Папка читается только на чтение. Кладите туда файлы анализов (можно в подпапки по датам) — ИИ сам распознает показатели.</span>
+                    <button className="conn-btn primary" disabled={isBusy || !urlForm.trim()} onClick={() => submitUrl(svc)}>
+                      {isBusy ? 'Подключение…' : 'Подключить папку'}
+                    </button>
+                  </div>
+                </motion.div>
+              )}
 
               {svc.kind === 'login' && formOpen && !connected && (
                 <motion.div className="conn-form" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
