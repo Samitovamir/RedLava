@@ -22,9 +22,13 @@ function readWhoop() {
   try { const s = localStorage.getItem('albert-whoop-live'); if (s) return JSON.parse(s) } catch { /* ignore */ }
   return null
 }
+function readGarmin() {
+  try { const s = localStorage.getItem('albert-garmin-live'); if (s) return JSON.parse(s) } catch { /* ignore */ }
+  return null
+}
 
-// Сжатая сводка здоровья с ДАТАМИ (и ключ кэша): отклонения + ключевые данные Whoop.
-function buildHealthData(reports, whoop) {
+// Сжатая сводка здоровья с ДАТАМИ (и ключ кэша): отклонения + Whoop + тренировки Garmin.
+function buildHealthData(reports, whoop, garmin) {
   const hist = buildHistory(reports)
   const flagged = [], normal = []
   PANELS.forEach(p => p.markers.forEach(m => {
@@ -40,7 +44,10 @@ function buildHealthData(reports, whoop) {
   const w = whoop
     ? `Whoop сегодня: восстановление ${whoop.recovery}%, сон ${whoop.sleep?.hoursSlept} ч, HRV ${whoop.hrv} мс, пульс покоя ${whoop.rhr}.`
     : ''
-  return [labs, w].filter(Boolean).join(' ')
+  const g = garmin
+    ? `Тренировки (Garmin): за 7 дней ${garmin.weekKm ?? '?'} км, ${garmin.weekCount ?? '?'} тренировок, пульс покоя ${garmin.restingHr ?? '?'}, VO2max ${garmin.vo2Max ?? '?'}.`
+    : ''
+  return [labs, w, g].filter(Boolean).join(' ')
 }
 
 const CONTEXT =
@@ -49,6 +56,10 @@ const CONTEXT =
   'Назови показатели вне нормы простыми словами и дай конкретный практичный совет: какой витамин или добавку обсудить с врачом, какой доп. анализ имеет смысл. ' +
   'УЧИТЫВАЙ ДАТЫ анализов: если данные старые, скажи об этом. Если показатель корректируется приёмом (витамин D, железо, B12) — посоветуй пересдать через 2–3 месяца. Если показатель стабильный и не критичный — не гони пересдавать, достаточно планово. ' +
   'НЕ БУДЬ ПАНИКЁРОМ. Если отклонение небольшое, показатель не критичный или мало меняется со временем — спокойно скажи, что это не повод для волнения. Тревожный тон уместен только когда действительно важно. ' +
+  'ВАЖНО ПРО ТРЕНИРОВКИ: владелец — триатлет, тренируется интенсивно и очень дорожит спортом. ' +
+  'Если показатель влияет на тренировки — дай совет по нагрузке и насколько настоятельно его соблюдать. ' +
+  'Из-за мелких или некритичных отклонений менять режим НЕ надо, не паникуй и не отговаривай его от спорта по пустякам. ' +
+  'Но если очевидно, что тренировки могут УХУДШИТЬ состояние (например, отклонения по сердцу, сильная анемия, явное воспаление) — прямо и чётко скажи снизить нагрузку или временно прекратить и обратиться к врачу. Калибруй настойчивость по реальной серьёзности. ' +
   'Без вступлений, без воды, без общих лекций. Если всё в норме — скажи одним предложением и подбодри. ' +
   'Опирайся ТОЛЬКО на данные ниже, ничего не выдумывай. Ты не ставишь диагноз, а даёшь дружеский ориентир.'
 
@@ -111,8 +122,9 @@ function MarkerMini({ marker, hist }) {
 export default function HealthBrief() {
   const reports = readReports()
   const whoop = readWhoop()
+  const garmin = readGarmin()
   const hist = buildHistory(reports)
-  const healthData = buildHealthData(reports, whoop)
+  const healthData = buildHealthData(reports, whoop, garmin)
 
   const { text, loading, refresh } = useAiSummary({
     id: 'health-brief',
@@ -146,8 +158,9 @@ export default function HealthBrief() {
     const prior = chat
     setInput(''); setChat(prev => [...prev, { role: 'user', text: q }]); setBusy(true)
     const context =
-      'Ты — внимательный помощник владельца по здоровью, спокойный и без паники. ' +
+      'Ты — внимательный помощник владельца по здоровью, спокойный и без паники. владелец — триатлет, тренируется интенсивно. ' +
       'Отвечай кратко и по делу на русском, простыми словами. Не ставь диагноз; при необходимости советуй обратиться к врачу. ' +
+      'Если вопрос касается тренировок — учитывай его данные и здоровье: по мелочам не отговаривай от спорта, но при реально опасных отклонениях (сердце, сильная анемия, воспаление) чётко советуй снизить нагрузку. ' +
       'Не нагнетай: мелкие или некритичные отклонения объясняй спокойно. Опирайся на данные ниже.'
     try {
       const res = await fetch('/api/ai/chat', {
