@@ -157,6 +157,8 @@ export default function HealthBrief() {
   // уникальные, максимум 4
   markers = markers.filter((m, i, arr) => arr.findIndex(x => x.name === m.name) === i).slice(0, 4)
 
+  const [collapsed, setCollapsed] = useState(false)   // свернуть карточку целиком
+
   // Вопросы по здоровью
   const [chat, setChat] = useState([])
   const [input, setInput] = useState('')
@@ -191,15 +193,21 @@ export default function HealthBrief() {
     <motion.div className="card health-brief">
       <div className="hb-head">
         <div className="hb-title"><span className="hb-badge">ИИ</span><span>Коротко о здоровье</span></div>
-        {text && (
-          <button className="hb-refresh" onClick={refresh} disabled={loading} title="Пересчитать">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-            </svg>
+        <div className="hb-head-actions">
+          {text && !collapsed && (
+            <button className="hb-refresh" onClick={refresh} disabled={loading} title="Пересчитать">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+              </svg>
+            </button>
+          )}
+          <button className="hb-refresh" onClick={() => setCollapsed(c => !c)} title={collapsed ? 'Показать' : 'Скрыть'}>
+            <svg className={`hb-chev ${collapsed ? '' : 'open'}`} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
           </button>
-        )}
+        </div>
       </div>
 
+      {!collapsed && (<>
       {loading
         ? <div className="hb-loading">Смотрю анализы…</div>
         : text
@@ -245,9 +253,13 @@ export default function HealthBrief() {
           </button>
         </div>
       </div>
+      </>)}
 
       <style>{`
         .health-brief { position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 14px; padding: 20px 22px; }
+        .hb-head-actions { display: flex; align-items: center; gap: 8px; }
+        .hb-chev { transition: transform 0.2s; }
+        .hb-chev.open { transform: rotate(180deg); }
         .health-brief::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--green); }
         .hb-head { display: flex; align-items: center; justify-content: space-between; }
         .hb-title { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 700; color: var(--foreground); }
