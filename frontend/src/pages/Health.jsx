@@ -27,6 +27,19 @@ export default function Health() {
   }, [])
   const w = live ? { ...WHOOP, ...live, sleep: { ...WHOOP.sleep, ...live.sleep } } : WHOOP
   const recColor = recoveryColor(w.recovery)
+
+  // Живые данные Garmin (для колец «Заряд тела» и «Стресс»)
+  const [garmin, setGarmin] = useState(() => {
+    try { const s = localStorage.getItem('albert-garmin-live'); return s ? JSON.parse(s) : null } catch { return null }
+  })
+  useEffect(() => {
+    fetch('/api/garmin/data').then(r => r.json()).then(d => {
+      if (d.connected && d.garmin) {
+        setGarmin(d.garmin)
+        try { localStorage.setItem('albert-garmin-live', JSON.stringify(d.garmin)) } catch { /* ignore */ }
+      }
+    }).catch(() => {})
+  }, [])
   const [openDetail, setOpenDetail] = useState(null)
   const [selDay, setSelDay] = useState(null)   // выбранный день в «Восстановление за неделю»
 
@@ -154,7 +167,7 @@ export default function Health() {
       <div className="health-top">
         <motion.div className="card recovery-card"
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-          <WhoopRings w={w} />
+          <WhoopRings w={w} garmin={garmin} />
 
           <p className="rc-text">
             {w.recovery >= 67

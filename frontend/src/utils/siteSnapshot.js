@@ -59,12 +59,18 @@ export function buildSiteSnapshot({ events = [], history = [], facts = [] } = {}
   let sport
   if (liveGarmin && (liveGarmin.lastWorkout || liveGarmin.steps != null)) {
     const g = liveGarmin
+    const bb = g.bodyBattery, str = g.stress
     const head = [
       g.steps != null ? `Шаги сегодня ${g.steps}` : null,
       g.restingHr != null ? `пульс покоя ${g.restingHr}` : null,
       g.vo2Max != null ? `VO2max ${g.vo2Max}` : null,
+      bb?.current != null ? `Body Battery (заряд тела) сейчас ${bb.current}/100${bb.charged != null ? `, заряжено +${bb.charged}` : ''}${bb.drained != null ? `, потрачено −${bb.drained}` : ''}` : null,
+      str && (str.current ?? str.avg) != null ? `Стресс ${str.current ?? str.avg}/100${str.avg != null ? ` (средний ${str.avg})` : ''}` : null,
       g.weekKm != null ? `за 7 дней ${g.weekKm} км (${g.weekCount} тренировок)` : null
     ].filter(Boolean).join(', ')
+    const bbNote = bb?.current != null
+      ? ' Body Battery — это ОСТАВШАЯСЯ энергия на день: заряжается во сне/отдыхе, тратится активностью и стрессом, меняется в течение дня. Это НЕ утренний балл и не «с чем проснулся» (в отличие от восстановления Whoop). Низкий Body Battery вечером — это нормально (израсходовал за день).'
+      : ''
     const list = (g.workouts || []).slice(0, 8).map(w => {
       const parts = [
         w.distanceKm != null ? `${w.distanceKm} км` : null,
@@ -77,7 +83,7 @@ export function buildSiteSnapshot({ events = [], history = [], facts = [] } = {}
       ].filter(Boolean).join(', ')
       return `${w.date} «${w.title}» (${w.label}): ${parts}`
     }).join('\n')
-    sport = `${head}.\nПоследние тренировки:\n${list}\nЭто реальные данные Garmin. Опирайся только на них, ничего не добавляй от себя.`
+    sport = `${head}.${bbNote}\nПоследние тренировки:\n${list}\nЭто реальные данные Garmin. Опирайся только на них, ничего не добавляй от себя.`
   } else {
     sport = 'Garmin не подключён. Данных о тренировках, шагах, VO2max и форме НЕТ. Не придумывай их — если спросят, скажи, что нужно подключить Garmin.'
   }

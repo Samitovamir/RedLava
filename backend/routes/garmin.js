@@ -27,6 +27,44 @@ const TE_RU = {
 
 const round = (n, d = 0) => { const f = 10 ** d; return Math.round(n * f) / f }
 
+// База внутреннего API Garmin (тот же хост, что и для деталей тренировки)
+const CONNECT = 'https://connectapi.garmin.com'
+// Дата «сегодня» по Москве (владелец в Москве; сервер на Vercel в UTC — иначе у полуночи путаница)
+function mskDateStr() {
+  const d = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Moscow' }))
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+// Body Battery — «остаток заряда»: текущее значение + сколько заряжено/потрачено за день.
+// Это ЖИВОЙ показатель (меняется в течение дня), в отличие от утреннего Recovery Whoop.
+async function getBodyBattery(c, dateStr) {
+  try {
+    const r = await c.client.get(`${CONNECT}/wellness-service/wellness/bodyBattery/reports/daily?startDate=${dateStr}&endDate=${dateStr}`)
+    const day = Array.isArray(r) ? r[0] : r
+    if (!day) return null
+    const arr = day.bodyBatteryValuesArray || []
+    let current = null
+    for (let i = arr.length - 1; i >= 0; i--) { if (arr[i] && arr[i][2] != null) { current = arr[i][2]; break } }
+    if (current == null && day.bodyBatteryMostRecentValue != null) current = day.bodyBatteryMostRecentValue
+    return { current, charged: day.charged ?? null, drained: day.drained ?? null }
+  } catch { return null }
+}
+
+// Стресс Garmin (0–100): средний за день, максимум и текущий уровень.
+async function getStress(c, dateStr) {
+  try {
+    const r = await c.client.get(`${CONNECT}/wellness-service/wellness/dailyStress/${dateStr}`)
+    if (!r) return null
+    const arr = r.stressValuesArray || []
+    let current = null
+    for (let i = arr.length - 1; i >= 0; i--) { const v = arr[i]?.[1]; if (v != null && v >= 0) { current = v; break } }
+    const avg = r.avgStressLevel >= 0 ? r.avgStressLevel : null
+    const max = r.maxStressLevel >= 0 ? r.maxStressLevel : null
+    if (current == null && avg == null && max == null) return null
+    return { current, avg, max }
+  } catch { return null }
+}
+
 // Темп бега из средней скорости (м/с) → строка «мин:сек / км»
 function paceFromSpeed(mps) {
   if (!mps || mps <= 0) return null
@@ -113,6 +151,10 @@ router.get('/data', requireAuth, async (_req, res) => {
     try { const s = await c.getSteps(new Date()); steps = typeof s === 'number' ? s : (s?.totalSteps ?? null) } catch { /* ignore */ }
     try { const hr = await c.getHeartRate(new Date()); restingHr = hr?.restingHeartRate ?? null } catch { /* ignore */ }
 
+    // Body Battery (остаток заряда дня) и стресс — по московской дате
+    const today = mskDateStr()
+    const [bodyBattery, stress] = await Promise.all([getBodyBattery(c, today), getStress(c, today)])
+
     // VO2max — берём из свежайшей тренировки, где он есть
     const vo2Max = mapped.find(w => w.vo2Max)?.vo2Max ?? null
     // Объём за последние 7 дней (сумма дистанций) + число тренировок
@@ -127,6 +169,8 @@ router.get('/data', requireAuth, async (_req, res) => {
         steps,
         restingHr,
         vo2Max,
+        bodyBattery,
+        stress,
         weekKm,
         weekCount,
         lastWorkout: mapped[0] || null,

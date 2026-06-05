@@ -49,8 +49,11 @@ function buildHealthData(reports, whoop, garmin) {
   const w = whoop
     ? `Whoop сегодня: восстановление ${whoop.recovery}%, сон ${whoop.sleep?.hoursSlept} ч, HRV ${whoop.hrv} мс, пульс покоя ${whoop.rhr}.`
     : ''
+  const bb = garmin?.bodyBattery, str = garmin?.stress
   const g = garmin
-    ? `Тренировки (Garmin): за 7 дней ${garmin.weekKm ?? '?'} км, ${garmin.weekCount ?? '?'} тренировок, пульс покоя ${garmin.restingHr ?? '?'}, VO2max ${garmin.vo2Max ?? '?'}.`
+    ? `Тренировки (Garmin): за 7 дней ${garmin.weekKm ?? '?'} км, ${garmin.weekCount ?? '?'} тренировок, пульс покоя ${garmin.restingHr ?? '?'}, VO2max ${garmin.vo2Max ?? '?'}.` +
+      (bb?.current != null ? ` Body Battery ${bb.current}/100 (остаток энергии на день, меняется в течение дня — не утренний балл).` : '') +
+      (str && (str.current ?? str.avg) != null ? ` Стресс ${str.current ?? str.avg}/100.` : '')
     : ''
   return [labs, w, g].filter(Boolean).join(' ')
 }
