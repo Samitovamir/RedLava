@@ -6,7 +6,8 @@ import {
   MEALS, MEAL_KEYS, mealTarget,
   loadPrefs, savePrefs, DEFAULT_PREFS, CUISINES, rememberDish,
   loadPlan, savePlan, setPlanMeal, clearPlanMeal, rateMeal, weekDays, dayPlanned, pendingRating,
-  loadShopping, saveShopping, addToShopping, formatProduct
+  loadShopping, saveShopping, addToShopping, formatProduct,
+  loadGarmin, loadWhoop, workoutKcal, eatenKcal, dynamicTarget, carryFromYesterday
 } from '../utils/nutrition.js'
 import { mskDateKey } from '../utils/time.js'
 
@@ -27,11 +28,19 @@ function Macro({ value, unit, label, color }) {
 export default function Nutrition() {
   const [profile, setProfile] = useState(loadProfile)
   const [editProfile, setEditProfile] = useState(false)
-  const target = useMemo(() => computeTarget(profile), [profile])
+  const base = useMemo(() => computeTarget(profile), [profile])
 
   const week = useMemo(() => weekDays(), [])
   const [selectedDay, setSelectedDay] = useState(mskDateKey())
   const [plan, setPlan] = useState(loadPlan)
+
+  // Живые данные Garmin/Whoop (App.jsx кладёт их в localStorage асинхронно — перечитываем чуть позже)
+  const [garmin, setGarmin] = useState(loadGarmin)
+  const [whoop, setWhoop] = useState(loadWhoop)
+  useEffect(() => {
+    const t = setTimeout(() => { setGarmin(loadGarmin()); setWhoop(loadWhoop()) }, 2000)
+    return () => clearTimeout(t)
+  }, [])
 
   const [prefs, setPrefs] = useState(loadPrefs)
   const [prefsOpen, setPrefsOpen] = useState(false)
@@ -42,6 +51,8 @@ export default function Nutrition() {
   const [meals, setMeals] = useState([])
   const [mealsMsg, setMealsMsg] = useState('')
   const [loadingMeals, setLoadingMeals] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [kitchenBusy, setKitchenBusy] = useState(null)  // имя блюда, которое сейчас добавляется
 
   // Детальная карточка (рецепт): из подбора (source 'suggest') или из плана ('planned')
   const [detail, setDetail] = useState(null)
@@ -76,30 +87,98 @@ export default function Nutrition() {
     setProfile(next); saveProfile(next)
   }
 
-  const mtShare = MEALS.find(m => m.key === mealType)?.share ?? 0.33
-  const perMeal = mealTarget(target, mtShare)
+  // Динамическая цель на выбранный день: база + тренировки + восстановление + перенос со вчера
+  const isToday = selectedDay === mskDateKey()
+  const burned = workoutKcal(garmin, selectedDay)
+  const recovery = isToday ? (whoop?.recovery ?? null) : null
+  const carry = carryFromYesterday(plan, selectedDay, base.kcal)
+  const target = dynamicTarget(base, profile, { burned, hasGarmin: !!garmin, recovery, carry })
+  const eaten = eatenKcal(plan, selectedDay)
+  const remaining = Math.max(0, target.kcal - eaten)
+
+  // Цель на приём с учётом остатка дня: незанятые приёмы делят остаток между собой
+  function perMealTarget(mt) {
+    const share = MEALS.find(m => m.key === mt)?.share ?? 0.33
+    const unchosen = MEALS.filter(m => !plan[selectedDay]?.[m.key])
+    const shareSum = unchosen.reduce((s, m) => s + m.share, 0) || 1
+    const useRemaining = remaining > 0 && unchosen.some(m => m.key === mt)
+    const kcal = useRemaining ? remaining * share / shareSum : mealTarget(target, share).kcal
+    const r = target.kcal > 0 ? kcal / target.kcal : share
+    return { kcal: Math.round(kcal / 10) * 10, protein: Math.round(target.protein * r), fat: Math.round(target.fat * r), carb: Math.round(target.carb * r) }
+  }
+  const perMeal = perMealTarget(mealType)
+  const sgn = n => (n > 0 ? '+' : '') + n
   const dayInfo = dayPlanned(plan, selectedDay)
   const selDay = week.find(d => d.key === selectedDay)
   const dayLabel = selDay ? `${selDay.wd}, ${selDay.day} ${selDay.month}` : selectedDay
 
   function selectDay(key) { setSelectedDay(key); setMeals([]); setMealsMsg('') }
+  // Клик «＋ Подобрать» в слоте: выбираем приём, прокручиваем к подбору и сразу подбираем
   function pickSlot(mealKey) {
     setMealType(mealKey); setMeals([]); setMealsMsg('')
     setTimeout(() => suggestRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+    suggestMeals(mealKey)
   }
 
-  async function suggestMeals() {
+  async function suggestMeals(mt = mealType) {
+    const pm = perMealTarget(mt)
     setLoadingMeals(true); setMeals([]); setMealsMsg('')
     try {
       const res = await fetch('/api/nutrition/meals', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target: perMeal, mealType, prefs, count: 5, note })
+        body: JSON.stringify({ target: pm, mealType: mt, prefs, count: 5, note })
       })
       const data = await res.json()
       setMeals(data.meals || [])
       if ((!data.meals || !data.meals.length) && data.message) setMealsMsg(data.message)
     } catch { setMeals([]); setMealsMsg('Нет связи с сервером. Запустите backend с ключом ИИ.') }
     setLoadingMeals(false)
+  }
+
+  // Показать ещё блюда — дополняем список, не теряя текущие
+  async function moreMeals() {
+    setLoadingMore(true)
+    try {
+      const res = await fetch('/api/nutrition/meals', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target: perMeal, mealType, prefs, count: 5, note, exclude: meals.map(m => m.name) })
+      })
+      const data = await res.json()
+      const have = new Set(meals.map(m => m.name.toLowerCase()))
+      const fresh = (data.meals || []).filter(m => !have.has(String(m.name).toLowerCase()))
+      if (fresh.length) setMeals(prev => [...prev, ...fresh])
+    } catch { /* ignore */ }
+    setLoadingMore(false)
+  }
+
+  async function fetchRecipe(name) {
+    const res = await fetch('/api/nutrition/recipe', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dish: name, servings: 1, prefs })
+    })
+    const data = await res.json()
+    return data.recipe || null
+  }
+
+  // «На кухню» прямо с карточки: сразу в план дня, рецепт и продукты подтягиваем фоном
+  async function quickKitchen(meal) {
+    setKitchenBusy(meal.name)
+    const dish = {
+      name: meal.name, short: meal.short || '', tags: meal.tags || [],
+      kcal: meal.kcal, protein: meal.protein, fat: meal.fat, carb: meal.carb,
+      ingredients: [], steps: [], chosenAt: Date.now(), rated: false
+    }
+    setPlan(prev => { const np = setPlanMeal(prev, selectedDay, mealType, dish); savePlan(np); return np })
+    flash(`«${meal.name}» → ${mealType}. Собираю продукты…`)
+    try {
+      const r = await fetchRecipe(meal.name)
+      if (r?.ingredients?.length) {
+        setPlan(prev => { const np = setPlanMeal(prev, selectedDay, mealType, { ...dish, ingredients: r.ingredients, steps: r.steps || [] }); savePlan(np); return np })
+        setShopping(prev => { const ns = addToShopping(prev, r.ingredients, meal.name); saveShopping(ns); return ns })
+        flash(`«${meal.name}» добавлено в меню и список покупок ✓`)
+      }
+    } catch { /* блюдо уже в плане, продукты можно добавить из рецепта позже */ }
+    setKitchenBusy(null)
   }
 
   async function openSuggestDetail(meal) {
@@ -194,7 +273,7 @@ export default function Nutrition() {
       {/* Цель + профиль */}
       <motion.div className="card nu-target" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
         <div className="nu-head">
-          <div className="card-title" style={{ margin: 0 }}>Целевое КБЖУ на день</div>
+          <div className="card-title" style={{ margin: 0 }}>Цель на {isToday ? 'сегодня' : dayLabel}</div>
           <button className="nu-edit" onClick={() => setEditProfile(e => !e)}>{editProfile ? 'Готово' : 'Изменить профиль'}</button>
         </div>
         <div className="nu-macros">
@@ -203,8 +282,32 @@ export default function Nutrition() {
           <Macro value={target.fat} unit="г" label="Жиры" color="var(--yellow)" />
           <Macro value={target.carb} unit="г" label="Углеводы" color="var(--accent)" />
         </div>
+
+        {/* Из чего сложилась цель */}
+        <div className="nu-breakdown">
+          <span className="nu-bd-chip">База {target.base}</span>
+          {target.trainDelta !== 0 && (
+            <span className={`nu-bd-chip ${target.trainDelta > 0 ? 'plus' : 'minus'}`}>
+              🏃 {sgn(target.trainDelta)} · {burned > 0 ? `тренировка ${burned} ккал` : 'день отдыха'}
+            </span>
+          )}
+          {target.trainDelta === 0 && burned > 0 && <span className="nu-bd-chip">🏃 тренировка {burned} ккал</span>}
+          {target.recDelta !== 0 && <span className="nu-bd-chip minus">💤 {sgn(target.recDelta)} восстановление</span>}
+          {target.carryDelta !== 0 && <span className={`nu-bd-chip ${target.carryDelta > 0 ? 'plus' : 'minus'}`}>↩ {sgn(target.carryDelta)} со вчера</span>}
+          {!garmin && <span className="nu-bd-chip muted-chip">Garmin не подключён — цель без учёта тренировок</span>}
+        </div>
+
+        {/* Съедено / осталось на день */}
+        {eaten > 0 && (
+          <div className="nu-progress">
+            <div className="nu-prog-bar"><div className="nu-prog-fill" style={{ width: `${Math.min(100, Math.round(eaten / target.kcal * 100))}%` }} /></div>
+            <div className="nu-prog-text muted">Съедено ~{eaten} · <b style={{ color: 'var(--foreground)' }}>осталось ~{remaining} ккал</b></div>
+          </div>
+        )}
+
         <div className="nu-target-hint muted">
-          Обмен покоя ~{target.bmr} ккал · с активностью ~{target.tdee} ккал · цель: {GOALS.find(g => g.key === profile.goal)?.label.toLowerCase()}
+          Обмен покоя ~{base.bmr} ккал · обычная активность ~{base.tdee} ккал · цель: {GOALS.find(g => g.key === profile.goal)?.label.toLowerCase()}
+          {target.recNote ? ` · ${target.recNote}` : ''}
         </div>
         <AnimatePresence>
           {editProfile && (
@@ -294,17 +397,8 @@ export default function Nutrition() {
       {/* Подбор блюд */}
       <motion.div ref={suggestRef} className="card nu-meals" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
         <div className="nu-head">
-          <div className="card-title" style={{ margin: 0 }}>Подбор блюд</div>
-          <span className="muted">{mealType} · {dayLabel}</span>
-        </div>
-        <div className="nu-meal-controls">
-          <div className="nu-seg">
-            {MEALS.map(m => (
-              <button key={m.key} className={`nu-seg-btn ${mealType === m.key ? 'active' : ''}`}
-                onClick={() => { setMealType(m.key); setMeals([]); setMealsMsg('') }}>{m.key}</button>
-            ))}
-          </div>
-          <span className="nu-permeal muted">≈ {perMeal.kcal} ккал · Б{perMeal.protein} Ж{perMeal.fat} У{perMeal.carb}</span>
+          <div className="card-title" style={{ margin: 0 }}>Подбор блюд · {mealType}</div>
+          <span className="muted nu-permeal">{dayLabel} · ≈{perMeal.kcal} ккал · Б{perMeal.protein} Ж{perMeal.fat} У{perMeal.carb}</span>
         </div>
         <div className="nu-note-row">
           <input className="nu-note" placeholder="Пожелание к подбору (необязательно): например «полегче», «побольше рыбы»"
@@ -326,13 +420,23 @@ export default function Nutrition() {
                   <span>Б {m.protein}</span><span>Ж {m.fat}</span><span>У {m.carb}</span>
                 </div>
                 {m.tags?.length > 0 && <div className="nu-tags">{m.tags.map(t => <span key={t} className="nu-tag">{t}</span>)}</div>}
-                <button className="nu-recipe-btn" onClick={() => openSuggestDetail(m)}>Подробнее →</button>
+                <div className="nu-card-actions">
+                  <button className="nu-kitchen-card" onClick={() => quickKitchen(m)} disabled={kitchenBusy === m.name}>
+                    {kitchenBusy === m.name ? 'Добавляю…' : '🍳 На кухню'}
+                  </button>
+                  <button className="nu-recipe-btn" onClick={() => openSuggestDetail(m)}>Подробнее →</button>
+                </div>
               </motion.div>
             ))}
           </div>
         )}
+        {meals.length > 0 && (
+          <button className="nu-more" onClick={moreMeals} disabled={loadingMore}>
+            {loadingMore ? 'Подбираю ещё…' : '＋ Показать ещё блюда'}
+          </button>
+        )}
         {!loadingMeals && meals.length === 0 && (
-          <div className="nu-empty muted">{mealsMsg || 'Выберите приём пищи и нажмите «Подобрать блюда» — ИИ предложит варианты под цель и вкусы владельца.'}</div>
+          <div className="nu-empty muted">{mealsMsg || 'Нажмите «＋ Подобрать» у нужного приёма выше (или кнопку «Подобрать блюда») — ИИ предложит варианты под цель и вкусы владельца.'}</div>
         )}
       </motion.div>
 
@@ -519,6 +623,15 @@ export default function Nutrition() {
         .nu-macro-unit { font-size: 13px; font-weight: 500; }
         .nu-macro-lbl { font-size: 12px; }
         .nu-target-hint { font-size: 13.5px; margin-top: 10px; }
+        .nu-breakdown { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+        .nu-bd-chip { font-size: 12.5px; font-weight: 600; color: var(--foreground); background: var(--bg-secondary); border: 1px solid var(--border); padding: 6px 11px; border-radius: 20px; }
+        .nu-bd-chip.plus { color: var(--green); border-color: color-mix(in srgb, var(--green) 40%, transparent); }
+        .nu-bd-chip.minus { color: var(--orange); border-color: color-mix(in srgb, var(--orange) 40%, transparent); }
+        .nu-bd-chip.muted-chip { color: var(--muted); font-weight: 500; }
+        .nu-progress { margin-top: 14px; display: flex; flex-direction: column; gap: 7px; }
+        .nu-prog-bar { height: 8px; border-radius: 6px; background: var(--bg-secondary); overflow: hidden; }
+        .nu-prog-fill { height: 100%; background: linear-gradient(90deg, var(--green), var(--accent)); border-radius: 6px; transition: width .4s; }
+        .nu-prog-text { font-size: 13px; }
 
         .nu-profile { overflow: hidden; }
         .nu-fields { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 16px; }
@@ -582,8 +695,15 @@ export default function Nutrition() {
         .nu-meal-macros { display: flex; flex-wrap: wrap; gap: 12px; font-size: 14px; color: var(--muted); font-weight: 600; }
         .nu-tags { display: flex; flex-wrap: wrap; gap: 6px; }
         .nu-tag { font-size: 11px; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); padding: 3px 9px; border-radius: 20px; }
-        .nu-recipe-btn { margin-top: 4px; align-self: flex-start; background: transparent; border: none; color: var(--accent); font-family: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; padding: 0; }
+        .nu-card-actions { display: flex; align-items: center; gap: 12px; margin-top: 6px; }
+        .nu-kitchen-card { padding: 9px 14px; border-radius: 10px; border: none; background: var(--accent); color: var(--accent-foreground); font-family: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer; transition: opacity .15s; }
+        .nu-kitchen-card:hover:not(:disabled) { opacity: .9; }
+        .nu-kitchen-card:disabled { opacity: .55; cursor: default; }
+        .nu-recipe-btn { align-self: flex-start; background: transparent; border: none; color: var(--accent); font-family: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; padding: 0; }
         .nu-recipe-btn:hover { text-decoration: underline; }
+        .nu-more { margin-top: 16px; width: 100%; padding: 12px; border-radius: 12px; border: 1px dashed var(--border); background: transparent; color: var(--muted); font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; transition: all .15s; }
+        .nu-more:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+        .nu-more:disabled { opacity: .5; cursor: default; }
         .nu-empty { font-size: 14px; padding: 6px 0; line-height: 1.5; }
 
         .nu-shop-hint { font-size: 13px; margin-bottom: 10px; }

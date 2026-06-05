@@ -75,6 +75,65 @@ export function mealTarget(dayTarget, share) {
   }
 }
 
+// ── Динамическая цель на день (тренировки + восстановление + перенос со вчера) ──
+export function loadGarmin() { try { const s = localStorage.getItem('albert-garmin-live'); if (s) return JSON.parse(s) } catch { /* ignore */ } return null }
+export function loadWhoop() { try { const s = localStorage.getItem('albert-whoop-live'); if (s) return JSON.parse(s) } catch { /* ignore */ } return null }
+
+// Калории, сожжённые на тренировках за дату (из данных Garmin)
+export function workoutKcal(garmin, dateKey) {
+  if (!garmin?.workouts) return 0
+  return Math.round(garmin.workouts.filter(w => w.date === dateKey).reduce((s, w) => s + (w.calories || 0), 0))
+}
+
+// Сколько примерно уже съедено в этот день: приёмы, оценённые или у которых время уже прошло
+export function eatenKcal(plan, dateKey) {
+  const day = plan[dateKey] || {}
+  const todayKey = mskDateKey()
+  const hour = mskNow().getHours()
+  let kcal = 0
+  for (const m of MEALS) {
+    const dish = day[m.key]
+    if (!dish) continue
+    const passed = dateKey < todayKey || dish.rated || hour >= m.hour
+    if (passed) kcal += dish.kcal || 0
+  }
+  return Math.round(kcal)
+}
+
+// Динамическая цель на конкретный день.
+// База учитывает обычную активность; тренировки сверх «лёгкого» уровня добавляют, день отдыха снижает.
+export function dynamicTarget(base, profile, opts = {}) {
+  const { burned = 0, hasGarmin = false, recovery = null, carry = 0 } = opts
+  const lvl = ACTIVITY_LEVELS.find(a => a.key === profile.activity) || ACTIVITY_LEVELS[2]
+  const expectedTraining = Math.max(0, Math.round((lvl.mult - 1.4) * base.bmr))
+  let trainDelta = hasGarmin ? Math.round(burned - expectedTraining) : 0
+  trainDelta = Math.max(-600, Math.min(900, trainDelta))
+  let recDelta = 0, recNote = ''
+  if (typeof recovery === 'number' && recovery > 0) {
+    if (recovery < 34) { recDelta = -150; recNote = 'низкое восстановление — сегодня полегче' }
+    else if (recovery >= 67) recNote = 'высокое восстановление — можно нагрузиться'
+  }
+  const carryDelta = Math.max(-300, Math.min(300, Math.round(carry)))
+  const floor = Math.round(base.bmr * 1.2)
+  const kcal = Math.max(floor, Math.round((base.kcal + trainDelta + recDelta + carryDelta) / 10) * 10)
+  const weight = Math.min(250, Math.max(30, +profile.weight || 70))
+  const protein = Math.round(weight * (profile.goal === 'gain' ? 2.0 : 1.8))
+  const fat = Math.round(kcal * 0.27 / 9)
+  const carbG = Math.max(0, Math.round((kcal - protein * 4 - fat * 9) / 4))
+  return { kcal, protein, fat, carb: carbG, base: base.kcal, trainDelta, recDelta, recNote, carryDelta, burned, expectedTraining }
+}
+
+// Мягкий перенос со вчера: переел → сегодня чуть меньше, недоел → чуть больше (по записанным приёмам)
+export function carryFromYesterday(plan, dateKey, prevTargetKcal) {
+  const prev = new Date(dateKey + 'T00:00:00'); prev.setDate(prev.getDate() - 1)
+  const p = n => String(n).padStart(2, '0')
+  const prevKey = `${prev.getFullYear()}-${p(prev.getMonth() + 1)}-${p(prev.getDate())}`
+  if (!plan[prevKey]) return 0
+  const ate = eatenKcal(plan, prevKey)
+  if (ate <= 0) return 0
+  return Math.round((prevTargetKcal - ate) * 0.5)
+}
+
 // ── Вкусовые предпочтения ──
 export const CUISINES = ['Русская', 'Итальянская', 'Грузинская', 'Японская', 'Средиземноморская', 'Азиатская', 'Мексиканская']
 
