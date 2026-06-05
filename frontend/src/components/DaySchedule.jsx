@@ -1271,7 +1271,9 @@ export default function DaySchedule({ extended = false }) {
         .ds-event-menu:hover { background: rgba(255,255,255,0.06); color: var(--foreground); }
         /* z-index выше backdrop (40), чтобы клики по пунктам меню срабатывали */
         .ds-event .ds-menu-wrap { z-index: 60; }
-        .ds-event.menu-open { z-index: 50; }  /* поднимаем над backdrop когда меню открыто */
+        /* когда меню открыто — поднимаем карточку над backdrop И снимаем обрезку,
+           чтобы выпадашка не обрезалась (обрезка текста живёт на самом .ds-event-title) */
+        .ds-event.menu-open { z-index: 50; overflow: visible; }
         .ds-event.overlapped { left: auto; }
         .ds-repeat-ic { margin-left: 6px; color: var(--muted-foreground); vertical-align: middle; }
         .ds-pri-dot { width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; flex-shrink: 0; display: inline-block; }
