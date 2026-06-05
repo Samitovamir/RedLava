@@ -26,6 +26,16 @@ export default function Health() {
   const w = live ? { ...WHOOP, ...live, sleep: { ...WHOOP.sleep, ...live.sleep } } : WHOOP
   const recColor = recoveryColor(w.recovery)
   const [openDetail, setOpenDetail] = useState(null)
+  const [selDay, setSelDay] = useState(null)   // выбранный день в «Восстановление за неделю»
+
+  // Короткая сводка по дню недели (восстановление → совет по тренировкам)
+  function daySummary(d) {
+    const r = d.recovery
+    if (r >= 67) return 'Организм хорошо восстановился. Хороший день для интенсивной тренировки.'
+    if (r >= 34) return 'Среднее восстановление. Лучше умеренная нагрузка, без рекордов.'
+    return 'Низкое восстановление. День для отдыха или лёгкой активности, дайте телу прийти в себя.'
+  }
+  const DAY_FULL = { 'Пн': 'Понедельник', 'Вт': 'Вторник', 'Ср': 'Среда', 'Чт': 'Четверг', 'Пт': 'Пятница', 'Сб': 'Суббота', 'Вс': 'Воскресенье' }
 
   // Пояснение показателя от ИИ
   const [explain, setExplain] = useState(null)
@@ -239,19 +249,38 @@ export default function Health() {
       <div className="card trend-card">
         <div className="card-title">Восстановление за неделю</div>
         <div className="trend-bars">
-          {(live?.week?.length ? live.week : WHOOP_DAYS).map((d, i) => (
-            <div key={i} className="trend-col">
-              <div className="trend-bar-wrap">
-                <motion.div className="trend-bar"
-                  style={{ background: recoveryColor(d.recovery) }}
-                  initial={{ height: 0 }} animate={{ height: `${d.recovery}%` }}
-                  transition={{ duration: 0.5, delay: 0.05 * i }} />
-              </div>
-              <span className="trend-val">{d.recovery}</span>
-              <span className="trend-day muted">{d.day}</span>
-            </div>
-          ))}
+          {(live?.week?.length ? live.week : WHOOP_DAYS).map((d, i) => {
+            const active = selDay?.day === d.day
+            return (
+              <button key={i} type="button"
+                className={`trend-col ${active ? 'active' : ''}`}
+                onClick={() => setSelDay(active ? null : d)}>
+                <div className="trend-bar-wrap">
+                  <motion.div className="trend-bar"
+                    style={{ background: recoveryColor(d.recovery) }}
+                    initial={{ height: 0 }} animate={{ height: `${d.recovery}%` }}
+                    transition={{ duration: 0.5, delay: 0.05 * i }} />
+                </div>
+                <span className="trend-val">{d.recovery}</span>
+                <span className="trend-day muted">{d.day}</span>
+              </button>
+            )
+          })}
         </div>
+
+        {selDay && (
+          <motion.div className="trend-summary"
+            initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
+            style={{ borderColor: recoveryColor(selDay.recovery) }}>
+            <div className="trend-summary-head">
+              <span className="trend-summary-day">{DAY_FULL[selDay.day] || selDay.day}</span>
+              <span className="trend-summary-rec" style={{ color: recoveryColor(selDay.recovery) }}>
+                {selDay.recovery}% · {recoveryLabel(selDay.recovery)}
+              </span>
+            </div>
+            <p className="trend-summary-text">{daySummary(selDay)}</p>
+          </motion.div>
+        )}
       </div>
 
       {/* Карточки показателей с пояснением ИИ */}
@@ -345,7 +374,14 @@ export default function Health() {
         /* Тренд недели */
         .trend-card { display: flex; flex-direction: column; gap: 16px; }
         .trend-bars { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; height: 160px; }
-        .trend-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; }
+        .trend-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; background: transparent; border: none; font-family: inherit; cursor: pointer; padding: 6px 2px 0; border-radius: 10px; transition: background 0.15s; }
+        .trend-col:hover { background: var(--bg-secondary); }
+        .trend-col.active { background: var(--bg-secondary); }
+        .trend-summary { margin-top: 16px; padding: 14px 16px; background: var(--bg-secondary); border-left: 3px solid var(--border); border-radius: 12px; display: flex; flex-direction: column; gap: 6px; }
+        .trend-summary-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+        .trend-summary-day { font-size: 15px; font-weight: 700; color: var(--foreground); }
+        .trend-summary-rec { font-size: 14px; font-weight: 700; }
+        .trend-summary-text { font-size: 15px; line-height: 1.55; color: var(--foreground); }
         .trend-bar-wrap { flex: 1; width: 100%; max-width: 44px; display: flex; align-items: flex-end; background: var(--bg-secondary); border-radius: 8px; overflow: hidden; }
         .trend-bar { width: 100%; border-radius: 8px 8px 0 0; min-height: 4px; }
         .trend-val { font-size: 13px; font-weight: 700; color: var(--foreground); }
