@@ -50,6 +50,16 @@ const NAV_ITEMS = [
     )
   },
   {
+    path: '/nutrition',
+    label: 'Питание',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 2v7c0 1.1.9 2 2 2h0a2 2 0 0 0 2-2V2"/><path d="M5 2v20"/>
+        <path d="M17 2v20"/><path d="M21 7c0-2.8-1.8-5-4-5v9c2.2 0 4-1 4-4Z"/>
+      </svg>
+    )
+  },
+  {
     path: '/history',
     label: 'История',
     icon: (
