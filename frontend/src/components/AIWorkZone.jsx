@@ -195,26 +195,24 @@ export default function AIWorkZone() {
       </div>
 
       <AnimatePresence mode="wait">
-        {/* IDLE: режим файла */}
+        {/* IDLE: режим файла — пока В РАЗРАБОТКЕ (без фейкового разбора) */}
         {status === 'idle' && mode === 'file' && (
           <motion.div
             key="file"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className={`awz-dropzone ${isDragging ? 'dragging' : ''}`}
-            onClick={() => fileInputRef.current?.click()}
-            onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
-            onDragLeave={() => setIsDragging(false)}
-            onDrop={handleDrop}
+            className="awz-dropzone awz-dev"
           >
-            <input ref={fileInputRef} type="file" hidden onChange={handleFilePick} />
             <div className="awz-drop-icon">
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
               </svg>
             </div>
-            <p>Перетащи файл сюда или нажми, чтобы загрузить</p>
-            <span>ИИ распределит файл по папкам и сделает разбор</span>
+            <p>Загрузка и разбор файлов</p>
+            <span>ИИ будет распределять файлы по папкам и делать разбор</span>
+            <div className="awz-dev-overlay">
+              <div className="awz-dev-tape">В РАЗРАБОТКЕ</div>
+            </div>
           </motion.div>
         )}
 
@@ -456,6 +454,24 @@ export default function AIWorkZone() {
         .awz-dropzone.dragging {
           border-color: var(--primary);
           background: rgba(129,140,248,0.07);
+        }
+        /* «В разработке» — полупрозрачное окно + жёлтая лента */
+        .awz-dropzone.awz-dev { position: relative; cursor: default; }
+        .awz-dropzone.awz-dev:hover { border-color: var(--border); }
+        .awz-dev-overlay {
+          position: absolute; inset: 0; border-radius: 14px;
+          display: flex; align-items: center; justify-content: center;
+          background: rgba(30, 27, 24, 0.62);
+          backdrop-filter: blur(1.5px); -webkit-backdrop-filter: blur(1.5px);
+        }
+        .awz-dev-tape {
+          transform: rotate(-5deg);
+          background: repeating-linear-gradient(45deg, #f59e0b 0 16px, #161310 16px 32px);
+          color: #fff; font-weight: 800; letter-spacing: 0.18em; font-size: 16px;
+          padding: 12px 44px; border-radius: 4px;
+          border-top: 3px solid #f59e0b; border-bottom: 3px solid #f59e0b;
+          text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+          box-shadow: 0 8px 24px rgba(0,0,0,0.45);
         }
         .awz-drop-icon {
           width: 60px; height: 60px;
