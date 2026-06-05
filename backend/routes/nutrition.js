@@ -11,6 +11,11 @@ import { kvGet, kvSet } from '../store.js'
 const router = Router()
 function getClient() { return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }) }
 
+// Кухня владельца и стиль блюд — общие ограничения для подбора и рецептов
+const KITCHEN = 'Важно: у владельца НЕТ духовки — есть конвектомат (пароконвектомат) и обычная плита со сковородой/кастрюлей. ' +
+  'Если нужно запекание — пиши «конвектомат» (НЕ «духовка»). Блюда и рецепты — простые, домашние, привычные; ' +
+  'без высокой/ресторанной кухни, без редких или дорогих экзотических ингредиентов.'
+
 // Собираем вкусовые предпочтения в текст для промпта (со здравым смыслом!)
 function prefsBrief(p) {
   if (!p || typeof p !== 'object') return ''
@@ -111,6 +116,7 @@ router.post('/meals', async (req, res) => {
       (note ? `Доп. пожелание на сейчас: ${note}. ` : '') +
       (exclude.length ? `НЕ повторяй уже предложенные блюда: ${exclude.slice(-40).join(', ')}. Дай ДРУГИЕ варианты. ` : '') +
       `Блюда реальные, доступные в России, разнообразные, вкусные и полезные для спортсмена. ` +
+      KITCHEN + ' ' +
       `Указывай реалистичные КБЖУ порции. Вызови suggest_meals.`
     const resp = await client.messages.create({
       model: 'claude-sonnet-4-6', max_tokens: 1500,
@@ -129,12 +135,18 @@ router.post('/recipe', async (req, res) => {
   if (!process.env.ANTHROPIC_API_KEY) return res.json({ ok: false, message: 'Нет ключа ИИ' })
   const { dish, servings = 1, prefs = null } = req.body || {}
   if (!dish) return res.status(400).json({ ok: false, message: 'dish required' })
+  // Кэш рецепта по названию: один раз сгенерировали — дальше из памяти
+  const rk = 'nurecipe:v1:' + String(dish).trim().toLowerCase().slice(0, 90) + '|' + servings
   try {
+    const cached = await kvGet(rk)
+    if (cached) return res.json({ ok: true, recipe: cached, cached: true })
     const client = getClient()
     const brief = prefsBrief(prefs)
     const prompt =
       `Дай подробный рецепт блюда «${dish}» на ${servings} порц. для домашнего приготовления (Россия). ` +
       `Ингредиенты с количествами (число + единица), шаги по порядку простыми словами. ` +
+      `Названия ингредиентов — короткие и обобщённые (например «молоко», «куриное филе», «помидор»), без брендов и лишних уточнений. ` +
+      KITCHEN + ' ' +
       (brief ? `Учитывай предпочтения: ${brief} ` : '') +
       `Укажи КБЖУ на порцию. Вызови save_recipe.`
     const resp = await client.messages.create({
@@ -143,7 +155,9 @@ router.post('/recipe', async (req, res) => {
       messages: [{ role: 'user', content: prompt }]
     })
     const block = resp.content.find(b => b.type === 'tool_use')
-    res.json({ ok: true, recipe: block?.input || null })
+    const recipe = block?.input || null
+    if (recipe) await kvSet(rk, recipe)   // закрепляем рецепт за блюдом
+    res.json({ ok: true, recipe })
   } catch (e) {
     res.json({ ok: false, message: String(e?.message || e).slice(0, 150) })
   }

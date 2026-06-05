@@ -264,11 +264,61 @@ const UNIT_MAP = {
   'стакан': ['ml', 200], 'стакана': ['ml', 200], 'стаканов': ['ml', 200]
 }
 
+// Канонизация названий: одинаковый продукт под разными именами → одно имя (чтобы не дублировался в списке).
+// Порядок важен: более узкие правила идут раньше общих.
+// (\w в JS не ловит кириллицу — используем [а-я]; clean уже в нижнем регистре и ё→е)
+const CANON = [
+  { label: 'Томатная паста', re: /томатн[а-я]* паст|томат паст/ },
+  { label: 'Помидоры', re: /помидор|томат/ },
+  { label: 'Куриное филе', re: /кур[а-я]* (фил|груд)|(фил|груд)[а-я]* кур/ },
+  { label: 'Индейка', re: /индейк|индюш/ },
+  { label: 'Говядина', re: /говядин|телятин/ },
+  { label: 'Свинина', re: /свинин/ },
+  { label: 'Курица', re: /кур(иц|ин|е)/ },
+  { label: 'Оливковое масло', re: /оливк/ },
+  { label: 'Растительное масло', re: /(растительн|подсолнечн)[а-я]* масл/ },
+  { label: 'Сливочное масло', re: /сливочн[а-я]* масл|масл[а-я]* сливочн/ },
+  { label: 'Зелёный лук', re: /зелен[а-я]* лук|лук[а-я]* (зелен|пер)/ },
+  { label: 'Лук репчатый', re: /лук|репчат/ },
+  { label: 'Молоко', re: /молок/ },
+  { label: 'Кефир', re: /кефир/ },
+  { label: 'Сметана', re: /сметан/ },
+  { label: 'Творог', re: /творог|творож[а-я]* масс/ },
+  { label: 'Йогурт', re: /йогурт/ },
+  { label: 'Сливочный сыр', re: /сливочн[а-я]* сыр|крем.?сыр|творожн[а-я]* сыр/ },
+  { label: 'Яйца', re: /яйц|яиц/ },
+  { label: 'Чеснок', re: /чеснок/ },
+  { label: 'Морковь', re: /морков/ },
+  { label: 'Картофель', re: /картоф|картош/ },
+  { label: 'Овсяные хлопья', re: /овсян|геркулес/ },
+  { label: 'Гречка', re: /гречк|гречнев/ },
+  { label: 'Рис', re: /рис/ },
+  { label: 'Грецкие орехи', re: /грецк[а-я]* орех|орех[а-я]* грецк/ },
+  { label: 'Мёд', re: /мед/ },
+  { label: 'Банан', re: /банан/ },
+  { label: 'Яблоко', re: /яблок/ },
+  { label: 'Мука', re: /мука|муки/ },
+  { label: 'Сахар', re: /сахар/ },
+  { label: 'Изюм', re: /изюм/ },
+  { label: 'Ягоды', re: /ягод/ },
+  { label: 'Огурец', re: /огурц|огурец/ },
+  { label: 'Рыба', re: /рыб/ },
+  { label: 'Сыр', re: /сыр/ }
+]
+function canonName(raw) {
+  const clean = String(raw || '').toLowerCase().replace(/ё/g, 'е').replace(/\([^)]*\)/g, ' ').replace(/\d+[.,]?\d*\s*%/g, ' ').replace(/\s+/g, ' ').trim()
+  for (const c of CANON) { if (c.re.test(clean)) return c.label }
+  // не нашли — оставляем как есть, но аккуратно (первая буква заглавная)
+  const t = String(raw || '').trim()
+  return t.charAt(0).toUpperCase() + t.slice(1)
+}
+
 // Привести ингредиент рецепта к {name, base, qty в базовой единице}; null = пропустить (кладовка)
 export function normalizeIngredient(ing) {
-  const name = String(ing.name || '').trim()
-  if (!name) return null
-  if (PANTRY_RE.test(name)) return null
+  const raw = String(ing.name || '').trim()
+  if (!raw) return null
+  if (PANTRY_RE.test(raw)) return null
+  const name = canonName(raw)
   const rawUnit = String(ing.unit || '').trim().toLowerCase().replace(/\s+/g, '')
   const qty = typeof ing.qty === 'number' ? ing.qty : null
   const m = UNIT_MAP[rawUnit]
