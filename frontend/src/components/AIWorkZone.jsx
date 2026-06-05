@@ -204,7 +204,10 @@ export default function AIWorkZone() {
       <div className="awz-head">
         <div className="awz-title">
           <span className="awz-badge">ИИ</span>
-          <span>Рабочая зона</span>
+          <div className="awz-title-text">
+            <span className="awz-title-main">Рабочая зона</span>
+            <span className="awz-title-sub">Главный помощник — скажите или напишите задачу</span>
+          </div>
         </div>
         {status === 'idle' && (
           <div className="awz-switch">
@@ -396,8 +399,16 @@ export default function AIWorkZone() {
           flex-direction: column;
           gap: 18px;
           min-height: 280px;
+          border: 1.5px solid color-mix(in srgb, var(--accent) 50%, transparent);
+          box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent), 0 12px 40px rgba(0,0,0,0.30);
+          background:
+            radial-gradient(800px circle at 50% -10%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 60%),
+            var(--bg-card);
           transition: border-color 0.3s, box-shadow 0.3s;
         }
+        .awz-title-text { display: flex; flex-direction: column; gap: 1px; }
+        .awz-title-main { font-size: 16px; font-weight: 700; color: var(--foreground); }
+        .awz-title-sub { font-size: 12px; color: var(--muted); }
         /* Зелёное оформление всей карточки после выполнения */
         .ai-work-zone.is-done {
           border-color: rgba(34,197,94,0.5);

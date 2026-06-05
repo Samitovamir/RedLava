@@ -4,6 +4,7 @@ import CircularChart from '../components/CircularChart.jsx'
 import AiRefreshButton from '../components/AiRefreshButton.jsx'
 import ConnectPrompt from '../components/ConnectPrompt.jsx'
 import GarminLive from '../components/GarminLive.jsx'
+import MicButton from '../components/MicButton.jsx'
 import { useAiSummary } from '../hooks/useAiSummary.js'
 import { useSiteSnapshot } from '../hooks/useSiteSnapshot.js'
 import {
@@ -313,7 +314,8 @@ export default function Sport() {
               </div>
             )}
             <div className="tc-input-row">
-              <input className="tc-input" placeholder="Спросите тренера…" value={input}
+              <MicButton primary onText={t => setInput(prev => (prev ? prev.trim() + ' ' : '') + t)} />
+              <input className="tc-input" placeholder="Скажите или спросите тренера…" value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); sendTrainer() } }} />
               <button className="tc-send" onClick={sendTrainer} disabled={loading || !input.trim()}>

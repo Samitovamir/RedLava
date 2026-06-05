@@ -4,6 +4,7 @@ import CircularChart from '../components/CircularChart.jsx'
 import LabResults from '../components/LabResults.jsx'
 import ConnectPrompt from '../components/ConnectPrompt.jsx'
 import AiRefreshButton from '../components/AiRefreshButton.jsx'
+import MicButton from '../components/MicButton.jsx'
 import { useAiSummary } from '../hooks/useAiSummary.js'
 import { useSiteSnapshot } from '../hooks/useSiteSnapshot.js'
 import {
@@ -206,7 +207,8 @@ export default function Health() {
               </div>
             )}
             <div className="hc-input-row">
-              <input className="hc-input" placeholder="Спросите про здоровье…" value={input}
+              <MicButton primary onText={t => setInput(prev => (prev ? prev.trim() + ' ' : '') + t)} />
+              <input className="hc-input" placeholder="Скажите или спросите про здоровье…" value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); send() } }} />
               <button className="hc-send" onClick={send} disabled={loading || !input.trim()}>

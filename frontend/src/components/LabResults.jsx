@@ -4,6 +4,7 @@ import {
   PANELS, INITIAL_REPORTS, buildHistory, markerStatus, STATUS_INFO,
   rangeText, barGeom, fmtDate, todayIso
 } from '../utils/labs.js'
+import MicButton from './MicButton.jsx'
 
 const STORE_KEY = 'albert-labs'
 
@@ -296,9 +297,10 @@ export default function LabResults() {
           </div>
         )}
         <form className="lab-chat-bar" onSubmit={sendChat}>
+          <MicButton primary onText={t => setChatInput(prev => (prev ? prev.trim() + ' ' : '') + t)} />
           <input
             className="lab-chat-input"
-            placeholder="Например: почему повышен холестерин? что есть, чтобы снизить сахар?"
+            placeholder="Скажите или спросите: почему повышен холестерин? что есть, чтобы снизить сахар?"
             value={chatInput}
             onChange={e => setChatInput(e.target.value)}
             disabled={chatBusy}

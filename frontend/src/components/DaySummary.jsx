@@ -7,6 +7,7 @@ import { PRIORITY_MAP } from './AddEventModal.jsx'
 import { useAiSummary } from '../hooks/useAiSummary.js'
 import { useSiteSnapshot } from '../hooks/useSiteSnapshot.js'
 import AiRefreshButton from './AiRefreshButton.jsx'
+import MicButton from './MicButton.jsx'
 import { mskNow } from '../utils/time.js'
 
 /*
@@ -126,9 +127,10 @@ function DaySummaryInner({ dayContext, snapshot, eventCount }) {
           </div>
         )}
         <div className="ds-chat-input-row">
+          <MicButton primary onText={t => setInput(prev => (prev ? prev.trim() + ' ' : '') + t)} />
           <input
             className="ds-chat-input"
-            placeholder="Спросите про день…"
+            placeholder="Скажите или спросите про день…"
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={onKey}

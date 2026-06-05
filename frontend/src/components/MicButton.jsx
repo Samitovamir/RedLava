@@ -7,7 +7,7 @@ import { useRef, useState, useEffect } from 'react'
 */
 const SR = typeof window !== 'undefined' ? (window.SpeechRecognition || window.webkitSpeechRecognition) : null
 
-export default function MicButton({ onText, title = 'Надиктовать голосом' }) {
+export default function MicButton({ onText, title = 'Надиктовать голосом', primary = false }) {
   const [listening, setListening] = useState(false)
   const recRef = useRef(null)
 
@@ -39,7 +39,7 @@ export default function MicButton({ onText, title = 'Надиктовать го
   return (
     <button
       type="button"
-      className={`mic-btn ${listening ? 'listening' : ''}`}
+      className={`mic-btn ${primary ? 'primary' : ''} ${listening ? 'listening' : ''}`}
       onClick={toggle}
       title={listening ? 'Остановить' : title}
       aria-label={title}
@@ -59,6 +59,8 @@ export default function MicButton({ onText, title = 'Надиктовать го
           transition: color 0.15s, border-color 0.15s, background 0.15s;
         }
         .mic-btn:hover { color: var(--accent); border-color: var(--border-hover); }
+        .mic-btn.primary { background: var(--accent); color: var(--accent-foreground); border-color: var(--accent); }
+        .mic-btn.primary:hover { opacity: 0.9; color: var(--accent-foreground); }
         .mic-btn.listening {
           color: #fff; background: var(--red); border-color: var(--red);
           animation: mic-pulse 1.3s ease-in-out infinite;
