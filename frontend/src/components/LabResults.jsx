@@ -2,11 +2,11 @@ import { useState, useRef, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   PANELS, INITIAL_REPORTS, buildHistory, markerStatus, STATUS_INFO,
-  rangeText, barGeom, fmtDate, todayIso
+  rangeText, barGeom, fmtDate, LABS_STORE_KEY
 } from '../utils/labs.js'
 import MicButton from './MicButton.jsx'
 
-const STORE_KEY = 'albert-labs'
+const STORE_KEY = LABS_STORE_KEY
 
 // Мини-тренд значения по истории
 function MiniSpark({ points, color }) {
@@ -27,6 +27,7 @@ function MiniSpark({ points, color }) {
 export default function LabResults() {
   const [reports, setReports] = useState(() => {
     try {
+      // Старые демо-данные уже вычищены централизованно при импорте labs.js (по версии).
       const saved = localStorage.getItem(STORE_KEY)
       if (saved) return JSON.parse(saved)
     } catch { /* ignore */ }
@@ -97,20 +98,6 @@ export default function LabResults() {
 
   const reportsByDate = [...reports].sort((a, b) => b.date.localeCompare(a.date))
 
-  // Симуляция распознавания файла (пока нет backend-парсера):
-  // создаём отчёт на сегодня с небольшим дрейфом от последних значений ОАК+биохимии.
-  function simulateReport(fileName) {
-    const base = [...reports].sort((a, b) => a.date.localeCompare(b.date)).at(-1)?.values || {}
-    const oakBio = new Set(PANELS.slice(0, 2).flatMap(p => p.markers.map(m => m.name)))
-    const values = {}
-    Object.entries(base).forEach(([k, v]) => {
-      if (!oakBio.has(k)) return
-      const drift = v * (Math.random() * 0.08 - 0.04)
-      values[k] = Math.round((v + drift) * 10) / 10
-    })
-    return { id: Date.now(), date: todayIso(), fileName, values }
-  }
-
   // Текстовая выжимка показателей (последние значения) для контекста ИИ
   function labSummaryText(snapshotReports) {
     const hist = buildHistory(snapshotReports)
@@ -151,24 +138,55 @@ export default function LabResults() {
     }
   }
 
-  async function ingest(name) {
-    setBusyName(name)
+  // Прочитать файл как base64 (без data: префикса)
+  function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const fr = new FileReader()
+      fr.onload = () => resolve(String(fr.result).split(',')[1] || '')
+      fr.onerror = reject
+      fr.readAsDataURL(file)
+    })
+  }
+
+  // Реальное распознавание загруженного файла через ИИ (никаких выдуманных значений)
+  async function ingest(file) {
+    setBusyName(file.name)
     setStage('analyzing')
     setAiText('')
-    const next = [...reports, simulateReport(name)]
-    // имитируем распознавание
-    await new Promise(r => setTimeout(r, 1100))
-    setReports(next)
-    setStage('done')
-    runAi(next)
+    try {
+      const data = await fileToBase64(file)
+      const res = await fetch('/api/labs/upload', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: file.name, mime: file.type, data })
+      })
+      const out = await res.json()
+      if (!out.ok || !out.report) {
+        setStage('done')
+        setAiText(out.message || 'Не удалось распознать показатели в этом файле. Проверьте, что это анализ крови.')
+        return
+      }
+      const r = out.report
+      const flat = {
+        id: r.id, date: r.date, fileName: r.fileName || file.name,
+        values: Object.fromEntries(Object.entries(r.values).map(([k, val]) => [k, (val && typeof val === 'object') ? val.v : val]))
+      }
+      // Заменяем отчёт той же даты, если он уже есть, иначе добавляем
+      const next = [...reports.filter(x => x.date !== flat.date), flat]
+      setReports(next)
+      setStage('done')
+      runAi(next)
+    } catch {
+      setStage('done')
+      setAiText('Не удалось загрузить файл. Попробуйте ещё раз или другой файл.')
+    }
   }
 
   function onDrop(e) {
     e.preventDefault(); setDragOver(false)
-    const f = e.dataTransfer.files?.[0]; if (f) ingest(f.name)
+    const f = e.dataTransfer.files?.[0]; if (f) ingest(f)
   }
   function onPick(e) {
-    const f = e.target.files?.[0]; if (f) ingest(f.name)
+    const f = e.target.files?.[0]; if (f) ingest(f)
   }
   function analyzeExisting() {
     setStage('done'); setAiText(''); runAi(reports)

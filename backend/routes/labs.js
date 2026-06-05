@@ -81,18 +81,13 @@ const MARKER_HINT =
   'Глюкоза, Холестерин общий, ЛПНП, ЛПВП, Триглицериды, Креатинин, Мочевина, АЛТ, АСТ, Билирубин общий, ' +
   'Витамин D, Витамин B12, Фолиевая кислота, Ферритин, Железо, ТТГ, Т4 свободный, Тестостерон, Кортизол, СРБ, Калий, Натрий, Магний.'
 
-// Разобрать один файл через Claude (vision)
-async function parseFile(file, publicKey) {
-  const href = await downloadHref(publicKey, file.path)
-  if (!href) return null
-  const fr = await fetch(href)
-  if (!fr.ok) return null
-  const buf = Buffer.from(await fr.arrayBuffer())
+// Разобрать буфер файла через Claude (vision) — общая логика для Яндекс.Диска и ручной загрузки
+async function parseBuffer(buf, { name = '', mime = '', folder = '' }) {
   if (buf.length > 9_000_000) return null   // слишком большой — пропускаем
   const b64 = buf.toString('base64')
-  const isPdf = /pdf/i.test(file.mime) || /\.pdf$/i.test(file.name)
+  const isPdf = /pdf/i.test(mime) || /\.pdf$/i.test(name)
   const media = isPdf ? 'application/pdf'
-    : /png/i.test(file.mime) ? 'image/png'
+    : /png/i.test(mime) ? 'image/png'
     : 'image/jpeg'
   const docBlock = isPdf
     ? { type: 'document', source: { type: 'base64', media_type: media, data: b64 } }
@@ -109,8 +104,8 @@ async function parseFile(file, publicKey) {
       content: [
         docBlock,
         { type: 'text', text:
-          `Это файл анализа крови владельца. Папка называется: «${file.folder}». ` +
-          `Имя файла: «${file.name}». ` +
+          `Это файл анализа крови владельца.${folder ? ` Папка называется: «${folder}».` : ''} ` +
+          `Имя файла: «${name}». ` +
           `Извлеки числовые показатели и определи дату. ${MARKER_HINT} ` +
           `Не выдумывай показатели, бери только те, что реально есть в документе. Вызови save_labs.` }
       ]
@@ -118,6 +113,16 @@ async function parseFile(file, publicKey) {
   })
   const block = resp.content.find(b => b.type === 'tool_use')
   return block?.input || null
+}
+
+// Разобрать один файл из Яндекс.Диска
+async function parseFile(file, publicKey) {
+  const href = await downloadHref(publicKey, file.path)
+  if (!href) return null
+  const fr = await fetch(href)
+  if (!fr.ok) return null
+  const buf = Buffer.from(await fr.arrayBuffer())
+  return parseBuffer(buf, { name: file.name, mime: file.mime, folder: file.folder })
 }
 
 router.use(requireAuth)
@@ -172,6 +177,28 @@ router.post('/parse', async (req, res) => {
     if (!parsed) return res.json({ ok: false, message: 'не удалось разобрать' })
     const report = { id: ck, date: parsed.date, lab: parsed.lab || '', kind: parsed.kind || '', fileName: file.name, folder: file.folder, values: parsed.values || {} }
     if (Object.keys(report.values).length) await kvSet(ck, report)
+    res.json({ ok: true, report })
+  } catch (e) {
+    res.json({ ok: false, message: String(e?.message || e).slice(0, 150) })
+  }
+})
+
+// Ручная загрузка файла напрямую (перетащил PDF/фото в окно) — разбираем тем же ИИ,
+// без выдумывания. Файл приходит base64. Результат кэшируем по содержимому.
+router.post('/upload', async (req, res) => {
+  const { name, mime, data } = req.body || {}
+  if (!data) return res.status(400).json({ ok: false, message: 'нет файла' })
+  try {
+    const buf = Buffer.from(data, 'base64')
+    const ck = 'labs:parsed:' + crypto.createHash('md5').update(buf).digest('hex')
+    const cached = await kvGet(ck)
+    if (cached) return res.json({ ok: true, report: cached, cached: true })
+    const parsed = await parseBuffer(buf, { name: name || 'файл', mime: mime || '' })
+    if (!parsed || !Object.keys(parsed.values || {}).length) {
+      return res.json({ ok: false, message: 'Не удалось распознать показатели в этом файле' })
+    }
+    const report = { id: ck, date: parsed.date, lab: parsed.lab || '', kind: parsed.kind || '', fileName: name || 'Загруженный файл', values: parsed.values }
+    await kvSet(ck, report)
     res.json({ ok: true, report })
   } catch (e) {
     res.json({ ok: false, message: String(e?.message || e).slice(0, 150) })

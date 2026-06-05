@@ -48,6 +48,21 @@ export const PANELS = [
 // чтобы не смешивались с настоящими. Пусто до подключения папки/распознавания.
 export const INITIAL_REPORTS = []
 
+// Одноразовая чистка: в браузере мог остаться сохранённый кэш старых демо-анализов
+// (мы их подгружали как пример). При несовпадении версии стираем его — раз и навсегда.
+// Запускается при первом импорте labs.js (любая страница: Главная, Здоровье, снимок для ИИ).
+export const LABS_STORE_KEY = 'albert-labs'
+export const LABS_STORE_VERSION = '2'
+;(function purgeStaleLabs() {
+  try {
+    if (typeof localStorage === 'undefined') return
+    if (localStorage.getItem('albert-labs-ver') !== LABS_STORE_VERSION) {
+      localStorage.removeItem(LABS_STORE_KEY)
+      localStorage.setItem('albert-labs-ver', LABS_STORE_VERSION)
+    }
+  } catch { /* ignore */ }
+})()
+
 // Собрать историю по каждому маркеру из всех отчётов (по возрастанию даты).
 export function buildHistory(reports) {
   const sorted = [...reports].sort((a, b) => a.date.localeCompare(b.date))
