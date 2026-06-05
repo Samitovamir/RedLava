@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import Anthropic from '@anthropic-ai/sdk'
+import { kvGet, kvSet } from '../store.js'
 
 /*
   Питание: ИИ подбирает блюда под целевое КБЖУ и вкусы владельца, и пишет рецепты
@@ -52,6 +53,7 @@ const MEALS_TOOL = [{
           properties: {
             name: { type: 'string', description: 'Короткое название блюда на русском' },
             short: { type: 'string', description: 'Очень краткое описание (1 строка)' },
+            imageQuery: { type: 'string', description: 'Поисковый запрос для фото блюда НА АНГЛИЙСКОМ, 2-4 слова (например "oatmeal banana honey", "buckwheat porridge milk")' },
             kcal: { type: 'number', description: 'Калории порции' },
             protein: { type: 'number', description: 'Белки, г' },
             fat: { type: 'number', description: 'Жиры, г' },
@@ -145,6 +147,54 @@ router.post('/recipe', async (req, res) => {
   } catch (e) {
     res.json({ ok: false, message: String(e?.message || e).slice(0, 150) })
   }
+})
+
+// ── Фото блюд (Unsplash) с кэшем: одно блюдо — один запрос, дальше из KV ──
+const UTM = 'utm_source=albert_dashboard&utm_medium=referral'
+const normKey = s => 'nuimg:v1:' + String(s || '').trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 80)
+
+async function unsplashFor(query) {
+  const KEY = process.env.UNSPLASH_ACCESS_KEY
+  if (!KEY || !query) return null
+  try {
+    const u = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query + ' food')}&per_page=1&orientation=landscape&content_filter=high`
+    const r = await fetch(u, { headers: { Authorization: `Client-ID ${KEY}`, 'Accept-Version': 'v1' } })
+    if (!r.ok) return null
+    const d = await r.json()
+    const p = d?.results?.[0]
+    if (!p) return null
+    // По правилам Unsplash: дёргаем download_location (fire-and-forget)
+    if (p.links?.download_location) {
+      fetch(`${p.links.download_location}&client_id=${KEY}`).catch(() => {})
+    }
+    return {
+      url: p.urls?.small || p.urls?.regular || null,
+      thumb: p.urls?.thumb || null,
+      author: p.user?.name || '',
+      authorUrl: p.user?.links?.html ? `${p.user.links.html}?${UTM}` : '',
+      unsplashUrl: p.links?.html ? `${p.links.html}?${UTM}` : 'https://unsplash.com'
+    }
+  } catch { return null }
+}
+
+// Получить картинки для списка блюд. body: { items: [{name, query}] } → { images: { name: {...} } }
+router.post('/images', async (req, res) => {
+  const { items = [] } = req.body || {}
+  if (!process.env.UNSPLASH_ACCESS_KEY) return res.json({ ok: false, images: {} })
+  const images = {}
+  await Promise.all(items.slice(0, 12).map(async (it) => {
+    const name = String(it?.name || '').trim()
+    const query = String(it?.query || name).trim()
+    if (!name) return
+    const k = normKey(query)
+    let obj = await kvGet(k)
+    if (!obj) {
+      obj = await unsplashFor(query)
+      if (obj?.url) await kvSet(k, obj)        // закрепляем за блюдом навсегда
+    }
+    if (obj?.url) images[name] = obj
+  }))
+  res.json({ ok: true, images })
 })
 
 export default router

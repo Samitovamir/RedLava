@@ -53,6 +53,8 @@ export default function Nutrition() {
   const [loadingMeals, setLoadingMeals] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
   const [kitchenBusy, setKitchenBusy] = useState(null)  // имя блюда, которое сейчас добавляется
+  const [images, setImages] = useState({})              // имя блюда → {url, author, authorUrl, unsplashUrl}
+  const [resultsOpen, setResultsOpen] = useState(false) // окно с подобранными блюдами
 
   // Детальная карточка (рецепт): из подбора (source 'suggest') или из плана ('planned')
   const [detail, setDetail] = useState(null)
@@ -131,8 +133,23 @@ export default function Nutrition() {
       const data = await res.json()
       setMeals(data.meals || [])
       if ((!data.meals || !data.meals.length) && data.message) setMealsMsg(data.message)
+      if (data.meals?.length) setResultsOpen(true)
+      fetchImages(data.meals || [])
     } catch { setMeals([]); setMealsMsg('Нет связи с сервером. Запустите backend с ключом ИИ.') }
     setLoadingMeals(false)
+  }
+
+  // Фото блюд (Unsplash, кэшируются на сервере по блюду)
+  async function fetchImages(list) {
+    if (!list.length) return
+    try {
+      const res = await fetch('/api/nutrition/images', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: list.map(m => ({ name: m.name, query: m.imageQuery || m.name })) })
+      })
+      const data = await res.json()
+      if (data.images) setImages(prev => ({ ...prev, ...data.images }))
+    } catch { /* ignore */ }
   }
 
   // Показать ещё блюда — дополняем список, не теряя текущие
@@ -146,7 +163,7 @@ export default function Nutrition() {
       const data = await res.json()
       const have = new Set(meals.map(m => m.name.toLowerCase()))
       const fresh = (data.meals || []).filter(m => !have.has(String(m.name).toLowerCase()))
-      if (fresh.length) setMeals(prev => [...prev, ...fresh])
+      if (fresh.length) { setMeals(prev => [...prev, ...fresh]); fetchImages(fresh) }
     } catch { /* ignore */ }
     setLoadingMore(false)
   }
@@ -163,12 +180,15 @@ export default function Nutrition() {
   // «На кухню» прямо с карточки: сразу в план дня, рецепт и продукты подтягиваем фоном
   async function quickKitchen(meal) {
     setKitchenBusy(meal.name)
+    const img = images[meal.name]
     const dish = {
       name: meal.name, short: meal.short || '', tags: meal.tags || [],
       kcal: meal.kcal, protein: meal.protein, fat: meal.fat, carb: meal.carb,
+      imageUrl: img?.url || null, imageAuthor: img?.author || '', imageAuthorUrl: img?.authorUrl || '', imageUnsplash: img?.unsplashUrl || '', imageQuery: meal.imageQuery || '',
       ingredients: [], steps: [], chosenAt: Date.now(), rated: false
     }
     setPlan(prev => { const np = setPlanMeal(prev, selectedDay, mealType, dish); savePlan(np); return np })
+    setResultsOpen(false)
     flash(`«${meal.name}» → ${mealType}. Собираю продукты…`)
     try {
       const r = await fetchRecipe(meal.name)
@@ -205,9 +225,11 @@ export default function Nutrition() {
   // «На кухню» — выбрать блюдо: в план дня + в список покупок
   function toKitchen() {
     const m = detail.meal, r = detailRecipe
+    const img = images[m.name]
     const dish = {
       name: m.name, short: m.short || '', tags: m.tags || [],
       kcal: m.kcal, protein: m.protein, fat: m.fat, carb: m.carb,
+      imageUrl: img?.url || m.imageUrl || null, imageAuthor: img?.author || '', imageAuthorUrl: img?.authorUrl || '', imageUnsplash: img?.unsplashUrl || '', imageQuery: m.imageQuery || '',
       ingredients: r?.ingredients || [], steps: r?.steps || [],
       chosenAt: Date.now(), rated: false
     }
@@ -218,7 +240,7 @@ export default function Nutrition() {
       setShopping(ns); saveShopping(ns)
     }
     flash(`«${m.name}» → ${detail.mealKey} и список покупок ✓`)
-    closeDetail()
+    closeDetail(); setResultsOpen(false)
   }
   function removePlanned() {
     const np = clearPlanMeal(plan, detail.dateKey, detail.mealKey)
@@ -381,6 +403,7 @@ export default function Nutrition() {
                 </div>
                 {dish ? (
                   <button className="nu-slot-dish" onClick={() => openPlannedDetail(selectedDay, m.key)}>
+                    {dish.imageUrl && <div className="nu-slot-img" style={{ backgroundImage: `url(${dish.imageUrl})` }} />}
                     <span className="nu-slot-dish-name">{dish.name}</span>
                     <span className="nu-slot-dish-macros muted">{dish.kcal} ккал · Б{dish.protein} Ж{dish.fat} У{dish.carb}</span>
                     {dish.rated && <span className={`nu-slot-rated ${dish.rating}`}>{dish.rating === 'up' ? '👍 понравилось' : '👎 не очень'}</span>}
@@ -404,39 +427,13 @@ export default function Nutrition() {
           <input className="nu-note" placeholder="Пожелание к подбору (необязательно): например «полегче», «побольше рыбы»"
             value={note} onChange={e => setNote(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') suggestMeals() }} />
           <MicButton primary onText={t => setNote(prev => (prev ? prev.trim() + ' ' : '') + t)} />
-          <button className="nu-suggest" onClick={suggestMeals} disabled={loadingMeals}>
+          <button className="nu-suggest" onClick={() => suggestMeals()} disabled={loadingMeals}>
             {loadingMeals ? 'Подбираю…' : 'Подобрать блюда'}
           </button>
         </div>
-
-        {meals.length > 0 && (
-          <div className="nu-meal-list">
-            {meals.map((m, i) => (
-              <motion.div key={`${m.name}-${i}`} className="nu-meal-card" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-                <div className="nu-meal-name">{m.name}</div>
-                {m.short && <div className="nu-meal-short muted">{m.short}</div>}
-                <div className="nu-meal-macros">
-                  <span style={{ color: 'var(--orange)' }}>{m.kcal} ккал</span>
-                  <span>Б {m.protein}</span><span>Ж {m.fat}</span><span>У {m.carb}</span>
-                </div>
-                {m.tags?.length > 0 && <div className="nu-tags">{m.tags.map(t => <span key={t} className="nu-tag">{t}</span>)}</div>}
-                <div className="nu-card-actions">
-                  <button className="nu-kitchen-card" onClick={() => quickKitchen(m)} disabled={kitchenBusy === m.name}>
-                    {kitchenBusy === m.name ? 'Добавляю…' : '🍳 На кухню'}
-                  </button>
-                  <button className="nu-recipe-btn" onClick={() => openSuggestDetail(m)}>Подробнее →</button>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        )}
-        {meals.length > 0 && (
-          <button className="nu-more" onClick={moreMeals} disabled={loadingMore}>
-            {loadingMore ? 'Подбираю ещё…' : '＋ Показать ещё блюда'}
-          </button>
-        )}
-        {!loadingMeals && meals.length === 0 && (
-          <div className="nu-empty muted">{mealsMsg || 'Нажмите «＋ Подобрать» у нужного приёма выше (или кнопку «Подобрать блюда») — ИИ предложит варианты под цель и вкусы владельца.'}</div>
+        {!loadingMeals && mealsMsg && <div className="nu-empty muted">{mealsMsg}</div>}
+        {!loadingMeals && !mealsMsg && meals.length > 0 && (
+          <button className="nu-reopen" onClick={() => setResultsOpen(true)}>Показать подобранные блюда ({meals.length}) →</button>
         )}
       </motion.div>
 
@@ -467,6 +464,55 @@ export default function Nutrition() {
         )}
       </motion.div>
 
+      {/* Окно с подобранными блюдами */}
+      <AnimatePresence>
+        {resultsOpen && (
+          <div className="nu-backdrop" onClick={() => setResultsOpen(false)}>
+            <motion.div className="card nu-results" onClick={e => e.stopPropagation()}
+              initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.97 }}>
+              <div className="nu-modal-head">
+                <div>
+                  <h3>Подбор: {mealType}</h3>
+                  <div className="nu-modal-sub muted">{dayLabel} · ≈{perMeal.kcal} ккал на приём</div>
+                </div>
+                <button className="nu-close" onClick={() => setResultsOpen(false)} aria-label="Закрыть">×</button>
+              </div>
+              <div className="nu-note-row">
+                <input className="nu-note" placeholder="Изменить подбор: например «полегче», «без молочного», «другое»"
+                  value={note} onChange={e => setNote(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') suggestMeals() }} />
+                <MicButton primary onText={t => setNote(prev => (prev ? prev.trim() + ' ' : '') + t)} />
+                <button className="nu-suggest" onClick={() => suggestMeals()} disabled={loadingMeals}>
+                  {loadingMeals ? 'Подбираю…' : 'Подобрать заново'}
+                </button>
+              </div>
+              <div className="nu-meal-list">
+                {meals.map((m, i) => (
+                  <motion.div key={`${m.name}-${i}`} className="nu-meal-card" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 6) * 0.03 }}>
+                    {images[m.name]?.url && <div className="nu-meal-img" style={{ backgroundImage: `url(${images[m.name].url})` }} />}
+                    <div className="nu-meal-name">{m.name}</div>
+                    {m.short && <div className="nu-meal-short muted">{m.short}</div>}
+                    <div className="nu-meal-macros">
+                      <span style={{ color: 'var(--orange)' }}>{m.kcal} ккал</span>
+                      <span>Б {m.protein}</span><span>Ж {m.fat}</span><span>У {m.carb}</span>
+                    </div>
+                    {m.tags?.length > 0 && <div className="nu-tags">{m.tags.map(t => <span key={t} className="nu-tag">{t}</span>)}</div>}
+                    <div className="nu-card-actions">
+                      <button className="nu-kitchen-card" onClick={() => quickKitchen(m)} disabled={kitchenBusy === m.name}>
+                        {kitchenBusy === m.name ? 'Добавляю…' : '🍳 На кухню'}
+                      </button>
+                      <button className="nu-recipe-btn" onClick={() => openSuggestDetail(m)}>Подробнее →</button>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+              <button className="nu-more" onClick={moreMeals} disabled={loadingMore}>
+                {loadingMore ? 'Подбираю ещё…' : '＋ Показать ещё блюда'}
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Детальная карточка / рецепт */}
       <AnimatePresence>
         {detail && (
@@ -478,6 +524,20 @@ export default function Nutrition() {
                 <button className="nu-close" onClick={closeDetail} aria-label="Закрыть">×</button>
               </div>
               <div className="nu-modal-sub muted">{detail.mealKey} · {dayLabel}</div>
+              {(() => {
+                const im = detail.source === 'planned'
+                  ? (detail.meal.imageUrl ? { url: detail.meal.imageUrl, author: detail.meal.imageAuthor, authorUrl: detail.meal.imageAuthorUrl, unsplashUrl: detail.meal.imageUnsplash } : null)
+                  : images[detail.meal.name]
+                if (!im?.url) return null
+                return (
+                  <div className="nu-modal-img-wrap">
+                    <div className="nu-modal-img" style={{ backgroundImage: `url(${im.url})` }} />
+                    {im.author && (
+                      <div className="nu-credit muted">Фото: <a href={im.authorUrl} target="_blank" rel="noreferrer">{im.author}</a> · <a href={im.unsplashUrl} target="_blank" rel="noreferrer">Unsplash</a></div>
+                    )}
+                  </div>
+                )
+              })()}
               {detailLoading ? (
                 <div className="nu-empty muted">ИИ собирает рецепт…</div>
               ) : detailRecipe ? (
@@ -669,6 +729,7 @@ export default function Nutrition() {
         .nu-slot-name { font-size: 14px; font-weight: 700; color: var(--foreground); }
         .nu-slot-target { font-size: 12px; white-space: nowrap; }
         .nu-slot-dish { flex: 1; display: flex; flex-direction: column; gap: 5px; align-items: flex-start; text-align: left; background: transparent; border: none; cursor: pointer; padding: 0; }
+        .nu-slot-img { width: 100%; height: 76px; border-radius: 10px; background-size: cover; background-position: center; background-color: var(--bg-card); margin-bottom: 3px; }
         .nu-slot-dish-name { font-size: 14.5px; font-weight: 600; color: var(--foreground); }
         .nu-slot-dish:hover .nu-slot-dish-name { color: var(--accent); }
         .nu-slot-dish-macros { font-size: 12.5px; }
@@ -690,6 +751,7 @@ export default function Nutrition() {
 
         .nu-meal-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
         .nu-meal-card { display: flex; flex-direction: column; gap: 8px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
+        .nu-meal-img { height: 150px; margin: -16px -16px 4px; border-radius: 14px 14px 0 0; background-size: cover; background-position: center; background-color: var(--bg-card); }
         .nu-meal-name { font-size: 15.5px; font-weight: 700; color: var(--foreground); }
         .nu-meal-short { font-size: 14px; line-height: 1.55; color: var(--muted); }
         .nu-meal-macros { display: flex; flex-wrap: wrap; gap: 12px; font-size: 14px; color: var(--muted); font-weight: 600; }
@@ -705,6 +767,9 @@ export default function Nutrition() {
         .nu-more:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
         .nu-more:disabled { opacity: .5; cursor: default; }
         .nu-empty { font-size: 14px; padding: 6px 0; line-height: 1.5; }
+        .nu-reopen { margin-top: 4px; align-self: flex-start; background: transparent; border: none; color: var(--accent); font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; padding: 6px 0 0; }
+        .nu-reopen:hover { text-decoration: underline; }
+        .nu-results { width: 100%; max-width: 920px; max-height: 88vh; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
 
         .nu-shop-hint { font-size: 13px; margin-bottom: 10px; }
         .nu-shop-list { display: flex; flex-direction: column; }
@@ -721,6 +786,11 @@ export default function Nutrition() {
         .nu-modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
         .nu-modal-head h3 { font-size: 19px; font-weight: 700; color: var(--foreground); }
         .nu-modal-sub { font-size: 13px; margin-top: -6px; }
+        .nu-modal-img-wrap { display: flex; flex-direction: column; gap: 5px; }
+        .nu-modal-img { height: 200px; border-radius: 14px; background-size: cover; background-position: center; background-color: var(--bg-secondary); }
+        .nu-credit { font-size: 11.5px; }
+        .nu-credit a { color: var(--muted); text-decoration: underline; }
+        .nu-credit a:hover { color: var(--foreground); }
         .nu-close { width: 32px; height: 32px; border-radius: 9px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; flex-shrink: 0; }
         .nu-close:hover { color: var(--foreground); }
         .nu-sec-title { font-size: 13px; font-weight: 700; color: var(--foreground); text-transform: uppercase; letter-spacing: .05em; margin-top: 6px; }
