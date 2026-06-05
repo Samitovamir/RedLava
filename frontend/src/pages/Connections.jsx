@@ -140,7 +140,15 @@ export default function Connections() {
   async function disconnect(svc) {
     if (svc.live) {
       try { await fetch(svc.endpoints.disconnect, { method: 'POST' }) } catch { /* ignore */ }
+      // стираем загруженные данные сервиса, чтобы они не висели после отвязки
+      try {
+        if (svc.id === 'google') localStorage.removeItem('albert-events')
+        if (svc.id === 'whoop') localStorage.removeItem('albert-whoop-live')
+        if (svc.id === 'garmin') localStorage.removeItem('albert-garmin-live')
+      } catch { /* ignore */ }
       setConns(c => ({ ...c, [svc.id]: { connected: false, configured: c[svc.id]?.configured } }))
+      // перезагружаем, чтобы данные исчезли везде (расписание, здоровье, спорт, ИИ)
+      setTimeout(() => window.location.reload(), 250)
       return
     }
     setConns(c => { const n = { ...c }; delete n[svc.id]; return n })

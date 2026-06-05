@@ -52,7 +52,7 @@ export function EventsProvider({ children }) {
       .then(r => r.json())
       .then(d => {
         setGoogleConnected(!!d.connected)
-        if (!d.connected) return null
+        if (!d.connected) { setEventsRaw([]); return null }  // не подключён → пустое расписание
         return fetch('/api/calendar/events').then(r => r.json())
       })
       .then(data => {
