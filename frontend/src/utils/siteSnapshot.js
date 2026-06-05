@@ -45,8 +45,34 @@ export function buildSiteSnapshot({ events = [], history = [], facts = [] } = {}
         .map(e => `${e.date} ${e.start}–${e.end} «${e.title}»${e.who ? ` (${e.who})` : ''} [${PRIO[e.priority || 3]}]`).join('\n')
     : 'нет событий'
 
-  // Garmin пока не подключён — НЕ выдумываем данные о спорте
-  const sport = 'Garmin не подключён. Данных о тренировках, шагах, Body Battery, VO2max и форме НЕТ. Не придумывай их — если спросят, скажи, что нужно подключить Garmin.'
+  // Garmin — только реальные данные (если подключён), иначе честно «нет данных»
+  let liveGarmin = null
+  try { const s = localStorage.getItem('albert-garmin-live'); if (s) liveGarmin = JSON.parse(s) } catch { /* ignore */ }
+  let sport
+  if (liveGarmin && (liveGarmin.lastWorkout || liveGarmin.steps != null)) {
+    const g = liveGarmin
+    const head = [
+      g.steps != null ? `Шаги сегодня ${g.steps}` : null,
+      g.restingHr != null ? `пульс покоя ${g.restingHr}` : null,
+      g.vo2Max != null ? `VO2max ${g.vo2Max}` : null,
+      g.weekKm != null ? `за 7 дней ${g.weekKm} км (${g.weekCount} тренировок)` : null
+    ].filter(Boolean).join(', ')
+    const list = (g.workouts || []).slice(0, 8).map(w => {
+      const parts = [
+        w.distanceKm != null ? `${w.distanceKm} км` : null,
+        w.durationMin != null ? `${w.durationMin} мин` : null,
+        w.pace ? `темп ${w.pace}/км` : (w.speedKmh != null ? `${w.speedKmh} км/ч` : null),
+        w.avgHr != null ? `ср.пульс ${w.avgHr}` : null,
+        w.elevationGain != null ? `набор ${w.elevationGain} м` : null,
+        w.calories != null ? `${w.calories} ккал` : null,
+        w.trainingEffect != null ? `эффект ${w.trainingEffect}${w.trainingLabel ? ' ' + w.trainingLabel : ''}` : null
+      ].filter(Boolean).join(', ')
+      return `${w.date} «${w.title}» (${w.label}): ${parts}`
+    }).join('\n')
+    sport = `${head}.\nПоследние тренировки:\n${list}\nЭто реальные данные Garmin. Опирайся только на них, ничего не добавляй от себя.`
+  } else {
+    sport = 'Garmin не подключён. Данных о тренировках, шагах, VO2max и форме НЕТ. Не придумывай их — если спросят, скажи, что нужно подключить Garmin.'
+  }
 
   // Whoop — только реальные данные (если подключён), иначе честно «нет данных»
   let liveWhoop = null

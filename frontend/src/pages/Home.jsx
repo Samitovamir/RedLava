@@ -71,6 +71,10 @@ function readWhoopLive() {
   try { const s = localStorage.getItem('albert-whoop-live'); return s ? JSON.parse(s) : null } catch { return null }
 }
 
+function readGarminLive() {
+  try { const s = localStorage.getItem('albert-garmin-live'); return s ? JSON.parse(s) : null } catch { return null }
+}
+
 // Ближайшее (или текущее) событие из расписания
 function nextEvent(events) {
   const now = new Date(); const p = n => String(n).padStart(2, '0')
@@ -112,12 +116,16 @@ export default function Home() {
 
   // Карточки только из реальных данных (иначе — «Подключите …», без выдумок)
   const whoop = readWhoopLive()
+  const garmin = readGarminLive()
+  const lastW = garmin?.lastWorkout
   const nextEv = nextEvent(events)
   const cards = [
     nextEv
       ? { label: 'Следующее событие', value: nextEv.title, sub: `${humanDate(nextEv.date)} · ${nextEv.start}`, color: 'var(--accent)', scrollTo: true, icon: ICON_CAL }
       : { label: 'Следующее событие', value: 'Нет событий', sub: events.length ? 'на ближайшее время' : 'Подключите Google Календарь', color: 'var(--accent)', link: events.length ? undefined : '/connections', scrollTo: !!events.length, icon: ICON_CAL },
-    { label: 'Последняя тренировка', value: '—', sub: 'Подключите Garmin', color: 'var(--orange)', link: '/connections', icon: ICON_RUN },
+    lastW
+      ? { label: 'Последняя тренировка', value: lastW.label, sub: [lastW.distanceKm ? `${lastW.distanceKm} км` : null, lastW.durationMin ? `${lastW.durationMin} мин` : null, lastW.pace ? `${lastW.pace}/км` : null].filter(Boolean).join(' · ') || humanDate(lastW.date), color: 'var(--orange)', link: '/sport', icon: ICON_RUN }
+      : { label: 'Последняя тренировка', value: '—', sub: 'Подключите Garmin', color: 'var(--orange)', link: '/connections', icon: ICON_RUN },
     whoop
       ? { label: 'Recovery Whoop', value: `${whoop.recovery}%`, sub: whoop.recovery >= 67 ? 'хорошее восстановление' : whoop.recovery >= 34 ? 'среднее восстановление' : 'низкое восстановление', color: 'var(--green)', progress: whoop.recovery, link: '/health', icon: ICON_WHOOP }
       : { label: 'Recovery Whoop', value: '—', sub: 'Подключите Whoop', color: 'var(--green)', link: '/connections', icon: ICON_WHOOP },
