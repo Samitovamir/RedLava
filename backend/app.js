@@ -9,6 +9,8 @@ import calendarRoutes from './routes/calendar.js'
 import garminRoutes from './routes/garmin.js'
 import whoopRoutes from './routes/whoop.js'
 import historyRoutes from './routes/history.js'
+import authRoutes from './routes/auth.js'
+import { requireAuth } from './authGuard.js'
 
 // Локально читаем ../.env. На Vercel переменные приходят из настроек проекта (process.env),
 // файла .env там нет — config просто ничего не делает, это нормально.
@@ -28,12 +30,15 @@ app.use((req, _res, next) => {
   next()
 })
 
-app.use('/api/ai', aiRoutes)
-app.use('/api/calendar', calendarRoutes)
-app.use('/api/garmin', garminRoutes)
-app.use('/api/whoop', whoopRoutes)
-app.use('/api/history', historyRoutes)
-
+// Открытые маршруты
+app.use('/api/auth', authRoutes)
 app.get('/api/health', (_, res) => res.json({ status: 'ok' }))
+
+// Приватные маршруты — только после входа по паролю
+app.use('/api/ai', requireAuth, aiRoutes)
+app.use('/api/calendar', requireAuth, calendarRoutes)
+app.use('/api/garmin', requireAuth, garminRoutes)
+app.use('/api/whoop', requireAuth, whoopRoutes)
+app.use('/api/history', requireAuth, historyRoutes)
 
 export default app
