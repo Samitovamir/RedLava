@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { useAiSummary } from '../hooks/useAiSummary.js'
 import MicButton from './MicButton.jsx'
 import {
-  PANELS, INITIAL_REPORTS, buildHistory, markerStatus, STATUS_INFO, rangeText, barGeom, fmtDate
+  PANELS, INITIAL_REPORTS, buildHistory, markerStatus, STATUS_INFO, rangeText, barGeom, fmtDate, extraMarkers
 } from '../utils/labs.js'
 
 /*
@@ -30,15 +30,19 @@ function readGarmin() {
 // Сжатая сводка здоровья с ДАТАМИ (и ключ кэша): отклонения + Whoop + тренировки Garmin.
 function buildHealthData(reports, whoop, garmin) {
   const hist = buildHistory(reports)
+  const panelByName = {}
+  PANELS.forEach(p => p.markers.forEach(m => { panelByName[m.name] = m }))
   const flagged = [], normal = []
-  PANELS.forEach(p => p.markers.forEach(m => {
-    const h = hist[m.name]; if (!h) return
+  // Все показатели из файлов: известные (нормы из справочника) + лишние (нормы из документа)
+  Object.entries(hist).forEach(([name, h]) => {
     const last = h[h.length - 1]
+    const m = panelByName[name] || { unit: last.unit || '', min: last.min ?? null, max: last.max ?? null }
     const st = markerStatus(last.value, m.min, m.max)
-    const line = `${m.name} ${last.value} ${m.unit} (норма ${rangeText(m.min, m.max)}, сдан ${fmtDate(last.date)})`
-    if (st !== 'ok') flagged.push(`${line} — ${STATUS_INFO[st].label}`)
-    else normal.push(m.name)
-  }))
+    const norm = (m.min == null && m.max == null) ? 'норма не указана' : `норма ${rangeText(m.min, m.max)}`
+    const line = `${name} ${last.value} ${m.unit || ''} (${norm}, сдан ${fmtDate(last.date)})`
+    if (st === 'low' || st === 'high') flagged.push(`${line} — ${STATUS_INFO[st].label}`)
+    else normal.push(name)
+  })
   const hasLabs = Object.keys(hist).length > 0
   const labs = !hasLabs
     ? 'Анализы крови пока не загружены.'
@@ -68,15 +72,15 @@ const CONTEXT =
 
 // Какие показатели ИИ упомянул в тексте (по основе слова, чтобы ловить склонения)
 function norm(s) { return s.toLowerCase().replace(/ё/g, 'е') }
-function mentionedMarkers(text) {
+function mentionedMarkers(text, markers) {
   if (!text) return []
   const t = norm(text)
   const hits = []
-  PANELS.forEach(p => p.markers.forEach(m => {
+  markers.forEach(m => {
     const name = norm(m.name)
     const core = name.length > 5 ? name.slice(0, name.length - 2) : name
     if (t.includes(name) || t.includes(core)) hits.push(m)
-  }))
+  })
   return hits
 }
 
@@ -105,11 +109,11 @@ function MarkerMini({ marker, hist }) {
         <span className="hb-mk-value" style={{ color: c }}>{last.value} <span className="hb-mk-unit muted">{marker.unit}</span></span>
       </div>
       <div className="hb-mk-bar">
-        <div className="hb-mk-band" style={{ left: `${g.bandLeft}%`, width: `${g.bandRight - g.bandLeft}%` }} />
-        <div className="hb-mk-dot" style={{ left: `${g.valuePos}%`, background: c }} />
+        {st !== 'unknown' && <div className="hb-mk-band" style={{ left: `${g.bandLeft}%`, width: `${g.bandRight - g.bandLeft}%` }} />}
+        <div className="hb-mk-dot" style={{ left: `${st === 'unknown' ? 50 : g.valuePos}%`, background: c }} />
       </div>
       <div className="hb-mk-bottom">
-        <span className="muted">норма {rangeText(marker.min, marker.max)} · сдан {fmtDate(last.date)}</span>
+        <span className="muted">{st === 'unknown' ? 'норма не указана' : `норма ${rangeText(marker.min, marker.max)}`} · сдан {fmtDate(last.date)}</span>
         <span style={{ color: c }}>{STATUS_INFO[st].label}</span>
       </div>
       {prev && (
@@ -137,13 +141,15 @@ export default function HealthBrief() {
     snapshot: healthData
   })
 
+  // Все показатели: справочные + лишние из файлов
+  const allMarkers = [...PANELS.flatMap(p => p.markers), ...extraMarkers(hist)]
   // показатели, упомянутые в выжимке (или, если ни один не назван, — те что вне нормы)
-  let markers = mentionedMarkers(text)
+  let markers = mentionedMarkers(text, allMarkers)
   if (!markers.length) {
-    PANELS.forEach(p => p.markers.forEach(m => {
+    allMarkers.forEach(m => {
       const h = hist[m.name]; if (!h) return
-      if (markerStatus(h[h.length - 1].value, m.min, m.max) !== 'ok') markers.push(m)
-    }))
+      if (['low', 'high'].includes(markerStatus(h[h.length - 1].value, m.min, m.max))) markers.push(m)
+    })
   }
   // уникальные, максимум 4
   markers = markers.filter((m, i, arr) => arr.findIndex(x => x.name === m.name) === i).slice(0, 4)

@@ -14,13 +14,18 @@ function labsFlagged() {
   let reports = INITIAL_REPORTS
   try { const s = localStorage.getItem('albert-labs'); if (s) reports = JSON.parse(s) } catch { /* ignore */ }
   const hist = buildHistory(reports)
+  // Нормы из справочника для известных маркеров; для «лишних» — из самого документа.
+  const panelByName = {}
+  PANELS.forEach(p => p.markers.forEach(m => { panelByName[m.name] = m }))
   const flagged = []
-  PANELS.forEach(p => p.markers.forEach(m => {
-    const h = hist[m.name]; if (!h) return
-    const v = h[h.length - 1].value
-    const st = markerStatus(v, m.min, m.max)
-    if (st !== 'ok') flagged.push(`${m.name} ${v} ${m.unit} (норма ${rangeText(m.min, m.max)}, ${STATUS_INFO[st].label})`)
-  }))
+  Object.entries(hist).forEach(([name, h]) => {
+    const last = h[h.length - 1]
+    const m = panelByName[name] || { unit: last.unit || '', min: last.min ?? null, max: last.max ?? null }
+    const st = markerStatus(last.value, m.min, m.max)
+    if (st === 'low' || st === 'high') {
+      flagged.push(`${name} ${last.value} ${m.unit || ''} (норма ${rangeText(m.min, m.max)}, ${STATUS_INFO[st].label})`)
+    }
+  })
   return { flagged, hasData: Object.keys(hist).length > 0 }
 }
 

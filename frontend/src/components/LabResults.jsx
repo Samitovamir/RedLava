@@ -2,7 +2,7 @@ import { useState, useRef, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   PANELS, INITIAL_REPORTS, buildHistory, markerStatus, STATUS_INFO,
-  rangeText, barGeom, fmtDate, LABS_STORE_KEY
+  rangeText, barGeom, fmtDate, LABS_STORE_KEY, extraMarkers
 } from '../utils/labs.js'
 import MicButton from './MicButton.jsx'
 
@@ -77,10 +77,10 @@ export default function LabResults() {
       }
       const rep = await fetch('/api/labs/reports').then(r => r.json()).catch(() => null)
       if (!alive || !rep?.reports?.length) { setSyncing(false); return }
-      // Приводим к формату фронта: значения — простые числа по стандартным названиям
+      // Сохраняем значения как есть ({v, unit, min, max}) — чтобы знать единицы и нормы
+      // даже для показателей вне нашего справочника.
       const flat = rep.reports.map(r => ({
-        id: r.date, date: r.date, fileName: r.fileName || 'Яндекс.Диск',
-        values: Object.fromEntries(Object.entries(r.values).map(([k, val]) => [k, (val && typeof val === 'object') ? val.v : val]))
+        id: r.date, date: r.date, fileName: r.fileName || 'Яндекс.Диск', values: r.values
       }))
       setReports(flat)
       setSyncing(false)
@@ -91,22 +91,33 @@ export default function LabResults() {
   const history = useMemo(() => buildHistory(reports), [reports])
   const latestOf = name => history[name]?.[history[name].length - 1]
 
-  // Маркеры вне нормы (по последним значениям)
-  const flagged = PANELS.flatMap(p => p.markers)
+  // Показатели из файлов, которых нет в нашем справочнике (нормы берём из документа)
+  const extras = useMemo(() => extraMarkers(history), [history])
+  // Все панели = справочник + панель «Другие показатели» (если что-то нашлось)
+  const allPanels = extras.length
+    ? [...PANELS, { name: 'Другие показатели', icon: '🔬', markers: extras }]
+    : PANELS
+
+  // Маркеры вне нормы (по последним значениям) — включая «лишние»
+  const flagged = allPanels.flatMap(p => p.markers)
     .map(m => ({ m, last: latestOf(m.name) }))
-    .filter(x => x.last && markerStatus(x.last.value, x.m.min, x.m.max) !== 'ok')
+    .filter(x => x.last && ['low', 'high'].includes(markerStatus(x.last.value, x.m.min, x.m.max)))
 
   const reportsByDate = [...reports].sort((a, b) => b.date.localeCompare(a.date))
 
   // Текстовая выжимка показателей (последние значения) для контекста ИИ
   function labSummaryText(snapshotReports) {
     const hist = buildHistory(snapshotReports)
-    return PANELS.map(p => {
+    const ex = extraMarkers(hist)
+    const groups = ex.length ? [...PANELS, { name: 'Другие показатели', markers: ex }] : PANELS
+    return groups.map(p => {
       const lines = p.markers.map(m => {
         const h = hist[m.name]; if (!h) return null
         const v = h[h.length - 1].value
         const st = markerStatus(v, m.min, m.max)
-        return `${m.name} ${v} ${m.unit} (норма ${rangeText(m.min, m.max)})${st !== 'ok' ? ` — ${STATUS_INFO[st].label}` : ''}`
+        const norm = (m.min == null && m.max == null) ? 'норма не указана' : `норма ${rangeText(m.min, m.max)}`
+        const flag = (st === 'low' || st === 'high') ? ` — ${STATUS_INFO[st].label}` : ''
+        return `${m.name} ${v} ${m.unit || ''} (${norm})${flag}`
       }).filter(Boolean)
       return lines.length ? `${p.name}: ${lines.join(', ')}` : null
     }).filter(Boolean).join('. ')
@@ -166,10 +177,7 @@ export default function LabResults() {
         return
       }
       const r = out.report
-      const flat = {
-        id: r.id, date: r.date, fileName: r.fileName || file.name,
-        values: Object.fromEntries(Object.entries(r.values).map(([k, val]) => [k, (val && typeof val === 'object') ? val.v : val]))
-      }
+      const flat = { id: r.id, date: r.date, fileName: r.fileName || file.name, values: r.values }
       // Заменяем отчёт той же даты, если он уже есть, иначе добавляем
       const next = [...reports.filter(x => x.date !== flat.date), flat]
       setReports(next)
@@ -348,7 +356,7 @@ export default function LabResults() {
 
       {/* Панели с диаграммами */}
       <div className="lab-panels">
-        {PANELS.map(panel => {
+        {allPanels.map(panel => {
           const hasAny = panel.markers.some(m => latestOf(m.name))
           return (
             <div key={panel.name} className="lab-panel">
@@ -379,11 +387,11 @@ export default function LabResults() {
                         <span className="lm-value" style={{ color: c }}>{last.value} <span className="lm-unit muted">{m.unit}</span></span>
                       </div>
                       <div className="lm-bar">
-                        <div className="lm-band" style={{ left: `${g.bandLeft}%`, width: `${g.bandRight - g.bandLeft}%` }} />
-                        <div className="lm-marker-dot" style={{ left: `${g.valuePos}%`, background: c }} />
+                        {st !== 'unknown' && <div className="lm-band" style={{ left: `${g.bandLeft}%`, width: `${g.bandRight - g.bandLeft}%` }} />}
+                        <div className="lm-marker-dot" style={{ left: `${st === 'unknown' ? 50 : g.valuePos}%`, background: c }} />
                       </div>
                       <div className="lm-bottom">
-                        <span className="lm-range muted">норма {rangeText(m.min, m.max)}</span>
+                        <span className="lm-range muted">{st === 'unknown' ? 'норма не указана' : `норма ${rangeText(m.min, m.max)}`}</span>
                         <span className="lm-status" style={{ color: c }}>{STATUS_INFO[st].label}</span>
                       </div>
                       {prev && (

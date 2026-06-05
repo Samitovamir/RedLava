@@ -18,7 +18,17 @@ const URL_KEY = 'labs:yandex_url'
 const YA = 'https://cloud-api.yandex.net/v1/disk/public/resources'
 
 function getClient() { return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }) }
-const cacheKey = (path, modified) => 'labs:parsed:' + crypto.createHash('md5').update(path + '|' + (modified || '')).digest('hex')
+
+// ВСЕ разобранные анализы лежат в ОДНОМ ключе: { [id]: { modified, report } }.
+// Так на чтении не возникает «бурста» из 69 одновременных запросов к Upstash
+// (из-за чего на бесплатном тарифе часть ответов терялась и файлы разбирались заново).
+// id для файлов Яндекс.Диска = путь файла; для ручной загрузки = 'upload:<md5 содержимого>'.
+const STORE_KEY = 'labs:store'
+async function loadStore() { return (await kvGet(STORE_KEY)) || {} }
+async function saveStore(s) { await kvSet(STORE_KEY, s) }
+// Старый формат — по одному ключу на файл. Используем для разовой миграции, чтобы
+// уже разобранные файлы не пришлось гонять через ИИ повторно.
+const oldKey = (path, modified) => 'labs:parsed:' + crypto.createHash('md5').update(path + '|' + (modified || '')).digest('hex')
 
 // Рекурсивный обход публичной папки → плоский список файлов (pdf/изображения)
 async function listFiles(publicKey, path = '', depth = 0, acc = []) {
@@ -145,38 +155,47 @@ router.post('/disconnect', async (_req, res) => {
   res.json({ ok: true })
 })
 
-// Список файлов + признак, разобран ли уже (для прогресса на фронте)
+// Список файлов + признак, разобран ли уже (для прогресса на фронте).
+// Одно чтение единого хранилища — никаких массовых параллельных запросов.
 router.get('/files', async (_req, res) => {
   const url = await kvGet(URL_KEY)
   if (!url) return res.json({ connected: false, files: [] })
   try {
     const files = await listFiles(url)
-    const withCache = await Promise.all(files.map(async f => ({
-      ...f, parsed: !!(await kvGet(cacheKey(f.path, f.modified)))
-    })))
+    const store = await loadStore()
+    const withCache = files.map(f => ({ ...f, parsed: store[f.path]?.modified === f.modified }))
     res.json({ connected: true, files: withCache })
   } catch (e) {
     res.json({ connected: true, files: [], error: String(e?.message || e).slice(0, 150) })
   }
 })
 
-// Разобрать ОДИН файл (фронт вызывает по очереди — не упираемся в таймаут)
+// Разобрать ОДИН файл (фронт вызывает по очереди — не упираемся в таймаут).
+// Результат сохраняется в единое хранилище и больше не теряется при перезапуске.
 router.post('/parse', async (req, res) => {
   const url = await kvGet(URL_KEY)
   if (!url) return res.json({ ok: false, connected: false })
   const { path, modified } = req.body || {}
   if (!path) return res.status(400).json({ ok: false, message: 'path required' })
-  const ck = cacheKey(path, modified)
-  const cached = await kvGet(ck)
-  if (cached) return res.json({ ok: true, report: cached, cached: true })
+  const store = await loadStore()
+  if (store[path]?.modified === modified) return res.json({ ok: true, report: store[path].report, cached: true })
+  // Разовая миграция из старого формата (отдельный ключ на файл) — без повторного ИИ
+  const migrated = await kvGet(oldKey(path, modified))
+  if (migrated) {
+    store[path] = { modified, report: migrated }
+    await saveStore(store)
+    return res.json({ ok: true, report: migrated, cached: true })
+  }
   try {
     const files = await listFiles(url)
     const file = files.find(f => f.path === path)
     if (!file) return res.json({ ok: false, message: 'файл не найден' })
     const parsed = await parseFile(file, url)
-    if (!parsed) return res.json({ ok: false, message: 'не удалось разобрать' })
-    const report = { id: ck, date: parsed.date, lab: parsed.lab || '', kind: parsed.kind || '', fileName: file.name, folder: file.folder, values: parsed.values || {} }
-    if (Object.keys(report.values).length) await kvSet(ck, report)
+    if (!parsed) return res.json({ ok: false, message: 'не удалось разобрать' })   // реальный сбой — не кэшируем, можно повторить
+    const report = { id: path, date: parsed.date, lab: parsed.lab || '', kind: parsed.kind || '', fileName: file.name, folder: file.folder, values: parsed.values || {} }
+    // Сохраняем даже с пустыми показателями (файл не анализ / нет цифр) — чтобы не гонять ИИ повторно
+    store[path] = { modified, report }
+    await saveStore(store)
     res.json({ ok: true, report })
   } catch (e) {
     res.json({ ok: false, message: String(e?.message || e).slice(0, 150) })
@@ -190,39 +209,39 @@ router.post('/upload', async (req, res) => {
   if (!data) return res.status(400).json({ ok: false, message: 'нет файла' })
   try {
     const buf = Buffer.from(data, 'base64')
-    const ck = 'labs:parsed:' + crypto.createHash('md5').update(buf).digest('hex')
-    const cached = await kvGet(ck)
-    if (cached) return res.json({ ok: true, report: cached, cached: true })
+    const id = 'upload:' + crypto.createHash('md5').update(buf).digest('hex')
+    const store = await loadStore()
+    if (store[id]) return res.json({ ok: true, report: store[id].report, cached: true })
     const parsed = await parseBuffer(buf, { name: name || 'файл', mime: mime || '' })
     if (!parsed || !Object.keys(parsed.values || {}).length) {
       return res.json({ ok: false, message: 'Не удалось распознать показатели в этом файле' })
     }
-    const report = { id: ck, date: parsed.date, lab: parsed.lab || '', kind: parsed.kind || '', fileName: name || 'Загруженный файл', values: parsed.values }
-    await kvSet(ck, report)
+    const report = { id, date: parsed.date, lab: parsed.lab || '', kind: parsed.kind || '', fileName: name || 'Загруженный файл', values: parsed.values }
+    store[id] = { modified: id, report }
+    await saveStore(store)
     res.json({ ok: true, report })
   } catch (e) {
     res.json({ ok: false, message: String(e?.message || e).slice(0, 150) })
   }
 })
 
-// Все разобранные отчёты, объединённые по дате (формат фронта: {date, values})
+// Все разобранные отчёты, объединённые по дате (формат фронта: {date, values}).
+// Берём из единого хранилища — и Яндекс.Диск, и ручные загрузки.
 router.get('/reports', async (_req, res) => {
   const url = await kvGet(URL_KEY)
-  if (!url) return res.json({ connected: false, reports: [] })
   try {
-    const files = await listFiles(url)
-    const parsed = (await Promise.all(files.map(f => kvGet(cacheKey(f.path, f.modified))))).filter(Boolean)
+    const store = await loadStore()
+    const entries = Object.values(store).map(e => e.report).filter(r => r && r.date && Object.keys(r.values || {}).length)
     // Объединяем по дате: значения из всех файлов одной даты в один отчёт
     const byDate = {}
-    parsed.forEach(r => {
-      if (!r.date) return
+    entries.forEach(r => {
       byDate[r.date] ||= { id: r.date, date: r.date, fileName: r.fileName, values: {} }
       Object.assign(byDate[r.date].values, r.values)
     })
     const reports = Object.values(byDate).sort((a, b) => a.date.localeCompare(b.date))
-    res.json({ connected: true, reports, total: files.length, parsed: parsed.length })
+    res.json({ connected: !!url, reports, parsed: entries.length })
   } catch (e) {
-    res.json({ connected: true, reports: [], error: String(e?.message || e).slice(0, 150) })
+    res.json({ connected: !!url, reports: [], error: String(e?.message || e).slice(0, 150) })
   }
 })
 

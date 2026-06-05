@@ -63,29 +63,49 @@ export const LABS_STORE_VERSION = '2'
   } catch { /* ignore */ }
 })()
 
+// Значение в отчёте может быть числом (старый формат) или объектом {v, unit, min, max}
+// — последнее приходит от ИИ-парсера с нормами прямо из документа.
+const valNum = v => (v && typeof v === 'object') ? v.v : v
+
 // Собрать историю по каждому маркеру из всех отчётов (по возрастанию даты).
+// В каждой точке храним число + единицы/границы нормы из документа (если были).
 export function buildHistory(reports) {
   const sorted = [...reports].sort((a, b) => a.date.localeCompare(b.date))
   const hist = {}
   sorted.forEach(r =>
     Object.entries(r.values).forEach(([name, value]) => {
-      (hist[name] ||= []).push({ date: r.date, value })
+      const meta = (value && typeof value === 'object') ? value : {}
+      ;(hist[name] ||= []).push({ date: r.date, value: valNum(value), unit: meta.unit, min: meta.min ?? null, max: meta.max ?? null })
     })
   )
   return hist
 }
 
-// Статус значения относительно нормы: 'low' | 'high' | 'ok'
+// Статус значения относительно нормы: 'low' | 'high' | 'ok' | 'unknown' (нет границ)
 export function markerStatus(value, min, max) {
+  if (min == null && max == null) return 'unknown'
   if (min != null && value < min) return 'low'
   if (max != null && value > max) return 'high'
   return 'ok'
 }
 
 export const STATUS_INFO = {
-  ok:   { label: 'норма',   color: 'var(--green)' },
-  low:  { label: 'понижен', color: 'var(--yellow)' },
-  high: { label: 'повышен', color: 'var(--red)' }
+  ok:      { label: 'норма',    color: 'var(--green)' },
+  low:     { label: 'понижен',  color: 'var(--yellow)' },
+  high:    { label: 'повышен',  color: 'var(--red)' },
+  unknown: { label: 'нет нормы', color: 'var(--muted)' }
+}
+
+// Маркеры, которых нет в нашем справочнике PANELS (например, Ферритин, СРБ, Триглицериды),
+// но которые встретились в файлах. Берём единицы и нормы из самого документа.
+export function extraMarkers(history) {
+  const known = new Set(PANELS.flatMap(p => p.markers.map(m => m.name)))
+  return Object.keys(history)
+    .filter(n => !known.has(n))
+    .map(name => {
+      const last = history[name][history[name].length - 1]
+      return { name, unit: last.unit || '', min: last.min ?? null, max: last.max ?? null }
+    })
 }
 
 export function rangeText(min, max) {
