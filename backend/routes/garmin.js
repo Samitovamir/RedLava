@@ -38,22 +38,36 @@ function mskDateStr() {
 // Плановые (приближающиеся) тренировки из календаря Garmin.
 // Сюда попадают и планы из TrainingPeaks, если он связан с Garmin.
 // Берём текущий и следующий месяц, оставляем будущие. Месяц у Garmin 0-индексный.
+// Плановая (не выполненная) тренировка?
+function isPlannedItem(it) {
+  const t = String(it.itemType || '').toLowerCase()
+  if (t === 'activity') return false                 // уже выполнена
+  if (/workout/.test(t)) return true                 // структурная плановая
+  if (it.workoutId && (!t || /plan|scheduled|training/.test(t))) return true
+  return false
+}
+
 async function getPlanned(c) {
   const base = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Moscow' }))
   const todayStr = mskDateStr()
   const out = []
+  const typesSeen = {}
+  let totalItems = 0
   for (const off of [0, 1]) {
     const d = new Date(base.getFullYear(), base.getMonth() + off, 1)
     try {
       const r = await c.client.get(`${CONNECT}/calendar-service/year/${d.getFullYear()}/month/${d.getMonth()}`)
       const items = r?.calendarItems || []
+      totalItems += items.length
       for (const it of items) {
-        if (!/workout/i.test(it.itemType || '')) continue   // плановая тренировка (а не выполненная активность)
+        const tt = String(it.itemType || '—')
+        typesSeen[tt] = (typesSeen[tt] || 0) + 1
+        if (!isPlannedItem(it)) continue
         const date = it.date || it.scheduledDate
         if (!date || date < todayStr) continue
         const durSec = it.estimatedDurationInSecs ?? it.duration ?? null
         const rawTime = it.scheduledStartTime || it.startTime || null
-        const time = rawTime ? String(rawTime).replace(/^.*?T/, '').slice(0, 5) : null  // ISO/таймштамп → HH:MM
+        const time = rawTime ? String(rawTime).replace(/^.*?T/, '').slice(0, 5) : null
         out.push({
           id: String(it.id ?? it.workoutId ?? `${date}-${it.title || 'w'}`),
           date,
@@ -64,10 +78,10 @@ async function getPlanned(c) {
           time: /^\d{2}:\d{2}$/.test(time || '') ? time : null
         })
       }
-    } catch { /* месяц не отдался — пропускаем */ }
+    } catch (e) { typesSeen['_error'] = String(e?.message || e).slice(0, 80) }
   }
   out.sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || '')))
-  return out.slice(0, 20)
+  return { planned: out.slice(0, 20), debug: { totalItems, typesSeen } }
 }
 
 // Body Battery — «остаток заряда»: текущее значение + сколько заряжено/потрачено за день.
@@ -223,8 +237,8 @@ router.get('/planned', requireAuth, async (_req, res) => {
   if (!t?.oauth2) return res.json({ connected: false, planned: [] })
   try {
     const c = clientFromToken(t)
-    const planned = await getPlanned(c)
-    res.json({ connected: true, planned })
+    const { planned, debug } = await getPlanned(c)
+    res.json({ connected: true, planned, debug })
   } catch (e) {
     res.json({ connected: true, planned: [], error: String(e?.message || '').slice(0, 120) })
   }

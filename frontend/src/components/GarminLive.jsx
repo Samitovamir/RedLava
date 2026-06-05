@@ -89,6 +89,7 @@ export default function GarminLive() {
   // Плановые тренировки (TrainingPeaks/Garmin) и какие уже добавлены в календарь
   const { events, applyAiActions } = useEvents()
   const [planned, setPlanned] = useState([])
+  const [plannedDebug, setPlannedDebug] = useState(null)
   const [openSec, setOpenSec] = useState({ planned: true, recent: true })  // свёрнутость секций
   const toggleSec = k => setOpenSec(s => ({ ...s, [k]: !s[k] }))
   const [added, setAdded] = useState(() => {
@@ -129,6 +130,7 @@ export default function GarminLive() {
     fetch('/api/garmin/planned').then(r => r.json()).then(d => {
       const list = d?.planned || []
       setPlanned(list)
+      setPlannedDebug(d?.debug || null)
       const timed = list.filter(w => w.time && !added[w.id])
       if (timed.length) {
         applyAiActions(timed.map(w => eventInput(w, w.time, minToHm(hmToMin(w.time) + (w.durationMin || 60)))))
@@ -195,16 +197,22 @@ export default function GarminLive() {
         </motion.div>
       )}
 
-      {planned.length > 0 && (
-        <motion.div className="card gl-list-card"
-          initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.14 }}>
-          <div className="gl-card-head">
-            <div className="card-title" style={{ margin: 0 }}>Приближающиеся тренировки</div>
-            <button className="gl-collapse" onClick={() => toggleSec('planned')} aria-label={openSec.planned ? 'Свернуть' : 'Развернуть'}>
-              <svg className={`gl-chev ${openSec.planned ? 'open' : ''}`} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-            </button>
+      <motion.div className="card gl-list-card"
+        initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.14 }}>
+        <div className="gl-card-head">
+          <div className="card-title" style={{ margin: 0 }}>Приближающиеся тренировки</div>
+          <button className="gl-collapse" onClick={() => toggleSec('planned')} aria-label={openSec.planned ? 'Свернуть' : 'Развернуть'}>
+            <svg className={`gl-chev ${openSec.planned ? 'open' : ''}`} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+        </div>
+        {openSec.planned && (planned.length === 0 ? (
+          <div className="gl-empty muted">
+            Плановых тренировок не найдено. Свяжите TrainingPeaks с Garmin (Settings → Connected Apps), и планы появятся здесь.
+            {plannedDebug && (
+              <div className="gl-debug">диагностика: записей в календаре {plannedDebug.totalItems ?? 0}; типы: {JSON.stringify(plannedDebug.typesSeen || {})}</div>
+            )}
           </div>
-          {openSec.planned && (<>
+        ) : (<>
           <div className="gl-planned">
             {planned.map(w => {
               const info = added[w.id]
@@ -231,9 +239,8 @@ export default function GarminLive() {
             })}
           </div>
           <div className="gl-planned-note muted">Без своего времени тренировка ставится на утро (≈6:30), с учётом длительности и других дел дня.</div>
-          </>)}
+          </>))}
         </motion.div>
-      )}
 
       <motion.div className="card gl-list-card"
         initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.16 }}>
@@ -333,6 +340,7 @@ export default function GarminLive() {
         .gl-add-btn:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }
         .gl-added { flex-shrink: 0; font-size: 13px; font-weight: 600; color: var(--green); white-space: nowrap; }
         .gl-planned-note { font-size: 12px; margin-top: 2px; }
+        .gl-debug { font-size: 11px; opacity: 0.6; margin-top: 8px; word-break: break-all; }
         .gl-empty { font-size: 14px; padding: 8px 0; }
         .gl-list { display: flex; flex-direction: column; }
         .gl-row { display: flex; align-items: center; gap: 14px; padding: 13px 0; border-bottom: 1px solid var(--border); }
