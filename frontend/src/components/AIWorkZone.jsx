@@ -6,6 +6,7 @@ import { useSiteSnapshot } from '../hooks/useSiteSnapshot.js'
 import { useEvents } from '../context/EventsContext.jsx'
 import { useMemoryFacts } from '../context/MemoryContext.jsx'
 import { useHistory } from '../context/HistoryContext.jsx'
+import MicButton from './MicButton.jsx'
 
 /*
   Рабочая зона ИИ на главной.
@@ -261,17 +262,20 @@ export default function AIWorkZone() {
           >
             <textarea
               className="awz-textarea"
-              placeholder="Опишите задачу: написать письмо команде, найти информацию, создать событие в календаре…"
+              placeholder="Опишите задачу или надиктуйте: написать письмо, найти информацию, создать событие в календаре…"
               value={task}
               onChange={(e) => setTask(e.target.value)}
               rows={4}
             />
-            <button className="awz-submit" onClick={processTask} disabled={!task.trim()}>
-              Выполнить
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
-              </svg>
-            </button>
+            <div className="awz-text-actions">
+              <MicButton onText={t => setTask(prev => (prev ? prev.trim() + ' ' : '') + t)} />
+              <button className="awz-submit" onClick={processTask} disabled={!task.trim()}>
+                Выполнить
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                </svg>
+              </button>
+            </div>
           </motion.div>
         )}
 
@@ -518,6 +522,7 @@ export default function AIWorkZone() {
         .awz-dropzone span { font-size: 13px; color: var(--muted-foreground); }
 
         .awz-text-mode { display: flex; flex-direction: column; gap: 14px; flex: 1; }
+        .awz-text-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
         .awz-textarea {
           flex: 1;
           min-height: 150px;

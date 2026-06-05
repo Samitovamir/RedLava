@@ -5,6 +5,7 @@ import { useEvents } from '../context/EventsContext.jsx'
 import { useMemoryFacts } from '../context/MemoryContext.jsx'
 import { useHistory } from '../context/HistoryContext.jsx'
 import { useSiteSnapshot } from '../hooks/useSiteSnapshot.js'
+import MicButton from './MicButton.jsx'
 
 const PAGE_HINT = {
   '/': 'Сейчас открыт главный экран.',
@@ -138,12 +139,13 @@ export default function AICommandBar() {
           <input
             ref={inputRef}
             className="ai-input"
-            placeholder={expanded ? 'Введите запрос...' : 'Спросите что угодно...'}
+            placeholder={expanded ? 'Введите или надиктуйте запрос...' : 'Спросите что угодно...'}
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKey}
             onFocus={() => setExpanded(true)}
           />
+          <MicButton onText={t => { setExpanded(true); setInput(prev => (prev ? prev.trim() + ' ' : '') + t) }} />
           {expanded && (
             <button className="ai-send-btn" onClick={sendMessage} disabled={loading || !input.trim()}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

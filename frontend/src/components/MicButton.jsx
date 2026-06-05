@@ -1,0 +1,73 @@
+import { useRef, useState, useEffect } from 'react'
+
+/*
+  Кнопка голосового ввода (диктовка по-русски) через Web Speech API браузера.
+  Бесплатно, работает в Chrome/Edge/Safari. Если браузер не поддерживает — кнопка не показывается.
+  onText(текст) вызывается с распознанной фразой; родитель сам решает, куда её добавить.
+*/
+const SR = typeof window !== 'undefined' ? (window.SpeechRecognition || window.webkitSpeechRecognition) : null
+
+export default function MicButton({ onText, title = 'Надиктовать голосом' }) {
+  const [listening, setListening] = useState(false)
+  const recRef = useRef(null)
+
+  useEffect(() => () => { try { recRef.current?.stop() } catch { /* ignore */ } }, [])
+
+  if (!SR) return null
+
+  function toggle() {
+    if (listening) { try { recRef.current?.stop() } catch { /* ignore */ } return }
+    const rec = new SR()
+    rec.lang = 'ru-RU'
+    rec.interimResults = false
+    rec.continuous = false
+    rec.onresult = (e) => {
+      let txt = ''
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) txt += e.results[i][0].transcript
+      }
+      txt = txt.trim()
+      if (txt) onText(txt)
+    }
+    rec.onend = () => setListening(false)
+    rec.onerror = () => setListening(false)
+    recRef.current = rec
+    setListening(true)
+    try { rec.start() } catch { setListening(false) }
+  }
+
+  return (
+    <button
+      type="button"
+      className={`mic-btn ${listening ? 'listening' : ''}`}
+      onClick={toggle}
+      title={listening ? 'Остановить' : title}
+      aria-label={title}
+    >
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="9" y="2" width="6" height="12" rx="3" />
+        <path d="M5 10v1a7 7 0 0 0 14 0v-1" />
+        <line x1="12" y1="18" x2="12" y2="22" />
+      </svg>
+      <style>{`
+        .mic-btn {
+          flex-shrink: 0;
+          width: 38px; height: 38px; border-radius: 11px;
+          background: var(--bg-secondary); border: 1px solid var(--border);
+          color: var(--muted); cursor: pointer;
+          display: flex; align-items: center; justify-content: center;
+          transition: color 0.15s, border-color 0.15s, background 0.15s;
+        }
+        .mic-btn:hover { color: var(--accent); border-color: var(--border-hover); }
+        .mic-btn.listening {
+          color: #fff; background: var(--red); border-color: var(--red);
+          animation: mic-pulse 1.3s ease-in-out infinite;
+        }
+        @keyframes mic-pulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.5); }
+          50% { box-shadow: 0 0 0 7px rgba(239,68,68,0); }
+        }
+      `}</style>
+    </button>
+  )
+}
