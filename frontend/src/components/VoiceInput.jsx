@@ -1,0 +1,162 @@
+import { useRef, useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
+
+/*
+  Голосовой ввод как ОСНОВНОЙ способ: большая кнопка-микрофон с живой расшифровкой
+  по-русски (Web Speech API). Текстовый ввод — вторичная альтернатива (раскрывается).
+  Если браузер не поддерживает распознавание — сразу показываем текстовое поле.
+  Props: value, onChange(value), onSubmit(), busy.
+*/
+const SR = typeof window !== 'undefined' ? (window.SpeechRecognition || window.webkitSpeechRecognition) : null
+
+export default function VoiceInput({ value, onChange, onSubmit, busy }) {
+  const supported = !!SR
+  const [listening, setListening] = useState(false)
+  const [interim, setInterim] = useState('')
+  const [showText, setShowText] = useState(!supported)
+  const recRef = useRef(null)
+  const valueRef = useRef(value)
+  useEffect(() => { valueRef.current = value }, [value])
+  useEffect(() => () => { try { recRef.current?.stop() } catch { /* ignore */ } }, [])
+
+  function toggle() {
+    if (!supported) { setShowText(true); return }
+    if (listening) { try { recRef.current?.stop() } catch { /* ignore */ } return }
+    const rec = new SR()
+    rec.lang = 'ru-RU'
+    rec.interimResults = true
+    rec.continuous = true
+    rec.onresult = (e) => {
+      let fin = '', itm = ''
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const tr = e.results[i][0].transcript
+        if (e.results[i].isFinal) fin += tr; else itm += tr
+      }
+      if (fin.trim()) onChange((valueRef.current ? valueRef.current.trim() + ' ' : '') + fin.trim())
+      setInterim(itm)
+    }
+    rec.onend = () => { setListening(false); setInterim('') }
+    rec.onerror = () => { setListening(false); setInterim('') }
+    recRef.current = rec
+    setListening(true)
+    try { rec.start() } catch { setListening(false) }
+  }
+
+  const hasText = !!(value && value.trim())
+
+  return (
+    <div className="vi">
+      <div className="vi-voice">
+        <motion.button
+          type="button"
+          className={`vi-mic ${listening ? 'listening' : ''}`}
+          onClick={toggle}
+          whileTap={{ scale: 0.94 }}
+          aria-label={listening ? 'Остановить запись' : 'Начать запись голосом'}
+        >
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="9" y="2" width="6" height="12" rx="3" />
+            <path d="M5 10v1a7 7 0 0 0 14 0v-1" />
+            <line x1="12" y1="18" x2="12" y2="22" />
+          </svg>
+        </motion.button>
+        <div className="vi-hint">
+          {!supported
+            ? 'Голос недоступен в этом браузере. Напечатайте задачу ниже.'
+            : listening ? 'Слушаю… говорите' : 'Нажмите и говорите'}
+        </div>
+      </div>
+
+      {(hasText || interim) && (
+        <div className="vi-captured">
+          {value}
+          {interim && <span className="vi-interim"> {interim}</span>}
+        </div>
+      )}
+
+      <div className="vi-actions">
+        {hasText && <button type="button" className="vi-clear" onClick={() => onChange('')}>Очистить</button>}
+        <button type="button" className="vi-submit" onClick={onSubmit} disabled={busy || !hasText}>
+          Выполнить
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+          </svg>
+        </button>
+      </div>
+
+      {supported && (
+        <button type="button" className="vi-text-toggle" onClick={() => setShowText(s => !s)}>
+          {showText ? 'Скрыть ручной ввод' : 'или напечатать текстом'}
+        </button>
+      )}
+
+      {showText && (
+        <textarea
+          className="vi-textarea"
+          placeholder="Напечатайте задачу: написать письмо, найти информацию, создать событие…"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          rows={3}
+        />
+      )}
+
+      <style>{`
+        .vi { display: flex; flex-direction: column; align-items: center; gap: 14px; flex: 1; }
+        .vi-voice { display: flex; flex-direction: column; align-items: center; gap: 12px; padding-top: 6px; }
+        .vi-mic {
+          width: 96px; height: 96px; border-radius: 50%;
+          background: var(--accent); color: var(--accent-foreground);
+          border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
+          box-shadow: 0 8px 28px color-mix(in srgb, var(--accent) 40%, transparent);
+          transition: background 0.15s, box-shadow 0.2s;
+        }
+        .vi-mic:hover { box-shadow: 0 10px 34px color-mix(in srgb, var(--accent) 55%, transparent); }
+        .vi-mic.listening {
+          background: var(--red); color: #fff;
+          box-shadow: 0 0 0 0 rgba(239,68,68,0.55);
+          animation: vi-pulse 1.4s ease-in-out infinite;
+        }
+        @keyframes vi-pulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.5); }
+          50% { box-shadow: 0 0 0 16px rgba(239,68,68,0); }
+        }
+        .vi-hint { font-size: 15px; font-weight: 600; color: var(--muted); text-align: center; }
+
+        .vi-captured {
+          width: 100%; background: var(--bg-secondary); border: 1px solid var(--border);
+          border-radius: 12px; padding: 14px 16px; font-size: 17px; line-height: 1.55;
+          color: var(--foreground); min-height: 24px;
+        }
+        .vi-interim { color: var(--muted); }
+
+        .vi-actions { display: flex; align-items: center; gap: 12px; align-self: stretch; justify-content: flex-end; }
+        .vi-clear {
+          background: transparent; border: 1px solid var(--border); border-radius: 12px;
+          padding: 10px 16px; font-family: inherit; font-size: 14px; color: var(--muted); cursor: pointer; transition: all 0.15s;
+        }
+        .vi-clear:hover { color: var(--foreground); border-color: var(--border-hover); }
+        .vi-submit {
+          display: flex; align-items: center; gap: 8px; padding: 11px 22px;
+          background: var(--primary); color: var(--primary-foreground); border: none; border-radius: 12px;
+          font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity 0.18s, transform 0.1s;
+        }
+        .vi-submit:hover:not(:disabled) { opacity: 0.9; }
+        .vi-submit:active:not(:disabled) { transform: scale(0.97); }
+        .vi-submit:disabled { opacity: 0.4; cursor: default; }
+
+        .vi-text-toggle {
+          background: transparent; border: none; color: var(--muted); font-family: inherit;
+          font-size: 13px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; padding: 0;
+        }
+        .vi-text-toggle:hover { color: var(--accent); }
+        .vi-textarea {
+          width: 100%; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px;
+          padding: 12px 14px; font-family: inherit; font-size: 15px; color: var(--foreground); resize: vertical; outline: none;
+          transition: border-color 0.15s;
+        }
+        .vi-textarea:focus { border-color: var(--accent); }
+        .vi-textarea::placeholder { color: var(--muted); }
+      `}</style>
+    </div>
+  )
+}

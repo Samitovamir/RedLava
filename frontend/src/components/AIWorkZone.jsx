@@ -6,7 +6,7 @@ import { useSiteSnapshot } from '../hooks/useSiteSnapshot.js'
 import { useEvents } from '../context/EventsContext.jsx'
 import { useMemoryFacts } from '../context/MemoryContext.jsx'
 import { useHistory } from '../context/HistoryContext.jsx'
-import MicButton from './MicButton.jsx'
+import VoiceInput from './VoiceInput.jsx'
 
 /*
   Рабочая зона ИИ на главной.
@@ -260,22 +260,7 @@ export default function AIWorkZone() {
             transition={{ duration: 0.2 }}
             className="awz-text-mode"
           >
-            <textarea
-              className="awz-textarea"
-              placeholder="Опишите задачу или надиктуйте: написать письмо, найти информацию, создать событие в календаре…"
-              value={task}
-              onChange={(e) => setTask(e.target.value)}
-              rows={4}
-            />
-            <div className="awz-text-actions">
-              <MicButton onText={t => setTask(prev => (prev ? prev.trim() + ' ' : '') + t)} />
-              <button className="awz-submit" onClick={processTask} disabled={!task.trim()}>
-                Выполнить
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
-                </svg>
-              </button>
-            </div>
+            <VoiceInput value={task} onChange={setTask} onSubmit={processTask} busy={status === 'processing'} />
           </motion.div>
         )}
 
