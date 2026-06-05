@@ -43,6 +43,9 @@ export default function VoiceInput({ value, onChange, onSubmit, busy }) {
   }
 
   const hasText = !!(value && value.trim())
+  // Единое редактируемое поле: показываем, как только есть текст, идёт запись или
+  // пользователь сам открыл ручной ввод. Никакого дублирования «плашка + textarea».
+  const showField = hasText || listening || showText
 
   return (
     <div className="vi">
@@ -63,15 +66,18 @@ export default function VoiceInput({ value, onChange, onSubmit, busy }) {
         <div className="vi-hint">
           {!supported
             ? 'Голос недоступен в этом браузере. Напечатайте задачу ниже.'
-            : listening ? 'Слушаю… говорите' : 'Нажмите и говорите'}
+            : listening ? (interim ? `Слышу: ${interim}` : 'Слушаю… говорите') : 'Нажмите и говорите'}
         </div>
       </div>
 
-      {(hasText || interim) && (
-        <div className="vi-captured">
-          {value}
-          {interim && <span className="vi-interim"> {interim}</span>}
-        </div>
+      {showField && (
+        <textarea
+          className="vi-field"
+          placeholder="Здесь появится распознанный текст — можно поправить или напечатать задачу"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          rows={3}
+        />
       )}
 
       <div className="vi-actions">
@@ -84,20 +90,10 @@ export default function VoiceInput({ value, onChange, onSubmit, busy }) {
         </button>
       </div>
 
-      {supported && (
+      {supported && !hasText && !listening && (
         <button type="button" className="vi-text-toggle" onClick={() => setShowText(s => !s)}>
-          {showText ? 'Скрыть ручной ввод' : 'или напечатать текстом'}
+          {showText ? 'Скрыть поле ввода' : 'или напечатать текстом'}
         </button>
-      )}
-
-      {showText && (
-        <textarea
-          className="vi-textarea"
-          placeholder="Напечатайте задачу: написать письмо, найти информацию, создать событие…"
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          rows={3}
-        />
       )}
 
       <style>{`
@@ -122,12 +118,13 @@ export default function VoiceInput({ value, onChange, onSubmit, busy }) {
         }
         .vi-hint { font-size: 15px; font-weight: 600; color: var(--muted); text-align: center; }
 
-        .vi-captured {
+        .vi-field {
           width: 100%; background: var(--bg-secondary); border: 1px solid var(--border);
-          border-radius: 12px; padding: 14px 16px; font-size: 17px; line-height: 1.55;
-          color: var(--foreground); min-height: 24px;
+          border-radius: 12px; padding: 14px 16px; font-family: inherit; font-size: 17px; line-height: 1.55;
+          color: var(--foreground); min-height: 56px; resize: vertical; outline: none; transition: border-color 0.15s;
         }
-        .vi-interim { color: var(--muted); }
+        .vi-field:focus { border-color: var(--accent); }
+        .vi-field::placeholder { color: var(--muted); }
 
         .vi-actions { display: flex; align-items: center; gap: 12px; align-self: stretch; justify-content: flex-end; }
         .vi-clear {
@@ -149,13 +146,6 @@ export default function VoiceInput({ value, onChange, onSubmit, busy }) {
           font-size: 13px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; padding: 0;
         }
         .vi-text-toggle:hover { color: var(--accent); }
-        .vi-textarea {
-          width: 100%; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px;
-          padding: 12px 14px; font-family: inherit; font-size: 15px; color: var(--foreground); resize: vertical; outline: none;
-          transition: border-color 0.15s;
-        }
-        .vi-textarea:focus { border-color: var(--accent); }
-        .vi-textarea::placeholder { color: var(--muted); }
       `}</style>
     </div>
   )
