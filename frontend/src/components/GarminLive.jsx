@@ -207,10 +207,7 @@ export default function GarminLive() {
         </div>
         {openSec.planned && (planned.length === 0 ? (
           <div className="gl-empty muted">
-            Плановых тренировок не найдено. Свяжите TrainingPeaks с Garmin (Settings → Connected Apps), и планы появятся здесь.
-            {plannedDebug && (
-              <div className="gl-debug">диагностика: записей в календаре {plannedDebug.totalItems ?? 0}; типы: {JSON.stringify(plannedDebug.typesSeen || {})}</div>
-            )}
+            Плановых тренировок пока нет. Чтобы планы появлялись здесь, свяжите TrainingPeaks с Garmin: в TrainingPeaks → Settings → Connections включите Garmin и «Automatically send workouts».
           </div>
         ) : (<>
           <div className="gl-planned">

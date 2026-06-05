@@ -18,12 +18,12 @@ function hash(str) {
   Возвращает { text, loading, source, refresh }.
   source: 'ai' | 'cache' | 'fallback'
 */
-export function useAiSummary({ id, context, message, fallback, snapshot }) {
+export function useAiSummary({ id, context, message, fallback, snapshot, manual = false }) {
   // Снимок входит в ключ кэша, чтобы сводка перегенерировалась при изменении данных,
   // но передаётся отдельным полем — на бэкенде он кэшируется как общий блок (экономия токенов).
   const cacheKey = `ai-sum:${id}:${hash(context + '|' + (snapshot || ''))}`
   const [text, setText] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!manual)   // manual → не грузим сами, ждём кнопку
   const [source, setSource] = useState('cache')
 
   const load = useCallback((force) => {
@@ -56,14 +56,18 @@ export function useAiSummary({ id, context, message, fallback, snapshot }) {
   }, [cacheKey, context, message, fallback, snapshot])
 
   useEffect(() => {
+    if (manual) return            // ручной режим — без авто-загрузки (ничего не вываливаем сами)
     const cleanup = load(false)
     return cleanup
-  }, [load])
+  }, [load, manual])
+
+  // Запустить по требованию: берёт кэш, если есть (бесплатно), иначе запрос к ИИ
+  const run = useCallback(() => load(false), [load])
 
   const refresh = useCallback(() => {
     localStorage.removeItem(cacheKey)
     load(true)
   }, [cacheKey, load])
 
-  return { text, loading, source, refresh }
+  return { text, loading, source, refresh, run }
 }

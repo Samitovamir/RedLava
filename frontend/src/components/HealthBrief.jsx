@@ -135,12 +135,13 @@ export default function HealthBrief() {
   const hist = buildHistory(reports)
   const healthData = buildHealthData(reports, whoop, garmin)
 
-  const { text, loading, refresh } = useAiSummary({
+  const { text, loading, refresh, run } = useAiSummary({
     id: 'health-brief',
     context: CONTEXT,
     message: 'Дай короткую выжимку по моим анализам и здоровью: что важно и что делать.',
     fallback: 'Короткая ИИ-выжимка по анализам появится, когда подключён ключ ИИ. Сами анализы и динамика — на вкладке «Здоровье».',
-    snapshot: healthData
+    snapshot: healthData,
+    manual: true          // не грузим автоматически — только по кнопке
   })
 
   // Все показатели, реально присутствующие в файлах (с нормой из документа/справочника)
@@ -190,16 +191,25 @@ export default function HealthBrief() {
     <motion.div className="card health-brief">
       <div className="hb-head">
         <div className="hb-title"><span className="hb-badge">ИИ</span><span>Коротко о здоровье</span></div>
-        <button className="hb-refresh" onClick={refresh} disabled={loading} title="Пересчитать">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-          </svg>
-        </button>
+        {text && (
+          <button className="hb-refresh" onClick={refresh} disabled={loading} title="Пересчитать">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+            </svg>
+          </button>
+        )}
       </div>
 
-      {loading ? <div className="hb-loading">Смотрю анализы…</div> : <p className="hb-text">{text}</p>}
+      {loading
+        ? <div className="hb-loading">Смотрю анализы…</div>
+        : text
+          ? <p className="hb-text">{text}</p>
+          : <button className="hb-run" onClick={run}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              Разобрать здоровье
+            </button>}
 
-      {!loading && markers.length > 0 && (
+      {!loading && text && markers.length > 0 && (
         <div className="hb-markers">
           {markers.map(m => <MarkerMini key={m.name} marker={m} hist={hist} />)}
         </div>
@@ -246,6 +256,13 @@ export default function HealthBrief() {
         .hb-refresh:hover:not(:disabled) { color: var(--green); border-color: var(--border-hover); }
         .hb-refresh:disabled { opacity: 0.5; cursor: default; }
         .hb-loading { font-size: 15px; color: var(--muted); }
+        .hb-run {
+          display: inline-flex; align-items: center; gap: 9px; align-self: flex-start;
+          padding: 11px 18px; border-radius: 12px; border: 1px solid var(--accent);
+          background: color-mix(in srgb, var(--accent) 10%, transparent); color: var(--accent);
+          font-family: inherit; font-size: 14.5px; font-weight: 600; cursor: pointer; transition: background 0.15s;
+        }
+        .hb-run:hover { background: color-mix(in srgb, var(--accent) 18%, transparent); }
         .hb-text { font-size: 17px; line-height: 1.6; color: var(--foreground); white-space: pre-wrap; }
 
         .hb-markers { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; padding-top: 4px; }
