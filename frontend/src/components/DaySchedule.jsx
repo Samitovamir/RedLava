@@ -10,9 +10,9 @@ import { useEvents, dateKey } from '../context/EventsContext.jsx'
   FAB-кнопка "+". Данные пока mock — подключатся к Google Calendar.
 */
 
-const HOUR_START = 8
-const HOUR_END = 20
-const PX_PER_HOUR = 88
+const HOUR_START = 5
+const HOUR_END = 23
+const PX_PER_HOUR = 72
 
 // Иконки по типу события
 const ICONS = {
