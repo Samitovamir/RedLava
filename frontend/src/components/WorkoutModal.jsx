@@ -40,13 +40,19 @@ function summaryMetrics(w) {
   return out
 }
 
-// ── График (линия/область) ──────────────────────────────────────────
+// ── График (линия/область) с подписями значений ─────────────────────
+function avgOf(arr) {
+  const v = arr.filter(x => x != null && !Number.isNaN(x))
+  return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null
+}
+
 function LineChart({ xs, ys, color, area = true, unit = '', label, height = 120, yFormat = v => Math.round(v) }) {
-  const W = 600, H = height, pad = 10, padB = 18
+  const W = 600, H = height, pad = 6
   const valid = ys.filter(v => v != null && !Number.isNaN(v))
   if (!valid.length) return null
   let yMin = Math.min(...valid), yMax = Math.max(...valid)
   if (yMin === yMax) { yMin -= 1; yMax += 1 }
+  const avg = avgOf(ys)
   // X по дистанции, если она есть, иначе по индексу
   const xValid = (xs || []).filter(v => v != null)
   const useDist = xValid.length && (Math.max(...xValid) - Math.min(...xValid)) > 0
@@ -54,9 +60,9 @@ function LineChart({ xs, ys, color, area = true, unit = '', label, height = 120,
   const xMax = useDist ? Math.max(...xValid) : ys.length - 1
   const px = (i) => {
     const xv = useDist ? xs[i] : i
-    return pad + ((xv - xMin) / ((xMax - xMin) || 1)) * (W - 2 * pad)
+    return ((xv - xMin) / ((xMax - xMin) || 1)) * W
   }
-  const py = (y) => pad + (1 - (y - yMin) / ((yMax - yMin) || 1)) * (H - pad - padB)
+  const py = (y) => pad + (1 - (y - yMin) / ((yMax - yMin) || 1)) * (H - 2 * pad)
 
   let dLine = '', pen = false, first = null, last = null
   for (let i = 0; i < ys.length; i++) {
@@ -68,49 +74,72 @@ function LineChart({ xs, ys, color, area = true, unit = '', label, height = 120,
     dLine += `${pen ? 'L' : 'M'}${X.toFixed(1)} ${Y.toFixed(1)} `
     pen = true
   }
-  const baseY = H - padB
-  const dArea = dLine && first != null ? `M${first.toFixed(1)} ${baseY} ` + dLine.replace(/^M/, 'L') + `L${last.toFixed(1)} ${baseY} Z` : ''
+  const dArea = dLine && first != null ? `M${first.toFixed(1)} ${H} ` + dLine.replace(/^M/, 'L') + `L${last.toFixed(1)} ${H} Z` : ''
   const gid = `g-${label}-${color}`.replace(/[^a-z0-9]/gi, '')
+  const avgPct = avg != null ? (py(avg) / H) * 100 : null
+  const totalKm = useDist ? xMax / 1000 : null
 
   return (
     <div className="wm-chart">
       <div className="wm-chart-head">
         <span className="wm-chart-label" style={{ color }}>{label}</span>
-        <span className="wm-chart-range muted">{yFormat(yMin)}–{yFormat(yMax)} {unit}</span>
+        <span className="wm-chart-range muted">
+          {avg != null && <>ср. <b style={{ color: 'var(--foreground)' }}>{yFormat(avg)}</b> · </>}
+          {yFormat(yMin)}–{yFormat(yMax)} {unit}
+        </span>
       </div>
-      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="wm-svg" style={{ height }}>
-        <defs>
-          <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity="0.32" />
-            <stop offset="100%" stopColor={color} stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        {area && dArea && <path d={dArea} fill={`url(#${gid})`} />}
-        <path d={dLine} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-      </svg>
+      <div className="wm-plot" style={{ height }}>
+        <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="wm-svg">
+          <defs>
+            <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={color} stopOpacity="0.3" />
+              <stop offset="100%" stopColor={color} stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          {area && dArea && <path d={dArea} fill={`url(#${gid})`} />}
+          <path d={dLine} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+        </svg>
+        {avgPct != null && (
+          <div className="wm-avgline" style={{ top: `${avgPct}%` }}>
+            <span className="wm-avgline-tag">ср. {yFormat(avg)}</span>
+          </div>
+        )}
+        <span className="wm-y wm-y-max muted">{yFormat(yMax)}</span>
+        <span className="wm-y wm-y-min muted">{yFormat(yMin)}</span>
+      </div>
+      {totalKm != null && (
+        <div className="wm-xaxis muted"><span>0 км</span><span>{totalKm.toFixed(1)} км</span></div>
+      )}
     </div>
   )
 }
 
-// ── Сплиты по километрам (бары) ─────────────────────────────────────
+// ── Сплиты/отрезки (бары) ───────────────────────────────────────────
+const fmtDur = sec => `${Math.floor(sec / 60)}:${String(Math.round(sec % 60)).padStart(2, '0')}`
+
 function SplitsChart({ splits, color }) {
-  const withSpeed = splits.filter(s => s.speedKmh || s.pace)
-  if (!withSpeed.length) return null
+  if (!splits.length) return null
   const speeds = splits.map(s => s.speedKmh || 0)
+  const durs = splits.map(s => s.durationSec || 0)
+  const useSpeed = speeds.some(v => v > 0)        // бег/вело — бар по скорости (длиннее = быстрее)
   const maxSpeed = Math.max(...speeds, 1)
+  const maxDur = Math.max(...durs, 1)
   return (
     <div className="wm-splits">
       {splits.map((s, i) => {
-        const h = s.speedKmh ? Math.max(12, (s.speedKmh / maxSpeed) * 100) : 12
+        const w = useSpeed && s.speedKmh
+          ? Math.max(14, (s.speedKmh / maxSpeed) * 100)
+          : s.durationSec ? Math.max(14, (s.durationSec / maxDur) * 100) : 14
+        const main = s.pace ? `${s.pace} /км` : s.speedKmh ? `${s.speedKmh} км/ч` : s.durationSec ? fmtDur(s.durationSec) : '—'
         return (
           <div key={i} className="wm-split-row">
             <span className="wm-split-km">{s.index}</span>
             <div className="wm-split-bar-wrap">
-              <div className="wm-split-bar" style={{ width: `${h}%`, background: color }} />
-              <span className="wm-split-pace">{s.pace ? `${s.pace}/км` : s.speedKmh ? `${s.speedKmh} км/ч` : '—'}</span>
+              <div className="wm-split-bar" style={{ width: `${w}%`, background: color }} />
+              <span className="wm-split-pace">{main}</span>
             </div>
             {s.avgHr != null && <span className="wm-split-hr">♥ {s.avgHr}</span>}
-            {s.elevationGain != null && <span className="wm-split-el muted">{s.elevationGain} м</span>}
+            {s.elevationGain != null && <span className="wm-split-el muted">{s.elevationGain > 0 ? '+' : ''}{s.elevationGain} м</span>}
           </div>
         )
       })}
@@ -221,9 +250,9 @@ export default function WorkoutModal({ workout, onClose }) {
                 </div>
               )}
 
-              {splits.length > 0 && (
+              {splits.length > 0 && splits.some(s => s.pace || s.speedKmh || s.durationSec) && (
                 <div className="card wm-splits-card">
-                  <div className="card-title">Километры</div>
+                  <div className="card-title">{splits.some(s => s.distanceKm) ? 'Километры' : 'Отрезки'}</div>
                   <SplitsChart splits={splits} color={paceColor} />
                 </div>
               )}
@@ -275,12 +304,27 @@ export default function WorkoutModal({ workout, onClose }) {
             .wm-map { display: flex; flex-direction: column; gap: 12px; }
             .wm-map-svg { width: 100%; height: 240px; display: block; }
 
-            .wm-charts { display: flex; flex-direction: column; gap: 18px; }
+            .wm-charts { display: flex; flex-direction: column; gap: 22px; }
             .wm-chart { display: flex; flex-direction: column; gap: 6px; }
-            .wm-chart-head { display: flex; align-items: baseline; justify-content: space-between; }
+            .wm-chart-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
             .wm-chart-label { font-size: 13px; font-weight: 700; }
             .wm-chart-range { font-size: 12px; }
-            .wm-svg { width: 100%; display: block; }
+            .wm-chart-range b { font-weight: 700; }
+            .wm-plot { position: relative; width: 100%; }
+            .wm-svg { width: 100%; height: 100%; display: block; }
+            .wm-avgline {
+              position: absolute; left: 0; right: 0; height: 0;
+              border-top: 1px dashed color-mix(in srgb, var(--muted) 55%, transparent);
+              pointer-events: none;
+            }
+            .wm-avgline-tag {
+              position: absolute; right: 0; top: -8px; font-size: 10px; color: var(--muted);
+              background: var(--bg-card); padding: 0 4px; border-radius: 4px;
+            }
+            .wm-y { position: absolute; left: 0; font-size: 10.5px; background: var(--bg-card); padding: 0 3px; border-radius: 3px; }
+            .wm-y-max { top: -2px; }
+            .wm-y-min { bottom: -2px; }
+            .wm-xaxis { display: flex; justify-content: space-between; font-size: 11px; margin-top: 2px; }
 
             .wm-splits-card { display: flex; flex-direction: column; gap: 12px; }
             .wm-splits { display: flex; flex-direction: column; gap: 7px; }
