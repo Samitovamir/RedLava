@@ -1,13 +1,20 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import MicButton from '../components/MicButton.jsx'
 import {
   loadProfile, saveProfile, computeTarget, ACTIVITY_LEVELS, GOALS,
-  MEAL_SHARES, mealTarget, loadTaste, saveTaste,
-  loadShopping, saveShopping, addToShopping
+  MEALS, MEAL_KEYS, mealTarget,
+  loadPrefs, savePrefs, DEFAULT_PREFS, CUISINES, rememberDish,
+  loadPlan, savePlan, setPlanMeal, clearPlanMeal, rateMeal, weekDays, dayPlanned, pendingRating,
+  loadShopping, saveShopping, addToShopping, formatProduct
 } from '../utils/nutrition.js'
+import { mskDateKey } from '../utils/time.js'
 
-// Маленькая карточка макроса
+const FOODS = [
+  ['pork', 'Свинина'], ['beef', 'Говядина'], ['chicken', 'Курица'], ['fish', 'Рыба'],
+  ['seafood', 'Морепродукты'], ['dairy', 'Молочное'], ['eggs', 'Яйца'], ['mushrooms', 'Грибы']
+]
+
 function Macro({ value, unit, label, color }) {
   return (
     <div className="nu-macro">
@@ -22,34 +29,71 @@ export default function Nutrition() {
   const [editProfile, setEditProfile] = useState(false)
   const target = useMemo(() => computeTarget(profile), [profile])
 
+  const week = useMemo(() => weekDays(), [])
+  const [selectedDay, setSelectedDay] = useState(mskDateKey())
+  const [plan, setPlan] = useState(loadPlan)
+
+  const [prefs, setPrefs] = useState(loadPrefs)
+  const [prefsOpen, setPrefsOpen] = useState(false)
+  const [prefsDraft, setPrefsDraft] = useState(prefs)
+
   const [mealType, setMealType] = useState('Обед')
   const [note, setNote] = useState('')
   const [meals, setMeals] = useState([])
   const [mealsMsg, setMealsMsg] = useState('')
   const [loadingMeals, setLoadingMeals] = useState(false)
-  const [taste, setTaste] = useState(loadTaste)
-  const [shopping, setShopping] = useState(loadShopping)
 
-  // Рецепт
-  const [recipeFor, setRecipeFor] = useState(null)   // имя блюда
-  const [recipe, setRecipe] = useState(null)
-  const [recipeLoading, setRecipeLoading] = useState(false)
-  const [addedNote, setAddedNote] = useState('')
+  // Детальная карточка (рецепт): из подбора (source 'suggest') или из плана ('planned')
+  const [detail, setDetail] = useState(null)
+  const [detailRecipe, setDetailRecipe] = useState(null)
+  const [detailLoading, setDetailLoading] = useState(false)
+
+  const [shopping, setShopping] = useState(loadShopping)
+  const [toast, setToast] = useState('')
+
+  // Оценка съеденного блюда
+  const [rate, setRate] = useState(null)
+  const [rateText, setRateText] = useState('')
+  const dismissedRate = useRef(new Set())
+
+  const suggestRef = useRef(null)
+  const toastTimer = useRef(null)
+
+  useEffect(() => {
+    const p = pendingRating(plan)
+    if (p && !dismissedRate.current.has(p.dateKey + '|' + p.mealKey)) setRate(p)
+    else setRate(null)
+  }, [plan])
+
+  function flash(msg) {
+    setToast(msg)
+    clearTimeout(toastTimer.current)
+    toastTimer.current = setTimeout(() => setToast(''), 2600)
+  }
 
   function updateProfile(field, value) {
     const next = { ...profile, [field]: value }
     setProfile(next); saveProfile(next)
   }
 
-  const mtShare = MEAL_SHARES.find(m => m.key === mealType)?.share ?? 0.33
+  const mtShare = MEALS.find(m => m.key === mealType)?.share ?? 0.33
   const perMeal = mealTarget(target, mtShare)
+  const dayInfo = dayPlanned(plan, selectedDay)
+  const selDay = week.find(d => d.key === selectedDay)
+  const dayLabel = selDay ? `${selDay.wd}, ${selDay.day} ${selDay.month}` : selectedDay
+
+  function selectDay(key) { setSelectedDay(key); setMeals([]); setMealsMsg('') }
+  function pickSlot(mealKey) {
+    setMealType(mealKey); setMeals([]); setMealsMsg('')
+    setTimeout(() => suggestRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+  }
 
   async function suggestMeals() {
     setLoadingMeals(true); setMeals([]); setMealsMsg('')
     try {
       const res = await fetch('/api/nutrition/meals', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target: perMeal, mealType, likes: taste.likes, dislikes: taste.dislikes, count: 5, note })
+        body: JSON.stringify({ target: perMeal, mealType, prefs, count: 5, note })
       })
       const data = await res.json()
       setMeals(data.meals || [])
@@ -58,35 +102,65 @@ export default function Nutrition() {
     setLoadingMeals(false)
   }
 
-  function setLike(meal, liked) {
-    const name = meal.name
-    const likes = new Set(taste.likes), dislikes = new Set(taste.dislikes)
-    if (liked) { likes.add(name); dislikes.delete(name) }
-    else { dislikes.add(name); likes.delete(name) }
-    const next = { likes: [...likes], dislikes: [...dislikes] }
-    setTaste(next); saveTaste(next)
-  }
-  const likeState = name => taste.likes.includes(name) ? 'like' : taste.dislikes.includes(name) ? 'dislike' : null
-
-  async function openRecipe(meal) {
-    setRecipeFor(meal.name); setRecipe(null); setRecipeLoading(true); setAddedNote('')
+  async function openSuggestDetail(meal) {
+    setDetail({ meal, mealKey: mealType, dateKey: selectedDay, source: 'suggest' })
+    setDetailRecipe(null); setDetailLoading(true)
     try {
       const res = await fetch('/api/nutrition/recipe', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dish: meal.name, servings: 1 })
+        body: JSON.stringify({ dish: meal.name, servings: 1, prefs })
       })
       const data = await res.json()
-      setRecipe(data.recipe || null)
-    } catch { setRecipe(null) }
-    setRecipeLoading(false)
+      setDetailRecipe(data.recipe || null)
+    } catch { setDetailRecipe(null) }
+    setDetailLoading(false)
+  }
+  function openPlannedDetail(dateKey, mealKey) {
+    const dish = plan[dateKey]?.[mealKey]
+    if (!dish) return
+    setDetail({ meal: dish, mealKey, dateKey, source: 'planned' })
+    setDetailRecipe(dish); setDetailLoading(false)
+  }
+  function closeDetail() { setDetail(null); setDetailRecipe(null) }
+
+  // «На кухню» — выбрать блюдо: в план дня + в список покупок
+  function toKitchen() {
+    const m = detail.meal, r = detailRecipe
+    const dish = {
+      name: m.name, short: m.short || '', tags: m.tags || [],
+      kcal: m.kcal, protein: m.protein, fat: m.fat, carb: m.carb,
+      ingredients: r?.ingredients || [], steps: r?.steps || [],
+      chosenAt: Date.now(), rated: false
+    }
+    const np = setPlanMeal(plan, detail.dateKey, detail.mealKey, dish)
+    setPlan(np); savePlan(np)
+    if (r?.ingredients?.length) {
+      const ns = addToShopping(shopping, r.ingredients, m.name)
+      setShopping(ns); saveShopping(ns)
+    }
+    flash(`«${m.name}» → ${detail.mealKey} и список покупок ✓`)
+    closeDetail()
+  }
+  function removePlanned() {
+    const np = clearPlanMeal(plan, detail.dateKey, detail.mealKey)
+    setPlan(np); savePlan(np)
+    flash('Блюдо убрано из меню')
+    closeDetail()
   }
 
-  function addRecipeToShopping() {
-    if (!recipe?.ingredients?.length) return
-    const next = addToShopping(shopping, recipe.ingredients, recipe.name)
-    setShopping(next); saveShopping(next)
-    setAddedNote('Ингредиенты добавлены в список покупок ✓')
+  function submitRate(liked) {
+    const np = rateMeal(plan, rate.dateKey, rate.mealKey, liked ? 'up' : 'down', rateText)
+    setPlan(np); savePlan(np)
+    const npref = rememberDish(prefs, rate.dish.name, liked)
+    setPrefs(npref); savePrefs(npref)
+    setRateText('')
+    // эффект по plan покажет следующее блюдо к оценке (если есть)
   }
+  function laterRate() {
+    dismissedRate.current.add(rate.dateKey + '|' + rate.mealKey)
+    setRate(null); setRateText('')
+  }
+
   function removeShoppingItem(idx) {
     const next = { ...shopping, items: shopping.items.filter((_, i) => i !== idx) }
     setShopping(next); saveShopping(next)
@@ -96,20 +170,33 @@ export default function Nutrition() {
     setShopping(next); saveShopping(next)
   }
 
+  // ── Предпочтения ──
+  function openPrefs() { setPrefsDraft(prefs); setPrefsOpen(true) }
+  function setDraft(field, value) { setPrefsDraft(d => ({ ...d, [field]: value })) }
+  function toggleCuisine(c) {
+    setPrefsDraft(d => {
+      const has = (d.cuisines || []).includes(c)
+      return { ...d, cuisines: has ? d.cuisines.filter(x => x !== c) : [...(d.cuisines || []), c] }
+    })
+  }
+  function savePrefsModal() { savePrefs(prefsDraft); setPrefs(prefsDraft); setPrefsOpen(false); flash('Предпочтения сохранены ✓') }
+
   return (
     <div className="nu-page">
       <div className="page-header">
-        <h2>Питание</h2>
-        <span className="muted">Цель КБЖУ · блюда · покупки</span>
+        <div>
+          <h2>Питание</h2>
+          <span className="muted">Меню на неделю · подбор под цель · покупки</span>
+        </div>
+        <button className="nu-prefs-btn" onClick={openPrefs}>⚙ Настроить предпочтения</button>
       </div>
 
-      {/* Профиль + цель */}
+      {/* Цель + профиль */}
       <motion.div className="card nu-target" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
         <div className="nu-head">
           <div className="card-title" style={{ margin: 0 }}>Целевое КБЖУ на день</div>
           <button className="nu-edit" onClick={() => setEditProfile(e => !e)}>{editProfile ? 'Готово' : 'Изменить профиль'}</button>
         </div>
-
         <div className="nu-macros">
           <Macro value={target.kcal} unit="ккал" label="Калории" color="var(--orange)" />
           <Macro value={target.protein} unit="г" label="Белки" color="var(--green)" />
@@ -119,7 +206,6 @@ export default function Nutrition() {
         <div className="nu-target-hint muted">
           Обмен покоя ~{target.bmr} ккал · с активностью ~{target.tdee} ккал · цель: {GOALS.find(g => g.key === profile.goal)?.label.toLowerCase()}
         </div>
-
         <AnimatePresence>
           {editProfile && (
             <motion.div className="nu-profile" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
@@ -158,20 +244,70 @@ export default function Nutrition() {
         </AnimatePresence>
       </motion.div>
 
+      {/* Меню недели */}
+      <motion.div className="card" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+        <div className="card-title">Меню недели</div>
+        <div className="nu-week">
+          {week.map(d => {
+            const info = dayPlanned(plan, d.key)
+            return (
+              <button key={d.key} className={`nu-day ${d.key === selectedDay ? 'active' : ''} ${d.isToday ? 'today' : ''}`} onClick={() => selectDay(d.key)}>
+                <span className="nu-day-wd">{d.wd}</span>
+                <span className="nu-day-num">{d.day}</span>
+                <span className="nu-day-dots">{MEAL_KEYS.map(k => <i key={k} className={plan[d.key]?.[k] ? 'on' : ''} />)}</span>
+              </button>
+            )
+          })}
+        </div>
+
+        <div className="nu-day-head">
+          <span className="nu-day-title">{dayLabel}{selDay?.isToday ? ' · сегодня' : ''}</span>
+          <span className="muted nu-day-kcal">{dayInfo.count > 0 ? `выбрано ~${dayInfo.kcal} из ${target.kcal} ккал` : `цель ${target.kcal} ккал`}</span>
+        </div>
+
+        <div className="nu-slots">
+          {MEALS.map(m => {
+            const dish = plan[selectedDay]?.[m.key]
+            const pm = mealTarget(target, m.share)
+            const active = m.key === mealType
+            return (
+              <div key={m.key} className={`nu-slot ${dish ? 'filled' : ''} ${active ? 'sel' : ''}`}>
+                <div className="nu-slot-head">
+                  <span className="nu-slot-name">{m.emoji} {m.key}</span>
+                  <span className="nu-slot-target muted">≈{pm.kcal} ккал</span>
+                </div>
+                {dish ? (
+                  <button className="nu-slot-dish" onClick={() => openPlannedDetail(selectedDay, m.key)}>
+                    <span className="nu-slot-dish-name">{dish.name}</span>
+                    <span className="nu-slot-dish-macros muted">{dish.kcal} ккал · Б{dish.protein} Ж{dish.fat} У{dish.carb}</span>
+                    {dish.rated && <span className={`nu-slot-rated ${dish.rating}`}>{dish.rating === 'up' ? '👍 понравилось' : '👎 не очень'}</span>}
+                  </button>
+                ) : (
+                  <button className="nu-slot-empty" onClick={() => pickSlot(m.key)}>＋ Подобрать</button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </motion.div>
+
       {/* Подбор блюд */}
-      <motion.div className="card nu-meals" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
-        <div className="card-title">Подбор блюд под цель</div>
+      <motion.div ref={suggestRef} className="card nu-meals" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+        <div className="nu-head">
+          <div className="card-title" style={{ margin: 0 }}>Подбор блюд</div>
+          <span className="muted">{mealType} · {dayLabel}</span>
+        </div>
         <div className="nu-meal-controls">
           <div className="nu-seg">
-            {MEAL_SHARES.map(m => (
+            {MEALS.map(m => (
               <button key={m.key} className={`nu-seg-btn ${mealType === m.key ? 'active' : ''}`}
-                onClick={() => setMealType(m.key)}>{m.key}</button>
+                onClick={() => { setMealType(m.key); setMeals([]); setMealsMsg('') }}>{m.key}</button>
             ))}
           </div>
           <span className="nu-permeal muted">≈ {perMeal.kcal} ккал · Б{perMeal.protein} Ж{perMeal.fat} У{perMeal.carb}</span>
         </div>
         <div className="nu-note-row">
-          <input className="nu-note" placeholder="Пожелание к подбору (необязательно): например «без свинины», «побольше рыбы»"
+          <input className="nu-note" placeholder="Пожелание к подбору (необязательно): например «полегче», «побольше рыбы»"
             value={note} onChange={e => setNote(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') suggestMeals() }} />
           <MicButton primary onText={t => setNote(prev => (prev ? prev.trim() + ' ' : '') + t)} />
           <button className="nu-suggest" onClick={suggestMeals} disabled={loadingMeals}>
@@ -181,49 +317,41 @@ export default function Nutrition() {
 
         {meals.length > 0 && (
           <div className="nu-meal-list">
-            {meals.map((m, i) => {
-              const st = likeState(m.name)
-              return (
-                <motion.div key={`${m.name}-${i}`} className="nu-meal-card" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-                  <div className="nu-meal-top">
-                    <div className="nu-meal-name">{m.name}</div>
-                    <div className="nu-like-row">
-                      <button className={`nu-like ${st === 'like' ? 'on' : ''}`} onClick={() => setLike(m, true)} aria-label="Нравится" title="Нравится">👍</button>
-                      <button className={`nu-like ${st === 'dislike' ? 'on dislike' : ''}`} onClick={() => setLike(m, false)} aria-label="Не нравится" title="Не нравится">👎</button>
-                    </div>
-                  </div>
-                  {m.short && <div className="nu-meal-short muted">{m.short}</div>}
-                  <div className="nu-meal-macros">
-                    <span style={{ color: 'var(--orange)' }}>{m.kcal} ккал</span>
-                    <span>Б {m.protein}</span><span>Ж {m.fat}</span><span>У {m.carb}</span>
-                  </div>
-                  {m.tags?.length > 0 && <div className="nu-tags">{m.tags.map(t => <span key={t} className="nu-tag">{t}</span>)}</div>}
-                  <button className="nu-recipe-btn" onClick={() => openRecipe(m)}>Рецепт и ингредиенты →</button>
-                </motion.div>
-              )
-            })}
+            {meals.map((m, i) => (
+              <motion.div key={`${m.name}-${i}`} className="nu-meal-card" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
+                <div className="nu-meal-name">{m.name}</div>
+                {m.short && <div className="nu-meal-short muted">{m.short}</div>}
+                <div className="nu-meal-macros">
+                  <span style={{ color: 'var(--orange)' }}>{m.kcal} ккал</span>
+                  <span>Б {m.protein}</span><span>Ж {m.fat}</span><span>У {m.carb}</span>
+                </div>
+                {m.tags?.length > 0 && <div className="nu-tags">{m.tags.map(t => <span key={t} className="nu-tag">{t}</span>)}</div>}
+                <button className="nu-recipe-btn" onClick={() => openSuggestDetail(m)}>Подробнее →</button>
+              </motion.div>
+            ))}
           </div>
         )}
         {!loadingMeals && meals.length === 0 && (
-          <div className="nu-empty muted">{mealsMsg || 'Выберите приём пищи и нажмите «Подобрать блюда» — ИИ предложит варианты под вашу цель и вкусы.'}</div>
+          <div className="nu-empty muted">{mealsMsg || 'Выберите приём пищи и нажмите «Подобрать блюда» — ИИ предложит варианты под цель и вкусы владельца.'}</div>
         )}
       </motion.div>
 
       {/* Список покупок */}
-      <motion.div className="card nu-shop" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+      <motion.div className="card nu-shop" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
         <div className="nu-head">
           <div className="card-title" style={{ margin: 0 }}>Список покупок на неделю</div>
           {shopping.items.length > 0 && <button className="nu-edit" onClick={clearShopping}>Очистить</button>}
         </div>
         {shopping.items.length === 0 ? (
-          <div className="nu-empty muted">Пусто. Открой рецепт блюда и добавь ингредиенты — они будут копиться здесь всю неделю.</div>
+          <div className="nu-empty muted">Пусто. Выбирайте блюда кнопкой «На кухню» — продукты соберутся здесь на всю неделю.</div>
         ) : (
           <>
+            <div className="nu-shop-hint muted">Количества округлены до того, что реально покупать в магазине.</div>
             <div className="nu-shop-list">
               {shopping.items.map((it, i) => (
                 <div key={i} className="nu-shop-item">
                   <span className="nu-shop-name">{it.name}</span>
-                  <span className="nu-shop-qty muted">{it.qty != null ? `${it.qty} ${it.unit || ''}` : (it.unit || '')}</span>
+                  <span className="nu-shop-qty muted">{formatProduct(it)}</span>
                   <button className="nu-shop-del" onClick={() => removeShoppingItem(i)} title="Убрать">×</button>
                 </div>
               ))}
@@ -235,29 +363,30 @@ export default function Nutrition() {
         )}
       </motion.div>
 
-      {/* Модалка рецепта */}
+      {/* Детальная карточка / рецепт */}
       <AnimatePresence>
-        {recipeFor && (
-          <div className="nu-backdrop" onClick={() => setRecipeFor(null)}>
+        {detail && (
+          <div className="nu-backdrop" onClick={closeDetail}>
             <motion.div className="card nu-modal" onClick={e => e.stopPropagation()}
               initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }}>
               <div className="nu-modal-head">
-                <h3>{recipeFor}</h3>
-                <button className="nu-close" onClick={() => setRecipeFor(null)} aria-label="Закрыть">×</button>
+                <h3>{detail.meal.name}</h3>
+                <button className="nu-close" onClick={closeDetail} aria-label="Закрыть">×</button>
               </div>
-              {recipeLoading ? (
+              <div className="nu-modal-sub muted">{detail.mealKey} · {dayLabel}</div>
+              {detailLoading ? (
                 <div className="nu-empty muted">ИИ собирает рецепт…</div>
-              ) : recipe ? (
+              ) : detailRecipe ? (
                 <>
                   <div className="nu-meal-macros">
-                    {recipe.kcal != null && <span style={{ color: 'var(--orange)' }}>{recipe.kcal} ккал</span>}
-                    {recipe.protein != null && <span>Б {recipe.protein}</span>}
-                    {recipe.fat != null && <span>Ж {recipe.fat}</span>}
-                    {recipe.carb != null && <span>У {recipe.carb}</span>}
+                    {detailRecipe.kcal != null && <span style={{ color: 'var(--orange)' }}>{detailRecipe.kcal} ккал</span>}
+                    {detailRecipe.protein != null && <span>Б {detailRecipe.protein}</span>}
+                    {detailRecipe.fat != null && <span>Ж {detailRecipe.fat}</span>}
+                    {detailRecipe.carb != null && <span>У {detailRecipe.carb}</span>}
                   </div>
                   <div className="nu-sec-title">Ингредиенты</div>
                   <div className="nu-ing-list">
-                    {(recipe.ingredients || []).map((ing, i) => (
+                    {(detailRecipe.ingredients || []).map((ing, i) => (
                       <div key={i} className="nu-ing">
                         <span>{ing.name}</span>
                         <span className="muted">{ing.qty != null ? `${ing.qty} ${ing.unit || ''}` : (ing.unit || '')}</span>
@@ -266,12 +395,14 @@ export default function Nutrition() {
                   </div>
                   <div className="nu-sec-title">Приготовление</div>
                   <ol className="nu-steps">
-                    {(recipe.steps || []).map((s, i) => <li key={i}>{s}</li>)}
+                    {(detailRecipe.steps || []).map((s, i) => <li key={i}>{s}</li>)}
                   </ol>
-                  {addedNote && <div className="nu-added">{addedNote}</div>}
                   <div className="nu-modal-actions">
-                    <button className="nu-suggest" onClick={addRecipeToShopping}>В список покупок</button>
-                    <button className="nu-send" disabled title="Появится с отправкой сообщений">Отправить домработнице (скоро)</button>
+                    {detail.source === 'suggest' ? (
+                      <button className="nu-suggest nu-kitchen" onClick={toKitchen}>🍳 На кухню</button>
+                    ) : (
+                      <button className="nu-remove" onClick={removePlanned}>Убрать из меню</button>
+                    )}
                   </div>
                 </>
               ) : (
@@ -282,58 +413,171 @@ export default function Nutrition() {
         )}
       </AnimatePresence>
 
+      {/* Предпочтения */}
+      <AnimatePresence>
+        {prefsOpen && (
+          <div className="nu-backdrop" onClick={() => setPrefsOpen(false)}>
+            <motion.div className="card nu-modal" onClick={e => e.stopPropagation()}
+              initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }}>
+              <div className="nu-modal-head">
+                <h3>Вкусовые предпочтения</h3>
+                <button className="nu-close" onClick={() => setPrefsOpen(false)} aria-label="Закрыть">×</button>
+              </div>
+              <div className="nu-modal-sub muted">ИИ будет учитывать это при подборе — но со здравым смыслом.</div>
+
+              <div className="nu-sec-title">Острота</div>
+              <div className="nu-slider-row">
+                <input type="range" min="0" max="10" value={prefsDraft.spicy} onChange={e => setDraft('spicy', +e.target.value)} />
+                <span className="nu-slider-val">{prefsDraft.spicy <= 2 ? 'почти не острое' : prefsDraft.spicy >= 7 ? 'люблю острое' : 'умеренно'} · {prefsDraft.spicy}/10</span>
+              </div>
+              <div className="nu-sec-title">Сладкое</div>
+              <div className="nu-slider-row">
+                <input type="range" min="0" max="10" value={prefsDraft.sweet} onChange={e => setDraft('sweet', +e.target.value)} />
+                <span className="nu-slider-val">{prefsDraft.sweet <= 2 ? 'не люблю' : prefsDraft.sweet >= 7 ? 'сладкоежка' : 'умеренно'} · {prefsDraft.sweet}/10</span>
+              </div>
+
+              <div className="nu-sec-title">Что ест</div>
+              <div className="nu-foods">
+                {FOODS.map(([key, label]) => (
+                  <button key={key} className={`nu-food ${prefsDraft[key] ? 'yes' : 'no'}`} onClick={() => setDraft(key, !prefsDraft[key])}>
+                    {label} <b>{prefsDraft[key] ? 'да' : 'нет'}</b>
+                  </button>
+                ))}
+              </div>
+
+              <div className="nu-sec-title">Любимые кухни</div>
+              <div className="nu-foods">
+                {CUISINES.map(c => (
+                  <button key={c} className={`nu-chip ${(prefsDraft.cuisines || []).includes(c) ? 'on' : ''}`} onClick={() => toggleCuisine(c)}>{c}</button>
+                ))}
+              </div>
+
+              <div className="nu-sec-title">Время на готовку</div>
+              <div className="nu-seg">
+                <button className={`nu-seg-btn ${prefsDraft.cookTime === 'fast' ? 'active' : ''}`} onClick={() => setDraft('cookTime', 'fast')}>Быстро (до 30 мин)</button>
+                <button className={`nu-seg-btn ${prefsDraft.cookTime === 'any' ? 'active' : ''}`} onClick={() => setDraft('cookTime', 'any')}>Не важно</button>
+              </div>
+
+              <div className="nu-sec-title">Аллергии (строго исключить)</div>
+              <input className="nu-note" placeholder="Например: орехи, мёд" value={prefsDraft.allergies} onChange={e => setDraft('allergies', e.target.value)} />
+              <div className="nu-sec-title">Не люблю</div>
+              <input className="nu-note" placeholder="Например: кинза, печень" value={prefsDraft.avoid} onChange={e => setDraft('avoid', e.target.value)} />
+
+              <div className="nu-modal-actions">
+                <button className="nu-suggest" onClick={savePrefsModal}>Сохранить</button>
+                <button className="nu-edit" onClick={() => setPrefsDraft({ ...DEFAULT_PREFS, likes: prefs.likes, dislikes: prefs.dislikes })}>Сбросить</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Оценка съеденного блюда */}
+      <AnimatePresence>
+        {rate && (
+          <div className="nu-backdrop">
+            <motion.div className="card nu-rate" onClick={e => e.stopPropagation()}
+              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}>
+              <div className="nu-rate-meal muted">{rate.mealKey} · как вам было?</div>
+              <h3>{rate.dish.name}</h3>
+              <textarea className="nu-note nu-rate-text" rows={2} placeholder="Пара слов (необязательно): что понравилось / что поменять"
+                value={rateText} onChange={e => setRateText(e.target.value)} />
+              <div className="nu-rate-btns">
+                <button className="nu-rate-up" onClick={() => submitRate(true)}>👍 Понравилось</button>
+                <button className="nu-rate-down" onClick={() => submitRate(false)}>👎 Не очень</button>
+              </div>
+              <button className="nu-rate-later" onClick={laterRate}>Позже</button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Тост */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div className="nu-toast" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}>{toast}</motion.div>
+        )}
+      </AnimatePresence>
+
       <style>{`
         .nu-page { display: flex; flex-direction: column; gap: 18px; max-width: 1400px; padding-bottom: 24px; }
-        .page-header { display: flex; align-items: baseline; gap: 12px; }
+        .page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
         .page-header h2 { font-size: 24px; font-weight: 700; color: var(--foreground); }
-        .muted { color: var(--muted-foreground); }
+        .page-header > div span { display: block; margin-top: 2px; }
+        .muted { color: var(--muted); }
         .card-title { font-size: 16px; font-weight: 700; color: var(--foreground); margin-bottom: 12px; }
+        .nu-prefs-btn { padding: 10px 16px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg-card); color: var(--foreground); font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; transition: all .15s; white-space: nowrap; }
+        .nu-prefs-btn:hover { border-color: var(--accent); color: var(--accent); }
 
         .nu-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
         .nu-edit { padding: 7px 13px; border-radius: 10px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s; }
-        .nu-edit:hover { color: var(--foreground); border-color: var(--border-hover); }
+        .nu-edit:hover { color: var(--foreground); border-color: var(--accent); }
 
         .nu-macros { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
         .nu-macro { display: flex; flex-direction: column; gap: 4px; background: var(--bg-secondary); border-radius: 14px; padding: 16px 18px; }
         .nu-macro-val { font-size: 26px; font-weight: 800; }
         .nu-macro-unit { font-size: 13px; font-weight: 500; }
         .nu-macro-lbl { font-size: 12px; }
-        .nu-target-hint { font-size: 13.5px; margin-top: 10px; color: var(--muted); }
+        .nu-target-hint { font-size: 13.5px; margin-top: 10px; }
 
         .nu-profile { overflow: hidden; }
         .nu-fields { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 16px; }
         .nu-field { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--muted); }
-        .nu-field input, .nu-field select {
-          background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px;
-          padding: 10px 12px; font-family: inherit; font-size: 14px; color: var(--foreground); outline: none;
-        }
+        .nu-field input, .nu-field select { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; font-family: inherit; font-size: 14px; color: var(--foreground); outline: none; }
         .nu-field input:focus, .nu-field select:focus { border-color: var(--accent); }
         .nu-seg-row { display: flex; align-items: center; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
         .nu-seg-lbl { font-size: 12px; min-width: 80px; }
         .nu-seg { display: inline-flex; flex-wrap: wrap; gap: 4px; background: var(--bg-secondary); padding: 4px; border-radius: 12px; }
-        .nu-seg-btn { padding: 8px 13px; border: none; background: transparent; color: var(--muted-foreground); font-family: inherit; font-size: 13px; font-weight: 600; border-radius: 9px; cursor: pointer; transition: all .15s; }
+        .nu-seg-btn { padding: 8px 13px; border: none; background: transparent; color: var(--muted); font-family: inherit; font-size: 13px; font-weight: 600; border-radius: 9px; cursor: pointer; transition: all .15s; }
         .nu-seg-btn:hover { color: var(--foreground); }
-        .nu-seg-btn.active { background: var(--card); color: var(--accent); box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+        .nu-seg-btn.active { background: var(--bg-card); color: var(--accent); box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+
+        /* Неделя */
+        .nu-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+        .nu-day { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 12px 4px 10px; border-radius: 14px; border: 1px solid var(--border); background: var(--bg-secondary); cursor: pointer; transition: all .15s; }
+        .nu-day:hover { border-color: var(--accent); }
+        .nu-day.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+        .nu-day-wd { font-size: 12px; color: var(--muted); font-weight: 600; }
+        .nu-day.active .nu-day-wd { color: var(--accent); }
+        .nu-day-num { font-size: 20px; font-weight: 800; color: var(--foreground); line-height: 1; }
+        .nu-day.today .nu-day-num { color: var(--accent); }
+        .nu-day-dots { display: flex; gap: 3px; margin-top: 2px; }
+        .nu-day-dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--border); }
+        .nu-day-dots i.on { background: var(--green); }
+
+        .nu-day-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 18px; margin-bottom: 12px; flex-wrap: wrap; }
+        .nu-day-title { font-size: 15px; font-weight: 700; color: var(--foreground); }
+        .nu-day-kcal { font-size: 13px; }
+
+        .nu-slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+        .nu-slot { display: flex; flex-direction: column; gap: 10px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 14px; padding: 14px; min-height: 120px; }
+        .nu-slot.sel { border-color: var(--accent); }
+        .nu-slot-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+        .nu-slot-name { font-size: 14px; font-weight: 700; color: var(--foreground); }
+        .nu-slot-target { font-size: 12px; white-space: nowrap; }
+        .nu-slot-dish { flex: 1; display: flex; flex-direction: column; gap: 5px; align-items: flex-start; text-align: left; background: transparent; border: none; cursor: pointer; padding: 0; }
+        .nu-slot-dish-name { font-size: 14.5px; font-weight: 600; color: var(--foreground); }
+        .nu-slot-dish:hover .nu-slot-dish-name { color: var(--accent); }
+        .nu-slot-dish-macros { font-size: 12.5px; }
+        .nu-slot-rated { font-size: 12px; font-weight: 600; }
+        .nu-slot-rated.up { color: var(--green); }
+        .nu-slot-rated.down { color: var(--orange); }
+        .nu-slot-empty { flex: 1; display: flex; align-items: center; justify-content: center; background: transparent; border: 1px dashed var(--border); border-radius: 10px; color: var(--muted); font-family: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; transition: all .15s; }
+        .nu-slot-empty:hover { border-color: var(--accent); color: var(--accent); }
 
         .nu-meal-controls { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 12px; }
         .nu-permeal { font-size: 13px; }
         .nu-note-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
-        .nu-note { flex: 1; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; font-family: inherit; font-size: 14px; color: var(--foreground); outline: none; }
+        .nu-note { flex: 1; width: 100%; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; font-family: inherit; font-size: 14px; color: var(--foreground); outline: none; }
         .nu-note:focus { border-color: var(--accent); }
-        .nu-note::placeholder { color: var(--muted-foreground); }
+        .nu-note::placeholder { color: var(--muted); }
         .nu-suggest { flex-shrink: 0; padding: 12px 18px; border-radius: 12px; border: none; background: var(--accent); color: var(--accent-foreground); font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; transition: opacity .15s; }
         .nu-suggest:hover:not(:disabled) { opacity: .9; }
         .nu-suggest:disabled { opacity: .5; cursor: default; }
 
         .nu-meal-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
         .nu-meal-card { display: flex; flex-direction: column; gap: 8px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
-        .nu-meal-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
         .nu-meal-name { font-size: 15.5px; font-weight: 700; color: var(--foreground); }
-        .nu-like-row { display: flex; gap: 6px; flex-shrink: 0; }
-        .nu-like { width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); cursor: pointer; font-size: 19px; transition: all .15s; opacity: .8; }
-        .nu-like:hover { opacity: 1; border-color: var(--border-hover); transform: scale(1.05); }
-        .nu-like.on { opacity: 1; border-color: var(--green); background: color-mix(in srgb, var(--green) 20%, transparent); }
-        .nu-like.on.dislike { border-color: var(--red); background: color-mix(in srgb, var(--red) 20%, transparent); }
         .nu-meal-short { font-size: 14px; line-height: 1.55; color: var(--muted); }
         .nu-meal-macros { display: flex; flex-wrap: wrap; gap: 12px; font-size: 14px; color: var(--muted); font-weight: 600; }
         .nu-tags { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -342,19 +586,21 @@ export default function Nutrition() {
         .nu-recipe-btn:hover { text-decoration: underline; }
         .nu-empty { font-size: 14px; padding: 6px 0; line-height: 1.5; }
 
+        .nu-shop-hint { font-size: 13px; margin-bottom: 10px; }
         .nu-shop-list { display: flex; flex-direction: column; }
         .nu-shop-item { display: grid; grid-template-columns: 1fr auto 28px; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--border); }
         .nu-shop-item:last-child { border-bottom: none; }
         .nu-shop-name { font-size: 14.5px; color: var(--foreground); }
-        .nu-shop-qty { font-size: 13px; white-space: nowrap; }
+        .nu-shop-qty { font-size: 13.5px; white-space: nowrap; font-weight: 600; }
         .nu-shop-del { width: 26px; height: 26px; border-radius: 7px; border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; font-size: 16px; line-height: 1; transition: all .15s; }
         .nu-shop-del:hover { color: var(--red); border-color: var(--red); }
         .nu-send { margin-top: 14px; padding: 12px 18px; border-radius: 12px; border: 1px dashed var(--border); background: transparent; color: var(--muted); font-family: inherit; font-size: 14px; font-weight: 600; cursor: not-allowed; opacity: .65; }
 
         .nu-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.55); backdrop-filter: blur(3px); z-index: 500; display: flex; align-items: center; justify-content: center; padding: 24px; }
-        .nu-modal { width: 100%; max-width: 540px; max-height: 86vh; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+        .nu-modal { width: 100%; max-width: 560px; max-height: 88vh; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
         .nu-modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
         .nu-modal-head h3 { font-size: 19px; font-weight: 700; color: var(--foreground); }
+        .nu-modal-sub { font-size: 13px; margin-top: -6px; }
         .nu-close { width: 32px; height: 32px; border-radius: 9px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; flex-shrink: 0; }
         .nu-close:hover { color: var(--foreground); }
         .nu-sec-title { font-size: 13px; font-weight: 700; color: var(--foreground); text-transform: uppercase; letter-spacing: .05em; margin-top: 6px; }
@@ -363,11 +609,44 @@ export default function Nutrition() {
         .nu-ing:last-child { border-bottom: none; }
         .nu-ing .muted { color: var(--muted); }
         .nu-steps { display: flex; flex-direction: column; gap: 9px; padding-left: 20px; font-size: 15.5px; line-height: 1.6; color: var(--foreground); }
-        .nu-added { font-size: 13.5px; color: var(--green); font-weight: 600; }
-        .nu-modal-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
+        .nu-modal-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+        .nu-kitchen { font-size: 15px; }
+        .nu-remove { padding: 12px 18px; border-radius: 12px; border: 1px solid var(--red); background: transparent; color: var(--red); font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; transition: all .15s; }
+        .nu-remove:hover { background: color-mix(in srgb, var(--red) 14%, transparent); }
+
+        /* Слайдеры предпочтений */
+        .nu-slider-row { display: flex; align-items: center; gap: 14px; }
+        .nu-slider-row input[type=range] { flex: 1; accent-color: var(--accent); height: 4px; }
+        .nu-slider-val { font-size: 13px; color: var(--muted); min-width: 130px; text-align: right; }
+        .nu-foods { display: flex; flex-wrap: wrap; gap: 8px; }
+        .nu-food { padding: 9px 13px; border-radius: 11px; border: 1px solid var(--border); background: var(--bg-secondary); color: var(--foreground); font-family: inherit; font-size: 13.5px; cursor: pointer; transition: all .15s; }
+        .nu-food b { font-weight: 700; margin-left: 4px; }
+        .nu-food.yes { border-color: color-mix(in srgb, var(--green) 50%, transparent); }
+        .nu-food.yes b { color: var(--green); }
+        .nu-food.no { opacity: .6; }
+        .nu-food.no b { color: var(--red); }
+        .nu-chip { padding: 8px 13px; border-radius: 20px; border: 1px solid var(--border); background: var(--bg-secondary); color: var(--muted); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s; }
+        .nu-chip.on { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+
+        /* Оценка */
+        .nu-rate { width: 100%; max-width: 440px; display: flex; flex-direction: column; gap: 12px; text-align: center; }
+        .nu-rate-meal { font-size: 13px; }
+        .nu-rate h3 { font-size: 20px; font-weight: 700; color: var(--foreground); }
+        .nu-rate-text { width: 100%; resize: none; text-align: left; }
+        .nu-rate-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .nu-rate-up, .nu-rate-down { padding: 13px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg-secondary); color: var(--foreground); font-family: inherit; font-size: 14.5px; font-weight: 700; cursor: pointer; transition: all .15s; }
+        .nu-rate-up:hover { border-color: var(--green); background: color-mix(in srgb, var(--green) 16%, transparent); }
+        .nu-rate-down:hover { border-color: var(--orange); background: color-mix(in srgb, var(--orange) 16%, transparent); }
+        .nu-rate-later { background: transparent; border: none; color: var(--muted); font-family: inherit; font-size: 13px; cursor: pointer; padding: 4px; }
+        .nu-rate-later:hover { color: var(--foreground); }
+
+        .nu-toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); z-index: 600; background: var(--bg-card); border: 1px solid var(--accent); color: var(--foreground); padding: 13px 20px; border-radius: 12px; font-size: 14px; font-weight: 600; box-shadow: 0 8px 28px rgba(0,0,0,.4); }
 
         @media (max-width: 900px) {
           .nu-macros, .nu-fields { grid-template-columns: repeat(2, 1fr); }
+          .nu-slots { grid-template-columns: repeat(2, 1fr); }
+          .nu-week { gap: 5px; }
+          .nu-day { padding: 10px 2px 8px; }
         }
       `}</style>
     </div>

@@ -10,6 +10,34 @@ import Anthropic from '@anthropic-ai/sdk'
 const router = Router()
 function getClient() { return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }) }
 
+// Собираем вкусовые предпочтения в текст для промпта (со здравым смыслом!)
+function prefsBrief(p) {
+  if (!p || typeof p !== 'object') return ''
+  const parts = []
+  const no = []
+  if (p.pork === false) no.push('свинину')
+  if (p.beef === false) no.push('говядину')
+  if (p.chicken === false) no.push('курицу')
+  if (p.fish === false) no.push('рыбу')
+  if (p.seafood === false) no.push('морепродукты')
+  if (p.dairy === false) no.push('молочные продукты')
+  if (p.eggs === false) no.push('яйца')
+  if (p.mushrooms === false) no.push('грибы')
+  if (no.length) parts.push(`НЕ ест (полностью исключи): ${no.join(', ')}.`)
+  if (typeof p.spicy === 'number') {
+    const lvl = p.spicy <= 2 ? 'почти не острое' : p.spicy >= 7 ? 'любит острое' : 'умеренно острое'
+    parts.push(`Острота: ${p.spicy}/10 (${lvl}). ВАЖНО: не делай острым КАЖДОЕ блюдо — добавляй остроту только там, где это уместно по кухне и в разумной мере.`)
+  }
+  if (typeof p.sweet === 'number' && p.sweet >= 7) parts.push('Любит сладкое — на завтрак/перекус допустимы полезные сладкие варианты.')
+  if (Array.isArray(p.cuisines) && p.cuisines.length) parts.push(`Любимые кухни: ${p.cuisines.join(', ')} (но разнообразь).`)
+  if (p.cookTime === 'fast') parts.push('Блюда простые и быстрые (до ~30 минут).')
+  if (p.allergies) parts.push(`АЛЛЕРГИЯ — строго исключить: ${p.allergies}.`)
+  if (p.avoid) parts.push(`Не любит: ${p.avoid}.`)
+  if (Array.isArray(p.likes) && p.likes.length) parts.push(`Понравившиеся ранее блюда (ориентируйся на стиль): ${p.likes.slice(-12).join(', ')}.`)
+  if (Array.isArray(p.dislikes) && p.dislikes.length) parts.push(`Не понравились ранее (избегай похожего): ${p.dislikes.slice(-12).join(', ')}.`)
+  return parts.join(' ')
+}
+
 const MEALS_TOOL = [{
   name: 'suggest_meals',
   description: 'Предложить блюда под целевые калории и БЖУ, с учётом вкусов.',
@@ -68,15 +96,17 @@ const RECIPE_TOOL = [{
 // Подобрать блюда под цель
 router.post('/meals', async (req, res) => {
   if (!process.env.ANTHROPIC_API_KEY) return res.json({ ok: false, message: 'Нет ключа ИИ', meals: [] })
-  const { target = {}, mealType = 'обед', likes = [], dislikes = [], count = 5, note = '' } = req.body || {}
+  const { target = {}, mealType = 'обед', prefs = null, likes = [], dislikes = [], count = 5, note = '' } = req.body || {}
   try {
     const client = getClient()
+    const brief = prefsBrief(prefs)
     const prompt =
       `Подбери ${count} блюд для приёма пищи «${mealType}» для владельца (взрослый мужчина, триатлет). ` +
       `Целевые ориентиры на этот приём: ~${target.kcal ?? '?'} ккал, белки ~${target.protein ?? '?'} г, жиры ~${target.fat ?? '?'} г, углеводы ~${target.carb ?? '?'} г. ` +
-      (likes.length ? `Он ЛЮБИТ: ${likes.join(', ')}. ` : '') +
-      (dislikes.length ? `НЕ любит / исключить: ${dislikes.join(', ')}. ` : '') +
-      (note ? `Доп. пожелание: ${note}. ` : '') +
+      (brief ? `Вкусовые предпочтения: ${brief} ` : '') +
+      (likes.length ? `Также любит: ${likes.join(', ')}. ` : '') +
+      (dislikes.length ? `Также исключить: ${dislikes.join(', ')}. ` : '') +
+      (note ? `Доп. пожелание на сейчас: ${note}. ` : '') +
       `Блюда реальные, доступные в России, разнообразные, вкусные и полезные для спортсмена. ` +
       `Указывай реалистичные КБЖУ порции. Вызови suggest_meals.`
     const resp = await client.messages.create({
@@ -94,13 +124,15 @@ router.post('/meals', async (req, res) => {
 // Рецепт блюда
 router.post('/recipe', async (req, res) => {
   if (!process.env.ANTHROPIC_API_KEY) return res.json({ ok: false, message: 'Нет ключа ИИ' })
-  const { dish, servings = 1 } = req.body || {}
+  const { dish, servings = 1, prefs = null } = req.body || {}
   if (!dish) return res.status(400).json({ ok: false, message: 'dish required' })
   try {
     const client = getClient()
+    const brief = prefsBrief(prefs)
     const prompt =
       `Дай подробный рецепт блюда «${dish}» на ${servings} порц. для домашнего приготовления (Россия). ` +
       `Ингредиенты с количествами (число + единица), шаги по порядку простыми словами. ` +
+      (brief ? `Учитывай предпочтения: ${brief} ` : '') +
       `Укажи КБЖУ на порцию. Вызови save_recipe.`
     const resp = await client.messages.create({
       model: 'claude-sonnet-4-6', max_tokens: 1500,
