@@ -1,6 +1,31 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import WorkoutModal from './WorkoutModal.jsx'
+import { useEvents } from '../context/EventsContext.jsx'
+
+// Спорт-тип Garmin → по-русски (для плановых тренировок)
+const SPORT_RU = {
+  running: 'Бег', cycling: 'Велосипед', lap_swimming: 'Плавание', swimming: 'Плавание',
+  strength_training: 'Силовая', cardio: 'Кардио', walking: 'Ходьба', other: 'Тренировка'
+}
+const sportRu = s => SPORT_RU[s] || (s ? s.replace(/_/g, ' ') : 'Тренировка')
+
+const hmToMin = hm => { const [h, m] = String(hm).split(':').map(Number); return h * 60 + (m || 0) }
+const minToHm = t => `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`
+
+// Подобрать время тренировки: приоритет 06:30, с учётом длительности и БЕЗ наложения
+// на существующие события дня. Если 06:30 занято — ближайшее свободное (сначала утро).
+function proposeSlot(dateStr, durMin, events) {
+  const dur = durMin || 60
+  const busy = (events || []).filter(e => e.date === dateStr && e.start && e.end).map(e => [hmToMin(e.start), hmToMin(e.end)])
+  const fits = s => { const e = s + dur; if (e > 22 * 60) return false; return !busy.some(([bs, be]) => s < be && e > bs) }
+  const slot = s => ({ start: minToHm(s), end: minToHm(s + dur) })
+  const pref = 6 * 60 + 30
+  if (fits(pref)) return slot(pref)
+  for (let s = pref; s <= 21 * 60 + 30; s += 15) if (fits(s)) return slot(s)   // позже утра/днём
+  for (let s = 5 * 60; s < pref; s += 15) if (fits(s)) return slot(s)          // совсем рано
+  return slot(pref)
+}
 
 /*
   Реальные данные Garmin: шаги, пульс покоя, VO2max, объём за неделю,
@@ -61,6 +86,35 @@ export default function GarminLive() {
   const [g, setG] = useState(readLive)
   const [selected, setSelected] = useState(null)   // открытая тренировка (окно деталей)
 
+  // Плановые тренировки (TrainingPeaks/Garmin) и какие уже добавлены в календарь
+  const { events, applyAiActions } = useEvents()
+  const [planned, setPlanned] = useState([])
+  const [openSec, setOpenSec] = useState({ planned: true, recent: true })  // свёрнутость секций
+  const toggleSec = k => setOpenSec(s => ({ ...s, [k]: !s[k] }))
+  const [added, setAdded] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('albert-planned-added') || '{}') } catch { return {} }
+  })
+  function persistAdded(next) { setAdded(next); try { localStorage.setItem('albert-planned-added', JSON.stringify(next)) } catch { /* ignore */ } }
+
+  const eventInput = (w, start, end) => ({
+    name: 'create_event',
+    input: { type: 'meeting', title: w.title || 'Тренировка', date: w.date, start, end, who: 'Тренировка', priority: 2 }
+  })
+  // Уже есть такое событие в календаре? (защита от дублей, в т.ч. с другого устройства)
+  const existsInCal = (date, start, title) =>
+    (events || []).some(e => e.date === date && e.start === start && (e.title || '').trim() === (title || '').trim())
+
+  // Добавить тренировку в календарь: с временем — на него; без — на лучший утренний слот
+  function scheduleWorkout(w) {
+    if (added[w.id]) return            // уже добавлено — не дублируем
+    const dur = w.durationMin || 60
+    const { start, end } = w.time
+      ? { start: w.time, end: minToHm(hmToMin(w.time) + dur) }
+      : proposeSlot(w.date, dur, events)
+    if (!existsInCal(w.date, start, w.title)) applyAiActions([eventInput(w, start, end)])
+    persistAdded({ ...added, [w.id]: { date: w.date, start, end } })
+  }
+
   useEffect(() => {
     fetch('/api/garmin/data').then(r => r.json()).then(d => {
       if (d.connected && d.garmin) {
@@ -68,6 +122,22 @@ export default function GarminLive() {
         try { localStorage.setItem('albert-garmin-live', JSON.stringify(d.garmin)) } catch { /* ignore */ }
       }
     }).catch(() => {})
+  }, [])
+
+  // Плановые тренировки: грузим и СРАЗУ добавляем те, у которых уже есть время
+  useEffect(() => {
+    fetch('/api/garmin/planned').then(r => r.json()).then(d => {
+      const list = d?.planned || []
+      setPlanned(list)
+      const timed = list.filter(w => w.time && !added[w.id])
+      if (timed.length) {
+        applyAiActions(timed.map(w => eventInput(w, w.time, minToHm(hmToMin(w.time) + (w.durationMin || 60)))))
+        const next = { ...added }
+        timed.forEach(w => { next[w.id] = { date: w.date, start: w.time, end: minToHm(hmToMin(w.time) + (w.durationMin || 60)) } })
+        persistAdded(next)
+      }
+    }).catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const last = g?.lastWorkout
@@ -125,10 +195,55 @@ export default function GarminLive() {
         </motion.div>
       )}
 
+      {planned.length > 0 && (
+        <motion.div className="card gl-list-card"
+          initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.14 }}>
+          <div className="gl-card-head">
+            <div className="card-title" style={{ margin: 0 }}>Приближающиеся тренировки</div>
+            <button className="gl-collapse" onClick={() => toggleSec('planned')} aria-label={openSec.planned ? 'Свернуть' : 'Развернуть'}>
+              <svg className={`gl-chev ${openSec.planned ? 'open' : ''}`} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+          </div>
+          {openSec.planned && (<>
+          <div className="gl-planned">
+            {planned.map(w => {
+              const info = added[w.id]
+              const c = typeColor(w.sport)
+              return (
+                <div key={w.id} className="gl-prow">
+                  <span className="gl-row-dot" style={{ background: c }} />
+                  <div className="gl-row-main">
+                    <span className="gl-row-title">{w.title}</span>
+                    <span className="gl-row-sub muted">
+                      {fmtDate(w.date)} · {sportRu(w.sport)}
+                      {w.durationMin ? ` · ${w.durationMin} мин` : ''}
+                      {w.distanceKm ? ` · ${w.distanceKm} км` : ''}
+                      {w.time ? ` · в ${w.time}` : ''}
+                    </span>
+                  </div>
+                  {info
+                    ? <span className="gl-added">✓ в календаре{info.start ? `, ${info.start}` : ''}</span>
+                    : <button className="gl-add-btn" onClick={() => scheduleWorkout(w)}>
+                        {w.time ? 'В календарь' : 'В календарь · ~6:30'}
+                      </button>}
+                </div>
+              )
+            })}
+          </div>
+          <div className="gl-planned-note muted">Без своего времени тренировка ставится на утро (≈6:30), с учётом длительности и других дел дня.</div>
+          </>)}
+        </motion.div>
+      )}
+
       <motion.div className="card gl-list-card"
         initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.16 }}>
-        <div className="card-title">Последние тренировки</div>
-        {workouts.length === 0 ? (
+        <div className="gl-card-head">
+          <div className="card-title" style={{ margin: 0 }}>Последние тренировки</div>
+          <button className="gl-collapse" onClick={() => toggleSec('recent')} aria-label={openSec.recent ? 'Свернуть' : 'Развернуть'}>
+            <svg className={`gl-chev ${openSec.recent ? 'open' : ''}`} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+        </div>
+        {!openSec.recent ? null : workouts.length === 0 ? (
           <div className="gl-empty muted">Нет недавних тренировок в Garmin.</div>
         ) : (
           <div className="gl-list">
@@ -198,6 +313,26 @@ export default function GarminLive() {
         .gl-metric-label { font-size: 11.5px; margin-top: 4px; }
 
         .gl-list-card { display: flex; flex-direction: column; gap: 12px; }
+        .gl-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .gl-collapse {
+          width: 30px; height: 30px; flex-shrink: 0; border-radius: 8px;
+          border: 1px solid var(--border); background: var(--bg-secondary); color: var(--muted);
+          cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+        }
+        .gl-collapse:hover { color: var(--foreground); border-color: var(--border-hover); }
+        .gl-chev { transition: transform 0.2s; }
+        .gl-chev.open { transform: rotate(180deg); }
+        .gl-planned { display: flex; flex-direction: column; }
+        .gl-prow { display: flex; align-items: center; gap: 14px; padding: 13px 0; border-bottom: 1px solid var(--border); }
+        .gl-prow:last-child { border-bottom: none; }
+        .gl-add-btn {
+          flex-shrink: 0; padding: 8px 14px; border-radius: 10px; border: 1px solid var(--accent);
+          background: transparent; color: var(--accent); font-family: inherit; font-size: 13px; font-weight: 600;
+          cursor: pointer; transition: all 0.15s; white-space: nowrap;
+        }
+        .gl-add-btn:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+        .gl-added { flex-shrink: 0; font-size: 13px; font-weight: 600; color: var(--green); white-space: nowrap; }
+        .gl-planned-note { font-size: 12px; margin-top: 2px; }
         .gl-empty { font-size: 14px; padding: 8px 0; }
         .gl-list { display: flex; flex-direction: column; }
         .gl-row { display: flex; align-items: center; gap: 14px; padding: 13px 0; border-bottom: 1px solid var(--border); }

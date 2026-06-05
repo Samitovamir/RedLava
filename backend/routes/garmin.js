@@ -35,6 +35,41 @@ function mskDateStr() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+// Плановые (приближающиеся) тренировки из календаря Garmin.
+// Сюда попадают и планы из TrainingPeaks, если он связан с Garmin.
+// Берём текущий и следующий месяц, оставляем будущие. Месяц у Garmin 0-индексный.
+async function getPlanned(c) {
+  const base = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Moscow' }))
+  const todayStr = mskDateStr()
+  const out = []
+  for (const off of [0, 1]) {
+    const d = new Date(base.getFullYear(), base.getMonth() + off, 1)
+    try {
+      const r = await c.client.get(`${CONNECT}/calendar-service/year/${d.getFullYear()}/month/${d.getMonth()}`)
+      const items = r?.calendarItems || []
+      for (const it of items) {
+        if (!/workout/i.test(it.itemType || '')) continue   // плановая тренировка (а не выполненная активность)
+        const date = it.date || it.scheduledDate
+        if (!date || date < todayStr) continue
+        const durSec = it.estimatedDurationInSecs ?? it.duration ?? null
+        const rawTime = it.scheduledStartTime || it.startTime || null
+        const time = rawTime ? String(rawTime).replace(/^.*?T/, '').slice(0, 5) : null  // ISO/таймштамп → HH:MM
+        out.push({
+          id: String(it.id ?? it.workoutId ?? `${date}-${it.title || 'w'}`),
+          date,
+          title: it.title || 'Тренировка',
+          sport: it.sportTypeKey || it.workoutTypeKey || '',
+          durationMin: durSec ? Math.round(durSec / 60) : null,
+          distanceKm: it.distanceInMeters ? round(it.distanceInMeters / 1000, 1) : null,
+          time: /^\d{2}:\d{2}$/.test(time || '') ? time : null
+        })
+      }
+    } catch { /* месяц не отдался — пропускаем */ }
+  }
+  out.sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || '')))
+  return out.slice(0, 20)
+}
+
 // Body Battery — «остаток заряда»: текущее значение + сколько заряжено/потрачено за день.
 // Это ЖИВОЙ показатель (меняется в течение дня), в отличие от утреннего Recovery Whoop.
 async function getBodyBattery(c, dateStr) {
@@ -179,6 +214,19 @@ router.get('/data', requireAuth, async (_req, res) => {
     })
   } catch (err) {
     res.json({ connected: true, error: String(err?.message || '').slice(0, 120), garmin: null })
+  }
+})
+
+// Приближающиеся плановые тренировки (в т.ч. из TrainingPeaks через Garmin)
+router.get('/planned', requireAuth, async (_req, res) => {
+  const t = await kvGet(TOKEN_KEY)
+  if (!t?.oauth2) return res.json({ connected: false, planned: [] })
+  try {
+    const c = clientFromToken(t)
+    const planned = await getPlanned(c)
+    res.json({ connected: true, planned })
+  } catch (e) {
+    res.json({ connected: true, planned: [], error: String(e?.message || '').slice(0, 120) })
   }
 })
 
