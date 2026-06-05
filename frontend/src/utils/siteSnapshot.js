@@ -5,6 +5,7 @@
 import { WORKOUTS, WORKOUT_TYPES, WEEK_STATS, GARMIN } from './workouts.js'
 import { WHOOP, recoveryLabel } from './whoop.js'
 import { PANELS, INITIAL_REPORTS, buildHistory, markerStatus, STATUS_INFO, rangeText } from './labs.js'
+import { mskNow } from './time.js'
 
 const PRIO = { 1: 'неотложный', 2: 'важный', 3: 'обычный' }
 const WD = ['воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота']
@@ -24,7 +25,7 @@ function labsFlagged() {
 }
 
 export function buildSiteSnapshot({ events = [], history = [], facts = [] } = {}) {
-  const now = new Date()
+  const now = mskNow()
   const p = n => String(n).padStart(2, '0')
   const iso = d => `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
   const today = iso(now)

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
+import { mskNow } from '../utils/time.js'
 
 /*
   Мини-календарь для быстрого перехода к любой дате.
@@ -15,7 +16,7 @@ function sameDay(a, b) {
 
 export default function MiniCalendar({ value, onSelect, onToday }) {
   const [view, setView] = useState(new Date(value.getFullYear(), value.getMonth(), 1))
-  const today = new Date()
+  const today = mskNow()
 
   const year = view.getFullYear()
   const month = view.getMonth()

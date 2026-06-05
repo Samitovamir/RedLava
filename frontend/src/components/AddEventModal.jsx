@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
+import { mskDateKey } from '../utils/time.js'
 
 /*
   Модалка добавления события.
@@ -62,7 +63,7 @@ export default function AddEventModal({ onAdd, onClose, initial, defaultDate, de
   const isEdit = !!initial
   const [type, setType] = useState(initial?.type || 'call')
   const [title, setTitle] = useState(initial?.title || '')
-  const [date, setDate] = useState(initial?.date || defaultDate || new Date().toISOString().slice(0, 10))
+  const [date, setDate] = useState(initial?.date || defaultDate || mskDateKey())
   const [start, setStart] = useState(initial?.start || defaultStart || '12:00')
   const [end, setEnd] = useState(initial?.end || defaultEnd || '12:30')
   const [who, setWho] = useState(initial?.who && initial.who !== 'Личное' ? initial.who : '')

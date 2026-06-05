@@ -1,13 +1,14 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { useHistory } from './HistoryContext.jsx'
 import { dayLabel } from '../utils/history.js'
+import { mskNow } from '../utils/time.js'
 
 // Локальный ключ даты YYYY-MM-DD (без сдвига часового пояса)
 export function dateKey(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-const TODAY_KEY = dateKey(new Date())
+const TODAY_KEY = dateKey(mskNow())
 
 // Расписание начинается пустым — события приходят из Google Календаря (демо убрано)
 export const INITIAL_EVENTS = []

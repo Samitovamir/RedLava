@@ -6,6 +6,8 @@
 // При реальной интеграции backend парсит каждый загруженный PDF/фото в такой отчёт
 // и добавляет его в общий журнал. UI ниже от этого не меняется.
 
+import { mskNow } from './time.js'
+
 // Справочник показателей с нормами, сгруппированный по панелям.
 export const PANELS = [
   {
@@ -123,6 +125,6 @@ export function fmtDate(iso) {
   return `${d} ${MONTHS[m - 1]}`
 }
 export function todayIso() {
-  const d = new Date()
+  const d = mskNow()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }

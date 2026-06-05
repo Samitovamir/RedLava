@@ -7,6 +7,7 @@ import { PRIORITY_MAP } from './AddEventModal.jsx'
 import { useAiSummary } from '../hooks/useAiSummary.js'
 import { useSiteSnapshot } from '../hooks/useSiteSnapshot.js'
 import AiRefreshButton from './AiRefreshButton.jsx'
+import { mskNow } from '../utils/time.js'
 
 /*
   Сводка дня + мини-чат с ИИ в контексте расписания.
@@ -18,7 +19,7 @@ export default function DaySummary() {
   const { events } = useEvents()
   const snapshot = useSiteSnapshot()
 
-  const todayKey = dateKey(new Date())
+  const todayKey = dateKey(mskNow())
   const todayEvents = events.filter(e => e.date === todayKey)
   const DAY_CONTEXT =
     `Ты помощник владельца по организации дня. Фокусируйся на расписании и планах, но ты ВИДИШЬ всю картину (спорт, здоровье, анализы) и учитываешь её в советах. ` +

@@ -50,8 +50,10 @@ export const QUOTES = [
   { text: 'Терпение — спутник мудрости.', author: 'Блаженный Августин' }
 ]
 
+import { mskNow } from './time.js'
+
 export function getQuoteOfDay() {
-  const now = new Date()
+  const now = mskNow()
   const start = new Date(now.getFullYear(), 0, 0)
   const dayOfYear = Math.floor((now - start) / 86400000)
   return QUOTES[dayOfYear % QUOTES.length]

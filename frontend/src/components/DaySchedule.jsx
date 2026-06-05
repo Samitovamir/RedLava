@@ -10,6 +10,8 @@ import { useEvents, dateKey } from '../context/EventsContext.jsx'
   FAB-кнопка "+". Данные пока mock — подключатся к Google Calendar.
 */
 
+import { mskNow } from '../utils/time.js'
+
 const HOUR_START = 5
 const HOUR_END = 23
 const PX_PER_HOUR = 72
@@ -78,7 +80,7 @@ function topFor(t) {
 }
 
 function formatRu(offset) {
-  const d = new Date()
+  const d = mskNow()
   d.setDate(d.getDate() + offset)
   // родительный падеж: "5 июня"
   const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
@@ -268,14 +270,14 @@ export default function DaySchedule({ extended = false }) {
   const [ftPreview, setFtPreview] = useState(null)    // превью перестановки { variant, rows, slot }
 
   // Просматриваемая дата
-  const viewDate = new Date()
+  const viewDate = mskNow()
   viewDate.setDate(viewDate.getDate() + dayOffset)
   const viewKey = dateKey(viewDate)
 
   // ИИ создал/перенёс событие → прыгаем на его день, чтобы было сразу видно
   useEffect(() => {
     if (!focusSignal?.date) return
-    const today0 = new Date(); today0.setHours(0, 0, 0, 0)
+    const today0 = mskNow(); today0.setHours(0, 0, 0, 0)
     const sel0 = new Date(focusSignal.date + 'T00:00:00'); sel0.setHours(0, 0, 0, 0)
     setDayOffset(Math.round((sel0 - today0) / 86400000))
     setViewMode(m => (m === 'week' || m === 'month' ? 'day' : m))
@@ -335,7 +337,7 @@ export default function DaySchedule({ extended = false }) {
 
   // Переход к произвольной дате из календаря
   const goToDate = (d) => {
-    const today0 = new Date(); today0.setHours(0, 0, 0, 0)
+    const today0 = mskNow(); today0.setHours(0, 0, 0, 0)
     const sel0 = new Date(d); sel0.setHours(0, 0, 0, 0)
     setDayOffset(Math.round((sel0 - today0) / 86400000))
     setOpenMenu(null)
@@ -484,7 +486,7 @@ export default function DaySchedule({ extended = false }) {
   }
 
   // текущее время (линия только когда смотрим сегодня)
-  const now = new Date()
+  const now = mskNow()
   const nowMin = now.getHours() * 60 + now.getMinutes()
   const inRange = dayOffset === 0 && nowMin >= HOUR_START * 60 && nowMin <= HOUR_END * 60
   const nowTop = ((nowMin - HOUR_START * 60) / 60) * PX_PER_HOUR

@@ -6,6 +6,7 @@ import DaySchedule from '../components/DaySchedule.jsx'
 import DaySummary from '../components/DaySummary.jsx'
 import { getQuoteOfDay } from '../utils/quotes.js'
 import { useEvents } from '../context/EventsContext.jsx'
+import { mskNow } from '../utils/time.js'
 
 const FALL_STEP = 0.028          // задержка между падением соседних символов/единиц (сек)
 const FALL_EASE = [0.45, 0, 0.9, 0.4] // ease-in — имитация гравитации
@@ -32,7 +33,7 @@ function FallText({ text, fallen, start, className, tag = 'span' }) {
 }
 
 function getGreeting() {
-  const hour = new Date().getHours()
+  const hour = mskNow().getHours()
   if (hour >= 5 && hour < 12) return 'Доброе утро'
   if (hour >= 12 && hour < 17) return 'Добрый день'
   if (hour >= 17 && hour < 22) return 'Добрый вечер'
@@ -40,7 +41,7 @@ function getGreeting() {
 }
 
 function formatDate() {
-  const d = new Date()
+  const d = mskNow()
   const days = ['воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота']
   const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
   return `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]}`
@@ -77,14 +78,14 @@ function readGarminLive() {
 
 // Ближайшее (или текущее) событие из расписания
 function nextEvent(events) {
-  const now = new Date(); const p = n => String(n).padStart(2, '0')
+  const now = mskNow(); const p = n => String(n).padStart(2, '0')
   const nowKey = `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())} ${p(now.getHours())}:${p(now.getMinutes())}`
   return [...events].sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start))
     .find(e => `${e.date} ${e.end || e.start}` >= nowKey) || null
 }
 
 function humanDate(dateStr) {
-  const p = n => String(n).padStart(2, '0'); const d0 = new Date()
+  const p = n => String(n).padStart(2, '0'); const d0 = mskNow()
   const today = `${d0.getFullYear()}-${p(d0.getMonth() + 1)}-${p(d0.getDate())}`
   const tm = new Date(d0); tm.setDate(d0.getDate() + 1)
   const tomorrow = `${tm.getFullYear()}-${p(tm.getMonth() + 1)}-${p(tm.getDate())}`
