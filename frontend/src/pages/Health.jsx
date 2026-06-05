@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import CircularChart from '../components/CircularChart.jsx'
+import WhoopRings from '../components/WhoopRings.jsx'
 import LabResults from '../components/LabResults.jsx'
 import ConnectPrompt from '../components/ConnectPrompt.jsx'
 import AiRefreshButton from '../components/AiRefreshButton.jsx'
@@ -53,7 +54,8 @@ export default function Health() {
   const HEALTH_CONTEXT =
     `Ты личный консультант владельца по здоровью, сну и восстановлению. Твоя зона — Whoop, восстановление, сон, самочувствие, анализы крови. ` +
     `ФОКУСИРУЙСЯ на здоровье и не уходи в чужие темы, но ты ВИДИШЬ весь контекст (тренировки, расписание) и учитываешь его для связных советов. ` +
-    `Объясняй простыми словами, давай краткие дельные советы на русском. При тревожных отклонениях советуй обратиться к врачу. Учитывай память.`
+    `Объясняй простыми словами, давай краткие дельные советы на русском. При тревожных отклонениях советуй обратиться к врачу. Учитывай память. ` +
+    `ВАЖНО: «Восстановление» (Whoop) — утренний балл готовности, с ним владелец проснулся; он фиксирован на день и не убывает к вечеру. Не путай с «остатком заряда»/Body Battery (этого показателя в данных нет).`
 
   // ИИ-сводка консультанта (с кэшем; шаблон — фолбэк без backend)
   const fallbackConsult = w.recovery >= 67
@@ -152,26 +154,15 @@ export default function Health() {
       <div className="health-top">
         <motion.div className="card recovery-card"
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-          <div className="rc-main">
-            <CircularChart value={w.recovery} label="Восстановление" color={recColor}
-              size={150} sublabel={recoveryLabel(w.recovery)} />
-            <div className="rc-side">
-              <p className="rc-text">
-                {w.recovery >= 67
-                  ? 'Тело хорошо восстановилось — можно давать высокую нагрузку.'
-                  : w.recovery >= 34
-                    ? 'Среднее восстановление — умеренная нагрузка, следи за самочувствием.'
-                    : 'Низкое восстановление — день отдыха или лёгкая активность.'}
-              </p>
-              <div className="rc-strain">
-                <span className="rc-strain-lbl">Дневная нагрузка</span>
-                <div className="strain-bar">
-                  <div className="strain-fill" style={{ width: `${w.strain / w.strainMax * 100}%` }} />
-                </div>
-                <span className="rc-strain-val">{w.strain} <span className="muted">/ {w.strainMax}</span></span>
-              </div>
-            </div>
-          </div>
+          <WhoopRings w={w} />
+
+          <p className="rc-text">
+            {w.recovery >= 67
+              ? 'Тело хорошо восстановилось — можно давать высокую нагрузку.'
+              : w.recovery >= 34
+                ? 'Среднее восстановление — умеренная нагрузка, следи за самочувствием.'
+                : 'Низкое восстановление — день отдыха или лёгкая активность.'}
+          </p>
 
           <div className="rc-metrics">
             <div className="rc-metric"><span className="rc-m-val">{w.hrv}</span><span className="rc-m-lbl">HRV, мс</span></div>

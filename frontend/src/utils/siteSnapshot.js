@@ -88,7 +88,9 @@ export function buildSiteSnapshot({ events = [], history = [], facts = [] } = {}
   const w = liveWhoop ? { ...WHOOP, ...liveWhoop, sleep: { ...WHOOP.sleep, ...liveWhoop.sleep } } : null
   const health = w
     ? `Восстановление ${w.recovery}% (${recoveryLabel(w.recovery)}), дневная нагрузка ${w.strain}/21, HRV ${w.hrv} мс, пульс покоя ${w.rhr}, дыхание ${w.respiratoryRate}/мин, SpO2 ${w.spo2}%. ` +
-      `Сон ${w.sleep.hoursSlept} ч из ${w.sleep.hoursNeeded} нужных (${w.sleep.performance}%).`
+      `Сон ${w.sleep.hoursSlept} ч из ${w.sleep.hoursNeeded} нужных (${w.sleep.performance}%). ` +
+      `ВАЖНО: «Восстановление» — это УТРЕННИЙ балл готовности Whoop, с ним владелец проснулся; он фиксирован на день и НЕ убывает в течение дня. ` +
+      `Это НЕ «остаток заряда»: не трактуй его как энергию, которая тратится по ходу дня (это был бы Body Battery, а его в данных нет).`
     : 'Whoop не подключён. Данных о восстановлении, сне, HRV и пульсе НЕТ. Не придумывай их — если спросят, скажи, что нужно подключить Whoop.'
 
   const { flagged, hasData } = labsFlagged()
