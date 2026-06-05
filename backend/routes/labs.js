@@ -1,0 +1,193 @@
+import { Router } from 'express'
+import Anthropic from '@anthropic-ai/sdk'
+import { requireAuth } from '../authGuard.js'
+import { kvGet, kvSet, kvDel } from '../store.js'
+import crypto from 'crypto'
+
+/*
+  Анализы крови из публичной папки Яндекс.Диска.
+  Владелец кидает PDF/фото в свою папку (с подпапками по датам), мы:
+   1) читаем публичную папку рекурсивно (без OAuth);
+   2) каждый файл разбираем через Claude (vision): извлекаем показатели,
+      а дату определяем из НАЗВАНИЯ ПАПКИ (даже если она кривая);
+   3) кэшируем результат по пути+дате изменения, чтобы не разбирать повторно.
+*/
+
+const router = Router()
+const URL_KEY = 'labs:yandex_url'
+const YA = 'https://cloud-api.yandex.net/v1/disk/public/resources'
+
+function getClient() { return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }) }
+const cacheKey = (path, modified) => 'labs:parsed:' + crypto.createHash('md5').update(path + '|' + (modified || '')).digest('hex')
+
+// Рекурсивный обход публичной папки → плоский список файлов (pdf/изображения)
+async function listFiles(publicKey, path = '', depth = 0, acc = []) {
+  if (depth > 3) return acc
+  const u = `${YA}?public_key=${encodeURIComponent(publicKey)}${path ? `&path=${encodeURIComponent(path)}` : ''}&limit=200`
+  const r = await fetch(u)
+  if (!r.ok) return acc
+  const data = await r.json()
+  const folderName = data.name || ''
+  const items = data._embedded?.items || []
+  for (const it of items) {
+    if (it.type === 'dir') {
+      await listFiles(publicKey, it.path, depth + 1, acc)
+    } else if (it.type === 'file') {
+      const mime = it.mime_type || ''
+      const isDoc = /pdf/i.test(mime) || /image\//i.test(mime) || /\.(pdf|jpe?g|png|heic)$/i.test(it.name)
+      if (isDoc) acc.push({ name: it.name, path: it.path, folder: folderName, modified: it.modified || it.created || '', mime, size: it.size || 0 })
+    }
+  }
+  return acc
+}
+
+// Получить ссылку на скачивание файла из публичной папки
+async function downloadHref(publicKey, path) {
+  const r = await fetch(`${YA}/download?public_key=${encodeURIComponent(publicKey)}&path=${encodeURIComponent(path)}`)
+  if (!r.ok) return null
+  return (await r.json()).href || null
+}
+
+const EXTRACT_TOOL = [{
+  name: 'save_labs',
+  description: 'Сохранить извлечённые показатели анализа крови.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      date: { type: 'string', description: 'Дата анализа в формате YYYY-MM-DD. Определи её по НАЗВАНИЮ ПАПКИ (может быть кривым: «28.04-5.05», «анализы март» и т.п.) или по дате внутри документа. Если диапазон — возьми конечную дату.' },
+      lab: { type: 'string', description: 'Название лаборатории/клиники, если видно (иначе пустая строка).' },
+      kind: { type: 'string', description: 'Краткий тип исследования: общий анализ, биохимия, гормоны, витамины и т.п.' },
+      values: {
+        type: 'object',
+        description: 'Показатели: ключ — стандартное русское название, значение — число. Только числовые показатели. Если показателей нет (не анализ крови) — пустой объект.',
+        additionalProperties: { type: 'number' }
+      }
+    },
+    required: ['date', 'values']
+  }
+}]
+
+const MARKER_HINT =
+  'Стандартизуй названия: Гемоглобин, Эритроциты, Лейкоциты, Тромбоциты, СОЭ, Гематокрит,' +
+  'Глюкоза, Холестерин общий, ЛПНП, ЛПВП, Триглицериды, Креатинин, Мочевина, АЛТ, АСТ, Билирубин общий, ' +
+  'Витамин D, Витамин B12, Фолиевая кислота, Ферритин, Железо, ТТГ, Т4 свободный, Тестостерон, Кортизол, СРБ, Калий, Натрий, Магний.'
+
+// Разобрать один файл через Claude (vision)
+async function parseFile(file, publicKey) {
+  const href = await downloadHref(publicKey, file.path)
+  if (!href) return null
+  const fr = await fetch(href)
+  if (!fr.ok) return null
+  const buf = Buffer.from(await fr.arrayBuffer())
+  if (buf.length > 9_000_000) return null   // слишком большой — пропускаем
+  const b64 = buf.toString('base64')
+  const isPdf = /pdf/i.test(file.mime) || /\.pdf$/i.test(file.name)
+  const media = isPdf ? 'application/pdf'
+    : /png/i.test(file.mime) ? 'image/png'
+    : 'image/jpeg'
+  const docBlock = isPdf
+    ? { type: 'document', source: { type: 'base64', media_type: media, data: b64 } }
+    : { type: 'image', source: { type: 'base64', media_type: media, data: b64 } }
+
+  const client = getClient()
+  const resp = await client.messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 1500,
+    tools: EXTRACT_TOOL,
+    tool_choice: { type: 'tool', name: 'save_labs' },
+    messages: [{
+      role: 'user',
+      content: [
+        docBlock,
+        { type: 'text', text:
+          `Это файл анализа крови владельца. Папка называется: «${file.folder}». ` +
+          `Имя файла: «${file.name}». ` +
+          `Извлеки числовые показатели и определи дату. ${MARKER_HINT} ` +
+          `Не выдумывай показатели, бери только те, что реально есть в документе. Вызови save_labs.` }
+      ]
+    }]
+  })
+  const block = resp.content.find(b => b.type === 'tool_use')
+  return block?.input || null
+}
+
+router.use(requireAuth)
+
+// Подключить/обновить ссылку на публичную папку
+router.post('/connect', async (req, res) => {
+  const { url } = req.body || {}
+  if (!url || !/disk\.yandex/i.test(url)) return res.status(400).json({ ok: false, message: 'Дайте ссылку на публичную папку Яндекс.Диска' })
+  await kvSet(URL_KEY, url)
+  res.json({ ok: true })
+})
+
+router.get('/status', async (_req, res) => {
+  const url = await kvGet(URL_KEY)
+  res.json({ connected: !!url, url: url || null })
+})
+
+router.post('/disconnect', async (_req, res) => {
+  await kvDel(URL_KEY)
+  res.json({ ok: true })
+})
+
+// Список файлов + признак, разобран ли уже (для прогресса на фронте)
+router.get('/files', async (_req, res) => {
+  const url = await kvGet(URL_KEY)
+  if (!url) return res.json({ connected: false, files: [] })
+  try {
+    const files = await listFiles(url)
+    const withCache = await Promise.all(files.map(async f => ({
+      ...f, parsed: !!(await kvGet(cacheKey(f.path, f.modified)))
+    })))
+    res.json({ connected: true, files: withCache })
+  } catch (e) {
+    res.json({ connected: true, files: [], error: String(e?.message || e).slice(0, 150) })
+  }
+})
+
+// Разобрать ОДИН файл (фронт вызывает по очереди — не упираемся в таймаут)
+router.post('/parse', async (req, res) => {
+  const url = await kvGet(URL_KEY)
+  if (!url) return res.json({ ok: false, connected: false })
+  const { path, modified } = req.body || {}
+  if (!path) return res.status(400).json({ ok: false, message: 'path required' })
+  const ck = cacheKey(path, modified)
+  const cached = await kvGet(ck)
+  if (cached) return res.json({ ok: true, report: cached, cached: true })
+  try {
+    const files = await listFiles(url)
+    const file = files.find(f => f.path === path)
+    if (!file) return res.json({ ok: false, message: 'файл не найден' })
+    const parsed = await parseFile(file, url)
+    if (!parsed) return res.json({ ok: false, message: 'не удалось разобрать' })
+    const report = { id: ck, date: parsed.date, lab: parsed.lab || '', kind: parsed.kind || '', fileName: file.name, folder: file.folder, values: parsed.values || {} }
+    if (Object.keys(report.values).length) await kvSet(ck, report)
+    res.json({ ok: true, report })
+  } catch (e) {
+    res.json({ ok: false, message: String(e?.message || e).slice(0, 150) })
+  }
+})
+
+// Все разобранные отчёты, объединённые по дате (формат фронта: {date, values})
+router.get('/reports', async (_req, res) => {
+  const url = await kvGet(URL_KEY)
+  if (!url) return res.json({ connected: false, reports: [] })
+  try {
+    const files = await listFiles(url)
+    const parsed = (await Promise.all(files.map(f => kvGet(cacheKey(f.path, f.modified))))).filter(Boolean)
+    // Объединяем по дате: значения из всех файлов одной даты в один отчёт
+    const byDate = {}
+    parsed.forEach(r => {
+      if (!r.date) return
+      byDate[r.date] ||= { id: r.date, date: r.date, fileName: r.fileName, values: {} }
+      Object.assign(byDate[r.date].values, r.values)
+    })
+    const reports = Object.values(byDate).sort((a, b) => a.date.localeCompare(b.date))
+    res.json({ connected: true, reports, total: files.length, parsed: parsed.length })
+  } catch (e) {
+    res.json({ connected: true, reports: [], error: String(e?.message || e).slice(0, 150) })
+  }
+})
+
+export default router

@@ -9,6 +9,7 @@ import calendarRoutes from './routes/calendar.js'
 import garminRoutes from './routes/garmin.js'
 import whoopRoutes from './routes/whoop.js'
 import historyRoutes from './routes/history.js'
+import labsRoutes from './routes/labs.js'
 import authRoutes from './routes/auth.js'
 import { requireAuth } from './authGuard.js'
 
@@ -37,6 +38,7 @@ app.get('/api/health', (_, res) => res.json({ status: 'ok' }))
 // Приватные маршруты — только после входа по паролю
 app.use('/api/ai', requireAuth, aiRoutes)
 app.use('/api/history', requireAuth, historyRoutes)
+app.use('/api/labs', labsRoutes)
 
 // Интеграции: внутри есть публичный OAuth-callback (переход в браузере),
 // поэтому требование входа применяется точечно внутри роутов.
