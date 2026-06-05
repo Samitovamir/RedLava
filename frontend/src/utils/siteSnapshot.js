@@ -4,7 +4,7 @@
 
 import { WORKOUTS, WORKOUT_TYPES, WEEK_STATS, GARMIN } from './workouts.js'
 import { WHOOP, recoveryLabel } from './whoop.js'
-import { PANELS, INITIAL_REPORTS, buildHistory, markerStatus, STATUS_INFO, rangeText } from './labs.js'
+import { INITIAL_REPORTS, buildHistory, markerStatus, STATUS_INFO, rangeText, resolveMarker } from './labs.js'
 import { mskNow } from './time.js'
 
 const PRIO = { 1: 'неотложный', 2: 'важный', 3: 'обычный' }
@@ -14,16 +14,14 @@ function labsFlagged() {
   let reports = INITIAL_REPORTS
   try { const s = localStorage.getItem('albert-labs'); if (s) reports = JSON.parse(s) } catch { /* ignore */ }
   const hist = buildHistory(reports)
-  // Нормы из справочника для известных маркеров; для «лишних» — из самого документа.
-  const panelByName = {}
-  PANELS.forEach(p => p.markers.forEach(m => { panelByName[m.name] = m }))
+  // Норму берём из документа, справочник дополняет (группы/единицы/нормы).
   const flagged = []
   Object.entries(hist).forEach(([name, h]) => {
     const last = h[h.length - 1]
-    const m = panelByName[name] || { unit: last.unit || '', min: last.min ?? null, max: last.max ?? null }
-    const st = markerStatus(last.value, m.min, m.max)
+    const def = resolveMarker(name, last)
+    const st = markerStatus(last.value, def.min, def.max)
     if (st === 'low' || st === 'high') {
-      flagged.push(`${name} ${last.value} ${m.unit || ''} (норма ${rangeText(m.min, m.max)}, ${STATUS_INFO[st].label})`)
+      flagged.push(`${def.name} ${last.value} ${def.unit || ''} (норма ${rangeText(def.min, def.max)}, ${STATUS_INFO[st].label})`)
     }
   })
   return { flagged, hasData: Object.keys(hist).length > 0 }

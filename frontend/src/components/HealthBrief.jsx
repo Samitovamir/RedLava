@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { useAiSummary } from '../hooks/useAiSummary.js'
 import MicButton from './MicButton.jsx'
 import {
-  PANELS, INITIAL_REPORTS, buildHistory, markerStatus, STATUS_INFO, rangeText, barGeom, fmtDate, extraMarkers
+  INITIAL_REPORTS, buildHistory, markerStatus, STATUS_INFO, rangeText, barGeom, fmtDate, resolveMarker
 } from '../utils/labs.js'
 
 /*
@@ -30,18 +30,16 @@ function readGarmin() {
 // Сжатая сводка здоровья с ДАТАМИ (и ключ кэша): отклонения + Whoop + тренировки Garmin.
 function buildHealthData(reports, whoop, garmin) {
   const hist = buildHistory(reports)
-  const panelByName = {}
-  PANELS.forEach(p => p.markers.forEach(m => { panelByName[m.name] = m }))
   const flagged = [], normal = []
-  // Все показатели из файлов: известные (нормы из справочника) + лишние (нормы из документа)
+  // Все показатели из файлов: норму берём из документа, справочник дополняет.
   Object.entries(hist).forEach(([name, h]) => {
     const last = h[h.length - 1]
-    const m = panelByName[name] || { unit: last.unit || '', min: last.min ?? null, max: last.max ?? null }
-    const st = markerStatus(last.value, m.min, m.max)
-    const norm = (m.min == null && m.max == null) ? 'норма не указана' : `норма ${rangeText(m.min, m.max)}`
-    const line = `${name} ${last.value} ${m.unit || ''} (${norm}, сдан ${fmtDate(last.date)})`
+    const def = resolveMarker(name, last)
+    const st = markerStatus(last.value, def.min, def.max)
+    const norm = (def.min == null && def.max == null) ? 'норма не указана' : `норма ${rangeText(def.min, def.max)}`
+    const line = `${def.name} ${last.value} ${def.unit || ''} (${norm}, сдан ${fmtDate(last.date)})`
     if (st === 'low' || st === 'high') flagged.push(`${line} — ${STATUS_INFO[st].label}`)
-    else normal.push(name)
+    else normal.push(def.name)
   })
   const hasLabs = Object.keys(hist).length > 0
   const labs = !hasLabs
@@ -95,7 +93,7 @@ function MiniSpark({ values, color }) {
 }
 
 function MarkerMini({ marker, hist }) {
-  const h = hist?.[marker.name]
+  const h = hist?.[marker._key]
   if (!h?.length) return null
   const last = h[h.length - 1]
   const prev = h.length > 1 ? h[h.length - 2] : null
@@ -141,13 +139,13 @@ export default function HealthBrief() {
     snapshot: healthData
   })
 
-  // Все показатели: справочные + лишние из файлов
-  const allMarkers = [...PANELS.flatMap(p => p.markers), ...extraMarkers(hist)]
+  // Все показатели, реально присутствующие в файлах (с нормой из документа/справочника)
+  const allMarkers = Object.keys(hist).map(name => ({ ...resolveMarker(name, hist[name][hist[name].length - 1]), _key: name }))
   // показатели, упомянутые в выжимке (или, если ни один не назван, — те что вне нормы)
   let markers = mentionedMarkers(text, allMarkers)
   if (!markers.length) {
     allMarkers.forEach(m => {
-      const h = hist[m.name]; if (!h) return
+      const h = hist[m._key]; if (!h) return
       if (['low', 'high'].includes(markerStatus(h[h.length - 1].value, m.min, m.max))) markers.push(m)
     })
   }

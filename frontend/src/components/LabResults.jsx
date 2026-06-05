@@ -1,8 +1,8 @@
 import { useState, useRef, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  PANELS, INITIAL_REPORTS, buildHistory, markerStatus, STATUS_INFO,
-  rangeText, barGeom, fmtDate, LABS_STORE_KEY, extraMarkers
+  INITIAL_REPORTS, buildHistory, markerStatus, STATUS_INFO,
+  rangeText, barGeom, fmtDate, LABS_STORE_KEY, buildGroups
 } from '../utils/labs.js'
 import MicButton from './MicButton.jsx'
 
@@ -89,37 +89,75 @@ export default function LabResults() {
   }, [])
 
   const history = useMemo(() => buildHistory(reports), [reports])
-  const latestOf = name => history[name]?.[history[name].length - 1]
 
-  // Показатели из файлов, которых нет в нашем справочнике (нормы берём из документа)
-  const extras = useMemo(() => extraMarkers(history), [history])
-  // Все панели = справочник + панель «Другие показатели» (если что-то нашлось)
-  const allPanels = extras.length
-    ? [...PANELS, { name: 'Другие показатели', icon: '🔬', markers: extras }]
-    : PANELS
+  // Все показатели, разложенные по системам организма (важные + второстепенные)
+  const groups = useMemo(() => buildGroups(history), [history])
+  // Какие группы «второстепенных» развёрнуты пользователем
+  const [openMinor, setOpenMinor] = useState({})
 
-  // Маркеры вне нормы (по последним значениям) — включая «лишние»
-  const flagged = allPanels.flatMap(p => p.markers)
-    .map(m => ({ m, last: latestOf(m.name) }))
-    .filter(x => x.last && ['low', 'high'].includes(markerStatus(x.last.value, x.m.min, x.m.max)))
+  // Маркеры вне нормы (по последним значениям) — для сводки сверху
+  const flagged = groups.flatMap(g => [...g.major, ...g.minor])
+    .filter(it => ['low', 'high'].includes(markerStatus(it.last.value, it.def.min, it.def.max)))
+
+  // Полная карточка показателя (для важных и для одиночных групп)
+  function renderMarker({ key, def, h, last }) {
+    const prev = h.length >= 2 ? h[h.length - 2] : null
+    const st = markerStatus(last.value, def.min, def.max)
+    const c = STATUS_INFO[st].color
+    const g = barGeom(last.value, def.min, def.max)
+    return (
+      <div key={key} className="lab-marker">
+        <div className="lm-top">
+          <span className="lm-name">{def.name}</span>
+          <span className="lm-value" style={{ color: c }}>{last.value} <span className="lm-unit muted">{def.unit}</span></span>
+        </div>
+        <div className="lm-bar">
+          {st !== 'unknown' && <div className="lm-band" style={{ left: `${g.bandLeft}%`, width: `${g.bandRight - g.bandLeft}%` }} />}
+          <div className="lm-marker-dot" style={{ left: `${st === 'unknown' ? 50 : g.valuePos}%`, background: c }} />
+        </div>
+        <div className="lm-bottom">
+          <span className="lm-range muted">{st === 'unknown' ? 'норма не указана' : `норма ${rangeText(def.min, def.max)}`}</span>
+          <span className="lm-status" style={{ color: c }}>{STATUS_INFO[st].label}</span>
+        </div>
+        {prev && (
+          <div className="lm-trend">
+            <MiniSpark points={h} color="var(--muted-foreground)" />
+            <span className="lm-trend-txt muted">
+              {last.value > prev.value ? '↑' : last.value < prev.value ? '↓' : '→'} было {prev.value} · {fmtDate(prev.date)}
+            </span>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Компактная строка второстепенного показателя
+  function renderMinorRow({ key, def, last }) {
+    const st = markerStatus(last.value, def.min, def.max)
+    const c = STATUS_INFO[st].color
+    return (
+      <div key={key} className="lab-mini">
+        <span className="lab-mini-name">{def.name}</span>
+        <span className="lab-mini-val" style={{ color: c }}>{last.value}<span className="muted"> {def.unit}</span></span>
+        <span className="lab-mini-norm muted">{st === 'unknown' ? '—' : rangeText(def.min, def.max)}</span>
+        <span className="lab-mini-dot" style={{ background: c }} title={STATUS_INFO[st].label} />
+      </div>
+    )
+  }
 
   const reportsByDate = [...reports].sort((a, b) => b.date.localeCompare(a.date))
 
   // Текстовая выжимка показателей (последние значения) для контекста ИИ
   function labSummaryText(snapshotReports) {
     const hist = buildHistory(snapshotReports)
-    const ex = extraMarkers(hist)
-    const groups = ex.length ? [...PANELS, { name: 'Другие показатели', markers: ex }] : PANELS
-    return groups.map(p => {
-      const lines = p.markers.map(m => {
-        const h = hist[m.name]; if (!h) return null
-        const v = h[h.length - 1].value
-        const st = markerStatus(v, m.min, m.max)
-        const norm = (m.min == null && m.max == null) ? 'норма не указана' : `норма ${rangeText(m.min, m.max)}`
+    return buildGroups(hist).map(g => {
+      const lines = [...g.major, ...g.minor].map(({ def, last }) => {
+        const st = markerStatus(last.value, def.min, def.max)
+        const norm = (def.min == null && def.max == null) ? 'норма не указана' : `норма ${rangeText(def.min, def.max)}`
         const flag = (st === 'low' || st === 'high') ? ` — ${STATUS_INFO[st].label}` : ''
-        return `${m.name} ${v} ${m.unit || ''} (${norm})${flag}`
-      }).filter(Boolean)
-      return lines.length ? `${p.name}: ${lines.join(', ')}` : null
+        return `${def.name} ${last.value} ${def.unit || ''} (${norm})${flag}`
+      })
+      return lines.length ? `${g.name}: ${lines.join(', ')}` : null
     }).filter(Boolean).join('. ')
   }
 
@@ -343,69 +381,43 @@ export default function LabResults() {
       {flagged.length > 0 && (
         <div className="lab-flags">
           <span className="lab-flags-lbl muted">Вне нормы:</span>
-          {flagged.map(({ m, last }) => {
-            const st = markerStatus(last.value, m.min, m.max)
+          {flagged.map(({ def, last }) => {
+            const st = markerStatus(last.value, def.min, def.max)
             return (
-              <span key={m.name} className="lab-flag" style={{ color: STATUS_INFO[st].color, borderColor: STATUS_INFO[st].color }}>
-                {m.name} {st === 'high' ? '↑' : '↓'}
+              <span key={def.name} className="lab-flag" style={{ color: STATUS_INFO[st].color, borderColor: STATUS_INFO[st].color }}>
+                {def.name} {st === 'high' ? '↑' : '↓'}
               </span>
             )
           })}
         </div>
       )}
 
-      {/* Панели с диаграммами */}
+      {/* Панели по системам организма: важные показатели на виду, второстепенные сворачиваются */}
       <div className="lab-panels">
-        {allPanels.map(panel => {
-          const hasAny = panel.markers.some(m => latestOf(m.name))
+        {groups.map(group => {
+          const hasMajor = group.major.length > 0
+          const open = openMinor[group.key]
+          const minorFlags = group.minor.filter(i => ['low', 'high'].includes(markerStatus(i.last.value, i.def.min, i.def.max))).length
           return (
-            <div key={panel.name} className="lab-panel">
+            <div key={group.key} className="lab-panel">
               <div className="lab-panel-title">
-                <span className="lab-panel-icon">{panel.icon}</span>{panel.name}
-                {!hasAny && <span className="lab-panel-wait muted">ещё не загружен</span>}
+                <span className="lab-panel-icon">{group.icon}</span>{group.name}
+                <span className="lab-panel-wait muted">{group.major.length + group.minor.length}</span>
               </div>
-              <div className="lab-markers">
-                {panel.markers.map(m => {
-                  const h = history[m.name]
-                  if (!h) return (
-                    <div key={m.name} className="lab-marker pending">
-                      <div className="lm-top">
-                        <span className="lm-name">{m.name}</span>
-                        <span className="lm-await muted">ожидается</span>
-                      </div>
-                    </div>
-                  )
-                  const last = h[h.length - 1]
-                  const prev = h.length >= 2 ? h[h.length - 2] : null
-                  const st = markerStatus(last.value, m.min, m.max)
-                  const c = STATUS_INFO[st].color
-                  const g = barGeom(last.value, m.min, m.max)
-                  return (
-                    <div key={m.name} className="lab-marker">
-                      <div className="lm-top">
-                        <span className="lm-name">{m.name}</span>
-                        <span className="lm-value" style={{ color: c }}>{last.value} <span className="lm-unit muted">{m.unit}</span></span>
-                      </div>
-                      <div className="lm-bar">
-                        {st !== 'unknown' && <div className="lm-band" style={{ left: `${g.bandLeft}%`, width: `${g.bandRight - g.bandLeft}%` }} />}
-                        <div className="lm-marker-dot" style={{ left: `${st === 'unknown' ? 50 : g.valuePos}%`, background: c }} />
-                      </div>
-                      <div className="lm-bottom">
-                        <span className="lm-range muted">{st === 'unknown' ? 'норма не указана' : `норма ${rangeText(m.min, m.max)}`}</span>
-                        <span className="lm-status" style={{ color: c }}>{STATUS_INFO[st].label}</span>
-                      </div>
-                      {prev && (
-                        <div className="lm-trend">
-                          <MiniSpark points={h} color="var(--muted-foreground)" />
-                          <span className="lm-trend-txt muted">
-                            {last.value > prev.value ? '↑' : last.value < prev.value ? '↓' : '→'} было {prev.value} · {fmtDate(prev.date)}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
+
+              {hasMajor && <div className="lab-markers">{group.major.map(renderMarker)}</div>}
+
+              {group.minor.length > 0 && (hasMajor ? (
+                <div className="lab-minor">
+                  <button className="lab-minor-toggle" onClick={() => setOpenMinor(s => ({ ...s, [group.key]: !s[group.key] }))}>
+                    <span>{open ? 'Скрыть второстепенные' : 'Второстепенные'} ({group.minor.length}){!open && minorFlags > 0 ? ` · ${minorFlags} вне нормы` : ''}</span>
+                    <span className={`lab-minor-caret ${open ? 'open' : ''}`}>▾</span>
+                  </button>
+                  {open && <div className="lab-minor-list">{group.minor.map(renderMinorRow)}</div>}
+                </div>
+              ) : (
+                <div className="lab-markers">{group.minor.map(renderMarker)}</div>
+              ))}
             </div>
           )
         })}
@@ -496,7 +508,20 @@ export default function LabResults() {
         .lab-flags-lbl { font-size: 13px; }
         .lab-flag { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px; border: 1px solid; background: transparent; }
 
-        .lab-panels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; align-items: start; }
+        .lab-panels { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; align-items: start; }
+
+        .lab-minor { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 8px; }
+        .lab-minor-toggle { width: 100%; display: flex; align-items: center; gap: 8px; background: none; border: none; color: var(--muted); font-family: inherit; font-size: 12.5px; font-weight: 500; cursor: pointer; padding: 4px 0; text-align: left; }
+        .lab-minor-toggle:hover { color: var(--foreground); }
+        .lab-minor-caret { margin-left: auto; transition: transform 0.15s; }
+        .lab-minor-caret.open { transform: rotate(180deg); }
+        .lab-minor-list { display: flex; flex-direction: column; margin-top: 6px; }
+        .lab-mini { display: grid; grid-template-columns: 1fr auto auto 10px; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--bg-primary); font-size: 12.5px; }
+        .lab-mini:last-child { border-bottom: none; }
+        .lab-mini-name { color: var(--foreground); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .lab-mini-val { font-weight: 700; white-space: nowrap; }
+        .lab-mini-norm { font-size: 11px; white-space: nowrap; }
+        .lab-mini-dot { width: 9px; height: 9px; border-radius: 50%; }
         .lab-panel { background: var(--bg-secondary); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 16px; }
         .lab-panel-title { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; color: var(--foreground); }
         .lab-panel-icon { font-size: 16px; }
