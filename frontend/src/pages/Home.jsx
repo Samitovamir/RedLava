@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import AIWorkZone from '../components/AIWorkZone.jsx'
 import DaySchedule from '../components/DaySchedule.jsx'
 import DaySummary from '../components/DaySummary.jsx'
+import HealthBrief from '../components/HealthBrief.jsx'
 import { getQuoteOfDay } from '../utils/quotes.js'
 import { useEvents } from '../context/EventsContext.jsx'
 import { mskNow } from '../utils/time.js'
@@ -128,11 +129,8 @@ export default function Home() {
       ? { label: 'Последняя тренировка', value: lastW.label, sub: [lastW.distanceKm ? `${lastW.distanceKm} км` : null, lastW.durationMin ? `${lastW.durationMin} мин` : null, lastW.pace ? `${lastW.pace}/км` : null].filter(Boolean).join(' · ') || humanDate(lastW.date), color: 'var(--orange)', link: '/sport', icon: ICON_RUN }
       : { label: 'Последняя тренировка', value: '—', sub: 'Подключите Garmin', color: 'var(--orange)', link: '/connections', icon: ICON_RUN },
     whoop
-      ? { label: 'Recovery Whoop', value: `${whoop.recovery}%`, sub: whoop.recovery >= 67 ? 'хорошее восстановление' : whoop.recovery >= 34 ? 'среднее восстановление' : 'низкое восстановление', color: 'var(--green)', progress: whoop.recovery, link: '/health', icon: ICON_WHOOP }
-      : { label: 'Recovery Whoop', value: '—', sub: 'Подключите Whoop', color: 'var(--green)', link: '/connections', icon: ICON_WHOOP },
-    whoop
-      ? { label: 'Сон', value: `${whoop.sleep.hoursSlept} ч`, sub: `эффективность ${whoop.sleep.efficiency}%`, color: 'var(--accent)', progress: whoop.sleep.efficiency, link: '/health', icon: ICON_SLEEP }
-      : { label: 'Сон', value: '—', sub: 'Подключите Whoop', color: 'var(--accent)', link: '/connections', icon: ICON_SLEEP }
+      ? { label: 'Восстановление и сон', combined: true, recovery: whoop.recovery, sleepH: whoop.sleep.hoursSlept, eff: whoop.sleep.efficiency, color: 'var(--green)', link: '/health', icon: ICON_WHOOP }
+      : { label: 'Восстановление и сон', value: '—', sub: 'Подключите Whoop', color: 'var(--green)', link: '/connections', icon: ICON_WHOOP }
   ]
 
   const scrollToSchedule = () => {
@@ -155,8 +153,9 @@ export default function Home() {
   const iQuote = iBtn + 1
   const iAuthor = iQuote + quoteStr.length
   const iCards = iAuthor + authorStr.length     // быстрые карточки
-  const iAIWZ = iCards + cards.length            // рабочая зона
-  const iGrid = iAIWZ + 1                        // расписание + сводка
+  const iBrief = iCards + cards.length           // ИИ-выжимка по здоровью
+  const iAIWZ = iBrief + 1                        // рабочая зона
+  const iGrid = iAIWZ + 1                         // расписание + сводка
   const iLast = iGrid + 2
   const overlayDelay = (iLast + 2) * FALL_STEP
 
@@ -195,22 +194,42 @@ export default function Home() {
                 {c.icon}
               </span>
             </div>
-            <span className="quick-card-value">{c.value}</span>
-            <span className="quick-card-sub">{c.sub}</span>
-            {c.progress != null && (
-              <div className="quick-progress">
-                <motion.div
-                  className="quick-progress-fill"
-                  style={{ background: c.color }}
-                  initial={{ width: 0 }}
-                  animate={{ width: `${c.progress}%` }}
-                  transition={{ duration: 0.8, delay: 0.2 + 0.05 * i, ease: 'easeOut' }}
-                />
+            {c.combined ? (
+              <div className="qc-combined">
+                <div className="qc-half">
+                  <span className="qc-half-value" style={{ color: 'var(--green)' }}>{c.recovery}%</span>
+                  <span className="qc-half-label">Восстановление</span>
+                </div>
+                <div className="qc-half-divider" />
+                <div className="qc-half">
+                  <span className="qc-half-value" style={{ color: 'var(--accent)' }}>{c.sleepH} ч</span>
+                  <span className="qc-half-label">Сон · эфф. {c.eff}%</span>
+                </div>
               </div>
+            ) : (
+              <>
+                <span className="quick-card-value">{c.value}</span>
+                <span className="quick-card-sub">{c.sub}</span>
+                {c.progress != null && (
+                  <div className="quick-progress">
+                    <motion.div
+                      className="quick-progress-fill"
+                      style={{ background: c.color }}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${c.progress}%` }}
+                      transition={{ duration: 0.8, delay: 0.2 + 0.05 * i, ease: 'easeOut' }}
+                    />
+                  </div>
+                )}
+              </>
             )}
           </motion.div>
         ))}
       </div>
+
+      <motion.div animate={unitFall(iBrief)}>
+        <HealthBrief />
+      </motion.div>
 
       <motion.div animate={unitFall(iAIWZ)}>
         <AIWorkZone />
@@ -389,9 +408,14 @@ export default function Home() {
         }
         .quick-cards {
           display: grid;
-          grid-template-columns: repeat(4, 1fr);
+          grid-template-columns: repeat(3, 1fr);
           gap: 16px;
         }
+        .qc-combined { display: flex; align-items: center; gap: 4px; }
+        .qc-half { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+        .qc-half-value { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
+        .qc-half-label { font-size: 11.5px; color: var(--muted); }
+        .qc-half-divider { width: 1px; align-self: stretch; background: var(--border); margin: 2px 8px; }
         .quick-card {
           display: flex;
           flex-direction: column;
