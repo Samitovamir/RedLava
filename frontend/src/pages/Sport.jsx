@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import CircularChart from '../components/CircularChart.jsx'
 import AiRefreshButton from '../components/AiRefreshButton.jsx'
+import ConnectPrompt from '../components/ConnectPrompt.jsx'
+import GarminLive from '../components/GarminLive.jsx'
 import { useAiSummary } from '../hooks/useAiSummary.js'
 import { useSiteSnapshot } from '../hooks/useSiteSnapshot.js'
 import {
@@ -106,6 +108,10 @@ function HrSparkline({ data, zoneMax, duration }) {
 }
 
 export default function Sport() {
+  // Garmin пока не подключён → показываем «Подключите Garmin», без выдуманных данных
+  let garminConnected = false
+  try { garminConnected = !!localStorage.getItem('albert-garmin-live') } catch { /* ignore */ }
+
   const last = WORKOUTS[0]
   const lastType = WORKOUT_TYPES[last.type]
   const [openDetail, setOpenDetail] = useState(null)
@@ -198,6 +204,22 @@ export default function Sport() {
     setLoading(false)
   }
 
+  if (!garminConnected) {
+    return (
+      <ConnectPrompt
+        heading="Спорт"
+        sub="Garmin Connect"
+        title="Garmin не подключён"
+        text="Подключите Garmin, чтобы видеть тренировки, пульс, шаги и активность. Сейчас данных о спорте нет."
+      />
+    )
+  }
+
+  // Garmin подключён → реальные данные
+  return <GarminLive />
+
+  // (ниже — старый демо-вид, не используется)
+  // eslint-disable-next-line no-unreachable
   return (
     <div className="sport-page">
       <div className="page-header">

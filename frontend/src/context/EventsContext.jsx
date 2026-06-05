@@ -9,7 +9,9 @@ export function dateKey(d) {
 
 const TODAY_KEY = dateKey(new Date())
 
-export const INITIAL_EVENTS = [
+// Расписание начинается пустым — события приходят из Google Календаря (демо убрано)
+export const INITIAL_EVENTS = []
+const _DEMO_EVENTS = [
   { type: 'call', title: 'Утренняя планёрка', date: TODAY_KEY, start: '09:00', end: '09:30', who: 'Команда', priority: 2 },
   { type: 'calendar', title: 'Обновить календарь', date: TODAY_KEY, start: '11:00', end: '11:30', who: 'Эдвард Йохансон', priority: 3 },
   { type: 'email', title: 'Отправить отчёт', date: TODAY_KEY, start: '13:00', end: '13:30', who: 'Майк Тейлор', priority: 1 },
@@ -42,6 +44,23 @@ export function EventsProvider({ children }) {
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(events)) } catch { /* ignore */ }
   }, [events])
+
+  // Если подключён Google Календарь — подтягиваем реальные события (он источник истины)
+  const [googleConnected, setGoogleConnected] = useState(false)
+  function syncFromGoogle() {
+    return fetch('/api/calendar/status')
+      .then(r => r.json())
+      .then(d => {
+        setGoogleConnected(!!d.connected)
+        if (!d.connected) return null
+        return fetch('/api/calendar/events').then(r => r.json())
+      })
+      .then(data => {
+        if (data && Array.isArray(data.events)) setEventsRaw(data.events)
+      })
+      .catch(() => {})
+  }
+  useEffect(() => { syncFromGoogle() }, [])
 
   // Сравнить старое и новое расписание и записать действие пользователя в историю
   function diffAndLog(prev, next) {
@@ -87,8 +106,46 @@ export function EventsProvider({ children }) {
   }
 
   // Применить действия, которые предложил ИИ (create/move/delete). Пишутся в Историю как 'ai'.
-  function applyAiActions(actions) {
+  async function applyAiActions(actions) {
     if (!actions?.length) return
+
+    // Google подключён → выполняем изменения прямо в календаре, затем пересинхронизируем
+    if (googleConnected) {
+      let gFocus = null
+      const gLogs = []
+      for (const a of actions) {
+        const inp = a.input || {}
+        try {
+          if (a.name === 'create_event') {
+            const ev = { type: inp.type || 'calendar', title: inp.title || 'Событие', date: inp.date || TODAY_KEY, start: inp.start || '09:00', end: inp.end || '10:00', who: inp.who || '' }
+            await fetch('/api/calendar/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(ev) })
+            gFocus = ev.date
+            gLogs.push({ actor: 'ai', type: 'event', title: `Создал событие «${ev.title}»`, detail: detailOf(ev) })
+          } else if (a.name === 'move_event') {
+            const idx = findByTitle(events, inp.title)
+            if (idx !== -1) {
+              const cur = events[idx]
+              const date = inp.new_date || cur.date, start = inp.new_start || cur.start, end = inp.new_end || cur.end
+              await fetch('/api/calendar/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ googleId: cur.googleId, title: cur.title, date, start, end, who: cur.who }) })
+              gFocus = date
+              gLogs.push({ actor: 'ai', type: 'event', title: `Перенёс «${cur.title}»`, detail: detailOf({ date, start, end }) })
+            }
+          } else if (a.name === 'delete_event') {
+            const idx = findByTitle(events, inp.title)
+            if (idx !== -1) {
+              const cur = events[idx]
+              await fetch('/api/calendar/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ googleId: cur.googleId }) })
+              gLogs.push({ actor: 'ai', type: 'event', title: `Удалил «${cur.title}»`, detail: detailOf(cur) })
+            }
+          }
+        } catch { /* пропускаем неудачное действие */ }
+      }
+      await syncFromGoogle()
+      gLogs.forEach(l => logAction(l))
+      if (gFocus) setFocusSignal({ date: gFocus, n: Date.now() })
+      return
+    }
+
     let focusDate = null
     setEventsRaw(prev => {
       let next = [...prev]
@@ -137,7 +194,7 @@ export function EventsProvider({ children }) {
   }
 
   return (
-    <EventsContext.Provider value={{ events, setEvents, resetEvents, applyAiActions, focusSignal }}>
+    <EventsContext.Provider value={{ events, setEvents, resetEvents, applyAiActions, focusSignal, syncFromGoogle, googleConnected }}>
       {children}
     </EventsContext.Provider>
   )

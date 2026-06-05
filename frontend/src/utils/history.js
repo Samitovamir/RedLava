@@ -23,7 +23,9 @@ export const ACTOR_INFO = {
 }
 
 // datetime в формате 'YYYY-MM-DD HH:MM' (сегодня — 2026-06-04)
-export const INITIAL_HISTORY = [
+// Журнал начинается пустым — наполняется реальными действиями (демо-данные убраны)
+export const INITIAL_HISTORY = []
+const _DEMO_HISTORY = [
   { id: 1,  actor: 'ai',   type: 'email',    status: 'done',    datetime: '2026-06-04 09:24', title: 'Письмо Ивану отправлено',           detail: 'Ответ по встрече в четверг — подтвердил время 14:00.' },
   { id: 2,  actor: 'ai',   type: 'event',    status: 'done',    datetime: '2026-06-04 09:25', title: 'Создано событие «Звонок с врачом»', detail: 'Сегодня 15:00–15:30, добавлено в расписание.' },
   { id: 3,  actor: 'user', type: 'workout',  status: 'done',    datetime: '2026-06-04 07:40', title: 'Отметил тренировку «Бег 8.2 км»',   detail: '42 мин, средний пульс 133. Данные подтянулись из Garmin.' },

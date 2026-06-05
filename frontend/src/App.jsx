@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import FluidMenu from './components/FluidMenu.jsx'
 import AICommandBar from './components/AICommandBar.jsx'
@@ -12,6 +13,22 @@ import History from './pages/History.jsx'
 import Connections from './pages/Connections.jsx'
 
 export default function App() {
+  // Подтягиваем живые данные Whoop и Garmin в localStorage (для страниц и для ИИ)
+  useEffect(() => {
+    fetch('/api/whoop/data').then(r => r.json()).then(d => {
+      try {
+        if (d.connected && d.whoop) localStorage.setItem('albert-whoop-live', JSON.stringify(d.whoop))
+        else localStorage.removeItem('albert-whoop-live')
+      } catch { /* ignore */ }
+    }).catch(() => {})
+    fetch('/api/garmin/data').then(r => r.json()).then(d => {
+      try {
+        if (d.connected && d.garmin) localStorage.setItem('albert-garmin-live', JSON.stringify(d.garmin))
+        else localStorage.removeItem('albert-garmin-live')
+      } catch { /* ignore */ }
+    }).catch(() => {})
+  }, [])
+
   return (
     <HistoryProvider>
     <MemoryProvider>

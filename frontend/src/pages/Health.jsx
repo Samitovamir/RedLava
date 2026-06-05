@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import CircularChart from '../components/CircularChart.jsx'
 import LabResults from '../components/LabResults.jsx'
+import ConnectPrompt from '../components/ConnectPrompt.jsx'
 import AiRefreshButton from '../components/AiRefreshButton.jsx'
 import { useAiSummary } from '../hooks/useAiSummary.js'
 import { useSiteSnapshot } from '../hooks/useSiteSnapshot.js'
@@ -10,7 +11,19 @@ import {
 } from '../utils/whoop.js'
 
 export default function Health() {
-  const w = WHOOP
+  // Живые данные Whoop (если подключён) — иначе демо WHOOP
+  const [live, setLive] = useState(() => {
+    try { const s = localStorage.getItem('albert-whoop-live'); return s ? JSON.parse(s) : null } catch { return null }
+  })
+  useEffect(() => {
+    fetch('/api/whoop/data').then(r => r.json()).then(d => {
+      if (d.connected && d.whoop) {
+        setLive(d.whoop)
+        try { localStorage.setItem('albert-whoop-live', JSON.stringify(d.whoop)) } catch { /* ignore */ }
+      }
+    }).catch(() => {})
+  }, [])
+  const w = live ? { ...WHOOP, ...live, sleep: { ...WHOOP.sleep, ...live.sleep } } : WHOOP
   const recColor = recoveryColor(w.recovery)
   const [openDetail, setOpenDetail] = useState(null)
 
@@ -102,6 +115,20 @@ export default function Health() {
   // Фазы сна для полосы
   const stages = SLEEP_STAGES.map(s => ({ ...s, min: w.sleep.stages[s.key] }))
   const totalSleepMin = stages.reduce((a, s) => a + s.min, 0)
+
+  // Whoop не подключён → без выдуманных данных, но анализы крови оставляем
+  if (!live) {
+    return (
+      <ConnectPrompt
+        heading="Здоровье"
+        sub="Whoop"
+        title="Whoop не подключён"
+        text="Подключите Whoop, чтобы видеть восстановление, сон, HRV и пульс. Анализы крови доступны ниже."
+      >
+        <LabResults />
+      </ConnectPrompt>
+    )
+  }
 
   return (
     <div className="health-page">
@@ -212,7 +239,7 @@ export default function Health() {
       <div className="card trend-card">
         <div className="card-title">Восстановление за неделю</div>
         <div className="trend-bars">
-          {WHOOP_DAYS.map((d, i) => (
+          {(live?.week?.length ? live.week : WHOOP_DAYS).map((d, i) => (
             <div key={i} className="trend-col">
               <div className="trend-bar-wrap">
                 <motion.div className="trend-bar"

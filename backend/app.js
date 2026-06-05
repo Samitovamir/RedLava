@@ -36,9 +36,12 @@ app.get('/api/health', (_, res) => res.json({ status: 'ok' }))
 
 // Приватные маршруты — только после входа по паролю
 app.use('/api/ai', requireAuth, aiRoutes)
-app.use('/api/calendar', requireAuth, calendarRoutes)
-app.use('/api/garmin', requireAuth, garminRoutes)
-app.use('/api/whoop', requireAuth, whoopRoutes)
 app.use('/api/history', requireAuth, historyRoutes)
+
+// Интеграции: внутри есть публичный OAuth-callback (переход в браузере),
+// поэтому требование входа применяется точечно внутри роутов.
+app.use('/api/calendar', calendarRoutes)
+app.use('/api/whoop', whoopRoutes)
+app.use('/api/garmin', requireAuth, garminRoutes)
 
 export default app

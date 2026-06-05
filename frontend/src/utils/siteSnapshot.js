@@ -45,17 +45,17 @@ export function buildSiteSnapshot({ events = [], history = [], facts = [] } = {}
         .map(e => `${e.date} ${e.start}–${e.end} «${e.title}»${e.who ? ` (${e.who})` : ''} [${PRIO[e.priority || 3]}]`).join('\n')
     : 'нет событий'
 
-  const last = WORKOUTS[0]
-  const lastLabel = WORKOUT_TYPES[last.type]?.label || last.type
-  const sport =
-    `Последняя тренировка: ${lastLabel} ${last.distance ? last.distance + ' км ' : ''}${last.duration} мин, пульс ${last.avgHr}/${last.maxHr}, ${last.calories} ккал, оценка ${last.score}/10. ` +
-    `Неделя: ${WEEK_STATS.workoutsCount} трен., ${Math.round(WEEK_STATS.totalMinutes / 60 * 10) / 10} ч, ср.пульс ${WEEK_STATS.avgHr}. ` +
-    `Форма: VO2max ${GARMIN.vo2max}, Body Battery ${GARMIN.bodyBattery}/100, стресс ${GARMIN.stress}, статус «${GARMIN.trainingStatus}», восстановление ${GARMIN.recoveryTime} ч, шаги ${GARMIN.steps}/${GARMIN.stepsGoal}.`
+  // Garmin пока не подключён — НЕ выдумываем данные о спорте
+  const sport = 'Garmin не подключён. Данных о тренировках, шагах, Body Battery, VO2max и форме НЕТ. Не придумывай их — если спросят, скажи, что нужно подключить Garmin.'
 
-  const w = WHOOP
-  const health =
-    `Восстановление ${w.recovery}% (${recoveryLabel(w.recovery)}), дневная нагрузка ${w.strain}/21, HRV ${w.hrv} мс, пульс покоя ${w.rhr}, дыхание ${w.respiratoryRate}/мин, SpO2 ${w.spo2}%. ` +
-    `Сон ${w.sleep.hoursSlept} ч из ${w.sleep.hoursNeeded} нужных (${w.sleep.performance}%).`
+  // Whoop — только реальные данные (если подключён), иначе честно «нет данных»
+  let liveWhoop = null
+  try { const s = localStorage.getItem('albert-whoop-live'); if (s) liveWhoop = JSON.parse(s) } catch { /* ignore */ }
+  const w = liveWhoop ? { ...WHOOP, ...liveWhoop, sleep: { ...WHOOP.sleep, ...liveWhoop.sleep } } : null
+  const health = w
+    ? `Восстановление ${w.recovery}% (${recoveryLabel(w.recovery)}), дневная нагрузка ${w.strain}/21, HRV ${w.hrv} мс, пульс покоя ${w.rhr}, дыхание ${w.respiratoryRate}/мин, SpO2 ${w.spo2}%. ` +
+      `Сон ${w.sleep.hoursSlept} ч из ${w.sleep.hoursNeeded} нужных (${w.sleep.performance}%).`
+    : 'Whoop не подключён. Данных о восстановлении, сне, HRV и пульсе НЕТ. Не придумывай их — если спросят, скажи, что нужно подключить Whoop.'
 
   const flagged = labsFlagged()
   const labs = flagged.length ? `Вне нормы: ${flagged.join('; ')}. Остальные показатели в норме.` : 'все показатели в норме.'
