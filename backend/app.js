@@ -21,6 +21,13 @@ const app = express()
 app.use(cors({ origin: process.env.ALLOWED_ORIGIN || true }))
 app.use(express.json({ limit: '10mb' }))
 
+// На Vercel catch-all-функция получает путь /api/*. На всякий случай гарантируем
+// префикс /api, чтобы маршруты совпадали независимо от того, как платформа передаёт путь.
+app.use((req, _res, next) => {
+  if (!req.url.startsWith('/api/') && req.url !== '/api') req.url = '/api' + req.url
+  next()
+})
+
 app.use('/api/ai', aiRoutes)
 app.use('/api/calendar', calendarRoutes)
 app.use('/api/garmin', garminRoutes)
