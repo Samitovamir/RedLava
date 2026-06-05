@@ -14,16 +14,19 @@ function labsFlagged() {
   let reports = INITIAL_REPORTS
   try { const s = localStorage.getItem('albert-labs'); if (s) reports = JSON.parse(s) } catch { /* ignore */ }
   const hist = buildHistory(reports)
-  // Норму берём из документа, справочник дополняет (группы/единицы/нормы).
-  const flagged = []
+  // Важные показатели вне нормы — списком; второстепенные/профильные — только счётчиком,
+  // чтобы ИИ не тонул в огромных панелях (микробиом, метаболомика и т.п.).
+  const key = [], minorCount = []
   Object.entries(hist).forEach(([name, h]) => {
     const last = h[h.length - 1]
     const def = resolveMarker(name, last)
     const st = markerStatus(last.value, def.min, def.max)
-    if (st === 'low' || st === 'high') {
-      flagged.push(`${def.name} ${last.value} ${def.unit || ''} (норма ${rangeText(def.min, def.max)}, ${STATUS_INFO[st].label})`)
-    }
+    if (st !== 'low' && st !== 'high') return
+    if (def.priority === 'key') key.push(`${def.name} ${last.value} ${def.unit || ''} (норма ${rangeText(def.min, def.max)}, ${STATUS_INFO[st].label})`)
+    else minorCount.push(`${def.name} ${last.value} ${def.unit || ''}`)
   })
+  const flagged = [...key]
+  if (minorCount.length) flagged.push(`ещё ${minorCount.length} второстепенных вне нормы: ${minorCount.slice(0, 12).join('; ')}${minorCount.length > 12 ? ' и др.' : ''}`)
   return { flagged, hasData: Object.keys(hist).length > 0 }
 }
 

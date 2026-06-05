@@ -129,6 +129,7 @@ export const MARKER_GROUPS = [
   { key: 'hormones',     name: 'Гормоны',                 icon: '⚗️' },
   { key: 'inflammation', name: 'Воспаление и иммунитет',  icon: '🔥' },
   { key: 'coagulation',  name: 'Свёртываемость',          icon: '🩹' },
+  { key: 'infections',   name: 'Инфекции и антитела',     icon: '🦠' },
   { key: 'other',        name: 'Другие показатели',       icon: '🔬' }
 ]
 
@@ -238,26 +239,55 @@ const MARKER_INDEX = (() => {
   return idx
 })()
 
-// Найти определение показателя по «сырому» имени из файла. Возвращает группу,
-// единицы, нормы и важность. Нормы предпочитаем из документа (last), справочник дополняет.
+// Сравнение единиц измерения (нормализуем регистр/пробелы/точки). Нужно, чтобы не
+// подставлять норму справочника, если в документе показатель в ДРУГИХ единицах
+// (например, Креатинин в г/л против справочных мкмоль/л — иначе ложное «понижен»).
+const normUnit = u => String(u || '').toLowerCase().replace(/ё/g, 'е').replace(/[\s.]/g, '')
+function unitsMatch(a, b) {
+  const x = normUnit(a), y = normUnit(b)
+  if (!x || !y) return true       // если единиц нет — не мешаем
+  return x === y
+}
+
+// Найти определение показателя по «сырому» имени из файла.
+// ТОЧНОЕ совпадение со справочником → каноническое имя/группа/важность, норму берём
+// из документа, а из справочника только если её нет И совпадают единицы.
+// ЧАСТИЧНОЕ совпадение → берём лишь ГРУППУ, имя и норму оставляем как в документе
+// (чтобы варианты «Кортизол 8:00 / слюна / в крови» не сливались и не тянули чужую норму).
 export function resolveMarker(rawName, last) {
   const key = normName(rawName)
-  let def = MARKER_INDEX[key]
-  if (!def) {
-    def = MARKER_LIBRARY.find(m => {
-      const n = normName(m.name)
-      return n.length > 3 && (key.includes(n) || n.includes(key))
-    })
-  }
+  const docUnit = (last && last.unit) || ''
   const docHasRange = last && (last.min != null || last.max != null)
-  const min = docHasRange ? (last.min ?? null) : (def ? def.min : null)
-  const max = docHasRange ? (last.max ?? null) : (def ? def.max : null)
+  const exact = MARKER_INDEX[key]
+
+  if (exact) {
+    const useLib = !docHasRange && unitsMatch(docUnit, exact.unit)
+    return {
+      name: exact.name,
+      group: exact.group,
+      unit: docUnit || exact.unit || '',
+      min: docHasRange ? (last.min ?? null) : (useLib ? exact.min : null),
+      max: docHasRange ? (last.max ?? null) : (useLib ? exact.max : null),
+      priority: exact.priority
+    }
+  }
+
+  // Нет точного совпадения — определяем только группу
+  const sub = MARKER_LIBRARY.find(m => {
+    const n = normName(m.name)
+    return n.length > 3 && (key.includes(n) || n.includes(key))
+  })
+  let group = sub ? sub.group : 'other'
+  // Эвристика: антитела/иммуноглобулины — в «Инфекции и антитела»
+  if (group === 'other' && /антител|иммуноглобулин|\big\s?[gma]\b/i.test(rawName)) group = 'infections'
+
   return {
-    name: def ? def.name : rawName,
-    group: def ? def.group : 'other',
-    unit: (last && last.unit) || (def ? def.unit : '') || '',
-    min, max,
-    priority: def ? def.priority : 'minor'
+    name: rawName,
+    group,
+    unit: docUnit,
+    min: docHasRange ? (last.min ?? null) : null,
+    max: docHasRange ? (last.max ?? null) : null,
+    priority: 'minor'
   }
 }
 
@@ -270,13 +300,18 @@ export function buildGroups(history) {
     const last = h[h.length - 1]
     return { key: name, h, last, def: resolveMarker(name, last) }
   })
+  // Отклонения — выше, чтобы их было видно сразу; внутри — по алфавиту
+  const sev = it => {
+    const s = markerStatus(it.last.value, it.def.min, it.def.max)
+    return s === 'high' || s === 'low' ? 0 : s === 'unknown' ? 2 : 1
+  }
+  const bySeverity = (a, b) => sev(a) - sev(b) || a.def.name.localeCompare(b.def.name)
   const byGroup = {}
   items.forEach(it => { (byGroup[it.def.group] ||= []).push(it) })
-  const order = MARKER_GROUPS
-  return order.filter(g => byGroup[g.key]?.length).map(g => {
+  return MARKER_GROUPS.filter(g => byGroup[g.key]?.length).map(g => {
     const list = byGroup[g.key]
-    const major = list.filter(i => i.def.priority === 'key').sort((a, b) => a.def.name.localeCompare(b.def.name))
-    const minor = list.filter(i => i.def.priority !== 'key').sort((a, b) => a.def.name.localeCompare(b.def.name))
+    const major = list.filter(i => i.def.priority === 'key').sort(bySeverity)
+    const minor = list.filter(i => i.def.priority !== 'key').sort(bySeverity)
     return { ...g, major, minor }
   })
 }

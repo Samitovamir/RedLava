@@ -95,8 +95,9 @@ export default function LabResults() {
   // Какие группы «второстепенных» развёрнуты пользователем
   const [openMinor, setOpenMinor] = useState({})
 
-  // Маркеры вне нормы (по последним значениям) — для сводки сверху
-  const flagged = groups.flatMap(g => [...g.major, ...g.minor])
+  // Сводка сверху — ТОЛЬКО важные показатели вне нормы (второстепенные/профильные
+  // живут в своих свёрнутых группах, иначе лента превращается в стену из чипов)
+  const flagged = groups.flatMap(g => g.major)
     .filter(it => ['low', 'high'].includes(markerStatus(it.last.value, it.def.min, it.def.max)))
 
   // Полная карточка показателя (для важных и для одиночных групп)
@@ -407,16 +408,18 @@ export default function LabResults() {
 
               {hasMajor && <div className="lab-markers">{group.major.map(renderMarker)}</div>}
 
-              {group.minor.length > 0 && (hasMajor ? (
+              {group.minor.length > 0 && (!hasMajor && group.minor.length <= 6 ? (
+                // Небольшая группа без важных — показываем компактные строки сразу
+                <div className="lab-minor-list">{group.minor.map(renderMinorRow)}</div>
+              ) : (
+                // Иначе — прячем под кнопку (важно для огромных профилей: микробиом и т.п.)
                 <div className="lab-minor">
                   <button className="lab-minor-toggle" onClick={() => setOpenMinor(s => ({ ...s, [group.key]: !s[group.key] }))}>
-                    <span>{open ? 'Скрыть второстепенные' : 'Второстепенные'} ({group.minor.length}){!open && minorFlags > 0 ? ` · ${minorFlags} вне нормы` : ''}</span>
+                    <span>{open ? 'Скрыть второстепенные' : (hasMajor ? 'Второстепенные' : 'Показать показатели')} ({group.minor.length}){!open && minorFlags > 0 ? ` · ${minorFlags} вне нормы` : ''}</span>
                     <span className={`lab-minor-caret ${open ? 'open' : ''}`}>▾</span>
                   </button>
                   {open && <div className="lab-minor-list">{group.minor.map(renderMinorRow)}</div>}
                 </div>
-              ) : (
-                <div className="lab-markers">{group.minor.map(renderMarker)}</div>
               ))}
             </div>
           )
