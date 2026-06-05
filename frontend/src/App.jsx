@@ -9,6 +9,7 @@ import Schedule from './pages/Schedule.jsx'
 import Sport from './pages/Sport.jsx'
 import Health from './pages/Health.jsx'
 import History from './pages/History.jsx'
+import Connections from './pages/Connections.jsx'
 
 export default function App() {
   return (
@@ -25,6 +26,7 @@ export default function App() {
             <Route path="/sport" element={<Sport />} />
             <Route path="/health" element={<Health />} />
             <Route path="/history" element={<History />} />
+            <Route path="/connections" element={<Connections />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>

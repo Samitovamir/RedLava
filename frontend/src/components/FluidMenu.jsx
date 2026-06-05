@@ -58,6 +58,16 @@ const NAV_ITEMS = [
         <polyline points="12 6 12 12 16 14"/>
       </svg>
     )
+  },
+  {
+    path: '/connections',
+    label: 'Подключения',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 22v-5"/><path d="M9 7V2"/><path d="M15 7V2"/>
+        <path d="M6 13V8a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4Z"/>
+      </svg>
+    )
   }
 ]
 
