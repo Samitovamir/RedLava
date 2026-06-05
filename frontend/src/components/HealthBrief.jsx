@@ -39,8 +39,11 @@ function buildHealthData(reports, whoop, garmin) {
     if (st !== 'ok') flagged.push(`${line} — ${STATUS_INFO[st].label}`)
     else normal.push(m.name)
   }))
-  const labs = (flagged.length ? `Вне нормы: ${flagged.join('; ')}. ` : 'Все показатели крови в норме. ') +
-    (normal.length ? `В норме: ${normal.join(', ')}.` : '')
+  const hasLabs = Object.keys(hist).length > 0
+  const labs = !hasLabs
+    ? 'Анализы крови пока не загружены.'
+    : (flagged.length ? `Вне нормы: ${flagged.join('; ')}. ` : 'Все показатели крови в норме. ') +
+      (normal.length ? `В норме: ${normal.join(', ')}.` : '')
   const w = whoop
     ? `Whoop сегодня: восстановление ${whoop.recovery}%, сон ${whoop.sleep?.hoursSlept} ч, HRV ${whoop.hrv} мс, пульс покоя ${whoop.rhr}.`
     : ''

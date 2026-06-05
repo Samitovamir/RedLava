@@ -21,7 +21,7 @@ function labsFlagged() {
     const st = markerStatus(v, m.min, m.max)
     if (st !== 'ok') flagged.push(`${m.name} ${v} ${m.unit} (норма ${rangeText(m.min, m.max)}, ${STATUS_INFO[st].label})`)
   }))
-  return flagged
+  return { flagged, hasData: Object.keys(hist).length > 0 }
 }
 
 export function buildSiteSnapshot({ events = [], history = [], facts = [] } = {}) {
@@ -30,6 +30,7 @@ export function buildSiteSnapshot({ events = [], history = [], facts = [] } = {}
   const iso = d => `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
   const today = iso(now)
   const weekday = WD[now.getDay()]
+  const hhmm = `${p(now.getHours())}:${p(now.getMinutes())}`
 
   // Готовое сопоставление «день недели → точная дата» на 11 дней вперёд,
   // чтобы ИИ не ошибался при словах «завтра», «в пятницу», «через неделю».
@@ -84,13 +85,15 @@ export function buildSiteSnapshot({ events = [], history = [], facts = [] } = {}
       `Сон ${w.sleep.hoursSlept} ч из ${w.sleep.hoursNeeded} нужных (${w.sleep.performance}%).`
     : 'Whoop не подключён. Данных о восстановлении, сне, HRV и пульсе НЕТ. Не придумывай их — если спросят, скажи, что нужно подключить Whoop.'
 
-  const flagged = labsFlagged()
-  const labs = flagged.length ? `Вне нормы: ${flagged.join('; ')}. Остальные показатели в норме.` : 'все показатели в норме.'
+  const { flagged, hasData } = labsFlagged()
+  const labs = !hasData
+    ? 'Анализы крови пока не загружены (подключите Яндекс.Диск с файлами). Не придумывай показатели.'
+    : flagged.length ? `Вне нормы: ${flagged.join('; ')}. Остальные показатели в норме.` : 'все показатели в норме.'
 
   const recent = history.slice(0, 6).map(h => `${h.datetime} ${h.title}`).join('\n') || 'нет'
   const factsBlock = facts.length ? facts.map(f => `- ${f.text || f}`).join('\n') : 'пока ничего не запомнено'
 
-  return `СЕГОДНЯ: ${today} (${weekday})
+  return `СЕГОДНЯ: ${today} (${weekday}), сейчас ${hhmm} по Москве
 
 КАЛЕНДАРЬ (бери точные даты отсюда, не вычисляй в уме):
 ${calBlock}

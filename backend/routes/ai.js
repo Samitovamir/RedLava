@@ -7,6 +7,52 @@ function getClient() {
   return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 }
 
+// --- Яндекс.Карты: адрес → координаты, и время в пути (для вопросов «во сколько выезжать») ---
+const YA_GEO_KEY = () => process.env.YANDEX_GEOCODER_KEY || process.env.YANDEX_MAPS_API_KEY || ''
+const YA_ROUTER_KEY = () => process.env.YANDEX_ROUTER_KEY || process.env.YANDEX_MAPS_API_KEY || ''
+
+async function yaGeocode(address) {
+  const key = YA_GEO_KEY(); if (!key || !address) return null
+  try {
+    const u = `https://geocode-maps.yandex.ru/1.x/?apikey=${key}&format=json&results=1&lang=ru_RU&geocode=${encodeURIComponent(address)}`
+    const r = await fetch(u); if (!r.ok) return null
+    const d = await r.json()
+    const obj = d?.response?.GeoObjectCollection?.featureMember?.[0]?.GeoObject
+    if (!obj) return null
+    const [lon, lat] = obj.Point.pos.split(' ').map(Number)
+    return { lat, lon, name: obj.metaDataProperty?.GeocoderMetaData?.text || address }
+  } catch { return null }
+}
+
+function haversineKm(a, b) {
+  const R = 6371, toR = x => x * Math.PI / 180
+  const dLat = toR(b.lat - a.lat), dLon = toR(b.lon - a.lon)
+  const s = Math.sin(dLat / 2) ** 2 + Math.cos(toR(a.lat)) * Math.cos(toR(b.lat)) * Math.sin(dLon / 2) ** 2
+  return 2 * R * Math.asin(Math.sqrt(s))
+}
+
+async function yaRouteEta(fromAddr, toAddr) {
+  if (!YA_GEO_KEY()) return { ok: false, reason: 'no_key' }
+  const from = await yaGeocode(fromAddr), to = await yaGeocode(toAddr)
+  if (!from || !to) return { ok: false, reason: 'geocode' }
+  const rkey = YA_ROUTER_KEY()
+  if (rkey) {
+    try {
+      const u = `https://api.routing.yandex.net/v2/distancematrix?apikey=${rkey}&origins=${from.lat},${from.lon}&destinations=${to.lat},${to.lon}&mode=driving&departure_time=now`
+      const r = await fetch(u)
+      if (r.ok) {
+        const cell = (await r.json())?.rows?.[0]?.elements?.[0]
+        const sec = cell?.duration?.value ?? cell?.duration
+        const dist = cell?.distance?.value
+        if (sec) return { ok: true, etaMin: Math.round(sec / 60), distanceKm: dist ? Math.round(dist / 1000) : Math.round(haversineKm(from, to)), traffic: true, from: from.name, to: to.name }
+      }
+    } catch { /* ignore — упадём в оценку */ }
+  }
+  // Фолбэк без ключа маршрутизатора: оценка по прямой
+  const km = haversineKm(from, to) * 1.35
+  return { ok: true, etaMin: Math.round(km / 42 * 60), distanceKm: Math.round(km), traffic: false, approx: true, from: from.name, to: to.name }
+}
+
 // --- Предохранитель: лимиты, чтобы случайно не потратить все токены ---
 const LIMITS = {
   perMin: Number(process.env.AI_LIMIT_PER_MIN) || 15,
@@ -133,7 +179,7 @@ const EVENT_TOOLS = [
   },
   {
     name: 'remember_fact',
-    description: 'Запомнить НАДОЛГО важный устойчивый факт или предпочтение об владельце (например «не ставить дела после 21:00», «не любит созвоны по утрам», «аллергия на пыльцу»). Используй, когда он сообщает что-то постоянное о себе. Не запоминай разовые/сиюминутные вещи.',
+    description: 'Запомнить НАДОЛГО важный устойчивый факт или предпочтение об владельце (например «не ставить дела после 21:00», «не любит созвоны по утрам», «аллергия на пыльцу», «домашний адрес: …»). Используй, когда он сообщает что-то постоянное о себе. Не запоминай разовые/сиюминутные вещи.',
     input_schema: {
       type: 'object',
       properties: { fact: { type: 'string', description: 'Короткая формулировка факта/предпочтения' } },
@@ -141,6 +187,20 @@ const EVENT_TOOLS = [
     }
   }
 ]
+
+// Серверный инструмент: время в пути (выполняется на бэкенде, результат уходит обратно модели)
+const ROUTE_TOOL = {
+  name: 'route_eta',
+  description: 'Узнать время в пути на автомобиле между двумя адресами/местами в России с учётом пробок. Используй для вопросов «во сколько выезжать», «сколько ехать», «успею ли». Адреса можно словами («Внуково», «Шереметьево», домашний адрес владельца из памяти).',
+  input_schema: {
+    type: 'object',
+    properties: {
+      from: { type: 'string', description: 'Откуда. Если не названо — домашний адрес владельца из ПАМЯТИ (если он там есть).' },
+      to: { type: 'string', description: 'Куда (адрес или место).' }
+    },
+    required: ['from', 'to']
+  }
+}
 
 // Ассистент с инструментами: умеет реально создавать/переносить/удалять события.
 // События живут на клиенте, поэтому backend собирает список действий и возвращает их фронту.
@@ -160,8 +220,14 @@ router.post('/agent', async (req, res) => {
     `ЧТО ТЫ УМЕЕШЬ (инструменты):\n` +
     `• Создавать события (create_event) — встречи, звонки, дела, напоминания, тренировки.\n` +
     `• Переносить события (move_event) и удалять (delete_event).\n` +
-    `• Запоминать факты о нём надолго (remember_fact) — когда он сообщает устойчивое предпочтение.\n` +
+    `• Запоминать факты о нём надолго (remember_fact) — когда он сообщает устойчивое предпочтение или домашний адрес.\n` +
+    `• Узнавать время в пути на машине с пробками (route_eta) — между адресами/местами в России.\n` +
     `Если просят то, чего пока нет (письмо, WhatsApp, поиск в интернете) — вежливо скажи, что появится скоро, и предложи, что можешь сейчас.\n\n` +
+    `ПОЕЗДКИ И АЭРОПОРТ: когда спрашивают во сколько выезжать (например в аэропорт):\n` +
+    `• Узнай время в пути через route_eta. Откуда — домашний адрес владельца из ПАМЯТИ; если адреса в памяти нет, попроси сказать его один раз (и предложи запомнить).\n` +
+    `• Заложи запас на аэропорт: внутренний рейс ~1.5 часа до вылета, международный ~2.5 часа.\n` +
+    `• Время выезда = время вылета − запас на аэропорт − время в пути − резерв 15 минут.\n` +
+    `• Дай конкретное время выезда. Опирайся на текущее время по Москве из снимка.\n\n` +
     `ИСТОЧНИК ИСТИНЫ: существующие события бери ТОЛЬКО из раздела РАСПИСАНИЕ снимка. Раздел ЖУРНАЛ ДЕЙСТВИЙ — это история, НЕ текущее расписание; не считай событие существующим и время занятым, если этого события нет в РАСПИСАНИИ. Никогда не выдумывай событий, которых нет в РАСПИСАНИИ.\n\n` +
     `КАК ПОНИМАТЬ ВЛАДЕЛЬЦА:\n` +
     `• Он пишет по-русски, простыми и разными словами, может делать ОПЕЧАТКИ — всё равно пойми смысл и выполни.\n` +
@@ -193,7 +259,7 @@ router.post('/agent', async (req, res) => {
         model: 'claude-sonnet-4-6',
         max_tokens: 1024,
         system,
-        tools: EVENT_TOOLS,
+        tools: [...EVENT_TOOLS, ROUTE_TOOL],
         messages
       })
       const textPart = resp.content.filter(b => b.type === 'text').map(b => b.text).join(' ').trim()
@@ -202,8 +268,20 @@ router.post('/agent', async (req, res) => {
         const toolResults = []
         for (const block of resp.content) {
           if (block.type === 'tool_use') {
-            actions.push({ name: block.name, input: block.input })
-            toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: 'Выполнено успешно.' })
+            if (block.name === 'route_eta') {
+              // Серверный инструмент: считаем здесь и возвращаем результат модели
+              const eta = await yaRouteEta(block.input?.from, block.input?.to)
+              let content
+              if (!eta.ok && eta.reason === 'no_key') content = 'Маршруты пока недоступны: на сервере не задан ключ Яндекс.Карт.'
+              else if (!eta.ok) content = 'Не удалось определить адрес. Попроси уточнить адрес.'
+              else content = `Время в пути примерно ${eta.etaMin} мин (~${eta.distanceKm} км)` +
+                (eta.traffic ? ' с учётом пробок' : eta.approx ? ' (грубая оценка без точных пробок)' : '') +
+                `. Откуда: ${eta.from}. Куда: ${eta.to}.`
+              toolResults.push({ type: 'tool_result', tool_use_id: block.id, content })
+            } else {
+              actions.push({ name: block.name, input: block.input })
+              toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: 'Выполнено успешно.' })
+            }
           }
         }
         messages.push({ role: 'assistant', content: resp.content })
