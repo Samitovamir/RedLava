@@ -1,0 +1,388 @@
+import { useState, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
+import AIWorkZone from '../components/AIWorkZone.jsx'
+import DaySchedule from '../components/DaySchedule.jsx'
+import DaySummary from '../components/DaySummary.jsx'
+import { getQuoteOfDay } from '../utils/quotes.js'
+
+const FALL_STEP = 0.028          // задержка между падением соседних символов/единиц (сек)
+const FALL_EASE = [0.45, 0, 0.9, 0.4] // ease-in — имитация гравитации
+
+// Текст, падающий посимвольно. start — глобальный индекс первого символа.
+function FallText({ text, fallen, start, className, tag = 'span' }) {
+  const Tag = motion[tag]
+  return (
+    <Tag className={className} aria-label={text}>
+      {[...text].map((ch, i) => (
+        <motion.span
+          key={i}
+          style={{ display: 'inline-block', whiteSpace: 'pre' }}
+          animate={fallen
+            ? { y: '110vh', x: Math.random() * 50 - 25, rotate: Math.random() * 100 - 50, opacity: 0,
+                transition: { duration: 1.1, delay: (start + i) * FALL_STEP, ease: FALL_EASE } }
+            : { y: 0, x: 0, rotate: 0, opacity: 1, transition: { duration: 0.3 } }}
+        >
+          {ch}
+        </motion.span>
+      ))}
+    </Tag>
+  )
+}
+
+function getGreeting() {
+  const hour = new Date().getHours()
+  if (hour >= 5 && hour < 12) return 'Доброе утро'
+  if (hour >= 12 && hour < 17) return 'Добрый день'
+  if (hour >= 17 && hour < 22) return 'Добрый вечер'
+  return 'Доброй ночи'
+}
+
+function formatDate() {
+  const d = new Date()
+  const days = ['воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота']
+  const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
+  return `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]}`
+}
+
+const QUICK_CARDS = [
+  {
+    label: 'Следующее событие',
+    value: 'Звонок с командой',
+    sub: 'через 40 минут · 15:00',
+    color: 'var(--accent)',
+    scrollTo: true,
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+      </svg>
+    )
+  },
+  {
+    label: 'Последняя тренировка',
+    value: 'Бег · 8.2 км',
+    sub: 'сегодня · 42 мин · ❤ 148',
+    color: 'var(--orange)',
+    link: '/sport',
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>
+      </svg>
+    )
+  },
+  {
+    label: 'Recovery Whoop',
+    value: '78%',
+    sub: 'хорошее восстановление',
+    color: 'var(--green)',
+    progress: 78,
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+      </svg>
+    )
+  },
+  {
+    label: 'Сон',
+    value: '7ч 24м',
+    sub: 'эффективность 91%',
+    color: 'var(--accent)',
+    progress: 91,
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      </svg>
+    )
+  }
+]
+
+export default function Home() {
+  const [fallen, setFallen] = useState(false)
+  const scheduleRef = useRef(null)
+  const navigate = useNavigate()
+  const quote = getQuoteOfDay()
+
+  const scrollToSchedule = () => {
+    const el = scheduleRef.current
+    const container = el?.closest('.page-content')
+    if (!el || !container) return
+    const target = container.scrollTop + (el.getBoundingClientRect().top - container.getBoundingClientRect().top) - 16
+    container.scrollTo({ top: target, behavior: 'smooth' })
+  }
+
+  // Тексты и их позиции в общей последовательности падения (сверху вниз)
+  const dateStr = formatDate()
+  const greetStr = `${getGreeting()}, владелец`
+  const quoteStr = quote.text
+  const authorStr = `— ${quote.author}`
+
+  const iDate = 0
+  const iGreet = iDate + dateStr.length
+  const iBtn = iGreet + greetStr.length
+  const iQuote = iBtn + 1
+  const iAuthor = iQuote + quoteStr.length
+  const iCards = iAuthor + authorStr.length     // быстрые карточки
+  const iAIWZ = iCards + QUICK_CARDS.length      // рабочая зона
+  const iGrid = iAIWZ + 1                        // расписание + сводка
+  const iLast = iGrid + 2
+  const overlayDelay = (iLast + 2) * FALL_STEP
+
+  // падение крупной единицы (карточка/блок) по её индексу в последовательности
+  const unitFall = (idx) => fallen
+    ? { y: '120vh', rotate: idx % 2 ? 8 : -8, opacity: 0,
+        transition: { duration: 1.1, delay: idx * FALL_STEP, ease: FALL_EASE } }
+    : { y: 0, rotate: 0, opacity: 1, transition: { duration: 0.4 } }
+
+  return (
+    <div className="home-page">
+      <div className="home-header">
+        <div className="header-left">
+          <FallText text={dateStr} fallen={fallen} start={iDate} className="home-date" />
+          <FallText text={greetStr} fallen={fallen} start={iGreet} className="greeting" tag="h1" />
+          <motion.button className="huli-btn" onClick={() => setFallen(f => !f)} animate={unitFall(iBtn)}>хули-ули</motion.button>
+        </div>
+        <div className="quote-of-day">
+          <FallText text={quoteStr} fallen={fallen} start={iQuote} className="quote-text" tag="p" />
+          <FallText text={authorStr} fallen={fallen} start={iAuthor} className="quote-author" />
+        </div>
+      </div>
+
+      <div className="quick-cards">
+        {QUICK_CARDS.map((c, i) => (
+          <motion.div
+            key={c.label}
+            className={`card quick-card ${c.scrollTo || c.link ? 'clickable' : ''}`}
+            animate={unitFall(iCards + i)}
+            whileHover={fallen ? undefined : { y: -4 }}
+            onClick={c.scrollTo ? scrollToSchedule : c.link ? () => navigate(c.link) : undefined}
+          >
+            <div className="quick-card-top">
+              <span className="quick-card-label">{c.label}</span>
+              <span className="quick-card-icon" style={{ color: c.color, background: `color-mix(in srgb, ${c.color} 14%, transparent)` }}>
+                {c.icon}
+              </span>
+            </div>
+            <span className="quick-card-value">{c.value}</span>
+            <span className="quick-card-sub">{c.sub}</span>
+            {c.progress != null && (
+              <div className="quick-progress">
+                <motion.div
+                  className="quick-progress-fill"
+                  style={{ background: c.color }}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${c.progress}%` }}
+                  transition={{ duration: 0.8, delay: 0.2 + 0.05 * i, ease: 'easeOut' }}
+                />
+              </div>
+            )}
+          </motion.div>
+        ))}
+      </div>
+
+      <motion.div animate={unitFall(iAIWZ)}>
+        <AIWorkZone />
+      </motion.div>
+
+      <div className="home-grid" ref={scheduleRef} style={{ scrollMarginTop: 16 }}>
+        <motion.div animate={unitFall(iGrid)}>
+          <DaySchedule />
+        </motion.div>
+        <motion.div animate={unitFall(iGrid + 1)}>
+          <DaySummary />
+        </motion.div>
+      </div>
+
+      {/* Эффект хули-ули: надпись на весь экран + кнопка возврата (после падения) */}
+      <AnimatePresence>
+        {fallen && (
+          <motion.div
+            className="huli-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, transition: { duration: 0.3 } }}
+            transition={{ duration: 0.8, delay: overlayDelay }}
+          >
+            <motion.h2
+              initial={{ scale: 0.85, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.8, delay: overlayDelay + 0.2, ease: 'backOut' }}
+            >
+              Что посеешь то пожнёшь
+            </motion.h2>
+            <motion.button
+              className="huli-btn overlay"
+              onClick={() => setFallen(false)}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: overlayDelay + 0.5 }}
+            >
+              хули-ули
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <style>{`
+        .home-page {
+          display: flex;
+          flex-direction: column;
+          gap: 28px;
+          max-width: 1400px;
+        }
+        .home-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 32px;
+        }
+        .header-left { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+
+        .quote-of-day {
+          max-width: 420px;
+          text-align: right;
+          padding-top: 8px;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+        .quote-text {
+          font-size: 15px;
+          line-height: 1.55;
+          color: var(--foreground);
+          font-style: italic;
+          font-family: var(--font-serif), Georgia, serif;
+        }
+        .quote-author {
+          font-size: 13px;
+          color: var(--muted-foreground);
+          font-weight: 500;
+        }
+
+        .huli-btn {
+          margin-top: 8px;
+          font-size: 12px;
+          font-weight: 600;
+          color: var(--muted-foreground);
+          background: var(--bg-secondary);
+          border: 1px solid var(--border);
+          border-radius: 16px;
+          padding: 5px 14px;
+          cursor: pointer;
+          font-family: inherit;
+          transition: all 0.18s;
+        }
+        .huli-btn:hover { color: var(--accent); border-color: var(--border-hover); }
+        .huli-btn.overlay {
+          margin-top: 24px;
+          font-size: 14px;
+          padding: 10px 24px;
+          background: var(--accent);
+          color: var(--accent-foreground);
+          border-color: var(--accent);
+        }
+        .huli-btn.overlay:hover { opacity: 0.9; }
+
+        .huli-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 400;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 0;
+          pointer-events: auto;
+          background: radial-gradient(800px circle at 50% 50%, rgba(30,27,24,0.4), rgba(30,27,24,0.85));
+          backdrop-filter: blur(2px);
+        }
+        .huli-overlay h2 {
+          font-size: clamp(32px, 6vw, 72px);
+          font-weight: 800;
+          letter-spacing: -0.02em;
+          text-align: center;
+          background: linear-gradient(135deg, var(--foreground), var(--accent));
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
+          padding: 0 24px;
+        }
+        .home-date {
+          font-size: 13px;
+          color: var(--muted);
+          text-transform: capitalize;
+          font-weight: 500;
+        }
+        .greeting {
+          font-size: 36px;
+          font-weight: 700;
+          color: var(--foreground);
+          letter-spacing: -0.025em;
+          line-height: 1.1;
+        }
+        .quick-cards {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 16px;
+        }
+        .quick-card {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          cursor: default;
+          transition: box-shadow 0.2s, border-color 0.2s;
+        }
+        .quick-card:hover {
+          box-shadow: var(--shadow-lift);
+          border-color: var(--border-hover);
+        }
+        .quick-card.clickable { cursor: pointer; }
+        .quick-card-top {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 6px;
+        }
+        .quick-card-label {
+          font-size: 11px;
+          color: var(--muted);
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.07em;
+        }
+        .quick-card-icon {
+          width: 34px;
+          height: 34px;
+          border-radius: 10px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .quick-card-value {
+          font-size: 22px;
+          font-weight: 700;
+          color: var(--foreground);
+          letter-spacing: -0.01em;
+        }
+        .quick-card-sub {
+          font-size: 12.5px;
+          color: var(--muted);
+        }
+        .quick-progress {
+          margin-top: 8px;
+          height: 5px;
+          background: var(--bg-secondary);
+          border-radius: 3px;
+          overflow: hidden;
+        }
+        .quick-progress-fill { height: 100%; border-radius: 3px; }
+
+        .home-grid {
+          display: grid;
+          grid-template-columns: 1.8fr 1fr;
+          gap: 16px;
+          align-items: stretch;
+        }
+      `}</style>
+    </div>
+  )
+}
