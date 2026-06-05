@@ -2,6 +2,10 @@ import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import ReadingOverlay from './ReadingOverlay.jsx'
 import { fetchImagesForQueries } from '../utils/wikiImages.js'
+import { useSiteSnapshot } from '../hooks/useSiteSnapshot.js'
+import { useEvents } from '../context/EventsContext.jsx'
+import { useMemoryFacts } from '../context/MemoryContext.jsx'
+import { useHistory } from '../context/HistoryContext.jsx'
 
 /*
   Рабочая зона ИИ на главной.
@@ -15,7 +19,7 @@ import { fetchImagesForQueries } from '../utils/wikiImages.js'
 */
 
 export default function AIWorkZone() {
-  const [mode, setMode] = useState('file') // 'file' | 'text'
+  const [mode, setMode] = useState('text') // 'text' | 'file' — по умолчанию текстовая задача
   const [isDragging, setIsDragging] = useState(false)
   const [status, setStatus] = useState('idle') // 'idle' | 'processing' | 'result' | 'done'
   const [file, setFile] = useState(null)
@@ -26,6 +30,13 @@ export default function AIWorkZone() {
   const [reading, setReading] = useState(null) // { open, entries:[{q,text,images,loadingImages}], loading }
   const msgBackup = useRef(null)
   const fileInputRef = useRef(null)
+
+  // Снимок данных (расписание/спорт/здоровье/анализы) и инструменты — чтобы ИИ в рабочей зоне
+  // ВИДЕЛ календарь и реально выполнял задачи, как командная строка.
+  const snapshot = useSiteSnapshot()
+  const { applyAiActions } = useEvents()
+  const { addFact } = useMemoryFacts()
+  const { logAction } = useHistory()
 
   function handleDrop(e) {
     e.preventDefault()
@@ -59,6 +70,8 @@ export default function AIWorkZone() {
     if (!q) return
     setStatus('processing')
     const isMessage = /напиши|письмо|email|сообщени|ответь|ответ /i.test(q)
+    // Команда на расписание/память — создать/перенести/удалить событие, запомнить факт
+    const isCommand = /поставь|запиш|закин|добавь|напомн|назнач|перенес|сдвин|передвин|убер|удал|отмен|запомни|созда/i.test(q)
 
     if (isMessage) {
       const context =
@@ -68,7 +81,7 @@ export default function AIWorkZone() {
       try {
         const res = await fetch('/api/ai/chat', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: q, context })
+          body: JSON.stringify({ message: q, context, snapshot })
         })
         const data = await res.json()
         setResult({
@@ -84,7 +97,29 @@ export default function AIWorkZone() {
       return
     }
 
-    // Любознательный/информационный запрос — открываем «режим чтения» с памятью и картинками
+    if (isCommand) {
+      // Команда — идём в /agent (видит снимок, умеет инструменты), затем применяем действия
+      try {
+        const res = await fetch('/api/ai/agent', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: q, snapshot, context: 'Запрос из рабочей зоны на главном экране.' })
+        })
+        const data = await res.json()
+        const actions = data.actions || []
+        const eventActions = actions.filter(a => a.name !== 'remember_fact')
+        const memActions = actions.filter(a => a.name === 'remember_fact')
+        if (eventActions.length) applyAiActions(eventActions)
+        memActions.forEach(a => {
+          if (a.input?.fact) { addFact(a.input.fact); logAction({ actor: 'ai', type: 'task', title: `Запомнил: ${a.input.fact}` }) }
+        })
+        complete(data.reply || (actions.length ? 'Готово.' : 'Принято.'), '')
+      } catch {
+        complete('Нет связи с сервером.', 'Запустите backend с ключом ИИ.')
+      }
+      return
+    }
+
+    // Любознательный/информационный запрос (в т.ч. про его данные) — «режим чтения» со снимком
     reset() // рабочая зона за блюром снова чистая
     askRead(q, [])
   }
@@ -97,7 +132,7 @@ export default function AIWorkZone() {
     try {
       const res = await fetch('/api/ai/read', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: q, history })
+        body: JSON.stringify({ message: q, history, snapshot })
       })
       const data = await res.json()
       const entry = { q, text: data.text || 'Не удалось получить ответ.', images: [], loadingImages: !!(data.images?.length) }
@@ -173,15 +208,6 @@ export default function AIWorkZone() {
         {status === 'idle' && (
           <div className="awz-switch">
             <button
-              className={`awz-tab ${mode === 'file' ? 'active' : ''}`}
-              onClick={() => setMode('file')}
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
-              </svg>
-              Файл
-            </button>
-            <button
               className={`awz-tab ${mode === 'text' ? 'active' : ''}`}
               onClick={() => setMode('text')}
             >
@@ -189,6 +215,15 @@ export default function AIWorkZone() {
                 <line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="14" y2="18"/>
               </svg>
               Текстовая задача
+            </button>
+            <button
+              className={`awz-tab ${mode === 'file' ? 'active' : ''}`}
+              onClick={() => setMode('file')}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+              </svg>
+              Файл
             </button>
           </div>
         )}
