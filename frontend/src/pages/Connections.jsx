@@ -63,6 +63,29 @@ export default function Connections() {
   const [openForm, setOpenForm] = useState(null)
   const [form, setForm] = useState({ email: '', password: '' })
   const [notice, setNotice] = useState('')
+  const [resetOpen, setResetOpen] = useState(false)
+  const [resetPw, setResetPw] = useState('')
+  const [resetErr, setResetErr] = useState('')
+  const [resetBusy, setResetBusy] = useState(false)
+
+  // Полный сброс данных (пароль 9986): отвязывает сервисы и стирает локальные данные
+  async function submitReset(e) {
+    e.preventDefault()
+    if (resetPw.trim() !== '9986') { setResetErr('Неверный пароль'); return }
+    setResetBusy(true)
+    await Promise.all([
+      fetch('/api/calendar/disconnect', { method: 'POST' }).catch(() => {}),
+      fetch('/api/whoop/disconnect', { method: 'POST' }).catch(() => {}),
+      fetch('/api/garmin/disconnect', { method: 'POST' }).catch(() => {})
+    ])
+    try {
+      Object.keys(localStorage).forEach(k => {
+        if (k === 'albert-auth') return // вход не трогаем
+        if (k.startsWith('albert-') || k.startsWith('ai-sum')) localStorage.removeItem(k)
+      })
+    } catch { /* ignore */ }
+    window.location.reload()
+  }
 
   useEffect(() => {
     try { localStorage.setItem(STORE, JSON.stringify(conns)) } catch { /* ignore */ }
@@ -241,6 +264,30 @@ export default function Connections() {
         Все сервисы подключаются по-настоящему: данные появятся в разделах сразу после подключения.
       </p>
 
+      <div className="conn-reset">
+        {!resetOpen ? (
+          <button className="conn-reset-btn" onClick={() => { setResetOpen(true); setResetErr('') }}>
+            Сбросить все данные
+          </button>
+        ) : (
+          <form className="conn-reset-form" onSubmit={submitReset}>
+            <span className="muted">Пароль для сброса:</span>
+            <input
+              className="conn-reset-input" type="password" placeholder="Пароль"
+              value={resetPw} onChange={e => { setResetPw(e.target.value); setResetErr('') }}
+              autoFocus inputMode="numeric"
+            />
+            <button className="conn-reset-go" type="submit" disabled={resetBusy || !resetPw.trim()}>
+              {resetBusy ? 'Сбрасываю…' : 'Сбросить всё'}
+            </button>
+            <button type="button" className="conn-reset-cancel" onClick={() => { setResetOpen(false); setResetPw(''); setResetErr('') }}>
+              Отмена
+            </button>
+            {resetErr && <span className="conn-reset-err">{resetErr}</span>}
+          </form>
+        )}
+      </div>
+
       <style>{`
         .conn-page { display: flex; flex-direction: column; gap: 18px; max-width: 760px; padding-bottom: 24px; }
         .page-header { display: flex; align-items: baseline; gap: 12px; }
@@ -277,6 +324,30 @@ export default function Connections() {
         .conn-form-foot { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
         .conn-note { font-size: 12.5px; line-height: 1.4; flex: 1; min-width: 200px; }
         .conn-foot { font-size: 13px; margin-top: 4px; }
+        .conn-reset { margin-top: 8px; padding-top: 18px; border-top: 1px solid var(--border); }
+        .conn-reset-btn {
+          background: transparent; border: 1px solid var(--border); color: var(--muted-foreground);
+          border-radius: 11px; padding: 9px 16px; font-family: inherit; font-size: 13.5px; font-weight: 600;
+          cursor: pointer; transition: all 0.15s;
+        }
+        .conn-reset-btn:hover { color: var(--red); border-color: var(--red); }
+        .conn-reset-form { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .conn-reset-input {
+          background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px;
+          padding: 9px 14px; font-family: inherit; font-size: 14px; color: var(--foreground); outline: none; width: 140px;
+        }
+        .conn-reset-input:focus { border-color: var(--red); }
+        .conn-reset-go {
+          background: var(--red); color: #fff; border: none; border-radius: 10px;
+          padding: 9px 16px; font-family: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; transition: opacity 0.15s;
+        }
+        .conn-reset-go:hover:not(:disabled) { opacity: 0.9; }
+        .conn-reset-go:disabled { opacity: 0.5; cursor: default; }
+        .conn-reset-cancel {
+          background: transparent; border: 1px solid var(--border); color: var(--muted-foreground);
+          border-radius: 10px; padding: 9px 16px; font-family: inherit; font-size: 13.5px; cursor: pointer;
+        }
+        .conn-reset-err { font-size: 13px; color: var(--red); }
         @media (max-width: 560px) { .conn-row { flex-wrap: wrap; } .conn-action { width: 100%; } .conn-btn { width: 100%; } }
       `}</style>
     </div>
