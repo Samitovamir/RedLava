@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import FluidMenu from './components/FluidMenu.jsx'
-import AICommandBar from './components/AICommandBar.jsx'
 import { EventsProvider } from './context/EventsContext.jsx'
 import { HistoryProvider } from './context/HistoryContext.jsx'
 import { MemoryProvider } from './context/MemoryContext.jsx'
@@ -47,7 +46,6 @@ export default function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
-        <AICommandBar />
       </div>
     </BrowserRouter>
     </EventsProvider>

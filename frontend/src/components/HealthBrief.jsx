@@ -1,32 +1,42 @@
+import { useState, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useAiSummary } from '../hooks/useAiSummary.js'
-import { PANELS, INITIAL_REPORTS, buildHistory, markerStatus, STATUS_INFO, rangeText } from '../utils/labs.js'
+import MicButton from './MicButton.jsx'
+import {
+  PANELS, INITIAL_REPORTS, buildHistory, markerStatus, STATUS_INFO, rangeText, barGeom, fmtDate
+} from '../utils/labs.js'
 
 /*
   Большое окно на главной: ИИ коротко и без воды отмечает только важное по анализам
-  и здоровью и даёт конкретные советы. Кэшируется по данным здоровья (не по календарю),
-  чтобы не пересчитываться зря. Кнопка «обновить» — принудительный пересчёт.
+  и здоровью и даёт конкретные советы. Знает даты анализов (могут быть старыми) и
+  советует, когда пересдать. Не паникёр. Под текстом — мини-карточки упомянутых
+  показателей (шкала нормы, статус, тренд). Снизу — вопросы с полем ввода и диктовкой.
+  Выжимка кэшируется по данным здоровья (не по календарю).
 */
 
-// Сжатая сводка здоровья: отклонения в анализах + ключевые данные Whoop.
-// Это и ключ кэша: пересчёт только когда меняются именно эти данные.
-function buildHealthData() {
-  let reports = INITIAL_REPORTS
-  try { const s = localStorage.getItem('albert-labs'); if (s) reports = JSON.parse(s) } catch { /* ignore */ }
+function readReports() {
+  try { const s = localStorage.getItem('albert-labs'); if (s) return JSON.parse(s) } catch { /* ignore */ }
+  return INITIAL_REPORTS
+}
+function readWhoop() {
+  try { const s = localStorage.getItem('albert-whoop-live'); if (s) return JSON.parse(s) } catch { /* ignore */ }
+  return null
+}
+
+// Сжатая сводка здоровья с ДАТАМИ (и ключ кэша): отклонения + ключевые данные Whoop.
+function buildHealthData(reports, whoop) {
   const hist = buildHistory(reports)
-  const flagged = []
+  const flagged = [], normal = []
   PANELS.forEach(p => p.markers.forEach(m => {
     const h = hist[m.name]; if (!h) return
-    const v = h[h.length - 1].value
-    const st = markerStatus(v, m.min, m.max)
-    if (st !== 'ok') flagged.push(`${m.name} ${v} ${m.unit} (норма ${rangeText(m.min, m.max)}, ${STATUS_INFO[st].label})`)
+    const last = h[h.length - 1]
+    const st = markerStatus(last.value, m.min, m.max)
+    const line = `${m.name} ${last.value} ${m.unit} (норма ${rangeText(m.min, m.max)}, сдан ${fmtDate(last.date)})`
+    if (st !== 'ok') flagged.push(`${line} — ${STATUS_INFO[st].label}`)
+    else normal.push(m.name)
   }))
-  const labs = flagged.length
-    ? `Анализы крови вне нормы: ${flagged.join('; ')}.`
-    : 'Все показатели анализов крови в норме.'
-
-  let whoop = null
-  try { const s = localStorage.getItem('albert-whoop-live'); if (s) whoop = JSON.parse(s) } catch { /* ignore */ }
+  const labs = (flagged.length ? `Вне нормы: ${flagged.join('; ')}. ` : 'Все показатели крови в норме. ') +
+    (normal.length ? `В норме: ${normal.join(', ')}.` : '')
   const w = whoop
     ? `Whoop сегодня: восстановление ${whoop.recovery}%, сон ${whoop.sleep?.hoursSlept} ч, HRV ${whoop.hrv} мс, пульс покоя ${whoop.rhr}.`
     : ''
@@ -35,17 +45,76 @@ function buildHealthData() {
 
 const CONTEXT =
   'Ты — внимательный помощник владельца по здоровью (он пожилой человек без мед. образования). ' +
-  'По его анализам крови и данным Whoop дай ОЧЕНЬ короткую выжимку. ' +
-  'Строго 2–4 коротких предложения, только самое важное, что стоит знать прямо сейчас. ' +
-  'Назови показатели вне нормы простыми словами и дай конкретный практичный совет: ' +
-  'какой доп. анализ имеет смысл сдать, какой витамин или добавку обсудить, или что это не повод волноваться. ' +
-  'Без вступлений, без воды, без общих лекций про здоровый образ жизни. ' +
-  'Если всё в норме — скажи это одним предложением и спокойно подбодри. ' +
+  'По его анализам крови и данным Whoop дай ОЧЕНЬ короткую выжимку: 2–4 коротких предложения, только важное. ' +
+  'Назови показатели вне нормы простыми словами и дай конкретный практичный совет: какой витамин или добавку обсудить с врачом, какой доп. анализ имеет смысл. ' +
+  'УЧИТЫВАЙ ДАТЫ анализов: если данные старые, скажи об этом. Если показатель корректируется приёмом (витамин D, железо, B12) — посоветуй пересдать через 2–3 месяца. Если показатель стабильный и не критичный — не гони пересдавать, достаточно планово. ' +
+  'НЕ БУДЬ ПАНИКЁРОМ. Если отклонение небольшое, показатель не критичный или мало меняется со временем — спокойно скажи, что это не повод для волнения. Тревожный тон уместен только когда действительно важно. ' +
+  'Без вступлений, без воды, без общих лекций. Если всё в норме — скажи одним предложением и подбодри. ' +
   'Опирайся ТОЛЬКО на данные ниже, ничего не выдумывай. Ты не ставишь диагноз, а даёшь дружеский ориентир.'
 
+// Какие показатели ИИ упомянул в тексте (по основе слова, чтобы ловить склонения)
+function norm(s) { return s.toLowerCase().replace(/ё/g, 'е') }
+function mentionedMarkers(text) {
+  if (!text) return []
+  const t = norm(text)
+  const hits = []
+  PANELS.forEach(p => p.markers.forEach(m => {
+    const name = norm(m.name)
+    const core = name.length > 5 ? name.slice(0, name.length - 2) : name
+    if (t.includes(name) || t.includes(core)) hits.push(m)
+  }))
+  return hits
+}
+
+function MiniSpark({ values, color }) {
+  if (!values || values.length < 2) return null
+  const min = Math.min(...values), max = Math.max(...values), range = max - min || 1
+  const w = 54, h = 18, pad = 2
+  const pts = values.map((v, i) =>
+    `${(pad + (i / (values.length - 1)) * (w - 2 * pad)).toFixed(1)},${(pad + (1 - (v - min) / range) * (h - 2 * pad)).toFixed(1)}`
+  ).join(' ')
+  return <svg width={w} height={h} className="hb-spark"><polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+}
+
+function MarkerMini({ marker, hist }) {
+  const h = hist?.[marker.name]
+  if (!h?.length) return null
+  const last = h[h.length - 1]
+  const prev = h.length > 1 ? h[h.length - 2] : null
+  const st = markerStatus(last.value, marker.min, marker.max)
+  const c = STATUS_INFO[st].color
+  const g = barGeom(last.value, marker.min, marker.max)
+  return (
+    <div className="hb-marker">
+      <div className="hb-mk-top">
+        <span className="hb-mk-name">{marker.name}</span>
+        <span className="hb-mk-value" style={{ color: c }}>{last.value} <span className="hb-mk-unit muted">{marker.unit}</span></span>
+      </div>
+      <div className="hb-mk-bar">
+        <div className="hb-mk-band" style={{ left: `${g.bandLeft}%`, width: `${g.bandRight - g.bandLeft}%` }} />
+        <div className="hb-mk-dot" style={{ left: `${g.valuePos}%`, background: c }} />
+      </div>
+      <div className="hb-mk-bottom">
+        <span className="muted">норма {rangeText(marker.min, marker.max)} · сдан {fmtDate(last.date)}</span>
+        <span style={{ color: c }}>{STATUS_INFO[st].label}</span>
+      </div>
+      {prev && (
+        <div className="hb-mk-trend">
+          <MiniSpark values={h.map(x => x.value)} color="var(--muted-foreground)" />
+          <span className="muted">{last.value > prev.value ? '↑' : last.value < prev.value ? '↓' : '→'} было {prev.value} · {fmtDate(prev.date)}</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function HealthBrief() {
-  const healthData = buildHealthData()
-  const { text, loading, source, refresh } = useAiSummary({
+  const reports = readReports()
+  const whoop = readWhoop()
+  const hist = buildHistory(reports)
+  const healthData = buildHealthData(reports, whoop)
+
+  const { text, loading, refresh } = useAiSummary({
     id: 'health-brief',
     context: CONTEXT,
     message: 'Дай короткую выжимку по моим анализам и здоровью: что важно и что делать.',
@@ -53,49 +122,136 @@ export default function HealthBrief() {
     snapshot: healthData
   })
 
+  // показатели, упомянутые в выжимке (или, если ни один не назван, — те что вне нормы)
+  let markers = mentionedMarkers(text)
+  if (!markers.length) {
+    PANELS.forEach(p => p.markers.forEach(m => {
+      const h = hist[m.name]; if (!h) return
+      if (markerStatus(h[h.length - 1].value, m.min, m.max) !== 'ok') markers.push(m)
+    }))
+  }
+  // уникальные, максимум 4
+  markers = markers.filter((m, i, arr) => arr.findIndex(x => x.name === m.name) === i).slice(0, 4)
+
+  // Вопросы по здоровью
+  const [chat, setChat] = useState([])
+  const [input, setInput] = useState('')
+  const [busy, setBusy] = useState(false)
+  const endRef = useRef(null)
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [chat])
+
+  async function ask() {
+    const q = input.trim()
+    if (!q || busy) return
+    const prior = chat
+    setInput(''); setChat(prev => [...prev, { role: 'user', text: q }]); setBusy(true)
+    const context =
+      'Ты — внимательный помощник владельца по здоровью, спокойный и без паники. ' +
+      'Отвечай кратко и по делу на русском, простыми словами. Не ставь диагноз; при необходимости советуй обратиться к врачу. ' +
+      'Не нагнетай: мелкие или некритичные отклонения объясняй спокойно. Опирайся на данные ниже.'
+    try {
+      const res = await fetch('/api/ai/chat', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: q, context, snapshot: healthData, history: prior })
+      })
+      const data = await res.json()
+      setChat(prev => [...prev, { role: 'assistant', text: data.reply || 'Не удалось ответить.' }])
+    } catch {
+      setChat(prev => [...prev, { role: 'assistant', text: 'Нет связи с сервером.' }])
+    }
+    setBusy(false)
+  }
+
   return (
     <motion.div className="card health-brief">
       <div className="hb-head">
-        <div className="hb-title">
-          <span className="hb-badge">ИИ</span>
-          <span>Коротко о здоровье</span>
-        </div>
+        <div className="hb-title"><span className="hb-badge">ИИ</span><span>Коротко о здоровье</span></div>
         <button className="hb-refresh" onClick={refresh} disabled={loading} title="Пересчитать">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
           </svg>
         </button>
       </div>
-      {loading
-        ? <div className="hb-loading">Смотрю анализы…</div>
-        : <p className="hb-text">{text}</p>}
+
+      {loading ? <div className="hb-loading">Смотрю анализы…</div> : <p className="hb-text">{text}</p>}
+
+      {!loading && markers.length > 0 && (
+        <div className="hb-markers">
+          {markers.map(m => <MarkerMini key={m.name} marker={m} hist={hist} />)}
+        </div>
+      )}
+
+      <div className="hb-ask">
+        <div className="hb-ask-label">Есть вопросы по здоровью — спросите:</div>
+        {chat.length > 0 && (
+          <div className="hb-chat">
+            {chat.map((m, i) => (
+              <div key={i} className={`hb-msg ${m.role}`}>
+                <span className="hb-msg-role">{m.role === 'user' ? 'Вы' : 'ИИ'}</span>
+                <span className="hb-msg-text">{m.text}</span>
+              </div>
+            ))}
+            {busy && <div className="hb-msg assistant"><span className="hb-msg-role">ИИ</span><span className="hb-msg-text muted">думает…</span></div>}
+            <div ref={endRef} />
+          </div>
+        )}
+        <div className="hb-ask-row">
+          <input
+            className="hb-input"
+            placeholder="Например: что попить при низком витамине D?"
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') ask() }}
+          />
+          <MicButton onText={t => setInput(prev => (prev ? prev.trim() + ' ' : '') + t)} />
+          <button className="hb-send" onClick={ask} disabled={busy || !input.trim()}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+          </button>
+        </div>
+      </div>
 
       <style>{`
-        .health-brief {
-          position: relative; overflow: hidden;
-          display: flex; flex-direction: column; gap: 12px;
-          padding: 20px 22px;
-        }
-        .health-brief::before {
-          content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%;
-          background: var(--green);
-        }
+        .health-brief { position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 14px; padding: 20px 22px; }
+        .health-brief::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--green); }
         .hb-head { display: flex; align-items: center; justify-content: space-between; }
         .hb-title { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 700; color: var(--foreground); }
-        .hb-badge {
-          font-size: 11px; font-weight: 700; color: var(--accent-foreground);
-          background: var(--accent); padding: 2px 8px; border-radius: 8px;
-        }
-        .hb-refresh {
-          width: 32px; height: 32px; border-radius: 9px;
-          background: var(--bg-secondary); border: 1px solid var(--border);
-          color: var(--muted); cursor: pointer; display: flex; align-items: center; justify-content: center;
-          transition: all 0.15s;
-        }
+        .hb-badge { font-size: 11px; font-weight: 700; color: var(--accent-foreground); background: var(--accent); padding: 2px 8px; border-radius: 8px; }
+        .hb-refresh { width: 32px; height: 32px; border-radius: 9px; background: var(--bg-secondary); border: 1px solid var(--border); color: var(--muted); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
         .hb-refresh:hover:not(:disabled) { color: var(--green); border-color: var(--border-hover); }
         .hb-refresh:disabled { opacity: 0.5; cursor: default; }
         .hb-loading { font-size: 15px; color: var(--muted); }
         .hb-text { font-size: 17px; line-height: 1.6; color: var(--foreground); white-space: pre-wrap; }
+
+        .hb-markers { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; padding-top: 4px; }
+        .hb-marker { display: flex; flex-direction: column; gap: 6px; background: var(--bg-secondary); border-radius: 12px; padding: 12px 14px; }
+        .hb-mk-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+        .hb-mk-name { font-size: 13.5px; font-weight: 600; color: var(--foreground); }
+        .hb-mk-value { font-size: 16px; font-weight: 700; }
+        .hb-mk-unit { font-size: 11px; font-weight: 500; }
+        .hb-mk-bar { position: relative; height: 7px; background: var(--bg-primary); border-radius: 4px; }
+        .hb-mk-band { position: absolute; top: 0; height: 100%; background: color-mix(in srgb, var(--green) 30%, transparent); border-radius: 4px; }
+        .hb-mk-dot { position: absolute; top: 50%; width: 11px; height: 11px; border-radius: 50%; transform: translate(-50%, -50%); border: 2px solid var(--bg-secondary); }
+        .hb-mk-bottom { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; }
+        .hb-mk-trend { display: flex; align-items: center; gap: 8px; font-size: 11px; }
+
+        .hb-ask { display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--border); padding-top: 14px; }
+        .hb-ask-label { font-size: 13px; color: var(--muted); }
+        .hb-chat { display: flex; flex-direction: column; gap: 10px; max-height: 260px; overflow-y: auto; }
+        .hb-msg { display: flex; gap: 10px; align-items: flex-start; }
+        .hb-msg-role { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; min-width: 26px; color: var(--muted); padding-top: 3px; }
+        .hb-msg.assistant .hb-msg-role { color: var(--accent); }
+        .hb-msg-text { font-size: 16px; line-height: 1.55; color: var(--foreground); white-space: pre-wrap; }
+        .hb-ask-row { display: flex; align-items: center; gap: 10px; }
+        .hb-input { flex: 1; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 11px 14px; font-family: inherit; font-size: 15px; color: var(--foreground); outline: none; transition: border-color 0.15s; }
+        .hb-input:focus { border-color: var(--accent); }
+        .hb-input::placeholder { color: var(--muted); }
+        .hb-send { width: 38px; height: 38px; flex-shrink: 0; border-radius: 11px; background: var(--accent); color: var(--accent-foreground); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: opacity 0.15s; }
+        .hb-send:hover:not(:disabled) { opacity: 0.9; }
+        .hb-send:disabled { opacity: 0.4; cursor: default; }
+
+        @media (max-width: 620px) { .hb-markers { grid-template-columns: 1fr; } }
       `}</style>
     </motion.div>
   )
