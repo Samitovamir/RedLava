@@ -48,6 +48,7 @@ function mapActivity(a) {
   const isRun = /run/.test(typeKey)
   const isCycle = /cycl|bik/.test(typeKey)
   return {
+    id: a.activityId || null,
     type: typeKey,
     title: a.activityName || TYPE_RU[typeKey] || 'Тренировка',
     label: TYPE_RU[typeKey] || typeKey,
@@ -134,6 +135,77 @@ router.get('/data', requireAuth, async (_req, res) => {
     })
   } catch (err) {
     res.json({ connected: true, error: String(err?.message || '').slice(0, 120), garmin: null })
+  }
+})
+
+// Подробности одной тренировки: сплиты по км + тайм-серии (пульс/темп/высота/мощность/каденс) + GPS-трек
+const ACT_BASE = 'https://connectapi.garmin.com/activity-service/activity/'
+
+router.get('/activity/:id', requireAuth, async (req, res) => {
+  const t = await kvGet(TOKEN_KEY)
+  if (!t?.oauth2) return res.json({ connected: false })
+  const id = req.params.id
+  try {
+    const c = clientFromToken(t)
+
+    // Сплиты (круги/километры)
+    let splits = []
+    try {
+      const sp = await c.client.get(`${ACT_BASE}${id}/splits`)
+      const laps = sp?.lapDTOs || []
+      splits = laps.map((l, i) => ({
+        index: i + 1,
+        distanceKm: l.distance ? round(l.distance / 1000, 2) : null,
+        durationSec: l.duration ? Math.round(l.duration) : null,
+        pace: paceFromSpeed(l.averageSpeed),
+        speedKmh: l.averageSpeed ? round(l.averageSpeed * 3.6, 1) : null,
+        avgHr: l.averageHR ? Math.round(l.averageHR) : null,
+        maxHr: l.maxHR ? Math.round(l.maxHR) : null,
+        elevationGain: l.elevationGain != null ? Math.round(l.elevationGain) : null,
+        avgPower: l.averagePower ? Math.round(l.averagePower) : null,
+        cadence: l.averageRunCadence ? Math.round(l.averageRunCadence) : null
+      }))
+    } catch { /* ignore */ }
+
+    // Тайм-серии + трек
+    let series = null, route = null
+    try {
+      const det = await c.client.get(`${ACT_BASE}${id}/details`, { params: { maxChartSize: 250, maxPolylineSize: 250 } })
+      const idx = {}
+      ;(det.metricDescriptors || []).forEach(m => { idx[m.key] = m.metricsIndex })
+      const rows = det.activityDetailMetrics || []
+      const col = (row, key) => { const i = idx[key]; return i == null ? null : row.metrics[i] }
+      const step = Math.max(1, Math.floor(rows.length / 120))   // прореживаем до ~120 точек
+      const dist = [], hr = [], speed = [], elev = [], power = [], cad = []
+      for (let i = 0; i < rows.length; i += step) {
+        const r = rows[i]
+        dist.push(col(r, 'sumDistance'))
+        hr.push(col(r, 'directHeartRate'))
+        speed.push(col(r, 'directSpeed'))
+        elev.push(col(r, 'directElevation'))
+        power.push(col(r, 'directPower'))
+        cad.push(col(r, 'directRunCadence') ?? col(r, 'directDoubleCadence'))
+      }
+      const has = arr => arr.some(v => v != null && v !== 0)
+      series = {
+        distanceM: dist,
+        hr: has(hr) ? hr : null,
+        speed: has(speed) ? speed : null,
+        elevation: has(elev) ? elev : null,
+        power: has(power) ? power : null,
+        cadence: has(cad) ? cad : null
+      }
+      const poly = det.geoPolylineDTO?.polyline
+      if (poly?.length) {
+        const pstep = Math.max(1, Math.floor(poly.length / 200))
+        route = []
+        for (let i = 0; i < poly.length; i += pstep) route.push([poly[i].lat, poly[i].lon])
+      }
+    } catch { /* ignore */ }
+
+    res.json({ connected: true, id, splits, series, route })
+  } catch (err) {
+    res.json({ connected: true, error: String(err?.message || '').slice(0, 150) })
   }
 })
 

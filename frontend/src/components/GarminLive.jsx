@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import WorkoutModal from './WorkoutModal.jsx'
 
 /*
   Реальные данные Garmin: шаги, пульс покоя, VO2max, объём за неделю,
@@ -58,6 +59,7 @@ function heroMetrics(w) {
 
 export default function GarminLive() {
   const [g, setG] = useState(readLive)
+  const [selected, setSelected] = useState(null)   // открытая тренировка (окно деталей)
 
   useEffect(() => {
     fetch('/api/garmin/data').then(r => r.json()).then(d => {
@@ -98,14 +100,17 @@ export default function GarminLive() {
       </div>
 
       {last && (
-        <motion.div className="card gl-hero"
+        <motion.div className={`card gl-hero ${last.id ? 'gl-clickable' : ''}`}
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.1 }}
+          whileHover={last.id ? { y: -3 } : undefined}
+          onClick={last.id ? () => setSelected(last) : undefined}
           style={{ '--hero-accent': accent }}>
           <div className="gl-hero-head">
             <div className="gl-hero-badge" style={{ color: accent, background: `color-mix(in srgb, ${accent} 16%, transparent)` }}>
               {last.label}
             </div>
             <span className="gl-hero-date muted">{fmtDate(last.date)} · последняя тренировка</span>
+            {last.id && <span className="gl-hero-cta" style={{ color: accent }}>подробнее →</span>}
           </div>
           <h3 className="gl-hero-title">{last.title}</h3>
           <div className="gl-hero-grid">
@@ -130,7 +135,8 @@ export default function GarminLive() {
             {workouts.map((w, i) => {
               const c = typeColor(w.type)
               return (
-                <div key={i} className="gl-row">
+                <div key={i} className={`gl-row ${w.id ? 'gl-clickable' : ''}`}
+                  onClick={w.id ? () => setSelected(w) : undefined}>
                   <span className="gl-row-dot" style={{ background: c }} />
                   <div className="gl-row-main">
                     <span className="gl-row-title">{w.title}</span>
@@ -151,8 +157,16 @@ export default function GarminLive() {
         )}
       </motion.div>
 
+      {selected && <WorkoutModal workout={selected} onClose={() => setSelected(null)} />}
+
       <style>{`
         .gl-page { display: flex; flex-direction: column; gap: 18px; max-width: 1400px; padding-bottom: 20px; }
+        .gl-clickable { cursor: pointer; }
+        .gl-hero.gl-clickable { transition: border-color 0.2s, box-shadow 0.2s; }
+        .gl-hero.gl-clickable:hover { border-color: var(--border-hover); box-shadow: var(--shadow-lift); }
+        .gl-hero-cta { margin-left: auto; font-size: 12.5px; font-weight: 600; }
+        .gl-row.gl-clickable { transition: background 0.15s; border-radius: 8px; padding-left: 10px; padding-right: 10px; margin: 0 -10px; }
+        .gl-row.gl-clickable:hover { background: var(--bg-secondary); }
         .page-header { display: flex; align-items: baseline; gap: 12px; }
         .page-header h2 { font-size: 24px; font-weight: 700; color: var(--foreground); }
 
