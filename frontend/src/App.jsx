@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import FluidMenu from './components/FluidMenu.jsx'
 import WhatsNew from './components/WhatsNew.jsx'
 import MailModal from './components/MailModal.jsx'
+import DemoBanner from './components/DemoBanner.jsx'
+import { isGuest } from './api/authFetch.js'
 import { EventsProvider } from './context/EventsContext.jsx'
 import { HistoryProvider } from './context/HistoryContext.jsx'
 import { MemoryProvider } from './context/MemoryContext.jsx'
@@ -17,8 +19,10 @@ import History from './pages/History.jsx'
 import Connections from './pages/Connections.jsx'
 
 export default function App() {
-  // Подтягиваем живые данные Whoop и Garmin в localStorage (для страниц и для ИИ)
+  // Подтягиваем живые данные Whoop и Garmin в localStorage (для страниц и для ИИ).
+  // Гость работает на демо-данных — реальные не запрашиваем (и не затираем демо).
   useEffect(() => {
+    if (isGuest()) return
     fetch('/api/whoop/data').then(r => r.json()).then(d => {
       try {
         if (d.connected && d.whoop) localStorage.setItem('albert-whoop-live', JSON.stringify(d.whoop))
@@ -41,6 +45,7 @@ export default function App() {
     <BrowserRouter>
       <div className="main-layout">
         <WhatsNew />
+        <DemoBanner />
         <MailModal />
         <FluidMenu />
         <main className="page-content">

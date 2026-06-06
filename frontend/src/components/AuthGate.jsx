@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { getToken, setToken, clearToken } from '../api/authFetch.js'
+import { getToken, setToken, clearToken, setRole } from '../api/authFetch.js'
+import { seedGuestDemo } from '../utils/demo.js'
 
 /*
   Ворота входа. Пока не введён правильный пароль — показываем экран входа,
@@ -9,6 +10,7 @@ import { getToken, setToken, clearToken } from '../api/authFetch.js'
 export default function AuthGate({ children }) {
   const [authed, setAuthed] = useState(false)
   const [checking, setChecking] = useState(true)
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -25,26 +27,31 @@ export default function AuthGate({ children }) {
     const t = getToken()
     if (!t) { setChecking(false); return }
     fetch('/api/auth/verify')
-      .then(r => { if (r.ok) setAuthed(true); else clearToken() })
+      .then(async r => {
+        if (r.ok) { const d = await r.json(); setRole(d.role); if (d.role === 'guest') seedGuestDemo(); setAuthed(true) }
+        else clearToken()  // токен недействителен — остаёмся на экране входа
+      })
       .catch(() => setAuthed(true)) // нет связи — доверяем токену, не блокируем
       .finally(() => setChecking(false))
   }, [])
 
   async function submit(e) {
     e.preventDefault()
-    if (!password.trim() || busy) return
+    if (!username.trim() || !password.trim() || busy) return
     setBusy(true); setError('')
     try {
       const r = await fetch('/api/auth/login', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password })
+        body: JSON.stringify({ username, password })
       })
       if (r.ok) {
         const d = await r.json()
         setToken(d.token)
+        setRole(d.role)
+        if (d.role === 'guest') seedGuestDemo({ force: true })  // свежий демо при входе
         setAuthed(true)
       } else if (r.status === 401) {
-        setError('Неверный пароль')
+        setError('Неверное имя или пароль')
       } else if (r.status === 503) {
         setError('Вход ещё не настроен на сервере.')
       } else {
@@ -64,19 +71,29 @@ export default function AuthGate({ children }) {
       <form className="auth-card" onSubmit={submit}>
         <div className="auth-logo">A</div>
         <h1 className="auth-title">Дашборд владельца</h1>
-        <p className="auth-sub">Личный кабинет. Введите пароль, чтобы войти.</p>
+        <p className="auth-sub">Личный кабинет. Введите имя и пароль, чтобы войти.</p>
+        <input
+          className="auth-input"
+          type="text"
+          placeholder="Имя"
+          autoCapitalize="off"
+          autoCorrect="off"
+          value={username}
+          onChange={e => setUsername(e.target.value)}
+          autoFocus
+        />
         <input
           className="auth-input"
           type="password"
           placeholder="Пароль"
           value={password}
           onChange={e => setPassword(e.target.value)}
-          autoFocus
         />
         {error && <div className="auth-error">{error}</div>}
-        <button className="auth-btn" type="submit" disabled={busy || !password.trim()}>
+        <button className="auth-btn" type="submit" disabled={busy || !username.trim() || !password.trim()}>
           {busy ? 'Проверяю…' : 'Войти'}
         </button>
+        <p className="auth-guest">Хотите просто посмотреть? Войдите как <b>guest</b> / <b>123</b> — увидите демо без личных данных.</p>
       </form>
 
       <style>{`
@@ -126,6 +143,8 @@ export default function AuthGate({ children }) {
         }
         .auth-btn:hover:not(:disabled) { opacity: 0.9; }
         .auth-btn:disabled { opacity: 0.5; cursor: default; }
+        .auth-guest { font-size: 12.5px; color: var(--muted, #9ca3af); text-align: center; line-height: 1.5; margin-top: 2px; }
+        .auth-guest b { color: var(--foreground, #e2e8f0); font-weight: 700; }
       `}</style>
     </div>
   )

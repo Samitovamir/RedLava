@@ -1,19 +1,18 @@
 import { Router } from 'express'
-import { expectedToken, requireAuth } from '../authGuard.js'
+import { tokenFor, roleForLogin, requireAuth } from '../authGuard.js'
 
 const router = Router()
 
-// Вход: проверяем пароль, отдаём токен для последующих запросов к API.
+// Вход: проверяем имя+пароль, отдаём токен и роль (albert | guest).
 router.post('/login', (req, res) => {
   if (!process.env.APP_PASSWORD) return res.status(503).json({ error: 'auth_not_configured' })
-  const { password } = req.body || {}
-  if (typeof password === 'string' && password.length > 0 && password === process.env.APP_PASSWORD) {
-    return res.json({ token: expectedToken() })
-  }
-  return res.status(401).json({ error: 'wrong_password' })
+  const { username, password } = req.body || {}
+  const role = roleForLogin(username, password)
+  if (!role) return res.status(401).json({ error: 'wrong_password' })
+  return res.json({ token: tokenFor(role), role })
 })
 
-// Проверка действующего токена (для тихого входа при открытии сайта).
-router.get('/verify', requireAuth, (_req, res) => res.json({ ok: true }))
+// Проверка действующего токена (для тихого входа при открытии сайта) — возвращаем роль.
+router.get('/verify', requireAuth, (req, res) => res.json({ ok: true, role: req.role }))
 
 export default router

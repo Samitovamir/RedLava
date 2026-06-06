@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect } from 'react'
 import { useHistory } from './HistoryContext.jsx'
 import { dayLabel } from '../utils/history.js'
 import { mskNow } from '../utils/time.js'
+import { isGuest } from '../api/authFetch.js'
 
 // Локальный ключ даты YYYY-MM-DD (без сдвига часового пояса)
 export function dateKey(d) {
@@ -61,7 +62,9 @@ export function EventsProvider({ children }) {
       })
       .catch(() => {})
   }
-  useEffect(() => { syncFromGoogle() }, [])
+  // Гость работает на демо-событиях (из localStorage) — Google не синхронизируем,
+  // иначе пустой ответ для гостя затёр бы демо.
+  useEffect(() => { if (!isGuest()) syncFromGoogle() }, [])
 
   // Сравнить старое и новое расписание и записать действие пользователя в историю
   function diffAndLog(prev, next) {

@@ -2,6 +2,7 @@
 // чтобы не переписывать каждый fetch в коде. При 401 — сбрасываем и просим войти снова.
 
 const TOKEN_KEY = 'albert-auth'
+const ROLE_KEY = 'albert-role'
 
 export const getToken = () => {
   try { return localStorage.getItem(TOKEN_KEY) } catch { return null }
@@ -10,8 +11,17 @@ export const setToken = (t) => {
   try { localStorage.setItem(TOKEN_KEY, t) } catch { /* ignore */ }
 }
 export const clearToken = () => {
-  try { localStorage.removeItem(TOKEN_KEY) } catch { /* ignore */ }
+  try { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(ROLE_KEY) } catch { /* ignore */ }
 }
+
+// Роль входа: 'albert' (реальные данные) | 'guest' (демо)
+export const getRole = () => {
+  try { return localStorage.getItem(ROLE_KEY) } catch { return null }
+}
+export const setRole = (r) => {
+  try { r ? localStorage.setItem(ROLE_KEY, r) : localStorage.removeItem(ROLE_KEY) } catch { /* ignore */ }
+}
+export const isGuest = () => getRole() === 'guest'
 
 let installed = false
 export function installAuthFetch() {
