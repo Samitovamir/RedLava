@@ -457,9 +457,9 @@ export default function LabResults() {
         .lab-spinner { width: 28px; height: 28px; border-radius: 50%; border: 3px solid var(--border); border-top-color: var(--primary); animation: lab-spin 0.8s linear infinite; }
         @keyframes lab-spin { to { transform: rotate(360deg); } }
 
-        .lab-timeline { display: flex; align-items: center; gap: 10px; }
+        .lab-timeline { display: flex; align-items: baseline; gap: 10px; }
         .lab-tl-lbl { font-size: 13px; flex-shrink: 0; }
-        .lab-tl-list { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
+        .lab-tl-list { flex: 1; display: flex; flex-wrap: wrap; gap: 8px; }
         .lab-tl-item {
           display: flex; align-items: center; gap: 8px; flex-shrink: 0;
           background: var(--bg-secondary); border: 1px solid var(--border);
