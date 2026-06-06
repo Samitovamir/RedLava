@@ -97,6 +97,56 @@ export function EventsProvider({ children }) {
   // Сброс без записи в историю
   const resetEvents = () => setEventsRaw(INITIAL_EVENTS)
 
+  // ── Ручные операции расписания с учётом Google (он источник истины) ──
+  // Если Google подключён, изменения уходят В КАЛЕНДАРЬ и затем пересинхронизируются,
+  // иначе они стирались бы при следующей загрузке (баг: удалённое событие возвращалось).
+  async function removeEvent(ev) {
+    if (googleConnected) {
+      try { await fetch('/api/calendar/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ googleId: ev.googleId }) }) } catch { /* ignore */ }
+      await syncFromGoogle()
+      logAction({ actor: 'user', type: 'event', title: `Удалил событие «${ev.title}»`, detail: detailOf(ev) })
+    } else {
+      setEvents(list => list.filter(e => e !== ev))
+    }
+  }
+  async function upsertEvent(ev, target = null) {
+    if (googleConnected) {
+      try {
+        if (target && target.googleId) {
+          await fetch('/api/calendar/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ googleId: target.googleId, title: ev.title, date: ev.date, start: ev.start, end: ev.end, who: ev.who }) })
+        } else {
+          await fetch('/api/calendar/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(ev) })
+        }
+      } catch { /* ignore */ }
+      await syncFromGoogle()
+      logAction({ actor: 'user', type: 'event', title: target ? `Изменил «${ev.title}»` : `Добавил событие «${ev.title}»`, detail: detailOf(ev) })
+    } else {
+      if (target) setEvents(list => list.map(e => e === target ? ev : e))
+      else setEvents(list => [...list, ev])
+    }
+  }
+  // Массовое применение (перенос нескольких / удаление набора) — для «Найди время»
+  async function applyBulk({ changes = null, removals = [] }) {
+    if (googleConnected) {
+      if (changes) {
+        for (const [ev, patch] of changes.entries()) {
+          try { await fetch('/api/calendar/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ googleId: ev.googleId, title: ev.title, date: patch.date || ev.date, start: patch.start || ev.start, end: patch.end || ev.end, who: ev.who }) }) } catch { /* ignore */ }
+        }
+      }
+      for (const ev of removals) {
+        try { await fetch('/api/calendar/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ googleId: ev.googleId }) }) } catch { /* ignore */ }
+      }
+      await syncFromGoogle()
+    } else {
+      setEvents(list => {
+        let next = list
+        if (changes) next = next.map(e => changes.get(e) ? { ...e, ...changes.get(e) } : e)
+        if (removals.length) { const set = new Set(removals); next = next.filter(e => !set.has(e)) }
+        return next
+      })
+    }
+  }
+
   // Найти событие по неточному названию (для переноса/удаления голосом)
   const findByTitle = (list, title) => {
     if (!title) return -1
@@ -195,7 +245,7 @@ export function EventsProvider({ children }) {
   }
 
   return (
-    <EventsContext.Provider value={{ events, setEvents, resetEvents, applyAiActions, focusSignal, syncFromGoogle, googleConnected }}>
+    <EventsContext.Provider value={{ events, setEvents, resetEvents, applyAiActions, removeEvent, upsertEvent, applyBulk, focusSignal, syncFromGoogle, googleConnected }}>
       {children}
     </EventsContext.Provider>
   )

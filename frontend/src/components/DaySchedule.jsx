@@ -255,7 +255,7 @@ export default function DaySchedule({ extended = false }) {
   }, [])
 
   // --- Состояние ---
-  const { events, setEvents, resetEvents, focusSignal } = useEvents()  // общий источник для всех страниц
+  const { events, resetEvents, removeEvent, upsertEvent, applyBulk, focusSignal } = useEvents()  // общий источник для всех страниц
   // расширенный режим: 'day' | 'week' | 'month'; обычный: 'list' | 'columns'
   const [viewMode, setViewMode] = useState(extended ? 'day' : 'list')
   const [dayOffset, setDayOffset] = useState(0)       // 0=сегодня, -1=вчера, +1=завтра
@@ -366,15 +366,15 @@ export default function DaySchedule({ extended = false }) {
   }
 
   const commitEvent = (ev, target) => {
-    if (target) setEvents(list => list.map(e => e === target ? ev : e))
-    else setEvents(list => [...list, ev])
+    upsertEvent(ev, target)
     setEditEvent(null)
   }
 
   // Разрешение наложения
   const resolveKeepBoth = () => { commitEvent(conflict.pending, conflict.editing); setConflict(null) }
-  const resolveReplace = () => {
-    setEvents(list => [...list.filter(e => e !== conflict.existing && e !== conflict.editing), conflict.pending])
+  const resolveReplace = async () => {
+    await removeEvent(conflict.existing)
+    await upsertEvent(conflict.pending, conflict.editing)
     setEditEvent(null); setConflict(null)
   }
   const resolveShift = () => {
@@ -386,7 +386,7 @@ export default function DaySchedule({ extended = false }) {
   }
 
   const deleteEvent = (ev) => {                                           // меню события → удалить
-    setEvents(list => list.filter(e => e !== ev))
+    removeEvent(ev)
     setOpenMenu(null)
   }
   const startEdit = (ev) => {                                             // меню события → редактировать/перенести
@@ -476,10 +476,9 @@ export default function DaySchedule({ extended = false }) {
   const confirmPreview = () => {
     const v = ftPreview.variant
     if (v.kind === 'shift') {
-      setEvents(list => list.map(e => v.changes.get(e) ? { ...e, ...v.changes.get(e) } : e))
+      applyBulk({ changes: v.changes })
     } else {
-      const set = new Set(v.events)
-      setEvents(list => list.filter(e => !set.has(e)))
+      applyBulk({ removals: v.events })
     }
     setFtPreview(null)
     setFtResult(null)
