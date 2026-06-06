@@ -49,6 +49,7 @@ export default function LabResults() {
   const [syncing, setSyncing] = useState(false)
   const [syncTotal, setSyncTotal] = useState(0)
   const [syncDone, setSyncDone] = useState(0)
+  const [filesOpen, setFilesOpen] = useState(false)   // список загруженных файлов по умолчанию скрыт
 
   useEffect(() => {
     try { localStorage.setItem(STORE_KEY, JSON.stringify(reports)) } catch { /* ignore */ }
@@ -315,19 +316,30 @@ export default function LabResults() {
         )}
       </div>
 
-      {/* Журнал загруженных отчётов */}
-      <div className="lab-timeline">
-        <span className="lab-tl-lbl muted">Загружено:</span>
-        <div className="lab-tl-list">
-          {reportsByDate.map(r => (
-            <div key={r.id} className="lab-tl-item" title={r.fileName}>
-              <span className="lab-tl-date">{fmtDate(r.date)}</span>
-              <span className="lab-tl-name">{r.fileName}</span>
-              <span className="lab-tl-count muted">{Object.keys(r.values).length} показ.</span>
-            </div>
-          ))}
+      {/* Журнал загруженных отчётов — по умолчанию скрыт, открывается по кнопке */}
+      {reportsByDate.length > 0 && (
+        <div className="lab-timeline">
+          <button className="lab-tl-toggle" onClick={() => setFilesOpen(o => !o)} aria-expanded={filesOpen}>
+            <span className={`lab-tl-chev ${filesOpen ? 'open' : ''}`}>▸</span>
+            Загруженные файлы ({reportsByDate.length})
+          </button>
+          <AnimatePresence initial={false}>
+            {filesOpen && (
+              <motion.div className="lab-tl-list"
+                initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}>
+                {reportsByDate.map(r => (
+                  <div key={r.id} className="lab-tl-item" title={r.fileName}>
+                    <span className="lab-tl-date">{fmtDate(r.date)}</span>
+                    <span className="lab-tl-name">{r.fileName}</span>
+                    <span className="lab-tl-count muted">{Object.keys(r.values).length} показ.</span>
+                  </div>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
-      </div>
+      )}
 
       {/* Расшифровка от ИИ */}
       <AnimatePresence>
@@ -457,9 +469,12 @@ export default function LabResults() {
         .lab-spinner { width: 28px; height: 28px; border-radius: 50%; border: 3px solid var(--border); border-top-color: var(--primary); animation: lab-spin 0.8s linear infinite; }
         @keyframes lab-spin { to { transform: rotate(360deg); } }
 
-        .lab-timeline { display: flex; align-items: baseline; gap: 10px; }
-        .lab-tl-lbl { font-size: 13px; flex-shrink: 0; }
-        .lab-tl-list { flex: 1; display: flex; flex-wrap: wrap; gap: 8px; }
+        .lab-timeline { display: flex; flex-direction: column; gap: 10px; }
+        .lab-tl-toggle { align-self: flex-start; display: flex; align-items: center; gap: 7px; background: transparent; border: none; padding: 0; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600; color: var(--muted-foreground); transition: color .15s; }
+        .lab-tl-toggle:hover { color: var(--foreground); }
+        .lab-tl-chev { display: inline-block; transition: transform .2s; font-size: 11px; }
+        .lab-tl-chev.open { transform: rotate(90deg); }
+        .lab-tl-list { display: flex; flex-wrap: wrap; gap: 8px; overflow: hidden; }
         .lab-tl-item {
           display: flex; align-items: center; gap: 8px; flex-shrink: 0;
           background: var(--bg-secondary); border: 1px solid var(--border);

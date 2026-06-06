@@ -254,23 +254,46 @@ export default function Nutrition() {
   }
   function closeDetail() { setDetail(null); setDetailParts([]) }
 
-  // «На кухню» из окна рецепта: в план дня + продукты всех частей
-  function toKitchen() {
+  // «На кухню» из окна рецепта: добавляем в меню СРАЗУ, рецепты/продукты дособираем в фоне
+  async function toKitchen() {
     const m = detail.meal
-    const recipes = detailParts.filter(p => p.recipe).map(p => ({ component: p.component, name: p.name, ingredients: p.recipe.ingredients || [], steps: p.recipe.steps || [], kcal: p.recipe.kcal, protein: p.recipe.protein, fat: p.recipe.fat, carb: p.recipe.carb }))
-    const allIng = recipes.flatMap(r => r.ingredients)
-    const dish = { ...dishBase(m), parts: detailParts.map(p => ({ component: p.component, name: p.name })), partRecipes: recipes, ingredients: allIng }
-    const np = setPlanMeal(plan, detail.dateKey, detail.mealKey, dish)
-    setPlan(np); savePlan(np)
-    if (allIng.length) { const ns = addToShopping(shopping, allIng, m.name); setShopping(ns); saveShopping(ns) }
-    flash(`«${m.name}» → ${detail.mealKey} и список покупок ✓`)
+    const dateKey = detail.dateKey, mealKey = detail.mealKey
+    const parts = detailParts.length ? detailParts : partsOf(m).map(p => ({ component: p.component, name: p.name, recipe: null }))
+    // 1) то, что уже собрано — кладём сразу
+    const ready = parts.filter(p => p.recipe).map(p => ({ component: p.component, name: p.name, ingredients: p.recipe.ingredients || [], steps: p.recipe.steps || [], kcal: p.recipe.kcal, protein: p.recipe.protein, fat: p.recipe.fat, carb: p.recipe.carb }))
+    const base = { ...dishBase(m), parts: parts.map(p => ({ component: p.component, name: p.name })), partRecipes: ready, ingredients: ready.flatMap(r => r.ingredients) }
+    setPlan(prev => { const np = setPlanMeal(prev, dateKey, mealKey, base); savePlan(np); return np })
+    if (base.ingredients.length) setShopping(prev => { const ns = addToShopping(prev, base.ingredients, m.name); saveShopping(ns); return ns })
     closeDetail(); setResultsOpen(false)
+    // 2) недостающие рецепты — в фоне, не заставляя ждать
+    const missing = parts.filter(p => !p.recipe)
+    if (!missing.length) { flash(`«${m.name}» → ${mealKey} и список покупок ✓`); return }
+    flash(`«${m.name}» → ${mealKey}. Дособираю продукты…`)
+    try {
+      const fetched = []
+      for (const part of missing) {
+        const r = await fetchRecipe(part.name)
+        if (r) fetched.push({ component: part.component, name: part.name, ingredients: r.ingredients || [], steps: r.steps || [], kcal: r.kcal, protein: r.protein, fat: r.fat, carb: r.carb })
+      }
+      const allRecipes = [...ready, ...fetched]
+      const allIng = allRecipes.flatMap(r => r.ingredients)
+      setPlan(prev => { const np = setPlanMeal(prev, dateKey, mealKey, { ...base, partRecipes: allRecipes, ingredients: allIng }); savePlan(np); return np })
+      const newIng = fetched.flatMap(r => r.ingredients)
+      if (newIng.length) setShopping(prev => { const ns = addToShopping(prev, newIng, m.name); saveShopping(ns); return ns })
+      flash(`«${m.name}» добавлено в меню и список покупок ✓`)
+    } catch { /* блюдо уже в меню */ }
   }
   function removePlanned() {
     const np = clearPlanMeal(plan, detail.dateKey, detail.mealKey)
     setPlan(np); savePlan(np)
-    flash('Блюдо убрано из меню')
+    flash('Выбор отменён')
     closeDetail()
+  }
+  // Отменить выбор прямо со слота дня (без открытия окна)
+  function removePlannedSlot(dateKey, mealKey) {
+    const np = clearPlanMeal(plan, dateKey, mealKey)
+    setPlan(np); savePlan(np)
+    flash('Выбор отменён')
   }
 
   function submitRate(liked) {
@@ -479,12 +502,15 @@ export default function Nutrition() {
                   <span className="nu-slot-target muted">≈{pm.kcal} ккал</span>
                 </div>
                 {dish ? (
-                  <button className="nu-slot-dish" onClick={() => openPlannedDetail(selectedDay, m.key)}>
-                    {dish.imageUrl && <div className="nu-slot-img" style={{ backgroundImage: `url(${dish.imageUrl})` }} />}
-                    <span className="nu-slot-dish-name">{dish.name}</span>
-                    <span className="nu-slot-dish-macros muted">{dish.kcal} ккал · Б{dish.protein} Ж{dish.fat} У{dish.carb}</span>
-                    {dish.rated && <span className={`nu-slot-rated ${dish.rating}`}>{dish.rating === 'up' ? '👍 понравилось' : '👎 не очень'}</span>}
-                  </button>
+                  <>
+                    <button className="nu-slot-dish" onClick={() => openPlannedDetail(selectedDay, m.key)}>
+                      {dish.imageUrl && <div className="nu-slot-img" style={{ backgroundImage: `url(${dish.imageUrl})` }} />}
+                      <span className="nu-slot-dish-name">{dish.name}</span>
+                      <span className="nu-slot-dish-macros muted">{dish.kcal} ккал · Б{dish.protein} Ж{dish.fat} У{dish.carb}</span>
+                      {dish.rated && <span className={`nu-slot-rated ${dish.rating}`}>{dish.rating === 'up' ? '👍 понравилось' : '👎 не очень'}</span>}
+                    </button>
+                    <button className="nu-slot-cancel" onClick={() => removePlannedSlot(selectedDay, m.key)}>Отменить выбор</button>
+                  </>
                 ) : (
                   <button className="nu-slot-empty" onClick={() => pickSlot(m.key)} disabled={loadingMeals}>
                     {loadingMeals && active ? 'Подбираю…' : '＋ Подобрать'}
@@ -652,9 +678,9 @@ export default function Nutrition() {
               ))}
               <div className="nu-modal-actions">
                 {detail.source === 'suggest' ? (
-                  <button className="nu-suggest nu-kitchen" onClick={toKitchen} disabled={detailLoading}>🍳 На кухню</button>
+                  <button className="nu-suggest nu-kitchen" onClick={toKitchen}>🍳 На кухню{detailLoading ? ' (рецепт дособерётся)' : ''}</button>
                 ) : (
-                  <button className="nu-remove" onClick={removePlanned}>Убрать из меню</button>
+                  <button className="nu-remove" onClick={removePlanned}>Отменить выбор</button>
                 )}
               </div>
             </motion.div>
@@ -865,6 +891,8 @@ export default function Nutrition() {
         .nu-slot-rated { font-size: 12px; font-weight: 600; }
         .nu-slot-rated.up { color: var(--green); }
         .nu-slot-rated.down { color: var(--orange); }
+        .nu-slot-cancel { margin-top: 8px; align-self: stretch; background: transparent; border: 1px solid var(--border); border-radius: 10px; color: var(--muted); font-family: inherit; font-size: 12.5px; font-weight: 600; padding: 7px 10px; cursor: pointer; transition: all .15s; }
+        .nu-slot-cancel:hover { border-color: var(--red); color: var(--red); }
         .nu-slot-empty { flex: 1; display: flex; align-items: center; justify-content: center; background: transparent; border: 1px dashed var(--border); border-radius: 10px; color: var(--muted); font-family: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; transition: all .15s; }
         .nu-slot-empty:hover { border-color: var(--accent); color: var(--accent); }
 
