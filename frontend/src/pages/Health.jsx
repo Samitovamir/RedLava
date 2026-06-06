@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import CircularChart from '../components/CircularChart.jsx'
 import WhoopRings from '../components/WhoopRings.jsx'
+import SleepHypnogram from '../components/SleepHypnogram.jsx'
 import LabResults from '../components/LabResults.jsx'
 import ConnectPrompt from '../components/ConnectPrompt.jsx'
 import AiRefreshButton from '../components/AiRefreshButton.jsx'
@@ -42,6 +43,7 @@ export default function Health() {
   }, [])
   const [openDetail, setOpenDetail] = useState(null)
   const [selDay, setSelDay] = useState(null)   // выбранный день в «Восстановление за неделю»
+  const [sleepOpen, setSleepOpen] = useState(false)  // развёрнутая почасовая диаграмма сна
 
   // Короткая сводка по дню недели (восстановление → совет по тренировкам)
   function daySummary(d) {
@@ -249,6 +251,20 @@ export default function Health() {
             </div>
           </div>
         </div>
+
+        <button className="sleep-more" onClick={() => setSleepOpen(o => !o)} aria-expanded={sleepOpen}>
+          <span className={`sleep-chev ${sleepOpen ? 'open' : ''}`}>▸</span>
+          {sleepOpen ? 'Свернуть' : 'Подробнее — сон по часам'}
+        </button>
+        <AnimatePresence initial={false}>
+          {sleepOpen && (
+            <motion.div className="sleep-detail"
+              initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.25 }}>
+              <SleepHypnogram stages={w.sleep.stages} start={w.sleep.start} end={w.sleep.end} />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Тренд восстановления за неделю */}
@@ -376,6 +392,11 @@ export default function Health() {
         .stage-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
         .stage-leg-lbl { color: var(--muted-foreground); }
         .stage-leg-val { margin-left: auto; color: var(--foreground); font-weight: 600; }
+        .sleep-more { align-self: flex-start; display: flex; align-items: center; gap: 8px; background: transparent; border: none; padding: 4px 0; cursor: pointer; font-family: inherit; font-size: 13.5px; font-weight: 600; color: var(--primary); transition: opacity .15s; }
+        .sleep-more:hover { opacity: 0.8; }
+        .sleep-chev { display: inline-block; transition: transform .2s; font-size: 11px; }
+        .sleep-chev.open { transform: rotate(90deg); }
+        .sleep-detail { overflow: hidden; }
 
         /* Тренд недели */
         .trend-card { display: flex; flex-direction: column; gap: 16px; }

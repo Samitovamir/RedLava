@@ -114,13 +114,27 @@ router.get('/data', requireAuth, async (_req, res) => {
       recovery: Math.round(x.score.recovery_score)
     }))
     .reverse()
-  const sRec = sleep?.records?.[0]?.score || {}
+  const sleepRec = sleep?.records?.[0] || {}
+  const sRec = sleepRec.score || {}
   const cRec = cycle?.records?.[0]?.score || {}
   const stage = sRec.stage_summary || {}
   const need = sRec.sleep_needed || {}
 
   const slept = ms2h((stage.total_light_sleep_time_milli || 0) + (stage.total_slow_wave_sleep_time_milli || 0) + (stage.total_rem_sleep_time_milli || 0))
   const needed = ms2h((need.baseline_milli || 0) + (need.need_from_sleep_debt_milli || 0) + (need.need_from_recent_strain_milli || 0))
+
+  // Реальные стадии сна (минуты) — чтобы полоса фаз обновлялась, а не показывала демо
+  const ms2min = (m) => Math.round((m || 0) / 60000)
+  const stages = {
+    awake: ms2min(stage.total_awake_time_milli),
+    light: ms2min(stage.total_light_sleep_time_milli),
+    rem: ms2min(stage.total_rem_sleep_time_milli),
+    deep: ms2min(stage.total_slow_wave_sleep_time_milli)
+  }
+  const mskHHMM = (iso) => {
+    if (!iso) return null
+    try { return new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Moscow', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(iso)) } catch { return null }
+  }
 
   res.json({
     connected: true,
@@ -135,7 +149,12 @@ router.get('/data', requireAuth, async (_req, res) => {
         hoursSlept: slept,
         hoursNeeded: needed,
         performance: Math.round(sRec.sleep_performance_percentage ?? 0),
-        efficiency: Math.round(sRec.sleep_efficiency_percentage ?? 0)
+        efficiency: Math.round(sRec.sleep_efficiency_percentage ?? 0),
+        stages,
+        start: mskHHMM(sleepRec.start),
+        end: mskHHMM(sleepRec.end),
+        cycles: sRec.sleep_cycle_count ?? null,
+        disturbances: sRec.disturbance_count ?? null
       },
       week
     }
