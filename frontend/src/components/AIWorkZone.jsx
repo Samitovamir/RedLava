@@ -4,6 +4,7 @@ import ReadingOverlay from './ReadingOverlay.jsx'
 import { fetchImagesForQueries } from '../utils/wikiImages.js'
 import { useSiteSnapshot } from '../hooks/useSiteSnapshot.js'
 import { useEvents } from '../context/EventsContext.jsx'
+import { useMail } from '../context/MailContext.jsx'
 import { useMemoryFacts } from '../context/MemoryContext.jsx'
 import { useHistory } from '../context/HistoryContext.jsx'
 import VoiceInput from './VoiceInput.jsx'
@@ -36,6 +37,7 @@ export default function AIWorkZone() {
   // ВИДЕЛ календарь и реально выполнял задачи, как командная строка.
   const snapshot = useSiteSnapshot()
   const { applyAiActions } = useEvents()
+  const { openDraft } = useMail()
   const { addFact } = useMemoryFacts()
   const { logAction } = useHistory()
 
@@ -107,9 +109,11 @@ export default function AIWorkZone() {
         })
         const data = await res.json()
         const actions = data.actions || []
-        const eventActions = actions.filter(a => a.name !== 'remember_fact')
+        const eventActions = actions.filter(a => a.name !== 'remember_fact' && a.name !== 'send_email')
         const memActions = actions.filter(a => a.name === 'remember_fact')
+        const mailActions = actions.filter(a => a.name === 'send_email')
         if (eventActions.length) applyAiActions(eventActions)
+        if (mailActions.length) openDraft(mailActions[0].input)
         memActions.forEach(a => {
           if (a.input?.fact) { addFact(a.input.fact); logAction({ actor: 'ai', type: 'task', title: `Запомнил: ${a.input.fact}` }) }
         })

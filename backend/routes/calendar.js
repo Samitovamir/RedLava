@@ -6,7 +6,8 @@ import { kvGet, kvSet, kvDel } from '../store.js'
 const router = Router()
 
 const TOKENS_KEY = 'google:tokens'
-const SCOPE = 'https://www.googleapis.com/auth/calendar'
+// Один общий вход Google для всех сервисов: календарь + отправка писем (Gmail)
+const SCOPE = 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/gmail.send'
 const TZ = 'Europe/Moscow'
 
 const configured = () =>
@@ -20,8 +21,8 @@ function appUrl(req) {
   return `${proto}://${host}`
 }
 
-// Обновить access_token по refresh_token
-async function getAccessToken() {
+// Обновить access_token по refresh_token (экспортируется — общий для Gmail и др. Google-сервисов)
+export async function getAccessToken() {
   const t = await kvGet(TOKENS_KEY)
   if (!t?.refresh_token) return null
   const body = new URLSearchParams({

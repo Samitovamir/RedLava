@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useLocation } from 'react-router-dom'
 import { useEvents } from '../context/EventsContext.jsx'
+import { useMail } from '../context/MailContext.jsx'
 import { useMemoryFacts } from '../context/MemoryContext.jsx'
 import { useHistory } from '../context/HistoryContext.jsx'
 import { useSiteSnapshot } from '../hooks/useSiteSnapshot.js'
@@ -24,6 +25,7 @@ export default function AICommandBar() {
   const messagesEndRef = useRef(null)
   const location = useLocation()
   const { applyAiActions } = useEvents()
+  const { openDraft } = useMail()
   const { addFact } = useMemoryFacts()
   const { logAction } = useHistory()
   const snapshot = useSiteSnapshot()
@@ -60,9 +62,11 @@ export default function AICommandBar() {
       const data = await res.json()
       const actions = data.actions || []
       // События — в расписание; факты — в долгую память
-      const eventActions = actions.filter(a => a.name !== 'remember_fact')
+      const eventActions = actions.filter(a => a.name !== 'remember_fact' && a.name !== 'send_email')
       const memActions = actions.filter(a => a.name === 'remember_fact')
+      const mailActions = actions.filter(a => a.name === 'send_email')
       if (eventActions.length) applyAiActions(eventActions)
+      if (mailActions.length) openDraft(mailActions[0].input)
       memActions.forEach(a => {
         addFact(a.input?.fact)
         logAction({ actor: 'ai', type: 'task', title: `Запомнил: ${a.input?.fact}` })

@@ -6,6 +6,7 @@ import { dirname, join } from 'path'
 
 import aiRoutes from './routes/ai.js'
 import calendarRoutes from './routes/calendar.js'
+import gmailRoutes from './routes/gmail.js'
 import garminRoutes from './routes/garmin.js'
 import whoopRoutes from './routes/whoop.js'
 import historyRoutes from './routes/history.js'
@@ -45,6 +46,7 @@ app.use('/api/nutrition', requireAuth, nutritionRoutes)
 // Интеграции: внутри есть публичный OAuth-callback (переход в браузере),
 // поэтому требование входа применяется точечно внутри роутов.
 app.use('/api/calendar', calendarRoutes)
+app.use('/api/gmail', requireAuth, gmailRoutes)
 app.use('/api/whoop', whoopRoutes)
 app.use('/api/garmin', requireAuth, garminRoutes)
 

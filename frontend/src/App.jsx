@@ -2,14 +2,17 @@ import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import FluidMenu from './components/FluidMenu.jsx'
 import WhatsNew from './components/WhatsNew.jsx'
+import MailModal from './components/MailModal.jsx'
 import { EventsProvider } from './context/EventsContext.jsx'
 import { HistoryProvider } from './context/HistoryContext.jsx'
 import { MemoryProvider } from './context/MemoryContext.jsx'
+import { MailProvider } from './context/MailContext.jsx'
 import Home from './pages/Home.jsx'
 import Schedule from './pages/Schedule.jsx'
 import Sport from './pages/Sport.jsx'
 import Health from './pages/Health.jsx'
 import Nutrition from './pages/Nutrition.jsx'
+import Mail from './pages/Mail.jsx'
 import History from './pages/History.jsx'
 import Connections from './pages/Connections.jsx'
 
@@ -33,10 +36,12 @@ export default function App() {
   return (
     <HistoryProvider>
     <MemoryProvider>
+    <MailProvider>
     <EventsProvider>
     <BrowserRouter>
       <div className="main-layout">
         <WhatsNew />
+        <MailModal />
         <FluidMenu />
         <main className="page-content">
           <Routes>
@@ -45,6 +50,7 @@ export default function App() {
             <Route path="/sport" element={<Sport />} />
             <Route path="/health" element={<Health />} />
             <Route path="/nutrition" element={<Nutrition />} />
+            <Route path="/mail" element={<Mail />} />
             <Route path="/history" element={<History />} />
             <Route path="/connections" element={<Connections />} />
             <Route path="*" element={<Navigate to="/" replace />} />
@@ -53,6 +59,7 @@ export default function App() {
       </div>
     </BrowserRouter>
     </EventsProvider>
+    </MailProvider>
     </MemoryProvider>
     </HistoryProvider>
   )
