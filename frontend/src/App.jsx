@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import FluidMenu from './components/FluidMenu.jsx'
+import WhatsNew from './components/WhatsNew.jsx'
 import { EventsProvider } from './context/EventsContext.jsx'
 import { HistoryProvider } from './context/HistoryContext.jsx'
 import { MemoryProvider } from './context/MemoryContext.jsx'
@@ -35,6 +36,7 @@ export default function App() {
     <EventsProvider>
     <BrowserRouter>
       <div className="main-layout">
+        <WhatsNew />
         <FluidMenu />
         <main className="page-content">
           <Routes>
