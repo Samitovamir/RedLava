@@ -325,7 +325,7 @@ export default function Health() {
         .page-header h2 { font-size: 24px; font-weight: 700; }
         .muted { color: var(--muted-foreground); }
 
-        .health-top { display: grid; grid-template-columns: 1.5fr 1fr; gap: 16px; }
+        .health-top { display: grid; grid-template-columns: 1.5fr 1fr; gap: 16px; align-items: start; }
         .recovery-card { display: flex; flex-direction: column; gap: 20px; }
         .rc-main { display: flex; align-items: center; gap: 24px; }
         .rc-side { flex: 1; display: flex; flex-direction: column; gap: 16px; }

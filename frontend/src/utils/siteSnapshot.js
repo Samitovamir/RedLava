@@ -3,7 +3,7 @@
 // чтобы давать связные ответы по всем данным сразу.
 
 import { WORKOUTS, WORKOUT_TYPES, WEEK_STATS, GARMIN } from './workouts.js'
-import { WHOOP, recoveryLabel } from './whoop.js'
+import { WHOOP, WHOOP_DAYS, recoveryLabel } from './whoop.js'
 import { INITIAL_REPORTS, buildHistory, markerStatus, STATUS_INFO, rangeText, resolveMarker } from './labs.js'
 import { mskNow } from './time.js'
 
@@ -92,11 +92,21 @@ export function buildSiteSnapshot({ events = [], history = [], facts = [] } = {}
   let liveWhoop = null
   try { const s = localStorage.getItem('albert-whoop-live'); if (s) liveWhoop = JSON.parse(s) } catch { /* ignore */ }
   const w = liveWhoop ? { ...WHOOP, ...liveWhoop, sleep: { ...WHOOP.sleep, ...liveWhoop.sleep } } : null
+  // Неделя по дням: восстановление (балл готовности) и нагрузка (strain) — РАЗНЫЕ показатели, явно разделяем
+  const weekDays = w ? (Array.isArray(liveWhoop?.week) && liveWhoop.week.length ? liveWhoop.week : WHOOP_DAYS) : []
+  const weekBlock = weekDays.length
+    ? `НЕДЕЛЯ ПО ДНЯМ (два РАЗНЫХ показателя, не путай их):\n` +
+      `• Восстановление по дням (% готовности, выше — лучше): ${weekDays.map(d => `${d.day} ${d.recovery}%`).join(', ')}.\n` +
+      `• Нагрузка (strain) по дням (шкала 0–21, это НЕ восстановление, а сколько владелец нагрузился): ${weekDays.map(d => `${d.day} ${d.strain}`).join(', ')}.\n` +
+      `Когда говоришь о дне недели — бери восстановление из строки восстановления, а нагрузку из строки нагрузки. НЕ называй число нагрузки восстановлением и наоборот.`
+    : ''
   const health = w
     ? `Восстановление ${w.recovery}% (${recoveryLabel(w.recovery)}), дневная нагрузка ${w.strain}/21, HRV ${w.hrv} мс, пульс покоя ${w.rhr}, дыхание ${w.respiratoryRate}/мин, SpO2 ${w.spo2}%. ` +
       `Сон ${w.sleep.hoursSlept} ч из ${w.sleep.hoursNeeded} нужных (${w.sleep.performance}%). ` +
       `ВАЖНО: «Восстановление» — это УТРЕННИЙ балл готовности Whoop, с ним владелец проснулся; он фиксирован на день и НЕ убывает в течение дня. ` +
-      `Это НЕ «остаток заряда»: не трактуй его как энергию, которая тратится по ходу дня (это был бы Body Battery, а его в данных нет).`
+      `Это НЕ «остаток заряда»: не трактуй его как энергию, которая тратится по ходу дня (это был бы Body Battery, а его в данных нет). ` +
+      `«Нагрузка» (strain) — это СКОЛЬКО владелец нагрузился за день (0–21), противоположный по смыслу показатель: высокая нагрузка ≠ хорошее восстановление.` +
+      (weekBlock ? `\n${weekBlock}` : '')
     : 'Whoop не подключён. Данных о восстановлении, сне, HRV и пульсе НЕТ. Не придумывай их — если спросят, скажи, что нужно подключить Whoop.'
 
   const { flagged, hasData } = labsFlagged()

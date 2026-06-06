@@ -7,7 +7,9 @@ import {
   loadPrefs, savePrefs, DEFAULT_PREFS, CUISINES, rememberDish,
   loadPlan, savePlan, setPlanMeal, clearPlanMeal, rateMeal, weekDays, dayPlanned, pendingRating,
   loadShopping, saveShopping, addToShopping, formatProduct,
-  loadGarmin, loadWhoop, workoutKcal, eatenKcal, dynamicTarget, carryFromYesterday
+  loadGarmin, loadWhoop, workoutKcal, eatenKcal, dynamicTarget, carryFromYesterday,
+  QUICK_ADD, loadIntake, saveIntake, setCalaiIntake, addIntakeExtra, clearDayIntake, eatenForDay,
+  loadPantry, savePantry, archivePantry, recentlyBought
 } from '../utils/nutrition.js'
 import { mskDateKey } from '../utils/time.js'
 
@@ -15,6 +17,14 @@ const FOODS = [
   ['pork', 'Свинина'], ['beef', 'Говядина'], ['chicken', 'Курица'], ['fish', 'Рыба'],
   ['seafood', 'Морепродукты'], ['dairy', 'Молочное'], ['eggs', 'Яйца'], ['mushrooms', 'Грибы']
 ]
+
+const COMPONENTS = ['Суп', 'Салат', 'Основное', 'Гарнир', 'Напиток', 'Десерт']
+const COMPONENT_DEFAULTS = {
+  'Завтрак': ['Основное'],
+  'Обед': ['Суп', 'Основное'],
+  'Перекус': ['Основное'],
+  'Ужин': ['Салат', 'Основное', 'Десерт']
+}
 
 function Macro({ value, unit, label, color }) {
   return (
@@ -58,10 +68,15 @@ export default function Nutrition() {
 
   // Детальная карточка (рецепт): из подбора (source 'suggest') или из плана ('planned')
   const [detail, setDetail] = useState(null)
-  const [detailRecipe, setDetailRecipe] = useState(null)
+  const [detailParts, setDetailParts] = useState([])   // [{component, name, recipe|null}]
   const [detailLoading, setDetailLoading] = useState(false)
 
   const [shopping, setShopping] = useState(loadShopping)
+  const [pantry, setPantry] = useState(loadPantry)
+  const [intake, setIntake] = useState(loadIntake)
+  const [components, setComponents] = useState(['Основное'])
+  const [calaiBusy, setCalaiBusy] = useState(false)
+  const calaiInput = useRef(null)
   const [toast, setToast] = useState('')
 
   // Оценка съеденного блюда
@@ -95,8 +110,9 @@ export default function Nutrition() {
   const recovery = isToday ? (whoop?.recovery ?? null) : null
   const carry = carryFromYesterday(plan, selectedDay, base.kcal)
   const target = dynamicTarget(base, profile, { burned, hasGarmin: !!garmin, recovery, carry })
-  const eaten = eatenKcal(plan, selectedDay)
+  const eaten = eatenForDay(plan, intake, selectedDay)
   const remaining = Math.max(0, target.kcal - eaten)
+  const intakeRec = intake[selectedDay] || null
 
   // Цель на приём с учётом остатка дня: незанятые приёмы делят остаток между собой
   function perMealTarget(mt) {
@@ -115,20 +131,23 @@ export default function Nutrition() {
   const dayLabel = selDay ? `${selDay.wd}, ${selDay.day} ${selDay.month}` : selectedDay
 
   function selectDay(key) { setSelectedDay(key); setMeals([]); setMealsMsg('') }
-  // Клик «＋ Подобрать» в слоте: выбираем приём, прокручиваем к подбору и сразу подбираем
+  // Клик «＋ Подобрать» в слоте: выбираем приём, подставляем типовой состав и сразу подбираем
   function pickSlot(mealKey) {
-    setMealType(mealKey); setMeals([]); setMealsMsg('')
-    setTimeout(() => suggestRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
-    suggestMeals(mealKey)
+    const comps = COMPONENT_DEFAULTS[mealKey] || ['Основное']
+    setMealType(mealKey); setComponents(comps); setMeals([]); setMealsMsg('')
+    suggestMeals(mealKey, comps)
+  }
+  function toggleComponent(c) {
+    setComponents(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c])
   }
 
-  async function suggestMeals(mt = mealType) {
+  async function suggestMeals(mt = mealType, comps = components) {
     const pm = perMealTarget(mt)
     setLoadingMeals(true); setMeals([]); setMealsMsg('')
     try {
       const res = await fetch('/api/nutrition/meals', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target: pm, mealType: mt, prefs, count: 5, note })
+        body: JSON.stringify({ target: pm, mealType: mt, prefs, count: 5, note, components: comps })
       })
       const data = await res.json()
       setMeals(data.meals || [])
@@ -158,7 +177,7 @@ export default function Nutrition() {
     try {
       const res = await fetch('/api/nutrition/meals', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target: perMeal, mealType, prefs, count: 5, note, exclude: meals.map(m => m.name) })
+        body: JSON.stringify({ target: perMeal, mealType, prefs, count: 5, note, components, exclude: meals.map(m => m.name) })
       })
       const data = await res.json()
       const have = new Set(meals.map(m => m.name.toLowerCase()))
@@ -177,68 +196,74 @@ export default function Nutrition() {
     return data.recipe || null
   }
 
-  // «На кухню» прямо с карточки: сразу в план дня, рецепт и продукты подтягиваем фоном
-  async function quickKitchen(meal) {
-    setKitchenBusy(meal.name)
+  // Части варианта (если комбо — несколько блюд; иначе одно)
+  function partsOf(meal) {
+    if (meal.parts && meal.parts.length) return meal.parts
+    return [{ component: (components[0] || 'Основное'), name: meal.name, kcal: meal.kcal, protein: meal.protein, fat: meal.fat, carb: meal.carb }]
+  }
+  function dishBase(meal) {
     const img = images[meal.name]
-    const dish = {
+    return {
       name: meal.name, short: meal.short || '', tags: meal.tags || [],
       kcal: meal.kcal, protein: meal.protein, fat: meal.fat, carb: meal.carb,
-      imageUrl: img?.url || null, imageAuthor: img?.author || '', imageAuthorUrl: img?.authorUrl || '', imageUnsplash: img?.unsplashUrl || '', imageQuery: meal.imageQuery || '',
-      ingredients: [], steps: [], chosenAt: Date.now(), rated: false
+      imageUrl: img?.url || meal.imageUrl || null, imageAuthor: img?.author || '', imageAuthorUrl: img?.authorUrl || '', imageUnsplash: img?.unsplashUrl || '', imageQuery: meal.imageQuery || '',
+      parts: partsOf(meal).map(p => ({ component: p.component, name: p.name, kcal: p.kcal, protein: p.protein, fat: p.fat, carb: p.carb })),
+      partRecipes: [], ingredients: [], steps: [], chosenAt: Date.now(), rated: false
     }
-    setPlan(prev => { const np = setPlanMeal(prev, selectedDay, mealType, dish); savePlan(np); return np })
+  }
+
+  // «На кухню» прямо с карточки: сразу в план дня, рецепты частей и продукты подтягиваем фоном
+  async function quickKitchen(meal) {
+    setKitchenBusy(meal.name)
+    const base = dishBase(meal)
+    setPlan(prev => { const np = setPlanMeal(prev, selectedDay, mealType, base); savePlan(np); return np })
     setResultsOpen(false)
     flash(`«${meal.name}» → ${mealType}. Собираю продукты…`)
     try {
-      const r = await fetchRecipe(meal.name)
-      if (r?.ingredients?.length) {
-        setPlan(prev => { const np = setPlanMeal(prev, selectedDay, mealType, { ...dish, ingredients: r.ingredients, steps: r.steps || [] }); savePlan(np); return np })
-        setShopping(prev => { const ns = addToShopping(prev, r.ingredients, meal.name); saveShopping(ns); return ns })
-        flash(`«${meal.name}» добавлено в меню и список покупок ✓`)
+      const recipes = []
+      for (const part of base.parts) {
+        const r = await fetchRecipe(part.name)
+        if (r) recipes.push({ component: part.component, name: part.name, ingredients: r.ingredients || [], steps: r.steps || [], kcal: r.kcal, protein: r.protein, fat: r.fat, carb: r.carb })
       }
-    } catch { /* блюдо уже в плане, продукты можно добавить из рецепта позже */ }
+      const allIng = recipes.flatMap(r => r.ingredients)
+      setPlan(prev => { const np = setPlanMeal(prev, selectedDay, mealType, { ...base, partRecipes: recipes, ingredients: allIng }); savePlan(np); return np })
+      if (allIng.length) setShopping(prev => { const ns = addToShopping(prev, allIng, meal.name); saveShopping(ns); return ns })
+      flash(`«${meal.name}» добавлено в меню и список покупок ✓`)
+    } catch { /* блюдо уже в плане */ }
     setKitchenBusy(null)
   }
 
   async function openSuggestDetail(meal) {
+    const parts = partsOf(meal)
     setDetail({ meal, mealKey: mealType, dateKey: selectedDay, source: 'suggest' })
-    setDetailRecipe(null); setDetailLoading(true)
-    try {
-      const res = await fetch('/api/nutrition/recipe', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dish: meal.name, servings: 1, prefs })
-      })
-      const data = await res.json()
-      setDetailRecipe(data.recipe || null)
-    } catch { setDetailRecipe(null) }
+    setDetailParts(parts.map(p => ({ component: p.component, name: p.name, recipe: null })))
+    setDetailLoading(true)
+    for (let i = 0; i < parts.length; i++) {
+      const r = await fetchRecipe(parts[i].name)
+      setDetailParts(prev => prev.map((x, idx) => idx === i ? { ...x, recipe: r } : x))
+    }
     setDetailLoading(false)
   }
   function openPlannedDetail(dateKey, mealKey) {
     const dish = plan[dateKey]?.[mealKey]
     if (!dish) return
     setDetail({ meal: dish, mealKey, dateKey, source: 'planned' })
-    setDetailRecipe(dish); setDetailLoading(false)
+    const parts = dish.partRecipes?.length
+      ? dish.partRecipes.map(r => ({ component: r.component, name: r.name, recipe: r }))
+      : [{ component: 'Основное', name: dish.name, recipe: { ingredients: dish.ingredients || [], steps: dish.steps || [], kcal: dish.kcal, protein: dish.protein, fat: dish.fat, carb: dish.carb } }]
+    setDetailParts(parts); setDetailLoading(false)
   }
-  function closeDetail() { setDetail(null); setDetailRecipe(null) }
+  function closeDetail() { setDetail(null); setDetailParts([]) }
 
-  // «На кухню» — выбрать блюдо: в план дня + в список покупок
+  // «На кухню» из окна рецепта: в план дня + продукты всех частей
   function toKitchen() {
-    const m = detail.meal, r = detailRecipe
-    const img = images[m.name]
-    const dish = {
-      name: m.name, short: m.short || '', tags: m.tags || [],
-      kcal: m.kcal, protein: m.protein, fat: m.fat, carb: m.carb,
-      imageUrl: img?.url || m.imageUrl || null, imageAuthor: img?.author || '', imageAuthorUrl: img?.authorUrl || '', imageUnsplash: img?.unsplashUrl || '', imageQuery: m.imageQuery || '',
-      ingredients: r?.ingredients || [], steps: r?.steps || [],
-      chosenAt: Date.now(), rated: false
-    }
+    const m = detail.meal
+    const recipes = detailParts.filter(p => p.recipe).map(p => ({ component: p.component, name: p.name, ingredients: p.recipe.ingredients || [], steps: p.recipe.steps || [], kcal: p.recipe.kcal, protein: p.recipe.protein, fat: p.recipe.fat, carb: p.recipe.carb }))
+    const allIng = recipes.flatMap(r => r.ingredients)
+    const dish = { ...dishBase(m), parts: detailParts.map(p => ({ component: p.component, name: p.name })), partRecipes: recipes, ingredients: allIng }
     const np = setPlanMeal(plan, detail.dateKey, detail.mealKey, dish)
     setPlan(np); savePlan(np)
-    if (r?.ingredients?.length) {
-      const ns = addToShopping(shopping, r.ingredients, m.name)
-      setShopping(ns); saveShopping(ns)
-    }
+    if (allIng.length) { const ns = addToShopping(shopping, allIng, m.name); setShopping(ns); saveShopping(ns) }
     flash(`«${m.name}» → ${detail.mealKey} и список покупок ✓`)
     closeDetail(); setResultsOpen(false)
   }
@@ -267,8 +292,41 @@ export default function Nutrition() {
     setShopping(next); saveShopping(next)
   }
   function clearShopping() {
-    const next = { weekStart: shopping.weekStart, items: [] }
+    // запоминаем купленное (чтобы потом не было излишков долгоиграющих продуктов)
+    const np = archivePantry(pantry, shopping.items)
+    setPantry(np); savePantry(np)
+    const next = { weekStart: mskDateKey(), items: [] }
     setShopping(next); saveShopping(next)
+    flash('Список отмечен как купленный и очищен')
+  }
+
+  // ── Быстрый учёт «довесков» и CalAI ──
+  function quickAdd(item) {
+    const ni = addIntakeExtra(intake, selectedDay, item)
+    setIntake(ni); saveIntake(ni)
+    flash(`+${item.kcal} ккал · ${item.label}`)
+  }
+  function resetIntake() {
+    const ni = clearDayIntake(intake, selectedDay)
+    setIntake(ni); saveIntake(ni)
+  }
+  async function onCalaiFile(e) {
+    const file = e.target.files?.[0]; e.target.value = ''
+    if (!file) return
+    setCalaiBusy(true)
+    try {
+      const dataUrl = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file) })
+      const resp = await fetch('/api/nutrition/intake-image', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: dataUrl })
+      })
+      const data = await resp.json()
+      if (data.ok && data.intake) {
+        const ni = setCalaiIntake(intake, selectedDay, data.intake)
+        setIntake(ni); saveIntake(ni)
+        flash(`CalAI: съедено ~${Math.round(data.intake.kcal)} ккал ✓`)
+      } else flash(data.message || 'Не удалось прочитать скриншот')
+    } catch { flash('Ошибка загрузки скриншота') }
+    setCalaiBusy(false)
   }
 
   // ── Предпочтения ──
@@ -323,9 +381,29 @@ export default function Nutrition() {
         {eaten > 0 && (
           <div className="nu-progress">
             <div className="nu-prog-bar"><div className="nu-prog-fill" style={{ width: `${Math.min(100, Math.round(eaten / target.kcal * 100))}%` }} /></div>
-            <div className="nu-prog-text muted">Съедено ~{eaten} · <b style={{ color: 'var(--foreground)' }}>осталось ~{remaining} ккал</b></div>
+            <div className="nu-prog-text muted">
+              Съедено ~{eaten} · <b style={{ color: 'var(--foreground)' }}>осталось ~{remaining} ккал</b>
+              {intakeRec?.source === 'calai' && <span className="nu-intake-tag"> · из CalAI</span>}
+              {intakeRec && <button className="nu-intake-reset" onClick={resetIntake} title="Сбросить учёт за день">сбросить</button>}
+            </div>
           </div>
         )}
+
+        {/* Учёт съеденного: CalAI-скриншот + быстрые довески */}
+        <div className="nu-intake-row">
+          <input ref={calaiInput} type="file" accept="image/*" onChange={onCalaiFile} style={{ display: 'none' }} />
+          <button className="nu-calai" onClick={() => calaiInput.current?.click()} disabled={calaiBusy}>
+            {calaiBusy ? 'Читаю скрин…' : '📷 Внести из CalAI'}
+          </button>
+          {QUICK_ADD.filter(q => {
+            if (q.key.startsWith('coffee')) return q.key === 'coffee_' + prefs.coffee
+            if (q.key === 'protein_bar') return prefs.proteinBar
+            if (q.key === 'protein_shake') return prefs.proteinShake
+            return false
+          }).map(q => (
+            <button key={q.key} className="nu-quick" onClick={() => quickAdd(q)} title={`+${q.kcal} ккал`}>+ {q.label}</button>
+          ))}
+        </div>
 
         <div className="nu-target-hint muted">
           Обмен покоя ~{base.bmr} ккал · обычная активность ~{base.tdee} ккал · цель: {GOALS.find(g => g.key === profile.goal)?.label.toLowerCase()}
@@ -449,13 +527,16 @@ export default function Nutrition() {
           <>
             <div className="nu-shop-hint muted">Количества округлены до того, что реально покупать в магазине.</div>
             <div className="nu-shop-list">
-              {shopping.items.map((it, i) => (
-                <div key={i} className="nu-shop-item">
-                  <span className="nu-shop-name">{it.name}</span>
-                  <span className="nu-shop-qty muted">{formatProduct(it)}</span>
-                  <button className="nu-shop-del" onClick={() => removeShoppingItem(i)} title="Убрать">×</button>
-                </div>
-              ))}
+              {shopping.items.map((it, i) => {
+                const recent = recentlyBought(pantry, it.name)
+                return (
+                  <div key={i} className="nu-shop-item">
+                    <span className="nu-shop-name">{it.name}{recent && <span className="nu-recent" title="Покупали недавно — возможно, ещё есть дома">недавно покупали</span>}</span>
+                    <span className="nu-shop-qty muted">{formatProduct(it)}</span>
+                    <button className="nu-shop-del" onClick={() => removeShoppingItem(i)} title="Убрать">×</button>
+                  </div>
+                )
+              })}
             </div>
             <button className="nu-send" disabled title="Появится, когда подключим отправку сообщений">
               Отправить водителю (скоро)
@@ -477,6 +558,12 @@ export default function Nutrition() {
                 </div>
                 <button className="nu-close" onClick={() => setResultsOpen(false)} aria-label="Закрыть">×</button>
               </div>
+              <div className="nu-comp-row">
+                <span className="muted nu-comp-lbl">Что в приёме:</span>
+                {COMPONENTS.map(c => (
+                  <button key={c} className={`nu-comp ${components.includes(c) ? 'on' : ''}`} onClick={() => toggleComponent(c)}>{c}</button>
+                ))}
+              </div>
               <div className="nu-note-row">
                 <input className="nu-note" placeholder="Изменить подбор: например «полегче», «без молочного», «другое»"
                   value={note} onChange={e => setNote(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') suggestMeals() }} />
@@ -486,24 +573,33 @@ export default function Nutrition() {
                 </button>
               </div>
               <div className="nu-meal-list">
-                {meals.map((m, i) => (
-                  <motion.div key={`${m.name}-${i}`} className="nu-meal-card" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 6) * 0.03 }}>
-                    {images[m.name]?.url && <div className="nu-meal-img" style={{ backgroundImage: `url(${images[m.name].url})` }} />}
-                    <div className="nu-meal-name">{m.name}</div>
-                    {m.short && <div className="nu-meal-short muted">{m.short}</div>}
-                    <div className="nu-meal-macros">
-                      <span style={{ color: 'var(--orange)' }}>{m.kcal} ккал</span>
-                      <span>Б {m.protein}</span><span>Ж {m.fat}</span><span>У {m.carb}</span>
-                    </div>
-                    {m.tags?.length > 0 && <div className="nu-tags">{m.tags.map(t => <span key={t} className="nu-tag">{t}</span>)}</div>}
-                    <div className="nu-card-actions">
-                      <button className="nu-kitchen-card" onClick={() => quickKitchen(m)} disabled={kitchenBusy === m.name}>
-                        {kitchenBusy === m.name ? 'Добавляю…' : '🍳 На кухню'}
-                      </button>
-                      <button className="nu-recipe-btn" onClick={() => openSuggestDetail(m)}>Подробнее →</button>
-                    </div>
-                  </motion.div>
-                ))}
+                {meals.map((m, i) => {
+                  const combo = m.parts && m.parts.length > 1
+                  return (
+                    <motion.div key={`${m.name}-${i}`} className="nu-meal-card" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 6) * 0.03 }}>
+                      {images[m.name]?.url && <div className="nu-meal-img" style={{ backgroundImage: `url(${images[m.name].url})` }} />}
+                      <div className="nu-meal-name">{m.name}</div>
+                      {combo ? (
+                        <div className="nu-parts">
+                          {m.parts.map((p, k) => (
+                            <div key={k} className="nu-part"><span className="nu-part-c muted">{p.component}</span> {p.name} <span className="muted">· {p.kcal} ккал</span></div>
+                          ))}
+                        </div>
+                      ) : (m.short && <div className="nu-meal-short muted">{m.short}</div>)}
+                      <div className="nu-meal-macros">
+                        <span style={{ color: 'var(--orange)' }}>{m.kcal} ккал</span>
+                        <span>Б {m.protein}</span><span>Ж {m.fat}</span><span>У {m.carb}</span>
+                      </div>
+                      {m.tags?.length > 0 && <div className="nu-tags">{m.tags.map(t => <span key={t} className="nu-tag">{t}</span>)}</div>}
+                      <div className="nu-card-actions">
+                        <button className="nu-kitchen-card" onClick={() => quickKitchen(m)} disabled={kitchenBusy === m.name}>
+                          {kitchenBusy === m.name ? 'Добавляю…' : '🍳 На кухню'}
+                        </button>
+                        <button className="nu-recipe-btn" onClick={() => openSuggestDetail(m)}>Подробнее →</button>
+                      </div>
+                    </motion.div>
+                  )
+                })}
               </div>
               <button className="nu-more" onClick={moreMeals} disabled={loadingMore}>
                 {loadingMore ? 'Подбираю ещё…' : '＋ Показать ещё блюда'}
@@ -538,40 +634,41 @@ export default function Nutrition() {
                   </div>
                 )
               })()}
-              {detailLoading ? (
-                <div className="nu-empty muted">ИИ собирает рецепт…</div>
-              ) : detailRecipe ? (
-                <>
-                  <div className="nu-meal-macros">
-                    {detailRecipe.kcal != null && <span style={{ color: 'var(--orange)' }}>{detailRecipe.kcal} ккал</span>}
-                    {detailRecipe.protein != null && <span>Б {detailRecipe.protein}</span>}
-                    {detailRecipe.fat != null && <span>Ж {detailRecipe.fat}</span>}
-                    {detailRecipe.carb != null && <span>У {detailRecipe.carb}</span>}
-                  </div>
-                  <div className="nu-sec-title">Ингредиенты</div>
-                  <div className="nu-ing-list">
-                    {(detailRecipe.ingredients || []).map((ing, i) => (
-                      <div key={i} className="nu-ing">
-                        <span>{ing.name}</span>
-                        <span className="muted">{ing.qty != null ? `${ing.qty} ${ing.unit || ''}` : (ing.unit || '')}</span>
+              <div className="nu-meal-macros nu-detail-total">
+                <span style={{ color: 'var(--orange)' }}>{detail.meal.kcal} ккал</span>
+                <span>Б {detail.meal.protein}</span><span>Ж {detail.meal.fat}</span><span>У {detail.meal.carb}</span>
+              </div>
+              {detailParts.map((p, pi) => (
+                <div key={pi} className="nu-part-sec">
+                  {detailParts.length > 1 && <div className="nu-part-head"><span className="nu-part-c muted">{p.component}</span> {p.name}</div>}
+                  {!p.recipe ? (
+                    <div className="nu-empty muted">{detailLoading ? 'ИИ собирает рецепт…' : 'Рецепт недоступен'}</div>
+                  ) : (
+                    <>
+                      <div className="nu-sec-title">Ингредиенты</div>
+                      <div className="nu-ing-list">
+                        {(p.recipe.ingredients || []).map((ing, i) => (
+                          <div key={i} className="nu-ing">
+                            <span>{ing.name}</span>
+                            <span className="muted">{ing.qty != null ? `${ing.qty} ${ing.unit || ''}` : (ing.unit || '')}</span>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                  <div className="nu-sec-title">Приготовление</div>
-                  <ol className="nu-steps">
-                    {(detailRecipe.steps || []).map((s, i) => <li key={i}>{s}</li>)}
-                  </ol>
-                  <div className="nu-modal-actions">
-                    {detail.source === 'suggest' ? (
-                      <button className="nu-suggest nu-kitchen" onClick={toKitchen}>🍳 На кухню</button>
-                    ) : (
-                      <button className="nu-remove" onClick={removePlanned}>Убрать из меню</button>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <div className="nu-empty muted">Не удалось получить рецепт. Проверьте, что backend запущен с ключом ИИ.</div>
-              )}
+                      <div className="nu-sec-title">Приготовление</div>
+                      <ol className="nu-steps">
+                        {(p.recipe.steps || []).map((s, i) => <li key={i}>{s}</li>)}
+                      </ol>
+                    </>
+                  )}
+                </div>
+              ))}
+              <div className="nu-modal-actions">
+                {detail.source === 'suggest' ? (
+                  <button className="nu-suggest nu-kitchen" onClick={toKitchen} disabled={detailLoading}>🍳 На кухню</button>
+                ) : (
+                  <button className="nu-remove" onClick={removePlanned}>Убрать из меню</button>
+                )}
+              </div>
             </motion.div>
           </div>
         )}
@@ -620,6 +717,25 @@ export default function Nutrition() {
               <div className="nu-seg">
                 <button className={`nu-seg-btn ${prefsDraft.cookTime === 'fast' ? 'active' : ''}`} onClick={() => setDraft('cookTime', 'fast')}>Быстро (до 30 мин)</button>
                 <button className={`nu-seg-btn ${prefsDraft.cookTime === 'any' ? 'active' : ''}`} onClick={() => setDraft('cookTime', 'any')}>Не важно</button>
+              </div>
+
+              <div className="nu-sec-title">Кофе (тоже считаем в КБЖУ)</div>
+              <div className="nu-seg">
+                {[['no', 'Не пью'], ['black', 'Чёрный'], ['milk', 'С молоком'], ['milk_sugar', 'С молоком и сахаром']].map(([k, l]) => (
+                  <button key={k} className={`nu-seg-btn ${prefsDraft.coffee === k ? 'active' : ''}`} onClick={() => setDraft('coffee', k)}>{l}</button>
+                ))}
+              </div>
+              {prefsDraft.coffee !== 'no' && (
+                <div className="nu-slider-row" style={{ marginTop: 8 }}>
+                  <span className="muted" style={{ fontSize: 13 }}>Чашек в день</span>
+                  <input type="range" min="1" max="6" value={prefsDraft.coffeeCups || 1} onChange={e => setDraft('coffeeCups', +e.target.value)} />
+                  <span className="nu-slider-val">{prefsDraft.coffeeCups || 1}</span>
+                </div>
+              )}
+              <div className="nu-sec-title">Спортпит</div>
+              <div className="nu-foods">
+                <button className={`nu-food ${prefsDraft.proteinBar ? 'yes' : 'no'}`} onClick={() => setDraft('proteinBar', !prefsDraft.proteinBar)}>Протеиновые батончики <b>{prefsDraft.proteinBar ? 'да' : 'нет'}</b></button>
+                <button className={`nu-food ${prefsDraft.proteinShake ? 'yes' : 'no'}`} onClick={() => setDraft('proteinShake', !prefsDraft.proteinShake)}>Протеиновые коктейли <b>{prefsDraft.proteinShake ? 'да' : 'нет'}</b></button>
               </div>
 
               <div className="nu-sec-title">Аллергии (строго исключить)</div>
@@ -704,6 +820,31 @@ export default function Nutrition() {
         .nu-seg-btn { padding: 8px 13px; border: none; background: transparent; color: var(--muted); font-family: inherit; font-size: 13px; font-weight: 600; border-radius: 9px; cursor: pointer; transition: all .15s; }
         .nu-seg-btn:hover { color: var(--foreground); }
         .nu-seg-btn.active { background: var(--bg-card); color: var(--accent); box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+
+        /* Учёт съеденного */
+        .nu-intake-tag { color: var(--green); font-weight: 600; }
+        .nu-intake-reset { margin-left: 8px; background: transparent; border: none; color: var(--muted); font-family: inherit; font-size: 12px; text-decoration: underline; cursor: pointer; }
+        .nu-intake-reset:hover { color: var(--foreground); }
+        .nu-intake-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; align-items: center; }
+        .nu-calai { padding: 9px 14px; border-radius: 11px; border: 1px solid var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); font-family: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer; transition: all .15s; }
+        .nu-calai:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 20%, transparent); }
+        .nu-calai:disabled { opacity: .6; cursor: default; }
+        .nu-quick { padding: 8px 12px; border-radius: 11px; border: 1px solid var(--border); background: var(--bg-secondary); color: var(--foreground); font-family: inherit; font-size: 13px; cursor: pointer; transition: all .15s; }
+        .nu-quick:hover { border-color: var(--accent); color: var(--accent); }
+
+        /* Состав приёма (комбо) */
+        .nu-comp-row { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
+        .nu-comp-lbl { font-size: 13px; margin-right: 2px; }
+        .nu-comp { padding: 7px 12px; border-radius: 18px; border: 1px solid var(--border); background: var(--bg-secondary); color: var(--muted); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s; }
+        .nu-comp.on { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+        .nu-parts { display: flex; flex-direction: column; gap: 4px; }
+        .nu-part { font-size: 13.5px; color: var(--foreground); line-height: 1.4; }
+        .nu-part-c { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; margin-right: 4px; }
+        .nu-part-sec { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--border); padding-top: 12px; margin-top: 4px; }
+        .nu-part-sec:first-of-type { border-top: none; padding-top: 0; }
+        .nu-part-head { font-size: 15px; font-weight: 700; color: var(--foreground); }
+        .nu-detail-total { padding: 4px 0; }
+        .nu-recent { display: inline-block; margin-left: 8px; font-size: 11px; color: var(--orange); background: color-mix(in srgb, var(--orange) 14%, transparent); padding: 2px 8px; border-radius: 10px; vertical-align: middle; }
 
         /* Неделя */
         .nu-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }

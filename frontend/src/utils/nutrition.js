@@ -142,8 +142,21 @@ export const DEFAULT_PREFS = {
   pork: true, beef: true, chicken: true, fish: true, seafood: true, dairy: true, eggs: true, mushrooms: true,
   cuisines: [], cookTime: 'any',  // 'fast' | 'any'
   allergies: '', avoid: '',
+  // регулярные «довески», которые тоже идут в КБЖУ
+  coffee: 'no',        // 'no' | 'black' | 'milk' | 'milk_sugar'
+  coffeeCups: 1,
+  proteinBar: false, proteinShake: false,
   likes: [], dislikes: []          // копятся из обратной связи (названия блюд)
 }
+
+// Быстрый учёт «довесков» (приблизительные КБЖУ за штуку/чашку)
+export const QUICK_ADD = [
+  { key: 'coffee_milk', label: 'Кофе с молоком', kcal: 60, protein: 3, fat: 3, carb: 5 },
+  { key: 'coffee_milk_sugar', label: 'Кофе с молоком и сахаром', kcal: 100, protein: 3, fat: 3, carb: 15 },
+  { key: 'coffee_black', label: 'Кофе чёрный', kcal: 5, protein: 0, fat: 0, carb: 1 },
+  { key: 'protein_bar', label: 'Протеиновый батончик', kcal: 200, protein: 20, fat: 7, carb: 22 },
+  { key: 'protein_shake', label: 'Протеиновый коктейль', kcal: 160, protein: 27, fat: 3, carb: 8 }
+]
 
 export function loadPrefs() {
   try { const s = localStorage.getItem(TASTE_KEY); if (s) return { ...DEFAULT_PREFS, ...JSON.parse(s) } } catch { /* ignore */ }
@@ -353,4 +366,55 @@ export function formatProduct(it) {
     return Math.ceil(qty / 100) * 100 + ' г'   // шаг 100 г
   }
   return '—'
+}
+
+// ── Съеденное за день: CalAI-скриншот (точно) или «довески» вручную ──
+export const INTAKE_KEY = 'albert-intake'
+export function loadIntake() { try { const s = localStorage.getItem(INTAKE_KEY); if (s) return JSON.parse(s) } catch { /* ignore */ } return {} }
+export function saveIntake(o) { try { localStorage.setItem(INTAKE_KEY, JSON.stringify(o)) } catch { /* ignore */ } }
+// Записать итог дня из CalAI (авторитетно)
+export function setCalaiIntake(intake, dateKey, data) {
+  return { ...intake, [dateKey]: { source: 'calai', kcal: data.kcal || 0, protein: data.protein || 0, fat: data.fat || 0, carb: data.carb || 0, items: data.items || [] } }
+}
+// Добавить «довесок» вручную (кофе, батончик…)
+export function addIntakeExtra(intake, dateKey, item) {
+  const cur = intake[dateKey]?.source === 'manual' ? intake[dateKey] : { source: 'manual', kcal: 0, protein: 0, fat: 0, carb: 0, items: [] }
+  return {
+    ...intake,
+    [dateKey]: {
+      source: 'manual',
+      kcal: (cur.kcal || 0) + (item.kcal || 0), protein: (cur.protein || 0) + (item.protein || 0),
+      fat: (cur.fat || 0) + (item.fat || 0), carb: (cur.carb || 0) + (item.carb || 0),
+      items: [...(cur.items || []), { name: item.label || item.name, kcal: item.kcal || 0 }]
+    }
+  }
+}
+export function clearDayIntake(intake, dateKey) { const n = { ...intake }; delete n[dateKey]; return n }
+
+// Съедено за день: если есть точный итог CalAI — берём его; иначе оценка по плану + ручные довески
+export function eatenForDay(plan, intake, dateKey) {
+  const rec = intake?.[dateKey]
+  if (rec?.source === 'calai') return Math.round(rec.kcal || 0)
+  const planned = eatenKcal(plan, dateKey)
+  const extra = rec?.source === 'manual' ? (rec.kcal || 0) : 0
+  return Math.round(planned + extra)
+}
+
+// ── Память покупок: что брали раньше, чтобы не было излишков (специи, масло и т.п.) ──
+export const PANTRY_KEY = 'albert-pantry'
+export function loadPantry() { try { const s = localStorage.getItem(PANTRY_KEY); if (s) return JSON.parse(s) } catch { /* ignore */ } return {} }
+export function savePantry(o) { try { localStorage.setItem(PANTRY_KEY, JSON.stringify(o)) } catch { /* ignore */ } }
+// Запомнить купленные продукты (имя → дата последней покупки)
+export function archivePantry(pantry, items) {
+  const today = mskDateKey()
+  const next = { ...pantry }
+  ;(items || []).forEach(it => { if (it?.name) next[normIng(it.name)] = today })
+  return next
+}
+// Долгоиграющие продукты — их обидно покупать дважды
+const LONG_LIFE = /^(масло|мука|сахар|м[её]д|рис|гречк|овсян|орех|изюм|соус|кетчуп|майонез|уксус|крупа|макарон|паста|чай|кофе|какао|соль|специ|приправ)/i
+export function recentlyBought(pantry, name, days = 14) {
+  const d = pantry?.[normIng(name)]
+  if (!d || !LONG_LIFE.test(String(name))) return false
+  try { return Math.floor((new Date(mskDateKey()) - new Date(d)) / 86400000) < days } catch { return false }
 }

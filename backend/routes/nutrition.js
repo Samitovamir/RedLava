@@ -39,6 +39,11 @@ function prefsBrief(p) {
   if (p.cookTime === 'fast') parts.push('Блюда простые и быстрые (до ~30 минут).')
   if (p.allergies) parts.push(`АЛЛЕРГИЯ — строго исключить: ${p.allergies}.`)
   if (p.avoid) parts.push(`Не любит: ${p.avoid}.`)
+  const habits = []
+  if (p.coffee && p.coffee !== 'no') habits.push(`кофе (${p.coffee === 'black' ? 'чёрный' : p.coffee === 'milk' ? 'с молоком' : 'с молоком и сахаром'})${p.coffeeCups ? ` ~${p.coffeeCups} чашки/день` : ''}`)
+  if (p.proteinBar) habits.push('протеиновые батончики')
+  if (p.proteinShake) habits.push('протеиновые коктейли')
+  if (habits.length) parts.push(`Регулярно употребляет (это уже в его дне): ${habits.join(', ')}.`)
   if (Array.isArray(p.likes) && p.likes.length) parts.push(`Понравившиеся ранее блюда (ориентируйся на стиль): ${p.likes.slice(-12).join(', ')}.`)
   if (Array.isArray(p.dislikes) && p.dislikes.length) parts.push(`Не понравились ранее (избегай похожего): ${p.dislikes.slice(-12).join(', ')}.`)
   return parts.join(' ')
@@ -59,11 +64,24 @@ const MEALS_TOOL = [{
             name: { type: 'string', description: 'Короткое название блюда на русском' },
             short: { type: 'string', description: 'Очень краткое описание (1 строка)' },
             imageQuery: { type: 'string', description: 'Поисковый запрос для фото блюда НА АНГЛИЙСКОМ, 2-4 слова (например "oatmeal banana honey", "buckwheat porridge milk")' },
-            kcal: { type: 'number', description: 'Калории порции' },
-            protein: { type: 'number', description: 'Белки, г' },
-            fat: { type: 'number', description: 'Жиры, г' },
-            carb: { type: 'number', description: 'Углеводы, г' },
-            tags: { type: 'array', items: { type: 'string' }, description: 'Метки: «высокий белок», «быстро», «веган» и т.п.' }
+            kcal: { type: 'number', description: 'Калории всего варианта (сумма частей)' },
+            protein: { type: 'number', description: 'Белки, г (всего)' },
+            fat: { type: 'number', description: 'Жиры, г (всего)' },
+            carb: { type: 'number', description: 'Углеводы, г (всего)' },
+            tags: { type: 'array', items: { type: 'string' }, description: 'Метки: «высокий белок», «быстро», «веган» и т.п.' },
+            parts: {
+              type: 'array',
+              description: 'Если в варианте несколько блюд (например салат + основное) — по одному элементу на блюдо. Если блюдо одно — один элемент или пусто.',
+              items: {
+                type: 'object',
+                properties: {
+                  component: { type: 'string', description: 'Тип: Суп / Салат / Основное / Гарнир / Напиток / Десерт' },
+                  name: { type: 'string', description: 'Название блюда на русском' },
+                  kcal: { type: 'number' }, protein: { type: 'number' }, fat: { type: 'number' }, carb: { type: 'number' }
+                },
+                required: ['component', 'name', 'kcal']
+              }
+            }
           },
           required: ['name', 'kcal', 'protein', 'fat', 'carb']
         }
@@ -103,13 +121,22 @@ const RECIPE_TOOL = [{
 // Подобрать блюда под цель
 router.post('/meals', async (req, res) => {
   if (!process.env.ANTHROPIC_API_KEY) return res.json({ ok: false, message: 'Нет ключа ИИ', meals: [] })
-  const { target = {}, mealType = 'обед', prefs = null, likes = [], dislikes = [], count = 5, note = '', exclude = [] } = req.body || {}
+  const { target = {}, mealType = 'обед', prefs = null, likes = [], dislikes = [], count = 5, note = '', exclude = [], components = [] } = req.body || {}
   try {
     const client = getClient()
     const brief = prefsBrief(prefs)
+    const comps = Array.isArray(components) ? components.filter(Boolean) : []
+    const compText = comps.length > 1
+      ? `Каждый вариант — это НАБОР из нескольких блюд: ${comps.join(' + ')}. По одному блюду на каждый пункт. ` +
+        `Заполни parts[] (для каждого блюда: component, название, КБЖУ). В name дай короткое общее название набора. ` +
+        `kcal/protein/fat/carb варианта = СУММА частей и должна примерно попадать в цель приёма. `
+      : comps.length === 1
+        ? `Тип блюда: ${comps[0]}. Одно блюдо на вариант (parts можно из одного элемента). `
+        : ''
     const prompt =
-      `Подбери ${count} блюд для приёма пищи «${mealType}» для владельца (взрослый мужчина, триатлет). ` +
+      `Подбери ${count} вариантов для приёма пищи «${mealType}» для владельца (взрослый мужчина, триатлет). ` +
       `Целевые ориентиры на этот приём: ~${target.kcal ?? '?'} ккал, белки ~${target.protein ?? '?'} г, жиры ~${target.fat ?? '?'} г, углеводы ~${target.carb ?? '?'} г. ` +
+      compText +
       (brief ? `Вкусовые предпочтения: ${brief} ` : '') +
       (likes.length ? `Также любит: ${likes.join(', ')}. ` : '') +
       (dislikes.length ? `Также исключить: ${dislikes.join(', ')}. ` : '') +
@@ -119,7 +146,7 @@ router.post('/meals', async (req, res) => {
       KITCHEN + ' ' +
       `Указывай реалистичные КБЖУ порции. Вызови suggest_meals.`
     const resp = await client.messages.create({
-      model: 'claude-sonnet-4-6', max_tokens: 1500,
+      model: 'claude-sonnet-4-6', max_tokens: 4000,
       tools: MEALS_TOOL, tool_choice: { type: 'tool', name: 'suggest_meals' },
       messages: [{ role: 'user', content: prompt }]
     })
@@ -209,6 +236,50 @@ router.post('/images', async (req, res) => {
     if (obj?.url) images[name] = obj
   }))
   res.json({ ok: true, images })
+})
+
+// ── CalAI: читаем скриншот сводки и достаём съеденное за день ──
+const INTAKE_TOOL = [{
+  name: 'log_intake',
+  description: 'Извлечь съеденное за день со скриншота приложения подсчёта калорий.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      kcal: { type: 'number', description: 'Съедено калорий за день' },
+      protein: { type: 'number', description: 'Белки, г' },
+      fat: { type: 'number', description: 'Жиры, г' },
+      carb: { type: 'number', description: 'Углеводы, г' },
+      items: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, kcal: { type: 'number' } } }, description: 'Отдельные приёмы/продукты, если видны' },
+      note: { type: 'string', description: 'Короткий комментарий, если что-то непонятно на скрине' }
+    },
+    required: ['kcal']
+  }
+}]
+
+router.post('/intake-image', async (req, res) => {
+  if (!process.env.ANTHROPIC_API_KEY) return res.json({ ok: false, message: 'Нет ключа ИИ' })
+  const { image } = req.body || {}
+  const m = /^data:(image\/(png|jpeg|jpg|webp));base64,(.+)$/.exec(String(image || ''))
+  if (!m) return res.status(400).json({ ok: false, message: 'Нужен скриншот (png/jpg/webp)' })
+  const media = m[1] === 'image/jpg' ? 'image/jpeg' : m[1]
+  try {
+    const client = getClient()
+    const resp = await client.messages.create({
+      model: 'claude-sonnet-4-6', max_tokens: 800,
+      tools: INTAKE_TOOL, tool_choice: { type: 'tool', name: 'log_intake' },
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: media, data: m[3] } },
+          { type: 'text', text: 'Это скриншот из приложения подсчёта калорий (CalAI и т.п.). Извлеки итог за день: калории и БЖУ (и отдельные позиции, если видно). Вызови log_intake.' }
+        ]
+      }]
+    })
+    const block = resp.content.find(b => b.type === 'tool_use')
+    res.json({ ok: true, intake: block?.input || null })
+  } catch (e) {
+    res.json({ ok: false, message: String(e?.message || e).slice(0, 150) })
+  }
 })
 
 export default router
