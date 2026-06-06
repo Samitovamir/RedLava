@@ -84,7 +84,6 @@ export default function Nutrition() {
   const [rateText, setRateText] = useState('')
   const dismissedRate = useRef(new Set())
 
-  const suggestRef = useRef(null)
   const toastTimer = useRef(null)
 
   useEffect(() => {
@@ -487,7 +486,9 @@ export default function Nutrition() {
                     {dish.rated && <span className={`nu-slot-rated ${dish.rating}`}>{dish.rating === 'up' ? '👍 понравилось' : '👎 не очень'}</span>}
                   </button>
                 ) : (
-                  <button className="nu-slot-empty" onClick={() => pickSlot(m.key)}>＋ Подобрать</button>
+                  <button className="nu-slot-empty" onClick={() => pickSlot(m.key)} disabled={loadingMeals}>
+                    {loadingMeals && active ? 'Подбираю…' : '＋ Подобрать'}
+                  </button>
                 )}
               </div>
             )
@@ -495,25 +496,12 @@ export default function Nutrition() {
         </div>
       </motion.div>
 
-      {/* Подбор блюд */}
-      <motion.div ref={suggestRef} className="card nu-meals" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-        <div className="nu-head">
-          <div className="card-title" style={{ margin: 0 }}>Подбор блюд · {mealType}</div>
-          <span className="muted nu-permeal">{dayLabel} · ≈{perMeal.kcal} ккал · Б{perMeal.protein} Ж{perMeal.fat} У{perMeal.carb}</span>
-        </div>
-        <div className="nu-note-row">
-          <input className="nu-note" placeholder="Пожелание к подбору (необязательно): например «полегче», «побольше рыбы»"
-            value={note} onChange={e => setNote(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') suggestMeals() }} />
-          <MicButton primary onText={t => setNote(prev => (prev ? prev.trim() + ' ' : '') + t)} />
-          <button className="nu-suggest" onClick={() => suggestMeals()} disabled={loadingMeals}>
-            {loadingMeals ? 'Подбираю…' : 'Подобрать блюда'}
-          </button>
-        </div>
-        {!loadingMeals && mealsMsg && <div className="nu-empty muted">{mealsMsg}</div>}
-        {!loadingMeals && !mealsMsg && meals.length > 0 && (
-          <button className="nu-reopen" onClick={() => setResultsOpen(true)}>Показать подобранные блюда ({meals.length}) →</button>
-        )}
-      </motion.div>
+      {/* Если подбор не дал результата — короткое сообщение под слотами */}
+      {!loadingMeals && mealsMsg && (
+        <motion.div className="card nu-msg-card" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
+          <div className="nu-empty muted">{mealsMsg}</div>
+        </motion.div>
+      )}
 
       {/* Список покупок */}
       <motion.div className="card nu-shop" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
