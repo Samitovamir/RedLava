@@ -9,11 +9,112 @@ import AiRefreshButton from '../components/AiRefreshButton.jsx'
 import MicButton from '../components/MicButton.jsx'
 import { useAiSummary } from '../hooks/useAiSummary.js'
 import { useSiteSnapshot } from '../hooks/useSiteSnapshot.js'
+import { useLang, useT } from '../context/LanguageContext.jsx'
 import {
-  WHOOP, WHOOP_DAYS, SLEEP_STAGES, recoveryColor, recoveryLabel, fmtHm
+  WHOOP, WHOOP_DAYS, SLEEP_STAGES, recoveryColor, fmtHm
 } from '../utils/whoop.js'
 
+const STR = {
+  ru: {
+    heading: 'Здоровье',
+    // кольца / стадии сна
+    stages: { awake: 'Бодрствование', light: 'Лёгкий сон', rem: 'REM (быстрый)', deep: 'Глубокий сон' },
+    recHigh: 'Высокое', recMid: 'Среднее', recLow: 'Низкое',
+    // совет по восстановлению (верх карточки)
+    recTextHigh: 'Тело хорошо восстановилось — можно давать высокую нагрузку.',
+    recTextMid: 'Среднее восстановление — умеренная нагрузка, следи за самочувствием.',
+    recTextLow: 'Низкое восстановление — день отдыха или лёгкая активность.',
+    // мини-метрики под кольцами
+    hrvShort: 'HRV, мс', rhrShort: 'пульс покоя', respShort: 'дыхание',
+    // консультант
+    aiBadge: 'ИИ', consultant: 'Консультант',
+    analyzing: 'ИИ анализирует показатели…', thinking: 'думает…',
+    s1: 'Можно ли тренироваться сегодня?', s2: 'Как улучшить сон?', s3: 'Почему низкое HRV?',
+    chatPlaceholder: 'Скажите или спросите про здоровье…',
+    replyError: 'Ошибка ответа', noServer: 'Нет связи с сервером. Запустите backend.',
+    // сон
+    sleep: 'Сон', sleepHoursOf: (need) => `из ${need} нужных`, sleepQuality: 'Качество сна',
+    collapse: 'Свернуть', sleepMore: 'Подробнее — сон по часам',
+    // тренд
+    weekRecovery: 'Восстановление за неделю',
+    daySumHigh: 'Организм хорошо восстановился. Хороший день для интенсивной тренировки.',
+    daySumMid: 'Среднее восстановление. Лучше умеренная нагрузка, без рекордов.',
+    daySumLow: 'Низкое восстановление. День для отдыха или лёгкой активности, дайте телу прийти в себя.',
+    dayFull: { 'Пн': 'Понедельник', 'Вт': 'Вторник', 'Ср': 'Среда', 'Чт': 'Четверг', 'Пт': 'Пятница', 'Сб': 'Суббота', 'Вс': 'Воскресенье' },
+    dayShort: { 'Пн': 'Пн', 'Вт': 'Вт', 'Ср': 'Ср', 'Чт': 'Чт', 'Пт': 'Пт', 'Сб': 'Сб', 'Вс': 'Вс' },
+    // карточки показателей
+    metrics: {
+      hrv: { lbl: 'HRV', desc: 'вариабельность сердечного ритма, главный показатель восстановления и стресса' },
+      rhr: { lbl: 'Пульс покоя', sub: 'уд/мин', desc: 'частота пульса в полном покое, ниже — тренированнее сердце' },
+      resp: { lbl: 'Дыхание во сне', sub: 'вдох/мин', desc: 'частота дыхания во сне, стабильность — признак здоровья' },
+      spo2: { lbl: 'SpO₂', sub: 'кислород в крови', desc: 'насыщение крови кислородом во сне' },
+      skin: { lbl: 'Температура кожи', desc: 'температура кожи во сне, отклонение может намекать на болезнь' },
+      eff: { lbl: 'Эффективность сна', sub: 'времени в постели спал', desc: 'доля времени в постели, проведённая во сне' }
+    },
+    skinSub: (d) => `${d > 0 ? '+' : ''}${d}° от нормы`,
+    help: 'Что это значит?',
+    // модалка пояснения
+    explainLoading: 'ИИ разбирается в показателе…', explainOk: 'Понятно',
+    explainFail: 'Не удалось получить пояснение.',
+    explainNoServer: 'Нет связи с сервером. Запустите backend, чтобы получить пояснение от ИИ.',
+    // connect prompt
+    cpSub: 'Whoop', cpTitle: 'Whoop не подключён',
+    cpText: 'Подключите Whoop, чтобы видеть восстановление, сон, HRV и пульс. Анализы крови доступны ниже.',
+    // фолбэк консультанта
+    fbHigh: (rec, hrs, perf) => `Восстановление ${rec}% — отличное. Сон ${hrs} ч (${perf}% нормы). Хороший день для интенсивной тренировки.`,
+    fbLow: (rec, hrs, need) => `Восстановление ${rec}%. Сон ${hrs} ч из ${need}. Рекомендую снизить нагрузку и лечь раньше.`
+  },
+  en: {
+    heading: 'Health',
+    stages: { awake: 'Awake', light: 'Light', rem: 'REM', deep: 'Deep' },
+    recHigh: 'High', recMid: 'Medium', recLow: 'Low',
+    recTextHigh: 'Your body has recovered well — you can take on a heavy load today.',
+    recTextMid: 'Medium recovery — keep the load moderate and watch how you feel.',
+    recTextLow: 'Low recovery — make it a rest day or light activity.',
+    hrvShort: 'HRV, ms', rhrShort: 'resting HR', respShort: 'respiration',
+    aiBadge: 'AI', consultant: 'Consultant',
+    analyzing: 'AI is analyzing your metrics…', thinking: 'thinking…',
+    s1: 'Can I train today?', s2: 'How can I improve my sleep?', s3: 'Why is my HRV low?',
+    chatPlaceholder: 'Say or ask something about your health…',
+    replyError: 'Response error', noServer: 'No connection to the server. Start the backend.',
+    sleep: 'Sleep', sleepHoursOf: (need) => `of ${need} needed`, sleepQuality: 'Sleep quality',
+    collapse: 'Collapse', sleepMore: 'Details — sleep by the hour',
+    weekRecovery: 'Recovery this week',
+    daySumHigh: 'Your body has recovered well. A good day for an intense workout.',
+    daySumMid: 'Medium recovery. Better to keep it moderate, no personal records.',
+    daySumLow: 'Low recovery. A day for rest or light activity — let your body bounce back.',
+    dayFull: { 'Пн': 'Monday', 'Вт': 'Tuesday', 'Ср': 'Wednesday', 'Чт': 'Thursday', 'Пт': 'Friday', 'Сб': 'Saturday', 'Вс': 'Sunday' },
+    dayShort: { 'Пн': 'Mon', 'Вт': 'Tue', 'Ср': 'Wed', 'Чт': 'Thu', 'Пт': 'Fri', 'Сб': 'Sat', 'Вс': 'Sun' },
+    metrics: {
+      hrv: { lbl: 'HRV', desc: 'heart rate variability, the main indicator of recovery and stress' },
+      rhr: { lbl: 'Resting heart rate', sub: 'bpm', desc: 'heart rate at full rest, lower means a more trained heart' },
+      resp: { lbl: 'Respiratory rate in sleep', sub: 'breaths/min', desc: 'breathing rate during sleep, stability is a sign of health' },
+      spo2: { lbl: 'SpO₂', sub: 'blood oxygen', desc: 'blood oxygen saturation during sleep' },
+      skin: { lbl: 'Skin temperature', desc: 'skin temperature during sleep, a deviation may hint at illness' },
+      eff: { lbl: 'Sleep efficiency', sub: 'of time in bed asleep', desc: 'share of time in bed spent asleep' }
+    },
+    skinSub: (d) => `${d > 0 ? '+' : ''}${d}° from normal`,
+    help: 'What does this mean?',
+    explainLoading: 'AI is working out this metric…', explainOk: 'Got it',
+    explainFail: 'Could not get an explanation.',
+    explainNoServer: 'No connection to the server. Start the backend to get an AI explanation.',
+    cpSub: 'Whoop', cpTitle: 'Whoop is not connected',
+    cpText: 'Connect Whoop to see recovery, sleep, HRV and heart rate. Blood test results are available below.',
+    fbHigh: (rec, hrs, perf) => `Recovery ${rec}% — excellent. Sleep ${hrs} h (${perf}% of need). A good day for an intense workout.`,
+    fbLow: (rec, hrs, need) => `Recovery ${rec}%. Sleep ${hrs} h of ${need}. I recommend easing the load and going to bed earlier.`
+  }
+}
+
+function recoveryLevel(r) {
+  if (r >= 67) return 'high'
+  if (r >= 34) return 'mid'
+  return 'low'
+}
+
 export default function Health() {
+  const { lang } = useLang()
+  const t = useT(STR)
+  const recLabel = { high: t.recHigh, mid: t.recMid, low: t.recLow }
   // Живые данные Whoop (если подключён) — иначе демо WHOOP
   const [live, setLive] = useState(() => {
     try { const s = localStorage.getItem('albert-whoop-live'); return s ? JSON.parse(s) : null } catch { return null }
@@ -48,11 +149,11 @@ export default function Health() {
   // Короткая сводка по дню недели (восстановление → совет по тренировкам)
   function daySummary(d) {
     const r = d.recovery
-    if (r >= 67) return 'Организм хорошо восстановился. Хороший день для интенсивной тренировки.'
-    if (r >= 34) return 'Среднее восстановление. Лучше умеренная нагрузка, без рекордов.'
-    return 'Низкое восстановление. День для отдыха или лёгкой активности, дайте телу прийти в себя.'
+    if (r >= 67) return t.daySumHigh
+    if (r >= 34) return t.daySumMid
+    return t.daySumLow
   }
-  const DAY_FULL = { 'Пн': 'Понедельник', 'Вт': 'Вторник', 'Ср': 'Среда', 'Чт': 'Четверг', 'Пт': 'Пятница', 'Сб': 'Суббота', 'Вс': 'Воскресенье' }
+  const DAY_FULL = t.dayFull
 
   // Пояснение показателя от ИИ
   const [explain, setExplain] = useState(null)
@@ -70,12 +171,13 @@ export default function Health() {
     `Ты личный консультант владельца по здоровью, сну и восстановлению. Твоя зона — Whoop, восстановление, сон, самочувствие, анализы крови. ` +
     `ФОКУСИРУЙСЯ на здоровье и не уходи в чужие темы, но ты ВИДИШЬ весь контекст (тренировки, расписание) и учитываешь его для связных советов. ` +
     `Объясняй простыми словами, давай краткие дельные советы на русском. При тревожных отклонениях советуй обратиться к врачу. Учитывай память. ` +
-    `ВАЖНО: «Восстановление» (Whoop) — утренний балл готовности, с ним владелец проснулся; он фиксирован на день и не убывает к вечеру. Не путай с «остатком заряда»/Body Battery (этого показателя в данных нет).`
+    `ВАЖНО: «Восстановление» (Whoop) — утренний балл готовности, с ним владелец проснулся; он фиксирован на день и не убывает к вечеру. Не путай с «остатком заряда»/Body Battery (этого показателя в данных нет).` +
+    (lang === 'en' ? ' Always reply to the user in English.' : '')
 
   // ИИ-сводка консультанта (с кэшем; шаблон — фолбэк без backend)
   const fallbackConsult = w.recovery >= 67
-    ? `Восстановление ${w.recovery}% — отличное. Сон ${w.sleep.hoursSlept} ч (${w.sleep.performance}% нормы). Хороший день для интенсивной тренировки.`
-    : `Восстановление ${w.recovery}%. Сон ${w.sleep.hoursSlept} ч из ${w.sleep.hoursNeeded}. Рекомендую снизить нагрузку и лечь раньше.`
+    ? t.fbHigh(w.recovery, w.sleep.hoursSlept, w.sleep.performance)
+    : t.fbLow(w.recovery, w.sleep.hoursSlept, w.sleep.hoursNeeded)
   const consultSummary = useAiSummary({
     id: 'consultant',
     context: HEALTH_CONTEXT,
@@ -101,9 +203,9 @@ export default function Health() {
         body: JSON.stringify({ message: q, context: HEALTH_CONTEXT, snapshot, history: priorHistory })
       })
       const data = await res.json()
-      setMessages(m => [...m, { role: 'assistant', text: data.reply || 'Ошибка ответа' }])
+      setMessages(m => [...m, { role: 'assistant', text: data.reply || t.replyError }])
     } catch {
-      setMessages(m => [...m, { role: 'assistant', text: 'Нет связи с сервером. Запустите backend.' }])
+      setMessages(m => [...m, { role: 'assistant', text: t.noServer }])
     }
     setLoading(false)
   }
@@ -116,42 +218,44 @@ export default function Health() {
       `Ты консультант по здоровью. Объясни простыми словами для 50-летнего человека без подготовки. ` +
       `Показатель «${m.lbl}» = ${m.val} (${m.desc}). ` +
       `Разбей ответ на короткие абзацы по смыслу: 1) что это такое простыми словами; 2) твоё значение это хорошо или нет; 3) что конкретно делать. ` +
-      `Между абзацами пустая строка. Если есть советы — каждый с новой строки.`
+      `Между абзацами пустая строка. Если есть советы — каждый с новой строки.` +
+      (lang === 'en' ? ' Always reply to the user in English.' : '')
     try {
       const res = await fetch('/api/ai/chat', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: `Объясни показатель ${m.lbl} = ${m.val}`, context })
       })
       const data = await res.json()
-      setExplainText(data.reply || 'Не удалось получить пояснение.')
+      setExplainText(data.reply || t.explainFail)
     } catch {
-      setExplainText('Нет связи с сервером. Запустите backend, чтобы получить пояснение от ИИ.')
+      setExplainText(t.explainNoServer)
     }
     setExplainLoading(false)
   }
 
   // Показатели здоровья — для рендера и пояснений
+  const M = t.metrics
   const HEALTH_METRICS = [
-    { key: 'hrv', val: `${w.hrv} мс`, lbl: 'HRV', desc: 'вариабельность сердечного ритма, главный показатель восстановления и стресса' },
-    { key: 'rhr', val: `${w.rhr}`, lbl: 'Пульс покоя', sub: 'уд/мин', desc: 'частота пульса в полном покое, ниже — тренированнее сердце' },
-    { key: 'resp', val: w.respiratoryRate, lbl: 'Дыхание во сне', sub: 'вдох/мин', desc: 'частота дыхания во сне, стабильность — признак здоровья' },
-    { key: 'spo2', val: `${w.spo2}%`, lbl: 'SpO₂', sub: 'кислород в крови', desc: 'насыщение крови кислородом во сне' },
-    { key: 'skin', val: `${w.skinTemp}°`, lbl: 'Температура кожи', sub: `${w.skinTempDelta > 0 ? '+' : ''}${w.skinTempDelta}° от нормы`, desc: 'температура кожи во сне, отклонение может намекать на болезнь' },
-    { key: 'eff', val: `${w.sleep.efficiency}%`, lbl: 'Эффективность сна', sub: 'времени в постели спал', desc: 'доля времени в постели, проведённая во сне' }
+    { key: 'hrv', val: `${w.hrv} ${lang === 'en' ? 'ms' : 'мс'}`, lbl: M.hrv.lbl, desc: M.hrv.desc },
+    { key: 'rhr', val: `${w.rhr}`, lbl: M.rhr.lbl, sub: M.rhr.sub, desc: M.rhr.desc },
+    { key: 'resp', val: w.respiratoryRate, lbl: M.resp.lbl, sub: M.resp.sub, desc: M.resp.desc },
+    { key: 'spo2', val: `${w.spo2}%`, lbl: M.spo2.lbl, sub: M.spo2.sub, desc: M.spo2.desc },
+    { key: 'skin', val: `${w.skinTemp}°`, lbl: M.skin.lbl, sub: t.skinSub(w.skinTempDelta), desc: M.skin.desc },
+    { key: 'eff', val: `${w.sleep.efficiency}%`, lbl: M.eff.lbl, sub: M.eff.sub, desc: M.eff.desc }
   ]
 
   // Фазы сна для полосы
-  const stages = SLEEP_STAGES.map(s => ({ ...s, min: w.sleep.stages[s.key] }))
+  const stages = SLEEP_STAGES.map(s => ({ ...s, label: t.stages[s.key] || s.label, min: w.sleep.stages[s.key] }))
   const totalSleepMin = stages.reduce((a, s) => a + s.min, 0)
 
   // Whoop не подключён → без выдуманных данных, но анализы крови оставляем
   if (!live) {
     return (
       <ConnectPrompt
-        heading="Здоровье"
-        sub="Whoop"
-        title="Whoop не подключён"
-        text="Подключите Whoop, чтобы видеть восстановление, сон, HRV и пульс. Анализы крови доступны ниже."
+        heading={t.heading}
+        sub={t.cpSub}
+        title={t.cpTitle}
+        text={t.cpText}
       >
         <LabResults />
       </ConnectPrompt>
@@ -161,7 +265,7 @@ export default function Health() {
   return (
     <div className="health-page">
       <div className="page-header">
-        <h2>Здоровье</h2>
+        <h2>{t.heading}</h2>
         <span className="muted">Whoop</span>
       </div>
 
@@ -173,16 +277,16 @@ export default function Health() {
 
           <p className="rc-text">
             {w.recovery >= 67
-              ? 'Тело хорошо восстановилось — можно давать высокую нагрузку.'
+              ? t.recTextHigh
               : w.recovery >= 34
-                ? 'Среднее восстановление — умеренная нагрузка, следи за самочувствием.'
-                : 'Низкое восстановление — день отдыха или лёгкая активность.'}
+                ? t.recTextMid
+                : t.recTextLow}
           </p>
 
           <div className="rc-metrics">
-            <div className="rc-metric"><span className="rc-m-val">{w.hrv}</span><span className="rc-m-lbl">HRV, мс</span></div>
-            <div className="rc-metric"><span className="rc-m-val">{w.rhr}</span><span className="rc-m-lbl">пульс покоя</span></div>
-            <div className="rc-metric"><span className="rc-m-val">{w.respiratoryRate}</span><span className="rc-m-lbl">дыхание</span></div>
+            <div className="rc-metric"><span className="rc-m-val">{w.hrv}</span><span className="rc-m-lbl">{t.hrvShort}</span></div>
+            <div className="rc-metric"><span className="rc-m-val">{w.rhr}</span><span className="rc-m-lbl">{t.rhrShort}</span></div>
+            <div className="rc-metric"><span className="rc-m-val">{w.respiratoryRate}</span><span className="rc-m-lbl">{t.respShort}</span></div>
             <div className="rc-metric"><span className="rc-m-val">{w.spo2}%</span><span className="rc-m-lbl">SpO₂</span></div>
           </div>
         </motion.div>
@@ -190,31 +294,31 @@ export default function Health() {
         <motion.div className="card ai-health"
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.08 }}>
           <div className="summary-head">
-            <span className="summary-badge">ИИ</span>
-            <div className="card-title" style={{ margin: 0 }}>Консультант</div>
+            <span className="summary-badge">{t.aiBadge}</span>
+            <div className="card-title" style={{ margin: 0 }}>{t.consultant}</div>
             <AiRefreshButton onClick={consultSummary.refresh} loading={consultSummary.loading} />
           </div>
           <p className="health-text">
-            {consultSummary.loading ? 'ИИ анализирует показатели…' : consultSummary.text}
+            {consultSummary.loading ? t.analyzing : consultSummary.text}
           </p>
 
           <div className="health-chat">
             {messages.length > 0 && (
               <div className="hc-msgs" ref={msgsRef}>
                 {messages.map((m, i) => <div key={i} className={`hc-msg ${m.role}`}>{m.text}</div>)}
-                {loading && <div className="hc-msg assistant thinking">думает…</div>}
+                {loading && <div className="hc-msg assistant thinking">{t.thinking}</div>}
               </div>
             )}
             {messages.length === 0 && (
               <div className="hc-suggests">
-                {['Можно ли тренироваться сегодня?', 'Как улучшить сон?', 'Почему низкое HRV?'].map(s => (
+                {[t.s1, t.s2, t.s3].map(s => (
                   <button key={s} className="hc-suggest" onClick={() => setInput(s)}>{s}</button>
                 ))}
               </div>
             )}
             <div className="hc-input-row">
-              <MicButton primary onText={t => setInput(prev => (prev ? prev.trim() + ' ' : '') + t)} />
-              <input className="hc-input" placeholder="Скажите или спросите про здоровье…" value={input}
+              <MicButton primary onText={txt => setInput(prev => (prev ? prev.trim() + ' ' : '') + txt)} />
+              <input className="hc-input" placeholder={t.chatPlaceholder} value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); send() } }} />
               <button className="hc-send" onClick={send} disabled={loading || !input.trim()}>
@@ -228,11 +332,11 @@ export default function Health() {
       {/* Сон: производительность + фазы */}
       <div className="card sleep-card">
         <div className="sleep-head">
-          <div className="card-title" style={{ margin: 0 }}>Сон</div>
-          <span className="sleep-hours">{w.sleep.hoursSlept} ч <span className="muted">из {w.sleep.hoursNeeded} нужных</span></span>
+          <div className="card-title" style={{ margin: 0 }}>{t.sleep}</div>
+          <span className="sleep-hours">{w.sleep.hoursSlept} {lang === 'en' ? 'h' : 'ч'} <span className="muted">{t.sleepHoursOf(w.sleep.hoursNeeded)}</span></span>
         </div>
         <div className="sleep-body">
-          <CircularChart value={w.sleep.performance} label="Качество сна" color="var(--accent)" size={130} />
+          <CircularChart value={w.sleep.performance} label={t.sleepQuality} color="var(--accent)" size={130} />
           <div className="sleep-stages">
             <div className="stage-bar">
               {stages.map(s => s.min > 0 && (
@@ -254,7 +358,7 @@ export default function Health() {
 
         <button className="sleep-more" onClick={() => setSleepOpen(o => !o)} aria-expanded={sleepOpen}>
           <span className={`sleep-chev ${sleepOpen ? 'open' : ''}`}>▸</span>
-          {sleepOpen ? 'Свернуть' : 'Подробнее — сон по часам'}
+          {sleepOpen ? t.collapse : t.sleepMore}
         </button>
         <AnimatePresence initial={false}>
           {sleepOpen && (
@@ -269,7 +373,7 @@ export default function Health() {
 
       {/* Тренд восстановления за неделю */}
       <div className="card trend-card">
-        <div className="card-title">Восстановление за неделю</div>
+        <div className="card-title">{t.weekRecovery}</div>
         <div className="trend-bars">
           {(live?.week?.length ? live.week : WHOOP_DAYS).map((d, i) => {
             const active = selDay?.day === d.day
@@ -284,7 +388,7 @@ export default function Health() {
                     transition={{ duration: 0.5, delay: 0.05 * i }} />
                 </div>
                 <span className="trend-val">{d.recovery}</span>
-                <span className="trend-day muted">{d.day}</span>
+                <span className="trend-day muted">{t.dayShort[d.day] || d.day}</span>
               </button>
             )
           })}
@@ -297,7 +401,7 @@ export default function Health() {
             <div className="trend-summary-head">
               <span className="trend-summary-day">{DAY_FULL[selDay.day] || selDay.day}</span>
               <span className="trend-summary-rec" style={{ color: recoveryColor(selDay.recovery) }}>
-                {selDay.recovery}% · {recoveryLabel(selDay.recovery)}
+                {selDay.recovery}% · {recLabel[recoveryLevel(selDay.recovery)]}
               </span>
             </div>
             <p className="trend-summary-text">{daySummary(selDay)}</p>
@@ -309,7 +413,7 @@ export default function Health() {
       <div className="health-metrics">
         {HEALTH_METRICS.map(m => (
           <div key={m.key} className="card hm-card">
-            <button className="gm-help" onClick={() => askExplain(m)} title="Что это значит?">?</button>
+            <button className="gm-help" onClick={() => askExplain(m)} title={t.help}>?</button>
             <span className="hm-val">{m.val}</span>
             <span className="hm-lbl">{m.lbl}</span>
             {m.sub && <span className="hm-sub muted">{m.sub}</span>}
@@ -326,11 +430,11 @@ export default function Health() {
           <motion.div className="card detail-modal" onClick={e => e.stopPropagation()}
             initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
             <div className="summary-head">
-              <span className="summary-badge">ИИ</span>
+              <span className="summary-badge">{t.aiBadge}</span>
               <h3 style={{ margin: 0 }}>{explain.title} · {explain.value}</h3>
             </div>
-            <p className="health-text">{explainLoading ? 'ИИ разбирается в показателе…' : explainText}</p>
-            <button className="detail-btn primary" onClick={() => setExplain(null)}>Понятно</button>
+            <p className="health-text">{explainLoading ? t.explainLoading : explainText}</p>
+            <button className="detail-btn primary" onClick={() => setExplain(null)}>{t.explainOk}</button>
           </motion.div>
         </div>
       )}

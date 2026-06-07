@@ -1,18 +1,39 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import MailForm from '../components/MailForm.jsx'
+import { useT } from '../context/LanguageContext.jsx'
 
 // Страница «Письма»: ручное написание и отправка email через Google.
 // (ИИ тоже умеет готовить письма — они открываются в окне предпросмотра.)
 export default function Mail() {
   const [sentTo, setSentTo] = useState(null)
   const [formKey, setFormKey] = useState(0)   // сброс полей формы для нового письма
+  const t = useT({
+    ru: {
+      title: 'Письма',
+      via: 'Email через Google',
+      sent: 'Письмо отправлено',
+      recipient: 'Получатель:',
+      again: 'Написать ещё',
+      hint: 'Можно написать письмо здесь, а можно просто попросить помощника: «напиши контакту, что заберу абонемент завтра» — он подготовит текст, а вы проверите и отправите.',
+      sendLabel: 'Отправить письмо',
+    },
+    en: {
+      title: 'Mail',
+      via: 'Email via Google',
+      sent: 'Email sent',
+      recipient: 'Recipient:',
+      again: 'Write another',
+      hint: 'You can write an email here, or simply ask the assistant: “tell Igor I’ll pick up the membership tomorrow” — it will draft the text, and you review and send it.',
+      sendLabel: 'Send email',
+    },
+  })
 
   return (
     <div className="mail-page">
       <div className="page-header">
-        <h2>Письма</h2>
-        <span className="muted">Email через Google</span>
+        <h2>{t.title}</h2>
+        <span className="muted">{t.via}</span>
       </div>
 
       <motion.div className="card mail-card"
@@ -20,14 +41,14 @@ export default function Mail() {
         {sentTo ? (
           <div className="mail-done">
             <div className="mail-done-icon">✓</div>
-            <div className="mail-done-title">Письмо отправлено</div>
-            <div className="mail-done-sub muted">Получатель: {sentTo}</div>
-            <button className="mail-done-btn" onClick={() => { setSentTo(null); setFormKey(k => k + 1) }}>Написать ещё</button>
+            <div className="mail-done-title">{t.sent}</div>
+            <div className="mail-done-sub muted">{t.recipient} {sentTo}</div>
+            <button className="mail-done-btn" onClick={() => { setSentTo(null); setFormKey(k => k + 1) }}>{t.again}</button>
           </div>
         ) : (
           <>
-            <p className="mail-hint muted">Можно написать письмо здесь, а можно просто попросить помощника: «напиши контакту, что заберу абонемент завтра» — он подготовит текст, а вы проверите и отправите.</p>
-            <MailForm key={formKey} onSent={(f) => setSentTo(f.to)} sendLabel="Отправить письмо" />
+            <p className="mail-hint muted">{t.hint}</p>
+            <MailForm key={formKey} onSent={(f) => setSentTo(f.to)} sendLabel={t.sendLabel} />
           </>
         )}
       </motion.div>

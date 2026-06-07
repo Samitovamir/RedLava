@@ -1,5 +1,11 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { useLang } from '../context/LanguageContext.jsx'
+
+const NAV_EN = {
+  '/': 'Home', '/schedule': 'Schedule', '/sport': 'Sport', '/health': 'Health',
+  '/nutrition': 'Nutrition', '/mail': 'Mail', '/history': 'History', '/connections': 'Connections'
+}
 
 const NAV_ITEMS = [
   {
@@ -95,10 +101,11 @@ const NAV_ITEMS = [
 export default function FluidMenu() {
   const location = useLocation()
   const navigate = useNavigate()
+  const { lang, toggle } = useLang()
 
   return (
     <nav className="fluid-menu">
-      <div className="fluid-logo" title="Дашборд владельца">А</div>
+      <div className="fluid-logo" title={lang === 'en' ? "Owner's Dashboard" : 'Дашборд владельца'}>А</div>
       <div className="fluid-menu-inner">
         {NAV_ITEMS.map((item) => {
           const isActive = location.pathname === item.path
@@ -107,7 +114,7 @@ export default function FluidMenu() {
               key={item.path}
               className={`nav-item ${isActive ? 'active' : ''}`}
               onClick={() => navigate(item.path)}
-              title={item.label}
+              title={lang === 'en' ? (NAV_EN[item.path] || item.label) : item.label}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
               transition={{ type: 'spring', stiffness: 400, damping: 25 }}
@@ -133,6 +140,10 @@ export default function FluidMenu() {
           )
         })}
       </div>
+
+      <button className="lang-toggle" onClick={toggle} title={lang === 'en' ? 'Переключить на русский' : 'Switch to English'}>
+        {lang === 'en' ? 'RU' : 'EN'}
+      </button>
 
       <style>{`
         .fluid-menu {
@@ -171,6 +182,17 @@ export default function FluidMenu() {
           gap: 8px;
           margin: auto 0;
         }
+        .lang-toggle {
+          flex-shrink: 0;
+          width: 40px; height: 32px;
+          border-radius: 10px;
+          border: 1px solid var(--border);
+          background: var(--bg-secondary);
+          color: var(--muted-foreground);
+          font-family: inherit; font-size: 12px; font-weight: 700;
+          cursor: pointer; transition: all 0.15s;
+        }
+        .lang-toggle:hover { color: var(--accent); border-color: var(--accent); }
         .nav-item {
           position: relative;
           width: 44px;

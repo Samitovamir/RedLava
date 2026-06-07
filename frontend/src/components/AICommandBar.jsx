@@ -7,6 +7,7 @@ import { useMemoryFacts } from '../context/MemoryContext.jsx'
 import { useHistory } from '../context/HistoryContext.jsx'
 import { useSiteSnapshot } from '../hooks/useSiteSnapshot.js'
 import MicButton from './MicButton.jsx'
+import { useLang, useT } from '../context/LanguageContext.jsx'
 
 const PAGE_HINT = {
   '/': 'Сейчас открыт главный экран.',
@@ -17,6 +18,31 @@ const PAGE_HINT = {
 }
 
 export default function AICommandBar() {
+  const { lang } = useLang()
+  const t = useT({
+    ru: {
+      hint: 'Просто напишите, что нужно — я сделаю.',
+      examples: ['Поставь звонок врачу завтра в 15:00', 'Перенеси тренировку на 19:30', 'Удали планёрку'],
+      you: 'Вы', ai: 'ИИ',
+      done: '✓ выполнено',
+      thinking: 'думает...',
+      replyError: 'Ошибка ответа',
+      noServer: 'Нет соединения с сервером. Запустите backend.',
+      placeholderExpanded: 'Введите или надиктуйте запрос...',
+      placeholderCollapsed: 'Спросите что угодно...'
+    },
+    en: {
+      hint: 'Just type what you need — I’ll do it.',
+      examples: ['Book a call with the doctor tomorrow at 15:00', 'Move the workout to 19:30', 'Delete the stand-up'],
+      you: 'You', ai: 'AI',
+      done: '✓ done',
+      thinking: 'thinking...',
+      replyError: 'Response error',
+      noServer: 'No connection to the server. Start the backend.',
+      placeholderExpanded: 'Type or dictate a request...',
+      placeholderCollapsed: 'Ask anything...'
+    }
+  })
   const [expanded, setExpanded] = useState(false)
   const [input, setInput] = useState('')
   const [messages, setMessages] = useState([])
@@ -56,7 +82,7 @@ export default function AICommandBar() {
           message: userMsg,
           snapshot,
           history: priorHistory,
-          context: PAGE_HINT[location.pathname] || PAGE_HINT['/']
+          context: (PAGE_HINT[location.pathname] || PAGE_HINT['/']) + (lang === 'en' ? ' Always reply to the user in English.' : '')
         })
       })
       const data = await res.json()
@@ -73,11 +99,11 @@ export default function AICommandBar() {
       })
       setMessages(prev => [...prev, {
         role: 'assistant',
-        text: data.reply || 'Ошибка ответа',
+        text: data.reply || t.replyError,
         didActions: actions.length
       }])
     } catch {
-      setMessages(prev => [...prev, { role: 'assistant', text: 'Нет соединения с сервером. Запустите backend.' }])
+      setMessages(prev => [...prev, { role: 'assistant', text: t.noServer }])
     }
     setLoading(false)
   }
@@ -107,9 +133,9 @@ export default function AICommandBar() {
           >
             {messages.length === 0 && (
               <div className="ai-hint">
-                <p>Просто напишите, что нужно — я сделаю.</p>
+                <p>{t.hint}</p>
                 <div className="ai-examples">
-                  {['Поставь звонок врачу завтра в 15:00', 'Перенеси тренировку на 19:30', 'Удали планёрку'].map(s => (
+                  {t.examples.map(s => (
                     <button key={s} className="ai-example" onClick={() => setInput(s)}>{s}</button>
                   ))}
                 </div>
@@ -117,17 +143,17 @@ export default function AICommandBar() {
             )}
             {messages.map((m, i) => (
               <div key={i} className={`ai-message ${m.role}`}>
-                <span className="ai-message-role">{m.role === 'user' ? 'Вы' : 'ИИ'}</span>
+                <span className="ai-message-role">{m.role === 'user' ? t.you : t.ai}</span>
                 <span className="ai-message-text">
                   {m.text}
-                  {m.didActions > 0 && <span className="ai-done-badge">✓ выполнено</span>}
+                  {m.didActions > 0 && <span className="ai-done-badge">{t.done}</span>}
                 </span>
               </div>
             ))}
             {loading && (
               <div className="ai-message assistant">
-                <span className="ai-message-role">ИИ</span>
-                <span className="ai-thinking">думает...</span>
+                <span className="ai-message-role">{t.ai}</span>
+                <span className="ai-thinking">{t.thinking}</span>
               </div>
             )}
             <div ref={messagesEndRef} />
@@ -143,7 +169,7 @@ export default function AICommandBar() {
           <input
             ref={inputRef}
             className="ai-input"
-            placeholder={expanded ? 'Введите или надиктуйте запрос...' : 'Спросите что угодно...'}
+            placeholder={expanded ? t.placeholderExpanded : t.placeholderCollapsed}
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKey}

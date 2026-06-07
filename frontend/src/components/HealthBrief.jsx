@@ -1,10 +1,36 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useAiSummary } from '../hooks/useAiSummary.js'
+import { useLang, useT } from '../context/LanguageContext.jsx'
 import MicButton from './MicButton.jsx'
 import {
   INITIAL_REPORTS, buildHistory, markerStatus, STATUS_INFO, rangeText, barGeom, fmtDate, resolveMarker
 } from '../utils/labs.js'
+
+const STR = {
+  ru: {
+    badge: 'ИИ', title: 'Коротко о здоровье',
+    recalc: 'Пересчитать', show: 'Показать', hide: 'Скрыть',
+    loading: 'Смотрю анализы…', run: 'Разобрать здоровье',
+    askLabel: 'Есть вопросы по здоровью — спросите:',
+    you: 'Вы', ai: 'ИИ', thinking: 'думает…',
+    placeholder: 'Например: что попить при низком витамине D?',
+    answerFail: 'Не удалось ответить.', noServer: 'Нет связи с сервером.',
+    noNorm: 'норма не указана', norm: 'норма', was: 'было', taken: 'сдан',
+    status: { ok: 'норма', low: 'понижен', high: 'повышен', unknown: 'нет нормы' }
+  },
+  en: {
+    badge: 'AI', title: 'Health at a glance',
+    recalc: 'Recalculate', show: 'Show', hide: 'Hide',
+    loading: 'Looking at your results…', run: 'Review my health',
+    askLabel: 'Have questions about your health — ask:',
+    you: 'You', ai: 'AI', thinking: 'thinking…',
+    placeholder: 'For example: what to take for low vitamin D?',
+    answerFail: 'Could not answer.', noServer: 'No connection to the server.',
+    noNorm: 'no reference range', norm: 'range', was: 'was', taken: 'taken',
+    status: { ok: 'normal', low: 'low', high: 'high', unknown: 'no range' }
+  }
+}
 
 /*
   Большое окно на главной: ИИ коротко и без воды отмечает только важное по анализам
@@ -96,7 +122,7 @@ function MiniSpark({ values, color }) {
   return <svg width={w} height={h} className="hb-spark"><polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
 }
 
-function MarkerMini({ marker, hist }) {
+function MarkerMini({ marker, hist, t }) {
   const h = hist?.[marker._key]
   if (!h?.length) return null
   const last = h[h.length - 1]
@@ -115,13 +141,13 @@ function MarkerMini({ marker, hist }) {
         <div className="hb-mk-dot" style={{ left: `${st === 'unknown' ? 50 : g.valuePos}%`, background: c }} />
       </div>
       <div className="hb-mk-bottom">
-        <span className="muted">{st === 'unknown' ? 'норма не указана' : `норма ${rangeText(marker.min, marker.max)}`} · сдан {fmtDate(last.date)}</span>
-        <span style={{ color: c }}>{STATUS_INFO[st].label}</span>
+        <span className="muted">{st === 'unknown' ? t.noNorm : `${t.norm} ${rangeText(marker.min, marker.max)}`} · {t.taken} {fmtDate(last.date)}</span>
+        <span style={{ color: c }}>{t.status[st]}</span>
       </div>
       {prev && (
         <div className="hb-mk-trend">
           <MiniSpark values={h.map(x => x.value)} color="var(--muted-foreground)" />
-          <span className="muted">{last.value > prev.value ? '↑' : last.value < prev.value ? '↓' : '→'} было {prev.value} · {fmtDate(prev.date)}</span>
+          <span className="muted">{last.value > prev.value ? '↑' : last.value < prev.value ? '↓' : '→'} {t.was} {prev.value} · {fmtDate(prev.date)}</span>
         </div>
       )}
     </div>
@@ -129,6 +155,8 @@ function MarkerMini({ marker, hist }) {
 }
 
 export default function HealthBrief() {
+  const { lang } = useLang()
+  const t = useT(STR)
   const reports = readReports()
   const whoop = readWhoop()
   const garmin = readGarmin()
@@ -137,9 +165,11 @@ export default function HealthBrief() {
 
   const { text, loading, refresh, run } = useAiSummary({
     id: 'health-brief',
-    context: CONTEXT,
+    context: CONTEXT + (lang === 'en' ? ' Always reply to the user in English.' : ''),
     message: 'Дай короткую выжимку по моим анализам и здоровью: что важно и что делать.',
-    fallback: 'Короткая ИИ-выжимка по анализам появится, когда подключён ключ ИИ. Сами анализы и динамика — на вкладке «Здоровье».',
+    fallback: lang === 'en'
+      ? 'A short AI summary of your results will appear once an AI key is connected. The results and trends themselves are on the “Health” tab.'
+      : 'Короткая ИИ-выжимка по анализам появится, когда подключён ключ ИИ. Сами анализы и динамика — на вкладке «Здоровье».',
     snapshot: healthData,
     manual: true          // не грузим автоматически — только по кнопке
   })
@@ -175,16 +205,17 @@ export default function HealthBrief() {
       'Ты — внимательный помощник владельца по здоровью, спокойный и без паники. владелец — триатлет, тренируется интенсивно. ' +
       'Отвечай кратко и по делу на русском, простыми словами. Не ставь диагноз; при необходимости советуй обратиться к врачу. ' +
       'Если вопрос касается тренировок — учитывай его данные и здоровье: по мелочам не отговаривай от спорта, но при реально опасных отклонениях (сердце, сильная анемия, воспаление) чётко советуй снизить нагрузку. ' +
-      'Не нагнетай: мелкие или некритичные отклонения объясняй спокойно. Опирайся на данные ниже.'
+      'Не нагнетай: мелкие или некритичные отклонения объясняй спокойно. Опирайся на данные ниже.' +
+      (lang === 'en' ? ' Always reply to the user in English.' : '')
     try {
       const res = await fetch('/api/ai/chat', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: q, context, snapshot: healthData, history: prior })
       })
       const data = await res.json()
-      setChat(prev => [...prev, { role: 'assistant', text: data.reply || 'Не удалось ответить.' }])
+      setChat(prev => [...prev, { role: 'assistant', text: data.reply || t.answerFail }])
     } catch {
-      setChat(prev => [...prev, { role: 'assistant', text: 'Нет связи с сервером.' }])
+      setChat(prev => [...prev, { role: 'assistant', text: t.noServer }])
     }
     setBusy(false)
   }
@@ -192,16 +223,16 @@ export default function HealthBrief() {
   return (
     <motion.div className="card health-brief">
       <div className="hb-head">
-        <div className="hb-title"><span className="hb-badge">ИИ</span><span>Коротко о здоровье</span></div>
+        <div className="hb-title"><span className="hb-badge">{t.badge}</span><span>{t.title}</span></div>
         <div className="hb-head-actions">
           {text && !collapsed && (
-            <button className="hb-refresh" onClick={refresh} disabled={loading} title="Пересчитать">
+            <button className="hb-refresh" onClick={refresh} disabled={loading} title={t.recalc}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
               </svg>
             </button>
           )}
-          <button className="hb-refresh" onClick={() => setCollapsed(c => !c)} title={collapsed ? 'Показать' : 'Скрыть'}>
+          <button className="hb-refresh" onClick={() => setCollapsed(c => !c)} title={collapsed ? t.show : t.hide}>
             <svg className={`hb-chev ${collapsed ? '' : 'open'}`} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
           </button>
         </div>
@@ -209,43 +240,43 @@ export default function HealthBrief() {
 
       {!collapsed && (<>
       {loading
-        ? <div className="hb-loading">Смотрю анализы…</div>
+        ? <div className="hb-loading">{t.loading}</div>
         : text
           ? <p className="hb-text">{text}</p>
           : <button className="hb-run" onClick={run}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-              Разобрать здоровье
+              {t.run}
             </button>}
 
       {!loading && text && markers.length > 0 && (
         <div className="hb-markers">
-          {markers.map(m => <MarkerMini key={m.name} marker={m} hist={hist} />)}
+          {markers.map(m => <MarkerMini key={m.name} marker={m} hist={hist} t={t} />)}
         </div>
       )}
 
       <div className="hb-ask">
-        <div className="hb-ask-label">Есть вопросы по здоровью — спросите:</div>
+        <div className="hb-ask-label">{t.askLabel}</div>
         {chat.length > 0 && (
           <div className="hb-chat">
             {chat.map((m, i) => (
               <div key={i} className={`hb-msg ${m.role}`}>
-                <span className="hb-msg-role">{m.role === 'user' ? 'Вы' : 'ИИ'}</span>
+                <span className="hb-msg-role">{m.role === 'user' ? t.you : t.ai}</span>
                 <span className="hb-msg-text">{m.text}</span>
               </div>
             ))}
-            {busy && <div className="hb-msg assistant"><span className="hb-msg-role">ИИ</span><span className="hb-msg-text muted">думает…</span></div>}
+            {busy && <div className="hb-msg assistant"><span className="hb-msg-role">{t.ai}</span><span className="hb-msg-text muted">{t.thinking}</span></div>}
             <div ref={endRef} />
           </div>
         )}
         <div className="hb-ask-row">
           <input
             className="hb-input"
-            placeholder="Например: что попить при низком витамине D?"
+            placeholder={t.placeholder}
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') ask() }}
           />
-          <MicButton primary onText={t => setInput(prev => (prev ? prev.trim() + ' ' : '') + t)} />
+          <MicButton primary onText={txt => setInput(prev => (prev ? prev.trim() + ' ' : '') + txt)} />
           <button className="hb-send" onClick={ask} disabled={busy || !input.trim()}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>

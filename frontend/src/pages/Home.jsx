@@ -7,6 +7,7 @@ import DaySummary from '../components/DaySummary.jsx'
 import HealthBrief from '../components/HealthBrief.jsx'
 import { getQuoteOfDay } from '../utils/quotes.js'
 import { useEvents } from '../context/EventsContext.jsx'
+import { useT } from '../context/LanguageContext.jsx'
 import { mskNow } from '../utils/time.js'
 
 const FALL_STEP = 0.028          // задержка между падением соседних символов/единиц (сек)
@@ -33,18 +34,18 @@ function FallText({ text, fallen, start, className, tag = 'span' }) {
   )
 }
 
-function getGreeting() {
+function getGreeting(t) {
   const hour = mskNow().getHours()
-  if (hour >= 5 && hour < 12) return 'Доброе утро'
-  if (hour >= 12 && hour < 17) return 'Добрый день'
-  if (hour >= 17 && hour < 22) return 'Добрый вечер'
-  return 'Доброй ночи'
+  if (hour >= 5 && hour < 12) return t.greetMorning
+  if (hour >= 12 && hour < 17) return t.greetDay
+  if (hour >= 17 && hour < 22) return t.greetEvening
+  return t.greetNight
 }
 
-function formatDate() {
+function formatDate(t) {
   const d = mskNow()
-  const days = ['воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота']
-  const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
+  const days = t.days
+  const months = t.months
   return `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]}`
 }
 
@@ -85,19 +86,57 @@ function nextEvent(events) {
     .find(e => `${e.date} ${e.end || e.start}` >= nowKey) || null
 }
 
-function humanDate(dateStr) {
+function humanDate(dateStr, t) {
   const p = n => String(n).padStart(2, '0'); const d0 = mskNow()
   const today = `${d0.getFullYear()}-${p(d0.getMonth() + 1)}-${p(d0.getDate())}`
   const tm = new Date(d0); tm.setDate(d0.getDate() + 1)
   const tomorrow = `${tm.getFullYear()}-${p(tm.getMonth() + 1)}-${p(tm.getDate())}`
-  if (dateStr === today) return 'сегодня'
-  if (dateStr === tomorrow) return 'завтра'
+  if (dateStr === today) return t.today
+  if (dateStr === tomorrow) return t.tomorrow
   const [, m, dd] = dateStr.split('-')
-  const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
+  const months = t.months
   return `${Number(dd)} ${months[Number(m) - 1]}`
 }
 
 export default function Home() {
+  const t = useT({
+    ru: {
+      greetMorning: 'Доброе утро', greetDay: 'Добрый день', greetEvening: 'Добрый вечер', greetNight: 'Доброй ночи',
+      greetName: ', владелец',
+      days: ['воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота'],
+      months: ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'],
+      today: 'сегодня', tomorrow: 'завтра',
+      nextEvent: 'Следующее событие', noEvents: 'Нет событий', soon: 'на ближайшее время',
+      connectCalendar: 'Подключите Google Календарь',
+      lastWorkout: 'Последняя тренировка', connectGarmin: 'Подключите Garmin',
+      recoverySleep: 'Восстановление и сон', recovery: 'Восстановление',
+      sleepEff: (h, e) => `Сон · эфф. ${e}%`, connectWhoop: 'Подключите Whoop',
+      hours: 'ч', km: 'км', min: 'мин', perKm: '/км',
+      huliBtn: 'хули-ули',
+      overlayTitle: 'Никогда не знаешь, когда твоя идея обернётся против тебя',
+      mathHint: 'Решите пример, чтобы вернуть сайт:',
+      answerPlaceholder: 'Дайте ответ', returnSite: 'Вернуть сайт',
+      wrongAnswer: 'Неверно. Подумайте ещё 🙂',
+    },
+    en: {
+      greetMorning: 'Good morning', greetDay: 'Good afternoon', greetEvening: 'Good evening', greetNight: 'Good night',
+      greetName: ', Owner',
+      days: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+      months: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+      today: 'today', tomorrow: 'tomorrow',
+      nextEvent: 'Next event', noEvents: 'No events', soon: 'for the near future',
+      connectCalendar: 'Connect Google Calendar',
+      lastWorkout: 'Last workout', connectGarmin: 'Connect Garmin',
+      recoverySleep: 'Recovery and sleep', recovery: 'Recovery',
+      sleepEff: (h, e) => `Sleep · eff. ${e}%`, connectWhoop: 'Connect Whoop',
+      hours: 'h', km: 'km', min: 'min', perKm: '/km',
+      huliBtn: 'huli-uli',
+      overlayTitle: 'You never know when your own idea will turn against you',
+      mathHint: 'Solve the equation to bring the site back:',
+      answerPlaceholder: 'Enter the answer', returnSite: 'Bring the site back',
+      wrongAnswer: 'Wrong. Think again 🙂',
+    },
+  })
   const [fallen, setFallen] = useState(false)
   const [answer, setAnswer] = useState('')
   const [wrong, setWrong] = useState(false)
@@ -123,14 +162,14 @@ export default function Home() {
   const nextEv = nextEvent(events)
   const cards = [
     nextEv
-      ? { label: 'Следующее событие', value: nextEv.title, sub: `${humanDate(nextEv.date)} · ${nextEv.start}`, color: 'var(--accent)', scrollTo: true, icon: ICON_CAL }
-      : { label: 'Следующее событие', value: 'Нет событий', sub: events.length ? 'на ближайшее время' : 'Подключите Google Календарь', color: 'var(--accent)', link: events.length ? undefined : '/connections', scrollTo: !!events.length, icon: ICON_CAL },
+      ? { label: t.nextEvent, value: nextEv.title, sub: `${humanDate(nextEv.date, t)} · ${nextEv.start}`, color: 'var(--accent)', scrollTo: true, icon: ICON_CAL }
+      : { label: t.nextEvent, value: t.noEvents, sub: events.length ? t.soon : t.connectCalendar, color: 'var(--accent)', link: events.length ? undefined : '/connections', scrollTo: !!events.length, icon: ICON_CAL },
     lastW
-      ? { label: 'Последняя тренировка', value: lastW.label, sub: [lastW.distanceKm ? `${lastW.distanceKm} км` : null, lastW.durationMin ? `${lastW.durationMin} мин` : null, lastW.pace ? `${lastW.pace}/км` : null].filter(Boolean).join(' · ') || humanDate(lastW.date), color: 'var(--orange)', link: '/sport', icon: ICON_RUN }
-      : { label: 'Последняя тренировка', value: '—', sub: 'Подключите Garmin', color: 'var(--orange)', link: '/connections', icon: ICON_RUN },
+      ? { label: t.lastWorkout, value: lastW.label, sub: [lastW.distanceKm ? `${lastW.distanceKm} ${t.km}` : null, lastW.durationMin ? `${lastW.durationMin} ${t.min}` : null, lastW.pace ? `${lastW.pace}${t.perKm}` : null].filter(Boolean).join(' · ') || humanDate(lastW.date, t), color: 'var(--orange)', link: '/sport', icon: ICON_RUN }
+      : { label: t.lastWorkout, value: '—', sub: t.connectGarmin, color: 'var(--orange)', link: '/connections', icon: ICON_RUN },
     whoop
-      ? { label: 'Восстановление и сон', combined: true, recovery: whoop.recovery, sleepH: whoop.sleep.hoursSlept, eff: whoop.sleep.efficiency, color: 'var(--green)', link: '/health', icon: ICON_WHOOP }
-      : { label: 'Восстановление и сон', value: '—', sub: 'Подключите Whoop', color: 'var(--green)', link: '/connections', icon: ICON_WHOOP }
+      ? { label: t.recoverySleep, combined: true, recovery: whoop.recovery, sleepH: whoop.sleep.hoursSlept, eff: whoop.sleep.efficiency, color: 'var(--green)', link: '/health', icon: ICON_WHOOP }
+      : { label: t.recoverySleep, value: '—', sub: t.connectWhoop, color: 'var(--green)', link: '/connections', icon: ICON_WHOOP }
   ]
 
   const scrollToSchedule = () => {
@@ -142,8 +181,8 @@ export default function Home() {
   }
 
   // Тексты и их позиции в общей последовательности падения (сверху вниз)
-  const dateStr = formatDate()
-  const greetStr = `${getGreeting()}, владелец`
+  const dateStr = formatDate(t)
+  const greetStr = `${getGreeting(t)}${t.greetName}`
   const quoteStr = quote.text
   const authorStr = `— ${quote.author}`
 
@@ -171,7 +210,7 @@ export default function Home() {
         <div className="header-left">
           <FallText text={dateStr} fallen={fallen} start={iDate} className="home-date" />
           <FallText text={greetStr} fallen={fallen} start={iGreet} className="greeting" tag="h1" />
-          <motion.button className="huli-btn" onClick={() => setFallen(f => !f)} animate={unitFall(iBtn)}>хули-ули</motion.button>
+          <motion.button className="huli-btn" onClick={() => setFallen(f => !f)} animate={unitFall(iBtn)}>{t.huliBtn}</motion.button>
         </div>
         <div className="quote-of-day">
           <FallText text={quoteStr} fallen={fallen} start={iQuote} className="quote-text" tag="p" />
@@ -198,12 +237,12 @@ export default function Home() {
               <div className="qc-combined">
                 <div className="qc-half">
                   <span className="qc-half-value" style={{ color: 'var(--green)' }}>{c.recovery}%</span>
-                  <span className="qc-half-label">Восстановление</span>
+                  <span className="qc-half-label">{t.recovery}</span>
                 </div>
                 <div className="qc-half-divider" />
                 <div className="qc-half">
-                  <span className="qc-half-value" style={{ color: 'var(--accent)' }}>{c.sleepH} ч</span>
-                  <span className="qc-half-label">Сон · эфф. {c.eff}%</span>
+                  <span className="qc-half-value" style={{ color: 'var(--accent)' }}>{c.sleepH} {t.hours}</span>
+                  <span className="qc-half-label">{t.sleepEff(c.sleepH, c.eff)}</span>
                 </div>
               </div>
             ) : (
@@ -259,7 +298,7 @@ export default function Home() {
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0.8, delay: overlayDelay + 0.2, ease: 'backOut' }}
             >
-              Никогда не знаешь, когда твоя идея обернётся против тебя
+              {t.overlayTitle}
             </motion.h2>
             <motion.div
               className="huli-math"
@@ -267,20 +306,20 @@ export default function Home() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: overlayDelay + 0.5 }}
             >
-              <div className="huli-math-hint">Решите пример, чтобы вернуть сайт:</div>
+              <div className="huli-math-hint">{t.mathHint}</div>
               <div className="huli-expr">√99720196 · ∫₁ᵉ (1/x) dx + ∑(n=1..∞) 1/2ⁿ − 1 = ?</div>
               <form className="huli-answer" onSubmit={checkAnswer}>
                 <input
                   className={`huli-input ${wrong ? 'err' : ''}`}
-                  placeholder="Дайте ответ"
+                  placeholder={t.answerPlaceholder}
                   inputMode="numeric"
                   value={answer}
                   onChange={e => { setAnswer(e.target.value); setWrong(false) }}
                   autoFocus
                 />
-                <button className="huli-btn overlay" type="submit">Вернуть сайт</button>
+                <button className="huli-btn overlay" type="submit">{t.returnSite}</button>
               </form>
-              {wrong && <div className="huli-wrong">Неверно. Подумайте ещё 🙂</div>}
+              {wrong && <div className="huli-wrong">{t.wrongAnswer}</div>}
             </motion.div>
           </motion.div>
         )}

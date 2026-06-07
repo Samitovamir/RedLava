@@ -1,11 +1,30 @@
 import { useState } from 'react'
 import { useMemoryFacts } from '../context/MemoryContext.jsx'
+import { useT } from '../context/LanguageContext.jsx'
 
 // «Память помощника»: факты и предпочтения об владельце, которые ИИ учитывает всегда.
 // Пополняется вручную здесь или самим ИИ (через команду в чате).
 export default function AssistantMemory() {
   const { facts, addFact, removeFact } = useMemoryFacts()
   const [input, setInput] = useState('')
+  const t = useT({
+    ru: {
+      title: 'Память помощника',
+      sub: 'Что ИИ помнит о вас и учитывает в советах и планировании',
+      empty: 'Пока ничего не запомнено. Добавьте факт или скажите ассистенту «запомни, что…».',
+      forget: 'Забыть',
+      placeholder: 'Добавить факт о себе…',
+      remember: 'Запомнить'
+    },
+    en: {
+      title: 'Assistant memory',
+      sub: 'What the AI remembers about you and factors into advice and planning',
+      empty: 'Nothing saved yet. Add a fact or tell the assistant “remember that…”.',
+      forget: 'Forget',
+      placeholder: 'Add a fact about yourself…',
+      remember: 'Remember'
+    }
+  })
 
   function add() {
     if (!input.trim()) return
@@ -18,17 +37,17 @@ export default function AssistantMemory() {
       <div className="mem-head">
         <span className="mem-icon" aria-hidden>🧠</span>
         <div>
-          <div className="mem-title">Память помощника</div>
-          <div className="mem-sub muted">Что ИИ помнит о вас и учитывает в советах и планировании</div>
+          <div className="mem-title">{t.title}</div>
+          <div className="mem-sub muted">{t.sub}</div>
         </div>
       </div>
 
       <div className="mem-facts">
-        {facts.length === 0 && <span className="muted mem-empty">Пока ничего не запомнено. Добавьте факт или скажите ассистенту «запомни, что…».</span>}
+        {facts.length === 0 && <span className="muted mem-empty">{t.empty}</span>}
         {facts.map(f => (
           <span key={f.id} className="mem-fact">
             {f.text}
-            <button className="mem-x" onClick={() => removeFact(f.id)} title="Забыть">×</button>
+            <button className="mem-x" onClick={() => removeFact(f.id)} title={t.forget}>×</button>
           </span>
         ))}
       </div>
@@ -36,12 +55,12 @@ export default function AssistantMemory() {
       <div className="mem-add">
         <input
           className="mem-input"
-          placeholder="Добавить факт о себе…"
+          placeholder={t.placeholder}
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') add() }}
         />
-        <button className="mem-add-btn" onClick={add} disabled={!input.trim()}>Запомнить</button>
+        <button className="mem-add-btn" onClick={add} disabled={!input.trim()}>{t.remember}</button>
       </div>
 
       <style>{`

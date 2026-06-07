@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useMail } from '../context/MailContext.jsx'
 import MailForm from './MailForm.jsx'
+import { useT } from '../context/LanguageContext.jsx'
 
 /*
   Окно предпросмотра письма, подготовленного ИИ. Открывается, когда ассистент
@@ -11,6 +12,22 @@ import MailForm from './MailForm.jsx'
 export default function MailModal() {
   const { draft, closeDraft } = useMail()
   const [sent, setSent] = useState(false)
+  const t = useT({
+    ru: {
+      badge: 'ИИ подготовил письмо',
+      title: 'Проверьте и отправьте',
+      close: 'Закрыть',
+      sent: '✓ Письмо отправлено',
+      send: 'Отправить',
+    },
+    en: {
+      badge: 'AI drafted an email',
+      title: 'Review and send',
+      close: 'Close',
+      sent: '✓ Email sent',
+      send: 'Send',
+    },
+  })
 
   function onSent() {
     setSent(true)
@@ -28,16 +45,16 @@ export default function MailModal() {
             exit={{ opacity: 0, scale: 0.96, y: 12 }} transition={{ type: 'spring', stiffness: 320, damping: 30 }}>
             <div className="mm-head">
               <div>
-                <span className="mm-badge">ИИ подготовил письмо</span>
-                <h2 className="mm-title">Проверьте и отправьте</h2>
+                <span className="mm-badge">{t.badge}</span>
+                <h2 className="mm-title">{t.title}</h2>
               </div>
-              <button className="mm-close" onClick={close} aria-label="Закрыть">×</button>
+              <button className="mm-close" onClick={close} aria-label={t.close}>×</button>
             </div>
 
             {sent ? (
-              <div className="mm-sent">✓ Письмо отправлено</div>
+              <div className="mm-sent">{t.sent}</div>
             ) : (
-              <MailForm initial={draft} onSent={onSent} onCancel={close} sendLabel="Отправить" />
+              <MailForm initial={draft} onSent={onSent} onCancel={close} sendLabel={t.send} />
             )}
           </motion.div>
 

@@ -1,5 +1,6 @@
 import { buildHypnogram, STAGE_LEVEL, minToHHMM } from '../utils/hypnogram.js'
 import { SLEEP_STAGES } from '../utils/whoop.js'
+import { useT } from '../context/LanguageContext.jsx'
 
 /*
   График стадий сна по ходу ночи (гипнограмма). Строится из реальных итогов Whoop
@@ -8,13 +9,29 @@ import { SLEEP_STAGES } from '../utils/whoop.js'
   props: stages {awake,light,rem,deep} (минуты), start "HH:MM", end "HH:MM"
 */
 const COLOR = Object.fromEntries(SLEEP_STAGES.map(s => [s.key, s.color]))
-const LABEL = Object.fromEntries(SLEEP_STAGES.map(s => [s.key, s.label]))
 const ROWS = ['awake', 'rem', 'light', 'deep']   // сверху вниз
-const fmt = (min) => { const h = Math.floor(min / 60), m = Math.round(min % 60); return h ? `${h} ч ${m} мин` : `${m} мин` }
+
+const STR = {
+  ru: {
+    stages: { awake: 'Бодрствование', light: 'Лёгкий сон', rem: 'REM (быстрый)', deep: 'Глубокий сон' },
+    fmt: (min) => { const h = Math.floor(min / 60), m = Math.round(min % 60); return h ? `${h} ч ${m} мин` : `${m} мин` },
+    empty: 'Недостаточно данных для диаграммы сна.',
+    note: (start, end) => `Примерная картина ночи по итогам Whoop${start && end ? ` · сон с ${start} до ${end}` : ''}. Точную поминутную раскладку Whoop не предоставляет.`
+  },
+  en: {
+    stages: { awake: 'Awake', light: 'Light', rem: 'REM', deep: 'Deep' },
+    fmt: (min) => { const h = Math.floor(min / 60), m = Math.round(min % 60); return h ? `${h} h ${m} min` : `${m} min` },
+    empty: 'Not enough data for a sleep chart.',
+    note: (start, end) => `An approximate picture of the night based on Whoop totals${start && end ? ` · sleep from ${start} to ${end}` : ''}. Whoop does not provide an exact minute-by-minute breakdown.`
+  }
+}
 
 export default function SleepHypnogram({ stages, start, end }) {
+  const t = useT(STR)
+  const LABEL = t.stages
+  const fmt = t.fmt
   const hyp = buildHypnogram(stages, start)
-  if (!hyp) return <div className="hyp-empty muted">Недостаточно данных для диаграммы сна.</div>
+  if (!hyp) return <div className="hyp-empty muted">{t.empty}</div>
 
   const W = 1000, padTop = 12, rowH = 34, padBottom = 26, leftPad = 200, rightPad = 16
   const plotW = W - leftPad - rightPad
@@ -71,7 +88,7 @@ export default function SleepHypnogram({ stages, start, end }) {
         ))}
       </div>
       <div className="hyp-note muted">
-        Примерная картина ночи по итогам Whoop{start && end ? ` · сон с ${start} до ${end}` : ''}. Точную поминутную раскладку Whoop не предоставляет.
+        {t.note(start, end)}
       </div>
 
       <style>{`

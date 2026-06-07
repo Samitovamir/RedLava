@@ -10,6 +10,7 @@ import { useSiteSnapshot } from '../hooks/useSiteSnapshot.js'
 import AiRefreshButton from './AiRefreshButton.jsx'
 import MicButton from './MicButton.jsx'
 import { mskNow } from '../utils/time.js'
+import { useLang, useT } from '../context/LanguageContext.jsx'
 
 /*
   Сводка дня + мини-чат с ИИ в контексте расписания.
@@ -18,6 +19,7 @@ import { mskNow } from '../utils/time.js'
 */
 
 export default function DaySummary() {
+  const { lang } = useLang()
   const { events } = useEvents()
   const snapshot = useSiteSnapshot()
 
@@ -25,13 +27,45 @@ export default function DaySummary() {
   const todayEvents = events.filter(e => e.date === todayKey)
   const DAY_CONTEXT =
     `Ты помощник владельца по организации дня. Фокусируйся на расписании и планах, но ты ВИДИШЬ всю картину (спорт, здоровье, анализы) и учитываешь её в советах. ` +
-    `Отвечай кратко и по делу на русском. Учитывай приоритеты событий и предпочтения из памяти.`
+    `Отвечай кратко и по делу на русском. Учитывай приоритеты событий и предпочтения из памяти.` +
+    (lang === 'en' ? ' Always reply to the user in English.' : '')
 
   return <DaySummaryInner dayContext={DAY_CONTEXT} snapshot={snapshot} eventCount={todayEvents.length} />
 }
 
 function DaySummaryInner({ dayContext, snapshot, eventCount }) {
   const DAY_CONTEXT = dayContext
+  const { lang } = useLang()
+  const t = useT({
+    ru: {
+      aiBadge: 'ИИ',
+      summaryTitle: 'Сводка дня',
+      collecting: 'ИИ собирает сводку дня…',
+      eventOne: 'событие', eventFew: 'события', eventMany: 'событий',
+      recovery: 'Recovery 78%',
+      done: '✓ выполнено',
+      thinking: 'думает…',
+      replyError: 'Ошибка ответа',
+      noServer: 'Нет связи с сервером. Запустите backend.',
+      placeholder: 'Скажите или спросите про день…',
+      suggests: ['Что важного сегодня?', 'Когда лучше тренироваться?', 'Освободи мне час'],
+      summaryMessage: 'Дай очень короткую сводку дня (2–3 предложения): общая нагрузка, на что обратить внимание и один совет. Без приветствия и без списков.'
+    },
+    en: {
+      aiBadge: 'AI',
+      summaryTitle: 'Day summary',
+      collecting: 'AI is putting together the day summary…',
+      eventOne: 'event', eventFew: 'events', eventMany: 'events',
+      recovery: 'Recovery 78%',
+      done: '✓ done',
+      thinking: 'thinking…',
+      replyError: 'Response error',
+      noServer: 'No connection to the server. Start the backend.',
+      placeholder: 'Say or ask about your day…',
+      suggests: ['What’s important today?', 'When is the best time to train?', 'Free up an hour for me'],
+      summaryMessage: 'Give a very short summary of the day (2–3 sentences): overall load, what to pay attention to, and one piece of advice. No greeting and no lists.'
+    }
+  })
   const { applyAiActions } = useEvents()
   const { openDraft } = useMail()
   const { addFact } = useMemoryFacts()
@@ -42,15 +76,18 @@ function DaySummaryInner({ dayContext, snapshot, eventCount }) {
   const msgsRef = useRef(null)
 
   // ИИ-сводка дня (с кэшем; шаблон — как фолбэк без backend)
-  const fallbackSummary =
-    eventCount > 0
-      ? `Сегодня ${eventCount} ${eventCount === 1 ? 'событие' : 'событий'}. Восстановление хорошее (78%) — можно дать полную интенсивность. Закройте важные дела до вечерней тренировки.`
-      : 'На сегодня событий нет — хороший день, чтобы отдохнуть или закрыть отложенные задачи. Восстановление 78%.'
+  const fallbackSummary = lang === 'en'
+    ? (eventCount > 0
+        ? `Today there ${eventCount === 1 ? 'is' : 'are'} ${eventCount} ${eventCount === 1 ? 'event' : 'events'}. Recovery is good (78%) — you can go full intensity. Close out the important tasks before the evening workout.`
+        : 'No events today — a good day to rest or clear out backlog tasks. Recovery 78%.')
+    : (eventCount > 0
+        ? `Сегодня ${eventCount} ${eventCount === 1 ? 'событие' : 'событий'}. Восстановление хорошее (78%) — можно дать полную интенсивность. Закройте важные дела до вечерней тренировки.`
+        : 'На сегодня событий нет — хороший день, чтобы отдохнуть или закрыть отложенные задачи. Восстановление 78%.')
   const summary = useAiSummary({
     id: 'daysummary',
     context: DAY_CONTEXT,
     snapshot,
-    message: 'Дай очень короткую сводку дня (2–3 предложения): общая нагрузка, на что обратить внимание и один совет. Без приветствия и без списков.',
+    message: t.summaryMessage,
     fallback: fallbackSummary
   })
 
@@ -83,9 +120,9 @@ function DaySummaryInner({ dayContext, snapshot, eventCount }) {
         addFact(a.input?.fact)
         logAction({ actor: 'ai', type: 'task', title: `Запомнил: ${a.input?.fact}` })
       })
-      setMessages(m => [...m, { role: 'assistant', text: data.reply || 'Ошибка ответа', didActions: actions.length }])
+      setMessages(m => [...m, { role: 'assistant', text: data.reply || t.replyError, didActions: actions.length }])
     } catch {
-      setMessages(m => [...m, { role: 'assistant', text: 'Нет связи с сервером. Запустите backend.' }])
+      setMessages(m => [...m, { role: 'assistant', text: t.noServer }])
     }
     setLoading(false)
   }
@@ -97,17 +134,17 @@ function DaySummaryInner({ dayContext, snapshot, eventCount }) {
   return (
     <div className="card day-summary">
       <div className="summary-head">
-        <span className="summary-badge">ИИ</span>
-        <div className="card-title" style={{ margin: 0 }}>Сводка дня</div>
+        <span className="summary-badge">{t.aiBadge}</span>
+        <div className="card-title" style={{ margin: 0 }}>{t.summaryTitle}</div>
         <AiRefreshButton onClick={summary.refresh} loading={summary.loading} />
       </div>
 
       <p className="summary-text">
-        {summary.loading ? 'ИИ собирает сводку дня…' : summary.text}
+        {summary.loading ? t.collecting : summary.text}
       </p>
       <div className="summary-tags">
-        <span className="summary-tag">{eventCount} {eventCount === 1 ? 'событие' : eventCount >= 2 && eventCount <= 4 ? 'события' : 'событий'}</span>
-        <span className="summary-tag accent">Recovery 78%</span>
+        <span className="summary-tag">{eventCount} {eventCount === 1 ? t.eventOne : eventCount >= 2 && eventCount <= 4 ? t.eventFew : t.eventMany}</span>
+        <span className="summary-tag accent">{t.recovery}</span>
       </div>
 
       {/* Мини-чат */}
@@ -117,15 +154,15 @@ function DaySummaryInner({ dayContext, snapshot, eventCount }) {
             {messages.map((m, i) => (
               <div key={i} className={`ds-chat-msg ${m.role}`}>
                 {m.text}
-                {m.didActions ? <span className="ds-done-badge">✓ выполнено</span> : null}
+                {m.didActions ? <span className="ds-done-badge">{t.done}</span> : null}
               </div>
             ))}
-            {loading && <div className="ds-chat-msg assistant thinking">думает…</div>}
+            {loading && <div className="ds-chat-msg assistant thinking">{t.thinking}</div>}
           </div>
         )}
         {messages.length === 0 && (
           <div className="ds-chat-suggests">
-            {['Что важного сегодня?', 'Когда лучше тренироваться?', 'Освободи мне час'].map(s => (
+            {t.suggests.map(s => (
               <button key={s} className="ds-chat-suggest" onClick={() => setInput(s)}>{s}</button>
             ))}
           </div>
@@ -134,7 +171,7 @@ function DaySummaryInner({ dayContext, snapshot, eventCount }) {
           <MicButton primary onText={t => setInput(prev => (prev ? prev.trim() + ' ' : '') + t)} />
           <input
             className="ds-chat-input"
-            placeholder="Скажите или спросите про день…"
+            placeholder={t.placeholder}
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={onKey}

@@ -7,10 +7,19 @@ import GarminLive from '../components/GarminLive.jsx'
 import MicButton from '../components/MicButton.jsx'
 import { useAiSummary } from '../hooks/useAiSummary.js'
 import { useSiteSnapshot } from '../hooks/useSiteSnapshot.js'
+import { useT, useLang } from '../context/LanguageContext.jsx'
 import {
   WORKOUTS, WORKOUT_TYPES, WEEK_STATS, TYPE_DISTRIBUTION, formatWorkoutDate,
   GARMIN, HR_ZONE_LABELS, HR_ZONE_COLORS, ZONE_MAX_HR
 } from '../utils/workouts.js'
+
+// HR-зоны и типы тренировок приходят из utils/workouts.js на русском.
+// Локальная карта ru→en, чтобы не трогать общий util-файл. Формат повторяет
+// «Зона N · Название» (код берёт первую часть через split(' · ')).
+const HR_ZONE_LABELS_EN = ['Zone 1 · Warm up', 'Zone 2 · Easy', 'Zone 3 · Aerobic', 'Zone 4 · Threshold', 'Zone 5 · Maximum']
+const WORKOUT_TYPE_LABELS_EN = {
+  run: 'Running', bike: 'Cycling', swim: 'Swimming', gym: 'Strength', walk: 'Walking'
+}
 
 // Зона пульса (0–4) по доле от максимального пульса
 function hrZoneOf(v, maxHr) {
@@ -32,7 +41,7 @@ function fmtTime(sec) {
 
 // График пульса: цвет линии строго следует зоне пульса.
 // Сегмент режется ровно на границе зоны → цвет всегда соответствует высоте.
-function HrSparkline({ data, zoneMax, duration }) {
+function HrSparkline({ data, zoneMax, duration, zoneLabels = HR_ZONE_LABELS, t }) {
   const w = 300, h = 90, padX = 4, padT = 12, padB = 6
   const min = Math.min(...data), max = Math.max(...data)
   const range = max - min || 1
@@ -92,15 +101,15 @@ function HrSparkline({ data, zoneMax, duration }) {
         </div>
       )}
       <div className="hr-meta">
-        <span><b style={{ color: peakColor }}>{max}</b> макс</span>
-        <span><b>{avg}</b> средний</span>
-        <span><b>{min}</b> мин</span>
+        <span><b style={{ color: peakColor }}>{max}</b> {t.max}</span>
+        <span><b>{avg}</b> {t.avg}</span>
+        <span><b>{min}</b> {t.min}</span>
       </div>
       <div className="hr-zones-legend">
         {usedZones.map(z => (
           <span key={z} className="hr-zl-item">
             <span className="hr-zl-dot" style={{ background: HR_ZONE_COLORS[z] }} />
-            {HR_ZONE_LABELS[z].split(' · ')[0]}
+            {zoneLabels[z].split(' · ')[0]}
           </span>
         ))}
       </div>
@@ -109,6 +118,148 @@ function HrSparkline({ data, zoneMax, duration }) {
 }
 
 export default function Sport() {
+  const { lang } = useLang()
+  const t = useT({
+    ru: {
+      header: 'Спорт', source: 'Garmin Connect',
+      notConnectedTitle: 'Garmin не подключён',
+      notConnectedText: 'Подключите Garmin, чтобы видеть тренировки, пульс, шаги и активность. Сейчас данных о спорте нет.',
+      // HrSparkline
+      max: 'макс', avg: 'средний', min: 'мин',
+      // last workout
+      avgHr: 'ср. пульс', maxHr: 'макс. пульс', kcal: 'ккал', minutes: 'минут',
+      hrDuringWorkout: 'Пульс во время тренировки', score: '/10',
+      paceKm: 'темп /км', cadence: 'каденс', elevationGain: 'набор высоты',
+      aerobicEffect: 'аэробный эффект', anaerobicEffect: 'анаэроб. эффект',
+      timeInZones: 'Время в зонах пульса',
+      // ai trainer
+      aiBadge: 'ИИ', trainer: 'Тренер', analyzing: 'ИИ разбирает тренировку…',
+      thinking: 'думает…', errorReply: 'Ошибка ответа',
+      noServer: 'Нет связи с сервером. Запустите backend.',
+      placeholder: 'Скажите или спросите тренера…',
+      suggest1: 'Как мне восстановиться?', suggest2: 'Что тренировать завтра?', suggest3: 'Разбери мой пульс',
+      // sections
+      recentWorkouts: 'Последние тренировки',
+      activityWeek: 'Активность за неделю', predominant: 'Преобладает: ',
+      inTargetZone: 'В целевой зоне пульса', avgShort: 'ср',
+      more: 'Подробнее', close: 'Закрыть', gotIt: 'Понятно',
+      fitnessRecovery: 'Форма и восстановление',
+      // garmin rings
+      bodyBattery: 'Body Battery', peak: 'пик',
+      stress: 'Стресс', stressRest: 'покой', stressLow: 'низкий', stressMid: 'средний',
+      steps: 'Шаги', goal: 'цель',
+      intensityMin: 'Минуты интенсивности',
+      whatIsThis: 'Что это значит?',
+      // gm metrics
+      vo2maxSub: 'мл/кг/мин',
+      fitnessAge: 'Фитнес-возраст', years: 'лет',
+      restingHr: 'Пульс покоя', bpm: 'уд/мин',
+      hrvSub: 'мс',
+      trainingStatus: 'Статус тренировок', load: 'нагрузка',
+      recoveryTime: 'До восстановления', recoverySub: 'после нагрузки', hours: 'ч',
+      spo2Sub: 'сатурация',
+      respiration: 'Дыхание', respSub: 'вдох/мин',
+      sleepScore: 'Оценка сна', sleepSub: 'из 100',
+      floors: 'Этажи',
+      // training load
+      trainingLoad7d: 'Тренировочная нагрузка (7 дней)',
+      optimum: 'Оптимум', now: 'Сейчас',
+      belowNorm: 'ниже нормы', aboveNorm: 'выше нормы', inNorm: 'в норме',
+      // week summary
+      weekSummary: 'Итоги недели',
+      workoutsCount: 'тренировок', totalTime: 'общее время', hoursShort: 'ч',
+      kcalBurned: 'ккал сожжено', avgHrLong: 'средний пульс',
+      // detail modals
+      workoutTypes: 'Типы тренировок', hrZones: 'Зоны пульса',
+      // metric descriptions (for AI explain)
+      descVo2: 'максимальное потребление кислорода, главный показатель аэробной выносливости',
+      descFitAge: 'насколько тело «моложе» или «старше» паспортного возраста по физической форме',
+      descRhr: 'частота пульса в полном покое, чем ниже — тем тренированнее сердце',
+      descHrv: 'вариабельность сердечного ритма, показатель восстановления и стресса',
+      descStatus: 'оценка Garmin: растёт форма, поддерживается или идёт перетрен',
+      descRecovery: 'сколько часов нужно отдохнуть до следующей тяжёлой тренировки',
+      descSpo2: 'насыщение крови кислородом',
+      descResp: 'частота дыхания в покое',
+      descSleep: 'качество сна по фазам, пульсу и движению',
+      descFloors: 'сколько этажей пройдено вверх за день',
+      descBodyBattery: 'запас энергии тела 0–100 по данным пульса, стресса и сна',
+      descStress: 'уровень стресса 0–100 по вариабельности пульса, чем ниже тем спокойнее',
+      descSteps: 'пройдено шагов за день относительно цели',
+      descIntensity: 'минуты средней и высокой нагрузки за неделю, ВОЗ советует 150+',
+      of: 'из'
+    },
+    en: {
+      header: 'Sport', source: 'Garmin Connect',
+      notConnectedTitle: 'Garmin not connected',
+      notConnectedText: 'Connect Garmin to see your workouts, heart rate, steps and activity. There is no sport data yet.',
+      // HrSparkline
+      max: 'max', avg: 'avg', min: 'min',
+      // last workout
+      avgHr: 'avg HR', maxHr: 'max HR', kcal: 'kcal', minutes: 'minutes',
+      hrDuringWorkout: 'Heart rate during workout', score: '/10',
+      paceKm: 'pace /km', cadence: 'cadence', elevationGain: 'elevation gain',
+      aerobicEffect: 'aerobic effect', anaerobicEffect: 'anaerobic effect',
+      timeInZones: 'Time in heart rate zones',
+      // ai trainer
+      aiBadge: 'AI', trainer: 'Coach', analyzing: 'AI is analyzing your workout…',
+      thinking: 'thinking…', errorReply: 'Reply error',
+      noServer: 'No connection to the server. Start the backend.',
+      placeholder: 'Tell or ask your coach…',
+      suggest1: 'How do I recover?', suggest2: 'What should I train tomorrow?', suggest3: 'Analyze my heart rate',
+      // sections
+      recentWorkouts: 'Recent workouts',
+      activityWeek: 'Weekly activity', predominant: 'Predominant: ',
+      inTargetZone: 'In target heart rate zone', avgShort: 'avg',
+      more: 'Details', close: 'Close', gotIt: 'Got it',
+      fitnessRecovery: 'Fitness & recovery',
+      // garmin rings
+      bodyBattery: 'Body Battery', peak: 'peak',
+      stress: 'Stress', stressRest: 'rest', stressLow: 'low', stressMid: 'medium',
+      steps: 'Steps', goal: 'goal',
+      intensityMin: 'Intensity minutes',
+      whatIsThis: 'What does this mean?',
+      // gm metrics
+      vo2maxSub: 'ml/kg/min',
+      fitnessAge: 'Fitness age', years: 'yrs',
+      restingHr: 'Resting HR', bpm: 'bpm',
+      hrvSub: 'ms',
+      trainingStatus: 'Training status', load: 'load',
+      recoveryTime: 'Recovery time', recoverySub: 'after the load', hours: 'h',
+      spo2Sub: 'oxygen saturation',
+      respiration: 'Respiration', respSub: 'breaths/min',
+      sleepScore: 'Sleep score', sleepSub: 'out of 100',
+      floors: 'Floors',
+      // training load
+      trainingLoad7d: 'Training load (7 days)',
+      optimum: 'Optimal', now: 'Now',
+      belowNorm: 'below range', aboveNorm: 'above range', inNorm: 'in range',
+      // week summary
+      weekSummary: 'Weekly summary',
+      workoutsCount: 'workouts', totalTime: 'total time', hoursShort: 'h',
+      kcalBurned: 'kcal burned', avgHrLong: 'average heart rate',
+      // detail modals
+      workoutTypes: 'Workout types', hrZones: 'Heart rate zones',
+      // metric descriptions (for AI explain)
+      descVo2: 'maximal oxygen uptake, the key indicator of aerobic endurance',
+      descFitAge: 'how much "younger" or "older" your body is than your calendar age based on fitness',
+      descRhr: 'heart rate at full rest, the lower it is the more trained the heart',
+      descHrv: 'heart rate variability, an indicator of recovery and stress',
+      descStatus: 'Garmin assessment: fitness building, maintaining or overreaching',
+      descRecovery: 'how many hours to rest before the next hard workout',
+      descSpo2: 'blood oxygen saturation',
+      descResp: 'breathing rate at rest',
+      descSleep: 'sleep quality by stages, heart rate and movement',
+      descFloors: 'how many floors climbed during the day',
+      descBodyBattery: "body's energy reserve 0–100 based on heart rate, stress and sleep",
+      descStress: 'stress level 0–100 based on heart rate variability, the lower the calmer',
+      descSteps: 'steps taken during the day relative to the goal',
+      descIntensity: 'minutes of moderate and high intensity per week, WHO recommends 150+',
+      of: 'of'
+    }
+  })
+  const zoneLabels = lang === 'en' ? HR_ZONE_LABELS_EN : HR_ZONE_LABELS
+  const typeLabel = type => (lang === 'en' ? (WORKOUT_TYPE_LABELS_EN[type] || WORKOUT_TYPES[type]?.label) : WORKOUT_TYPES[type]?.label)
+
   // Garmin пока не подключён → показываем «Подключите Garmin», без выдуманных данных
   let garminConnected = false
   try { garminConnected = !!localStorage.getItem('albert-garmin-live') } catch { /* ignore */ }
@@ -124,16 +275,16 @@ export default function Sport() {
 
   // Показатели формы и восстановления (Garmin) — для рендера и пояснений
   const GM_METRICS = [
-    { key: 'vo2max', val: GARMIN.vo2max, lbl: 'VO₂ Max', sub: 'мл/кг/мин', desc: 'максимальное потребление кислорода, главный показатель аэробной выносливости' },
-    { key: 'fitage', val: GARMIN.fitnessAge, lbl: 'Фитнес-возраст', sub: 'лет', desc: 'насколько тело «моложе» или «старше» паспортного возраста по физической форме' },
-    { key: 'rhr', val: GARMIN.restingHr, lbl: 'Пульс покоя', sub: 'уд/мин', desc: 'частота пульса в полном покое, чем ниже — тем тренированнее сердце' },
-    { key: 'hrv', val: GARMIN.hrv, lbl: 'HRV', sub: 'мс', desc: 'вариабельность сердечного ритма, показатель восстановления и стресса' },
-    { key: 'status', val: GARMIN.trainingStatus, lbl: 'Статус тренировок', sub: `нагрузка ${GARMIN.trainingLoad}`, accent: true, desc: 'оценка Garmin: растёт форма, поддерживается или идёт перетрен' },
-    { key: 'recovery', val: `${GARMIN.recoveryTime} ч`, lbl: 'До восстановления', sub: 'после нагрузки', desc: 'сколько часов нужно отдохнуть до следующей тяжёлой тренировки' },
-    { key: 'spo2', val: `${GARMIN.spo2}%`, lbl: 'SpO₂', sub: 'сатурация', desc: 'насыщение крови кислородом' },
-    { key: 'resp', val: GARMIN.respiration, lbl: 'Дыхание', sub: 'вдох/мин', desc: 'частота дыхания в покое' },
-    { key: 'sleep', val: GARMIN.sleepScore, lbl: 'Оценка сна', sub: 'из 100', desc: 'качество сна по фазам, пульсу и движению' },
-    { key: 'floors', val: GARMIN.floors, lbl: 'Этажи', sub: `цель ${GARMIN.floorsGoal}`, desc: 'сколько этажей пройдено вверх за день' }
+    { key: 'vo2max', val: GARMIN.vo2max, lbl: 'VO₂ Max', sub: t.vo2maxSub, desc: t.descVo2 },
+    { key: 'fitage', val: GARMIN.fitnessAge, lbl: t.fitnessAge, sub: t.years, desc: t.descFitAge },
+    { key: 'rhr', val: GARMIN.restingHr, lbl: t.restingHr, sub: t.bpm, desc: t.descRhr },
+    { key: 'hrv', val: GARMIN.hrv, lbl: 'HRV', sub: t.hrvSub, desc: t.descHrv },
+    { key: 'status', val: GARMIN.trainingStatus, lbl: t.trainingStatus, sub: `${t.load} ${GARMIN.trainingLoad}`, accent: true, desc: t.descStatus },
+    { key: 'recovery', val: `${GARMIN.recoveryTime} ${t.hours}`, lbl: t.recoveryTime, sub: t.recoverySub, desc: t.descRecovery },
+    { key: 'spo2', val: `${GARMIN.spo2}%`, lbl: 'SpO₂', sub: t.spo2Sub, desc: t.descSpo2 },
+    { key: 'resp', val: GARMIN.respiration, lbl: t.respiration, sub: t.respSub, desc: t.descResp },
+    { key: 'sleep', val: GARMIN.sleepScore, lbl: t.sleepScore, sub: t.sleepSub, desc: t.descSleep },
+    { key: 'floors', val: GARMIN.floors, lbl: t.floors, sub: `${t.goal} ${GARMIN.floorsGoal}`, desc: t.descFloors }
   ]
 
   async function askExplain(m) {
@@ -144,16 +295,19 @@ export default function Sport() {
       `Ты спортивный тренер. Объясни простыми словами для 50-летнего человека без спортивного образования. ` +
       `Показатель «${m.lbl}» = ${m.val} (${m.desc}). ` +
       `Разбей ответ на короткие абзацы по смыслу: 1) что это такое простыми словами; 2) твоё значение это хорошо или нет; 3) что конкретно делать. ` +
-      `Между абзацами пустая строка. Если есть советы — каждый с новой строки.`
+      `Между абзацами пустая строка. Если есть советы — каждый с новой строки.` +
+      (lang === 'en' ? ' Always reply to the user in English.' : '')
     try {
       const res = await fetch('/api/ai/chat', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: `Объясни показатель ${m.lbl} = ${m.val}`, context })
       })
       const data = await res.json()
-      setExplainText(data.reply || 'Не удалось получить пояснение.')
+      setExplainText(data.reply || (lang === 'en' ? 'Could not get an explanation.' : 'Не удалось получить пояснение.'))
     } catch {
-      setExplainText('Нет связи с сервером. Запустите backend, чтобы получить пояснение от ИИ.')
+      setExplainText(lang === 'en'
+        ? 'No connection to the server. Start the backend to get an AI explanation.'
+        : 'Нет связи с сервером. Запустите backend, чтобы получить пояснение от ИИ.')
     }
     setExplainLoading(false)
   }
@@ -169,7 +323,8 @@ export default function Sport() {
     `Ты личный спортивный тренер владельца. Твоя зона — тренировки, нагрузка, восстановление, форма. ` +
     `ФОКУСИРУЙСЯ на спорте и не уходи в чужие темы (письма, дела, не относящиеся к спорту), но ты ВИДИШЬ весь контекст ` +
     `(сон, восстановление, расписание, анализы) и учитываешь его, чтобы советы были связными. ` +
-    `Давай краткие дельные советы на русском. Учитывай предпочтения из памяти.`
+    `Давай краткие дельные советы на русском. Учитывай предпочтения из памяти.` +
+    (lang === 'en' ? ' Always reply to the user in English.' : '')
 
   // ИИ-разбор последней тренировки (с кэшем; aiComment — фолбэк)
   const trainerSummary = useAiSummary({
@@ -198,9 +353,9 @@ export default function Sport() {
         body: JSON.stringify({ message: q, context: TRAINER_CONTEXT, snapshot, history: priorHistory })
       })
       const data = await res.json()
-      setMessages(m => [...m, { role: 'assistant', text: data.reply || 'Ошибка ответа' }])
+      setMessages(m => [...m, { role: 'assistant', text: data.reply || t.errorReply }])
     } catch {
-      setMessages(m => [...m, { role: 'assistant', text: 'Нет связи с сервером. Запустите backend.' }])
+      setMessages(m => [...m, { role: 'assistant', text: t.noServer }])
     }
     setLoading(false)
   }
@@ -208,10 +363,10 @@ export default function Sport() {
   if (!garminConnected) {
     return (
       <ConnectPrompt
-        heading="Спорт"
-        sub="Garmin Connect"
-        title="Garmin не подключён"
-        text="Подключите Garmin, чтобы видеть тренировки, пульс, шаги и активность. Сейчас данных о спорте нет."
+        heading={t.header}
+        sub={t.source}
+        title={t.notConnectedTitle}
+        text={t.notConnectedText}
       />
     )
   }
@@ -224,8 +379,8 @@ export default function Sport() {
   return (
     <div className="sport-page">
       <div className="page-header">
-        <h2>Спорт</h2>
-        <span className="muted">Garmin Connect</span>
+        <h2>{t.header}</h2>
+        <span className="muted">{t.source}</span>
       </div>
 
       {/* Верх: последняя тренировка + комментарий ИИ */}
@@ -235,52 +390,52 @@ export default function Sport() {
           <div className="lw-head">
             <span className="lw-icon" style={{ background: lastType.color }}>{lastType.emoji}</span>
             <div>
-              <div className="lw-type">{lastType.label}{last.distance ? ` · ${last.distance} км` : ''}</div>
-              <div className="lw-date muted">{formatWorkoutDate(last.date)} · {last.duration} мин</div>
+              <div className="lw-type">{typeLabel(last.type)}{last.distance ? ` · ${last.distance} ${lang === 'en' ? 'km' : 'км'}` : ''}</div>
+              <div className="lw-date muted">{formatWorkoutDate(last.date)} · {last.duration} {lang === 'en' ? 'min' : 'мин'}</div>
             </div>
             <div className="lw-score">
               <span className="lw-score-val">{last.score}</span>
-              <span className="lw-score-max">/10</span>
+              <span className="lw-score-max">{t.score}</span>
             </div>
           </div>
 
           <div className="lw-metrics">
-            <div className="lw-metric"><span className="lw-m-val">{last.avgHr}</span><span className="lw-m-lbl">ср. пульс</span></div>
-            <div className="lw-metric"><span className="lw-m-val">{last.maxHr}</span><span className="lw-m-lbl">макс. пульс</span></div>
-            <div className="lw-metric"><span className="lw-m-val">{last.calories}</span><span className="lw-m-lbl">ккал</span></div>
-            <div className="lw-metric"><span className="lw-m-val">{last.duration}</span><span className="lw-m-lbl">минут</span></div>
+            <div className="lw-metric"><span className="lw-m-val">{last.avgHr}</span><span className="lw-m-lbl">{t.avgHr}</span></div>
+            <div className="lw-metric"><span className="lw-m-val">{last.maxHr}</span><span className="lw-m-lbl">{t.maxHr}</span></div>
+            <div className="lw-metric"><span className="lw-m-val">{last.calories}</span><span className="lw-m-lbl">{t.kcal}</span></div>
+            <div className="lw-metric"><span className="lw-m-val">{last.duration}</span><span className="lw-m-lbl">{t.minutes}</span></div>
           </div>
 
           <div className="lw-chart">
-            <span className="lw-chart-title">Пульс во время тренировки</span>
-            <HrSparkline data={last.hr} zoneMax={ZONE_MAX_HR} duration={last.duration} />
+            <span className="lw-chart-title">{t.hrDuringWorkout}</span>
+            <HrSparkline data={last.hr} zoneMax={ZONE_MAX_HR} duration={last.duration} zoneLabels={zoneLabels} t={t} />
           </div>
 
           {/* Доп. метрики тренировки (Garmin) */}
           {(last.pace || last.cadence || last.elevation) && (
             <div className="lw-extra">
-              {last.pace && <div className="lw-x"><span className="lw-x-val">{last.pace}</span><span className="lw-x-lbl">темп /км</span></div>}
-              {last.cadence && <div className="lw-x"><span className="lw-x-val">{last.cadence}</span><span className="lw-x-lbl">каденс</span></div>}
-              {last.elevation != null && <div className="lw-x"><span className="lw-x-val">{last.elevation} м</span><span className="lw-x-lbl">набор высоты</span></div>}
-              {last.aerobicTE && <div className="lw-x"><span className="lw-x-val">{last.aerobicTE}</span><span className="lw-x-lbl">аэробный эффект</span></div>}
-              {last.anaerobicTE && <div className="lw-x"><span className="lw-x-val">{last.anaerobicTE}</span><span className="lw-x-lbl">анаэроб. эффект</span></div>}
+              {last.pace && <div className="lw-x"><span className="lw-x-val">{last.pace}</span><span className="lw-x-lbl">{t.paceKm}</span></div>}
+              {last.cadence && <div className="lw-x"><span className="lw-x-val">{last.cadence}</span><span className="lw-x-lbl">{t.cadence}</span></div>}
+              {last.elevation != null && <div className="lw-x"><span className="lw-x-val">{last.elevation} {lang === 'en' ? 'm' : 'м'}</span><span className="lw-x-lbl">{t.elevationGain}</span></div>}
+              {last.aerobicTE && <div className="lw-x"><span className="lw-x-val">{last.aerobicTE}</span><span className="lw-x-lbl">{t.aerobicEffect}</span></div>}
+              {last.anaerobicTE && <div className="lw-x"><span className="lw-x-val">{last.anaerobicTE}</span><span className="lw-x-lbl">{t.anaerobicEffect}</span></div>}
             </div>
           )}
 
           {/* Время в зонах пульса */}
           {last.zones && (
             <div className="lw-zones">
-              <span className="lw-chart-title">Время в зонах пульса</span>
+              <span className="lw-chart-title">{t.timeInZones}</span>
               <div className="zone-bar">
                 {last.zones.map((z, i) => z > 0 && (
-                  <div key={i} className="zone-seg" style={{ width: `${z}%`, background: HR_ZONE_COLORS[i] }} title={`${HR_ZONE_LABELS[i]} — ${z}%`} />
+                  <div key={i} className="zone-seg" style={{ width: `${z}%`, background: HR_ZONE_COLORS[i] }} title={`${zoneLabels[i]} — ${z}%`} />
                 ))}
               </div>
               <div className="zone-legend">
                 {last.zones.map((z, i) => (
                   <div key={i} className="zone-leg-item">
                     <span className="zone-dot" style={{ background: HR_ZONE_COLORS[i] }} />
-                    <span className="zone-leg-lbl">{HR_ZONE_LABELS[i].split(' · ')[0]}</span>
+                    <span className="zone-leg-lbl">{zoneLabels[i].split(' · ')[0]}</span>
                     <span className="zone-leg-pct">{z}%</span>
                   </div>
                 ))}
@@ -292,30 +447,30 @@ export default function Sport() {
         <motion.div className="card ai-trainer"
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.08 }}>
           <div className="summary-head">
-            <span className="summary-badge">ИИ</span>
-            <div className="card-title" style={{ margin: 0 }}>Тренер</div>
+            <span className="summary-badge">{t.aiBadge}</span>
+            <div className="card-title" style={{ margin: 0 }}>{t.trainer}</div>
             <AiRefreshButton onClick={trainerSummary.refresh} loading={trainerSummary.loading} />
           </div>
-          <p className="trainer-text">{trainerSummary.loading ? 'ИИ разбирает тренировку…' : trainerSummary.text}</p>
+          <p className="trainer-text">{trainerSummary.loading ? t.analyzing : trainerSummary.text}</p>
 
           {/* Чат с тренером */}
           <div className="trainer-chat">
             {messages.length > 0 && (
               <div className="tc-msgs" ref={msgsRef}>
                 {messages.map((m, i) => <div key={i} className={`tc-msg ${m.role}`}>{m.text}</div>)}
-                {loading && <div className="tc-msg assistant thinking">думает…</div>}
+                {loading && <div className="tc-msg assistant thinking">{t.thinking}</div>}
               </div>
             )}
             {messages.length === 0 && (
               <div className="tc-suggests">
-                {['Как мне восстановиться?', 'Что тренировать завтра?', 'Разбери мой пульс'].map(s => (
+                {[t.suggest1, t.suggest2, t.suggest3].map(s => (
                   <button key={s} className="tc-suggest" onClick={() => setInput(s)}>{s}</button>
                 ))}
               </div>
             )}
             <div className="tc-input-row">
-              <MicButton primary onText={t => setInput(prev => (prev ? prev.trim() + ' ' : '') + t)} />
-              <input className="tc-input" placeholder="Скажите или спросите тренера…" value={input}
+              <MicButton primary onText={txt => setInput(prev => (prev ? prev.trim() + ' ' : '') + txt)} />
+              <input className="tc-input" placeholder={t.placeholder} value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); sendTrainer() } }} />
               <button className="tc-send" onClick={sendTrainer} disabled={loading || !input.trim()}>
@@ -328,19 +483,19 @@ export default function Sport() {
 
       {/* Середина: последние тренировки */}
       <div className="sport-recent">
-        <div className="card-title">Последние тренировки</div>
+        <div className="card-title">{t.recentWorkouts}</div>
         <div className="recent-scroll">
           {WORKOUTS.map((w, i) => {
-            const t = WORKOUT_TYPES[w.type]
+            const wt = WORKOUT_TYPES[w.type]
             return (
               <motion.div key={w.id} className="card recent-card"
                 initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.35, delay: 0.04 * i }}>
-                <span className="recent-icon" style={{ background: t.color }}>{t.emoji}</span>
-                <div className="recent-type">{t.label}</div>
+                <span className="recent-icon" style={{ background: wt.color }}>{wt.emoji}</span>
+                <div className="recent-type">{typeLabel(w.type)}</div>
                 <div className="recent-meta muted">{formatWorkoutDate(w.date)}</div>
                 <div className="recent-stats">
-                  {w.distance && <span>{w.distance} км</span>}
-                  <span>{w.duration} мин</span>
+                  {w.distance && <span>{w.distance} {lang === 'en' ? 'km' : 'км'}</span>}
+                  <span>{w.duration} {lang === 'en' ? 'min' : 'мин'}</span>
                   <span>❤ {w.avgHr}</span>
                 </div>
               </motion.div>
@@ -352,43 +507,43 @@ export default function Sport() {
       {/* Низ: круговые диаграммы */}
       <div className="sport-charts">
         <div className="card chart-card">
-          <CircularChart value={WEEK_STATS.activityPercent} label="Активность за неделю" color="var(--green)" />
-          <button className="detail-btn" onClick={() => setOpenDetail('activity')}>Подробнее</button>
+          <CircularChart value={WEEK_STATS.activityPercent} label={t.activityWeek} color="var(--green)" />
+          <button className="detail-btn" onClick={() => setOpenDetail('activity')}>{t.more}</button>
         </div>
         <div className="card chart-card">
           <CircularChart value={TYPE_DISTRIBUTION[0]?.percent || 0}
-            label="Преобладает: " color="var(--orange)"
-            centerText={WORKOUT_TYPES[TYPE_DISTRIBUTION[0]?.type]?.emoji} sublabel={WORKOUT_TYPES[TYPE_DISTRIBUTION[0]?.type]?.label} />
-          <button className="detail-btn" onClick={() => setOpenDetail('types')}>Подробнее</button>
+            label={t.predominant} color="var(--orange)"
+            centerText={WORKOUT_TYPES[TYPE_DISTRIBUTION[0]?.type]?.emoji} sublabel={typeLabel(TYPE_DISTRIBUTION[0]?.type)} />
+          <button className="detail-btn" onClick={() => setOpenDetail('types')}>{t.more}</button>
         </div>
         <div className="card chart-card">
-          <CircularChart value={WEEK_STATS.hrZonePercent} label="В целевой зоне пульса" color="var(--accent)"
-            sublabel={`ср ${WEEK_STATS.avgHr}`} />
-          <button className="detail-btn" onClick={() => setOpenDetail('hr')}>Подробнее</button>
+          <CircularChart value={WEEK_STATS.hrZonePercent} label={t.inTargetZone} color="var(--accent)"
+            sublabel={`${t.avgShort} ${WEEK_STATS.avgHr}`} />
+          <button className="detail-btn" onClick={() => setOpenDetail('hr')}>{t.more}</button>
         </div>
       </div>
 
       {/* Форма и восстановление (Garmin) */}
-      <div className="sport-section-title card-title">Форма и восстановление</div>
+      <div className="sport-section-title card-title">{t.fitnessRecovery}</div>
 
       {/* Кольца дня: Body Battery / Стресс / Шаги / Минуты интенсивности */}
       <div className="garmin-rings">
         {[
-          { key: 'bb', value: GARMIN.bodyBattery, label: 'Body Battery', color: 'var(--green)',
-            sublabel: `пик ${GARMIN.bodyBatteryMax}`,
-            m: { lbl: 'Body Battery', val: GARMIN.bodyBattery, desc: 'запас энергии тела 0–100 по данным пульса, стресса и сна' } },
-          { key: 'st', value: GARMIN.stress, label: 'Стресс', color: 'var(--orange)',
-            sublabel: GARMIN.stress < 25 ? 'покой' : GARMIN.stress < 50 ? 'низкий' : 'средний',
-            m: { lbl: 'Стресс', val: GARMIN.stress, desc: 'уровень стресса 0–100 по вариабельности пульса, чем ниже тем спокойнее' } },
-          { key: 'sp', value: Math.round(GARMIN.steps / GARMIN.stepsGoal * 100), label: 'Шаги', color: 'var(--accent)',
-            centerText: GARMIN.steps.toLocaleString('ru-RU'), sublabel: `цель ${GARMIN.stepsGoal.toLocaleString('ru-RU')}`,
-            m: { lbl: 'Шаги', val: `${GARMIN.steps} из ${GARMIN.stepsGoal}`, desc: 'пройдено шагов за день относительно цели' } },
-          { key: 'im', value: Math.round(GARMIN.intensityMin / GARMIN.intensityGoal * 100), label: 'Минуты интенсивности', color: 'var(--yellow)',
-            centerText: `${GARMIN.intensityMin}`, sublabel: `цель ${GARMIN.intensityGoal}`,
-            m: { lbl: 'Минуты интенсивности', val: `${GARMIN.intensityMin} из ${GARMIN.intensityGoal}`, desc: 'минуты средней и высокой нагрузки за неделю, ВОЗ советует 150+' } }
+          { key: 'bb', value: GARMIN.bodyBattery, label: t.bodyBattery, color: 'var(--green)',
+            sublabel: `${t.peak} ${GARMIN.bodyBatteryMax}`,
+            m: { lbl: t.bodyBattery, val: GARMIN.bodyBattery, desc: t.descBodyBattery } },
+          { key: 'st', value: GARMIN.stress, label: t.stress, color: 'var(--orange)',
+            sublabel: GARMIN.stress < 25 ? t.stressRest : GARMIN.stress < 50 ? t.stressLow : t.stressMid,
+            m: { lbl: t.stress, val: GARMIN.stress, desc: t.descStress } },
+          { key: 'sp', value: Math.round(GARMIN.steps / GARMIN.stepsGoal * 100), label: t.steps, color: 'var(--accent)',
+            centerText: GARMIN.steps.toLocaleString('ru-RU'), sublabel: `${t.goal} ${GARMIN.stepsGoal.toLocaleString('ru-RU')}`,
+            m: { lbl: t.steps, val: `${GARMIN.steps} ${t.of} ${GARMIN.stepsGoal}`, desc: t.descSteps } },
+          { key: 'im', value: Math.round(GARMIN.intensityMin / GARMIN.intensityGoal * 100), label: t.intensityMin, color: 'var(--yellow)',
+            centerText: `${GARMIN.intensityMin}`, sublabel: `${t.goal} ${GARMIN.intensityGoal}`,
+            m: { lbl: t.intensityMin, val: `${GARMIN.intensityMin} ${t.of} ${GARMIN.intensityGoal}`, desc: t.descIntensity } }
         ].map(r => (
           <div key={r.key} className="card chart-card sm">
-            <button className="gm-help" onClick={() => askExplain(r.m)} title="Что это значит?">?</button>
+            <button className="gm-help" onClick={() => askExplain(r.m)} title={t.whatIsThis}>?</button>
             <CircularChart value={r.value} label={r.label} color={r.color}
               centerText={r.centerText} sublabel={r.sublabel} />
           </div>
@@ -399,7 +554,7 @@ export default function Sport() {
       <div className="garmin-metrics">
         {GM_METRICS.map(m => (
           <div key={m.key} className="card gm-card">
-            <button className="gm-help" onClick={() => askExplain(m)} title="Что это значит?">?</button>
+            <button className="gm-help" onClick={() => askExplain(m)} title={t.whatIsThis}>?</button>
             <span className={`gm-val${m.accent ? ' accent-txt' : ''}`}>{m.val}</span>
             <span className="gm-lbl">{m.lbl}</span>
             <span className="gm-sub muted">{m.sub}</span>
@@ -409,7 +564,7 @@ export default function Sport() {
 
       {/* Тренировочная нагрузка — полоса диапазона */}
       <div className="card load-card">
-        <div className="card-title">Тренировочная нагрузка (7 дней)</div>
+        <div className="card-title">{t.trainingLoad7d}</div>
         <div className="load-bar-wrap">
           {(() => {
             const [lo, hi] = GARMIN.trainingLoadOptimal
@@ -422,10 +577,10 @@ export default function Sport() {
                   <div className="load-marker" style={{ left: `${pct(GARMIN.trainingLoad)}%` }} />
                 </div>
                 <div className="load-meta">
-                  <span className="muted">Оптимум {lo}–{hi}</span>
-                  <span className="load-now">Сейчас {GARMIN.trainingLoad} ·
+                  <span className="muted">{t.optimum} {lo}–{hi}</span>
+                  <span className="load-now">{t.now} {GARMIN.trainingLoad} ·
                     <span style={{ color: GARMIN.trainingLoad >= lo && GARMIN.trainingLoad <= hi ? 'var(--green)' : 'var(--yellow)' }}>
-                      {' '}{GARMIN.trainingLoad < lo ? 'ниже нормы' : GARMIN.trainingLoad > hi ? 'выше нормы' : 'в норме'}
+                      {' '}{GARMIN.trainingLoad < lo ? t.belowNorm : GARMIN.trainingLoad > hi ? t.aboveNorm : t.inNorm}
                     </span>
                   </span>
                 </div>
@@ -437,12 +592,12 @@ export default function Sport() {
 
       {/* Сводка недели */}
       <div className="card week-summary">
-        <div className="card-title">Итоги недели</div>
+        <div className="card-title">{t.weekSummary}</div>
         <div className="week-stats">
-          <div className="week-stat"><span className="ws-val">{WEEK_STATS.workoutsCount}</span><span className="ws-lbl">тренировок</span></div>
-          <div className="week-stat"><span className="ws-val">{Math.round(WEEK_STATS.totalMinutes / 60 * 10) / 10}ч</span><span className="ws-lbl">общее время</span></div>
-          <div className="week-stat"><span className="ws-val">{WEEK_STATS.totalCalories}</span><span className="ws-lbl">ккал сожжено</span></div>
-          <div className="week-stat"><span className="ws-val">{WEEK_STATS.avgHr}</span><span className="ws-lbl">средний пульс</span></div>
+          <div className="week-stat"><span className="ws-val">{WEEK_STATS.workoutsCount}</span><span className="ws-lbl">{t.workoutsCount}</span></div>
+          <div className="week-stat"><span className="ws-val">{Math.round(WEEK_STATS.totalMinutes / 60 * 10) / 10}{t.hoursShort}</span><span className="ws-lbl">{t.totalTime}</span></div>
+          <div className="week-stat"><span className="ws-val">{WEEK_STATS.totalCalories}</span><span className="ws-lbl">{t.kcalBurned}</span></div>
+          <div className="week-stat"><span className="ws-val">{WEEK_STATS.avgHr}</span><span className="ws-lbl">{t.avgHrLong}</span></div>
         </div>
       </div>
 
@@ -452,27 +607,33 @@ export default function Sport() {
           <motion.div className="card detail-modal" onClick={e => e.stopPropagation()}
             initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
             <h3>
-              {openDetail === 'activity' && 'Активность за неделю'}
-              {openDetail === 'types' && 'Типы тренировок'}
-              {openDetail === 'hr' && 'Зоны пульса'}
+              {openDetail === 'activity' && t.activityWeek}
+              {openDetail === 'types' && t.workoutTypes}
+              {openDetail === 'hr' && t.hrZones}
             </h3>
             <p className="trainer-text">
-              {openDetail === 'activity' && `Ты выполнил ${WEEK_STATS.activityPercent}% недельной цели активности — отличный результат. Для 100% добавь ещё одну лёгкую тренировку.`}
-              {openDetail === 'types' && `За неделю преобладает ${WORKOUT_TYPES[TYPE_DISTRIBUTION[0]?.type]?.label.toLowerCase()}. Для баланса добавь больше кардио или растяжки.`}
-              {openDetail === 'hr' && `${WEEK_STATS.hrZonePercent}% времени ты провёл в целевой зоне пульса. Это хороший баланс между нагрузкой и восстановлением.`}
+              {openDetail === 'activity' && (lang === 'en'
+                ? `You completed ${WEEK_STATS.activityPercent}% of your weekly activity goal — a great result. Add one more easy workout to reach 100%.`
+                : `Ты выполнил ${WEEK_STATS.activityPercent}% недельной цели активности — отличный результат. Для 100% добавь ещё одну лёгкую тренировку.`)}
+              {openDetail === 'types' && (lang === 'en'
+                ? `This week is dominated by ${(typeLabel(TYPE_DISTRIBUTION[0]?.type) || '').toLowerCase()}. For balance, add more cardio or stretching.`
+                : `За неделю преобладает ${WORKOUT_TYPES[TYPE_DISTRIBUTION[0]?.type]?.label.toLowerCase()}. Для баланса добавь больше кардио или растяжки.`)}
+              {openDetail === 'hr' && (lang === 'en'
+                ? `You spent ${WEEK_STATS.hrZonePercent}% of the time in your target heart rate zone. That is a good balance between load and recovery.`
+                : `${WEEK_STATS.hrZonePercent}% времени ты провёл в целевой зоне пульса. Это хороший баланс между нагрузкой и восстановлением.`)}
             </p>
             {openDetail === 'types' && (
               <div className="type-list">
-                {TYPE_DISTRIBUTION.map(t => (
-                  <div key={t.type} className="type-row">
-                    <span className="type-dot" style={{ background: WORKOUT_TYPES[t.type].color }} />
-                    <span>{WORKOUT_TYPES[t.type].emoji} {WORKOUT_TYPES[t.type].label}</span>
-                    <span className="muted" style={{ marginLeft: 'auto' }}>{t.count} · {t.percent}%</span>
+                {TYPE_DISTRIBUTION.map(td => (
+                  <div key={td.type} className="type-row">
+                    <span className="type-dot" style={{ background: WORKOUT_TYPES[td.type].color }} />
+                    <span>{WORKOUT_TYPES[td.type].emoji} {typeLabel(td.type)}</span>
+                    <span className="muted" style={{ marginLeft: 'auto' }}>{td.count} · {td.percent}%</span>
                   </div>
                 ))}
               </div>
             )}
-            <button className="detail-btn primary" onClick={() => setOpenDetail(null)}>Закрыть</button>
+            <button className="detail-btn primary" onClick={() => setOpenDetail(null)}>{t.close}</button>
           </motion.div>
         </div>
       )}
@@ -483,13 +644,13 @@ export default function Sport() {
           <motion.div className="card detail-modal" onClick={e => e.stopPropagation()}
             initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
             <div className="summary-head">
-              <span className="summary-badge">ИИ</span>
+              <span className="summary-badge">{t.aiBadge}</span>
               <h3 style={{ margin: 0 }}>{explain.title} · {explain.value}</h3>
             </div>
             <p className="trainer-text">
-              {explainLoading ? 'ИИ разбирается в показателе…' : explainText}
+              {explainLoading ? (lang === 'en' ? 'AI is analyzing the metric…' : 'ИИ разбирается в показателе…') : explainText}
             </p>
-            <button className="detail-btn primary" onClick={() => setExplain(null)}>Понятно</button>
+            <button className="detail-btn primary" onClick={() => setExplain(null)}>{t.gotIt}</button>
           </motion.div>
         </div>
       )}

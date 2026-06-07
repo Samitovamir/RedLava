@@ -12,6 +12,7 @@ import {
   loadPantry, savePantry, archivePantry, recentlyBought
 } from '../utils/nutrition.js'
 import { mskDateKey } from '../utils/time.js'
+import { useT } from '../context/LanguageContext.jsx'
 
 const FOODS = [
   ['pork', 'Свинина'], ['beef', 'Говядина'], ['chicken', 'Курица'], ['fish', 'Рыба'],
@@ -36,6 +37,203 @@ function Macro({ value, unit, label, color }) {
 }
 
 export default function Nutrition() {
+  const t = useT({
+    ru: {
+      // Заголовок страницы
+      title: 'Питание',
+      subtitle: 'Меню на неделю · подбор под цель · покупки',
+      prefsBtn: '⚙ Настроить предпочтения',
+      // Карточка цели
+      goalFor: 'Цель на',
+      today: 'сегодня',
+      editProfile: 'Изменить профиль',
+      done: 'Готово',
+      kcal: 'ккал',
+      g: 'г',
+      mCalories: 'Калории', mProtein: 'Белки', mFat: 'Жиры', mCarbs: 'Углеводы',
+      // Разбивка цели
+      bdBase: 'База',
+      bdTraining: 'тренировка', bdRestDay: 'день отдыха',
+      bdRecovery: 'восстановление',
+      bdCarry: 'со вчера',
+      bdNoGarmin: 'Garmin не подключён — цель без учёта тренировок',
+      // Прогресс
+      eaten: 'Съедено ~', remaining: 'осталось ~',
+      fromCalai: ' · из CalAI', resetDay: 'сбросить', resetDayTitle: 'Сбросить учёт за день',
+      // Учёт
+      calaiReading: 'Читаю скрин…', calaiBtn: '📷 Внести из CalAI',
+      quickAddTitle: 'ккал',
+      // Подсказка цели
+      bmrHint: 'Обмен покоя ~', tdeeHint: ' ккал · обычная активность ~', goalHint: ' ккал · цель: ',
+      // Профиль
+      fWeight: 'Вес, кг', fHeight: 'Рост, см', fAge: 'Возраст', fSex: 'Пол',
+      male: 'Мужской', female: 'Женский',
+      activity: 'Активность', goal: 'Цель',
+      // Меню недели
+      weekMenu: 'Меню недели',
+      todaySuffix: ' · сегодня',
+      chosenOf: 'выбрано ~', ofTarget: ' из ', target: 'цель ',
+      mealApprox: '≈',
+      cancelChoice: 'Отменить выбор',
+      picking: 'Подбираю…', pickBtn: '＋ Подобрать',
+      liked: '👍 понравилось', disliked: '👎 не очень',
+      bMacro: 'Б', fMacro: 'Ж', uMacro: 'У',
+      // Список покупок
+      shopTitle: 'Список покупок на неделю',
+      clear: 'Очистить',
+      shopEmpty: 'Пусто. Выбирайте блюда кнопкой «На кухню» — продукты соберутся здесь на всю неделю.',
+      shopHint: 'Количества округлены до того, что реально покупать в магазине.',
+      recentBought: 'недавно покупали', recentTitle: 'Покупали недавно — возможно, ещё есть дома',
+      removeItem: 'Убрать',
+      sendDriver: 'Отправить водителю (скоро)', sendDriverTitle: 'Появится, когда подключим отправку сообщений',
+      // Окно подбора
+      pickHead: 'Подбор: ', perMeal: ' ккал на приём',
+      close: 'Закрыть',
+      inMeal: 'Что в приёме:',
+      notePlaceholder: 'Изменить подбор: например «полегче», «без молочного», «другое»',
+      pickAgain: 'Подобрать заново',
+      adding: 'Добавляю…', toKitchenCard: '🍳 На кухню',
+      more: 'Подробнее →',
+      pickingMore: 'Подбираю ещё…', showMore: '＋ Показать ещё блюда',
+      // Детальная карточка / рецепт
+      recipeBuilding: 'ИИ собирает рецепт…', recipeUnavailable: 'Рецепт недоступен',
+      ingredients: 'Ингредиенты', steps: 'Приготовление',
+      toKitchen: '🍳 На кухню', recipeWillFinish: ' (рецепт дособерётся)',
+      photoBy: 'Фото: ',
+      // Предпочтения
+      prefsTitle: 'Вкусовые предпочтения',
+      prefsSub: 'ИИ будет учитывать это при подборе — но со здравым смыслом.',
+      spicy: 'Острота',
+      spicyLow: 'почти не острое', spicyHigh: 'люблю острое', spicyMid: 'умеренно',
+      sweet: 'Сладкое',
+      sweetLow: 'не люблю', sweetHigh: 'сладкоежка', sweetMid: 'умеренно',
+      eats: 'Что ест', yes: 'да', no: 'нет',
+      favCuisines: 'Любимые кухни',
+      cookTime: 'Время на готовку', cookFast: 'Быстро (до 30 мин)', cookAny: 'Не важно',
+      coffee: 'Кофе (тоже считаем в КБЖУ)',
+      coffeeNo: 'Не пью', coffeeBlack: 'Чёрный', coffeeMilk: 'С молоком', coffeeMilkSugar: 'С молоком и сахаром',
+      cupsPerDay: 'Чашек в день',
+      sportNutrition: 'Спортпит',
+      proteinBars: 'Протеиновые батончики', proteinShakes: 'Протеиновые коктейли',
+      allergies: 'Аллергии (строго исключить)', allergiesPlaceholder: 'Например: орехи, мёд',
+      avoid: 'Не люблю', avoidPlaceholder: 'Например: кинза, печень',
+      save: 'Сохранить', reset: 'Сбросить',
+      // Оценка
+      rateHow: ' · как вам было?',
+      ratePlaceholder: 'Пара слов (необязательно): что понравилось / что поменять',
+      rateUp: '👍 Понравилось', rateDown: '👎 Не очень', rateLater: 'Позже',
+      // Тосты / сообщения
+      noServer: 'Нет связи с сервером. Запустите backend с ключом ИИ.',
+      calaiAte: 'CalAI: съедено ~', calaiAteSuffix: ' ккал ✓',
+      calaiFail: 'Не удалось прочитать скриншот', calaiUploadErr: 'Ошибка загрузки скриншота',
+      choiceCancelled: 'Выбор отменён',
+      shopCleared: 'Список отмечен как купленный и очищен',
+      prefsSaved: 'Предпочтения сохранены ✓',
+      collecting: 'Собираю продукты…', addingProducts: 'Дособираю продукты…',
+      addedToMenu: ' добавлено в меню и список покупок ✓',
+      addedKitchen: ' и список покупок ✓',
+      // Карты значений (RU → подпись), payload остаётся русским
+      meals: { 'Завтрак': 'Завтрак', 'Обед': 'Обед', 'Перекус': 'Перекус', 'Ужин': 'Ужин' },
+      comps: { 'Суп': 'Суп', 'Салат': 'Салат', 'Основное': 'Основное', 'Гарнир': 'Гарнир', 'Напиток': 'Напиток', 'Десерт': 'Десерт' },
+      cuisines: { 'Русская': 'Русская', 'Итальянская': 'Итальянская', 'Грузинская': 'Грузинская', 'Японская': 'Японская', 'Средиземноморская': 'Средиземноморская', 'Азиатская': 'Азиатская', 'Мексиканская': 'Мексиканская' },
+      foods: { 'Свинина': 'Свинина', 'Говядина': 'Говядина', 'Курица': 'Курица', 'Рыба': 'Рыба', 'Морепродукты': 'Морепродукты', 'Молочное': 'Молочное', 'Яйца': 'Яйца', 'Грибы': 'Грибы' },
+      goals: { 'Снизить вес': 'Снизить вес', 'Поддержать': 'Поддержать', 'Набрать массу': 'Набрать массу' },
+      activities: { 'Низкая': 'Низкая', 'Лёгкая': 'Лёгкая', 'Средняя': 'Средняя', 'Высокая': 'Высокая', 'Спортсмен': 'Спортсмен' },
+      quick: { 'Кофе с молоком': 'Кофе с молоком', 'Кофе с молоком и сахаром': 'Кофе с молоком и сахаром', 'Кофе чёрный': 'Кофе чёрный', 'Протеиновый батончик': 'Протеиновый батончик', 'Протеиновый коктейль': 'Протеиновый коктейль' },
+      wd: { 'Пн': 'Пн', 'Вт': 'Вт', 'Ср': 'Ср', 'Чт': 'Чт', 'Пт': 'Пт', 'Сб': 'Сб', 'Вс': 'Вс' },
+      months: { 'янв': 'янв', 'фев': 'фев', 'мар': 'мар', 'апр': 'апр', 'мая': 'мая', 'июн': 'июн', 'июл': 'июл', 'авг': 'авг', 'сен': 'сен', 'окт': 'окт', 'ноя': 'ноя', 'дек': 'дек' },
+    },
+    en: {
+      title: 'Nutrition',
+      subtitle: 'Weekly menu · goal-based picks · groceries',
+      prefsBtn: '⚙ Set preferences',
+      goalFor: 'Goal for',
+      today: 'today',
+      editProfile: 'Edit profile',
+      done: 'Done',
+      kcal: 'kcal',
+      g: 'g',
+      mCalories: 'Calories', mProtein: 'Protein', mFat: 'Fat', mCarbs: 'Carbs',
+      bdBase: 'Base',
+      bdTraining: 'workout', bdRestDay: 'rest day',
+      bdRecovery: 'recovery',
+      bdCarry: 'from yesterday',
+      bdNoGarmin: 'Garmin not connected — goal without workouts',
+      eaten: 'Eaten ~', remaining: 'left ~',
+      fromCalai: ' · from CalAI', resetDay: 'reset', resetDayTitle: 'Reset the day’s tally',
+      calaiReading: 'Reading screenshot…', calaiBtn: '📷 Import from CalAI',
+      quickAddTitle: 'kcal',
+      bmrHint: 'Resting metabolism ~', tdeeHint: ' kcal · normal activity ~', goalHint: ' kcal · goal: ',
+      fWeight: 'Weight, kg', fHeight: 'Height, cm', fAge: 'Age', fSex: 'Sex',
+      male: 'Male', female: 'Female',
+      activity: 'Activity', goal: 'Goal',
+      weekMenu: 'Weekly menu',
+      todaySuffix: ' · today',
+      chosenOf: 'chosen ~', ofTarget: ' of ', target: 'goal ',
+      mealApprox: '≈',
+      cancelChoice: 'Undo choice',
+      picking: 'Picking…', pickBtn: '＋ Pick',
+      liked: '👍 liked', disliked: '👎 not great',
+      bMacro: 'P', fMacro: 'F', uMacro: 'C',
+      shopTitle: 'Weekly grocery list',
+      clear: 'Clear',
+      shopEmpty: 'Empty. Pick dishes with the “To kitchen” button — ingredients will collect here for the whole week.',
+      shopHint: 'Quantities are rounded to what you’d actually buy in a store.',
+      recentBought: 'bought recently', recentTitle: 'Bought recently — you may still have it at home',
+      removeItem: 'Remove',
+      sendDriver: 'Send to driver (soon)', sendDriverTitle: 'Coming once messaging is connected',
+      pickHead: 'Picks: ', perMeal: ' kcal per meal',
+      close: 'Close',
+      inMeal: 'What’s in the meal:',
+      notePlaceholder: 'Adjust the picks: e.g. “lighter”, “no dairy”, “something else”',
+      pickAgain: 'Pick again',
+      adding: 'Adding…', toKitchenCard: '🍳 To kitchen',
+      more: 'Details →',
+      pickingMore: 'Picking more…', showMore: '＋ Show more dishes',
+      recipeBuilding: 'AI is building the recipe…', recipeUnavailable: 'Recipe unavailable',
+      ingredients: 'Ingredients', steps: 'Steps',
+      toKitchen: '🍳 To kitchen', recipeWillFinish: ' (recipe will finish in background)',
+      photoBy: 'Photo: ',
+      prefsTitle: 'Taste preferences',
+      prefsSub: 'AI will take this into account when picking — within reason.',
+      spicy: 'Spiciness',
+      spicyLow: 'barely spicy', spicyHigh: 'love it spicy', spicyMid: 'moderate',
+      sweet: 'Sweetness',
+      sweetLow: 'don’t like it', sweetHigh: 'sweet tooth', sweetMid: 'moderate',
+      eats: 'Eats', yes: 'yes', no: 'no',
+      favCuisines: 'Favorite cuisines',
+      cookTime: 'Cooking time', cookFast: 'Fast (under 30 min)', cookAny: 'No preference',
+      coffee: 'Coffee (counted in macros too)',
+      coffeeNo: 'Don’t drink', coffeeBlack: 'Black', coffeeMilk: 'With milk', coffeeMilkSugar: 'With milk and sugar',
+      cupsPerDay: 'Cups per day',
+      sportNutrition: 'Sports nutrition',
+      proteinBars: 'Protein bars', proteinShakes: 'Protein shakes',
+      allergies: 'Allergies (strictly exclude)', allergiesPlaceholder: 'e.g. nuts, honey',
+      avoid: 'Dislikes', avoidPlaceholder: 'e.g. cilantro, liver',
+      save: 'Save', reset: 'Reset',
+      rateHow: ' · how was it?',
+      ratePlaceholder: 'A few words (optional): what you liked / what to change',
+      rateUp: '👍 Liked it', rateDown: '👎 Not great', rateLater: 'Later',
+      noServer: 'No connection to the server. Start the backend with an AI key.',
+      calaiAte: 'CalAI: eaten ~', calaiAteSuffix: ' kcal ✓',
+      calaiFail: 'Couldn’t read the screenshot', calaiUploadErr: 'Screenshot upload error',
+      choiceCancelled: 'Choice undone',
+      shopCleared: 'List marked as bought and cleared',
+      prefsSaved: 'Preferences saved ✓',
+      collecting: 'Collecting ingredients…', addingProducts: 'Gathering remaining ingredients…',
+      addedToMenu: ' added to the menu and grocery list ✓',
+      addedKitchen: ' and grocery list ✓',
+      meals: { 'Завтрак': 'Breakfast', 'Обед': 'Lunch', 'Перекус': 'Snack', 'Ужин': 'Dinner' },
+      comps: { 'Суп': 'Soup', 'Салат': 'Salad', 'Основное': 'Main', 'Гарнир': 'Side', 'Напиток': 'Drink', 'Десерт': 'Dessert' },
+      cuisines: { 'Русская': 'Russian', 'Итальянская': 'Italian', 'Грузинская': 'Georgian', 'Японская': 'Japanese', 'Средиземноморская': 'Mediterranean', 'Азиатская': 'Asian', 'Мексиканская': 'Mexican' },
+      foods: { 'Свинина': 'Pork', 'Говядина': 'Beef', 'Курица': 'Chicken', 'Рыба': 'Fish', 'Морепродукты': 'Seafood', 'Молочное': 'Dairy', 'Яйца': 'Eggs', 'Грибы': 'Mushrooms' },
+      goals: { 'Снизить вес': 'Lose weight', 'Поддержать': 'Maintain', 'Набрать массу': 'Gain mass' },
+      activities: { 'Низкая': 'Low', 'Лёгкая': 'Light', 'Средняя': 'Moderate', 'Высокая': 'High', 'Спортсмен': 'Athlete' },
+      quick: { 'Кофе с молоком': 'Coffee with milk', 'Кофе с молоком и сахаром': 'Coffee with milk and sugar', 'Кофе чёрный': 'Black coffee', 'Протеиновый батончик': 'Protein bar', 'Протеиновый коктейль': 'Protein shake' },
+      wd: { 'Пн': 'Mon', 'Вт': 'Tue', 'Ср': 'Wed', 'Чт': 'Thu', 'Пт': 'Fri', 'Сб': 'Sat', 'Вс': 'Sun' },
+      months: { 'янв': 'Jan', 'фев': 'Feb', 'мар': 'Mar', 'апр': 'Apr', 'мая': 'May', 'июн': 'Jun', 'июл': 'Jul', 'авг': 'Aug', 'сен': 'Sep', 'окт': 'Oct', 'ноя': 'Nov', 'дек': 'Dec' },
+    },
+  })
   const [profile, setProfile] = useState(loadProfile)
   const [editProfile, setEditProfile] = useState(false)
   const base = useMemo(() => computeTarget(profile), [profile])
@@ -127,7 +325,7 @@ export default function Nutrition() {
   const sgn = n => (n > 0 ? '+' : '') + n
   const dayInfo = dayPlanned(plan, selectedDay)
   const selDay = week.find(d => d.key === selectedDay)
-  const dayLabel = selDay ? `${selDay.wd}, ${selDay.day} ${selDay.month}` : selectedDay
+  const dayLabel = selDay ? `${t.wd[selDay.wd] || selDay.wd}, ${selDay.day} ${t.months[selDay.month] || selDay.month}` : selectedDay
 
   function selectDay(key) { setSelectedDay(key); setMeals([]); setMealsMsg('') }
   // Клик «＋ Подобрать» в слоте: выбираем приём, подставляем типовой состав и сразу подбираем
@@ -153,7 +351,7 @@ export default function Nutrition() {
       if ((!data.meals || !data.meals.length) && data.message) setMealsMsg(data.message)
       if (data.meals?.length) setResultsOpen(true)
       fetchImages(data.meals || [])
-    } catch { setMeals([]); setMealsMsg('Нет связи с сервером. Запустите backend с ключом ИИ.') }
+    } catch { setMeals([]); setMealsMsg(t.noServer) }
     setLoadingMeals(false)
   }
 
@@ -217,7 +415,7 @@ export default function Nutrition() {
     const base = dishBase(meal)
     setPlan(prev => { const np = setPlanMeal(prev, selectedDay, mealType, base); savePlan(np); return np })
     setResultsOpen(false)
-    flash(`«${meal.name}» → ${mealType}. Собираю продукты…`)
+    flash(`«${meal.name}» → ${t.meals[mealType] || mealType}. ${t.collecting}`)
     try {
       const recipes = []
       for (const part of base.parts) {
@@ -227,7 +425,7 @@ export default function Nutrition() {
       const allIng = recipes.flatMap(r => r.ingredients)
       setPlan(prev => { const np = setPlanMeal(prev, selectedDay, mealType, { ...base, partRecipes: recipes, ingredients: allIng }); savePlan(np); return np })
       if (allIng.length) setShopping(prev => { const ns = addToShopping(prev, allIng, meal.name); saveShopping(ns); return ns })
-      flash(`«${meal.name}» добавлено в меню и список покупок ✓`)
+      flash(`«${meal.name}»${t.addedToMenu}`)
     } catch { /* блюдо уже в плане */ }
     setKitchenBusy(null)
   }
@@ -267,8 +465,8 @@ export default function Nutrition() {
     closeDetail(); setResultsOpen(false)
     // 2) недостающие рецепты — в фоне, не заставляя ждать
     const missing = parts.filter(p => !p.recipe)
-    if (!missing.length) { flash(`«${m.name}» → ${mealKey} и список покупок ✓`); return }
-    flash(`«${m.name}» → ${mealKey}. Дособираю продукты…`)
+    if (!missing.length) { flash(`«${m.name}» → ${t.meals[mealKey] || mealKey}${t.addedKitchen}`); return }
+    flash(`«${m.name}» → ${t.meals[mealKey] || mealKey}. ${t.addingProducts}`)
     try {
       const fetched = []
       for (const part of missing) {
@@ -280,20 +478,20 @@ export default function Nutrition() {
       setPlan(prev => { const np = setPlanMeal(prev, dateKey, mealKey, { ...base, partRecipes: allRecipes, ingredients: allIng }); savePlan(np); return np })
       const newIng = fetched.flatMap(r => r.ingredients)
       if (newIng.length) setShopping(prev => { const ns = addToShopping(prev, newIng, m.name); saveShopping(ns); return ns })
-      flash(`«${m.name}» добавлено в меню и список покупок ✓`)
+      flash(`«${m.name}»${t.addedToMenu}`)
     } catch { /* блюдо уже в меню */ }
   }
   function removePlanned() {
     const np = clearPlanMeal(plan, detail.dateKey, detail.mealKey)
     setPlan(np); savePlan(np)
-    flash('Выбор отменён')
+    flash(t.choiceCancelled)
     closeDetail()
   }
   // Отменить выбор прямо со слота дня (без открытия окна)
   function removePlannedSlot(dateKey, mealKey) {
     const np = clearPlanMeal(plan, dateKey, mealKey)
     setPlan(np); savePlan(np)
-    flash('Выбор отменён')
+    flash(t.choiceCancelled)
   }
 
   function submitRate(liked) {
@@ -319,14 +517,14 @@ export default function Nutrition() {
     setPantry(np); savePantry(np)
     const next = { weekStart: mskDateKey(), items: [] }
     setShopping(next); saveShopping(next)
-    flash('Список отмечен как купленный и очищен')
+    flash(t.shopCleared)
   }
 
   // ── Быстрый учёт «довесков» и CalAI ──
   function quickAdd(item) {
     const ni = addIntakeExtra(intake, selectedDay, item)
     setIntake(ni); saveIntake(ni)
-    flash(`+${item.kcal} ккал · ${item.label}`)
+    flash(`+${item.kcal} ${t.kcal} · ${t.quick[item.label] || item.label}`)
   }
   function resetIntake() {
     const ni = clearDayIntake(intake, selectedDay)
@@ -345,9 +543,9 @@ export default function Nutrition() {
       if (data.ok && data.intake) {
         const ni = setCalaiIntake(intake, selectedDay, data.intake)
         setIntake(ni); saveIntake(ni)
-        flash(`CalAI: съедено ~${Math.round(data.intake.kcal)} ккал ✓`)
-      } else flash(data.message || 'Не удалось прочитать скриншот')
-    } catch { flash('Ошибка загрузки скриншота') }
+        flash(`${t.calaiAte}${Math.round(data.intake.kcal)}${t.calaiAteSuffix}`)
+      } else flash(data.message || t.calaiFail)
+    } catch { flash(t.calaiUploadErr) }
     setCalaiBusy(false)
   }
 
@@ -360,43 +558,43 @@ export default function Nutrition() {
       return { ...d, cuisines: has ? d.cuisines.filter(x => x !== c) : [...(d.cuisines || []), c] }
     })
   }
-  function savePrefsModal() { savePrefs(prefsDraft); setPrefs(prefsDraft); setPrefsOpen(false); flash('Предпочтения сохранены ✓') }
+  function savePrefsModal() { savePrefs(prefsDraft); setPrefs(prefsDraft); setPrefsOpen(false); flash(t.prefsSaved) }
 
   return (
     <div className="nu-page">
       <div className="page-header">
         <div>
-          <h2>Питание</h2>
-          <span className="muted">Меню на неделю · подбор под цель · покупки</span>
+          <h2>{t.title}</h2>
+          <span className="muted">{t.subtitle}</span>
         </div>
-        <button className="nu-prefs-btn" onClick={openPrefs}>⚙ Настроить предпочтения</button>
+        <button className="nu-prefs-btn" onClick={openPrefs}>{t.prefsBtn}</button>
       </div>
 
       {/* Цель + профиль */}
       <motion.div className="card nu-target" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
         <div className="nu-head">
-          <div className="card-title" style={{ margin: 0 }}>Цель на {isToday ? 'сегодня' : dayLabel}</div>
-          <button className="nu-edit" onClick={() => setEditProfile(e => !e)}>{editProfile ? 'Готово' : 'Изменить профиль'}</button>
+          <div className="card-title" style={{ margin: 0 }}>{t.goalFor} {isToday ? t.today : dayLabel}</div>
+          <button className="nu-edit" onClick={() => setEditProfile(e => !e)}>{editProfile ? t.done : t.editProfile}</button>
         </div>
         <div className="nu-macros">
-          <Macro value={target.kcal} unit="ккал" label="Калории" color="var(--orange)" />
-          <Macro value={target.protein} unit="г" label="Белки" color="var(--green)" />
-          <Macro value={target.fat} unit="г" label="Жиры" color="var(--yellow)" />
-          <Macro value={target.carb} unit="г" label="Углеводы" color="var(--accent)" />
+          <Macro value={target.kcal} unit={t.kcal} label={t.mCalories} color="var(--orange)" />
+          <Macro value={target.protein} unit={t.g} label={t.mProtein} color="var(--green)" />
+          <Macro value={target.fat} unit={t.g} label={t.mFat} color="var(--yellow)" />
+          <Macro value={target.carb} unit={t.g} label={t.mCarbs} color="var(--accent)" />
         </div>
 
         {/* Из чего сложилась цель */}
         <div className="nu-breakdown">
-          <span className="nu-bd-chip">База {target.base}</span>
+          <span className="nu-bd-chip">{t.bdBase} {target.base}</span>
           {target.trainDelta !== 0 && (
             <span className={`nu-bd-chip ${target.trainDelta > 0 ? 'plus' : 'minus'}`}>
-              🏃 {sgn(target.trainDelta)} · {burned > 0 ? `тренировка ${burned} ккал` : 'день отдыха'}
+              🏃 {sgn(target.trainDelta)} · {burned > 0 ? `${t.bdTraining} ${burned} ${t.kcal}` : t.bdRestDay}
             </span>
           )}
-          {target.trainDelta === 0 && burned > 0 && <span className="nu-bd-chip">🏃 тренировка {burned} ккал</span>}
-          {target.recDelta !== 0 && <span className="nu-bd-chip minus">💤 {sgn(target.recDelta)} восстановление</span>}
-          {target.carryDelta !== 0 && <span className={`nu-bd-chip ${target.carryDelta > 0 ? 'plus' : 'minus'}`}>↩ {sgn(target.carryDelta)} со вчера</span>}
-          {!garmin && <span className="nu-bd-chip muted-chip">Garmin не подключён — цель без учёта тренировок</span>}
+          {target.trainDelta === 0 && burned > 0 && <span className="nu-bd-chip">🏃 {t.bdTraining} {burned} {t.kcal}</span>}
+          {target.recDelta !== 0 && <span className="nu-bd-chip minus">💤 {sgn(target.recDelta)} {t.bdRecovery}</span>}
+          {target.carryDelta !== 0 && <span className={`nu-bd-chip ${target.carryDelta > 0 ? 'plus' : 'minus'}`}>↩ {sgn(target.carryDelta)} {t.bdCarry}</span>}
+          {!garmin && <span className="nu-bd-chip muted-chip">{t.bdNoGarmin}</span>}
         </div>
 
         {/* Съедено / осталось на день */}
@@ -404,9 +602,9 @@ export default function Nutrition() {
           <div className="nu-progress">
             <div className="nu-prog-bar"><div className="nu-prog-fill" style={{ width: `${Math.min(100, Math.round(eaten / target.kcal * 100))}%` }} /></div>
             <div className="nu-prog-text muted">
-              Съедено ~{eaten} · <b style={{ color: 'var(--foreground)' }}>осталось ~{remaining} ккал</b>
-              {intakeRec?.source === 'calai' && <span className="nu-intake-tag"> · из CalAI</span>}
-              {intakeRec && <button className="nu-intake-reset" onClick={resetIntake} title="Сбросить учёт за день">сбросить</button>}
+              {t.eaten}{eaten} · <b style={{ color: 'var(--foreground)' }}>{t.remaining}{remaining} {t.kcal}</b>
+              {intakeRec?.source === 'calai' && <span className="nu-intake-tag">{t.fromCalai}</span>}
+              {intakeRec && <button className="nu-intake-reset" onClick={resetIntake} title={t.resetDayTitle}>{t.resetDay}</button>}
             </div>
           </div>
         )}
@@ -415,7 +613,7 @@ export default function Nutrition() {
         <div className="nu-intake-row">
           <input ref={calaiInput} type="file" accept="image/*" onChange={onCalaiFile} style={{ display: 'none' }} />
           <button className="nu-calai" onClick={() => calaiInput.current?.click()} disabled={calaiBusy}>
-            {calaiBusy ? 'Читаю скрин…' : '📷 Внести из CalAI'}
+            {calaiBusy ? t.calaiReading : t.calaiBtn}
           </button>
           {QUICK_ADD.filter(q => {
             if (q.key.startsWith('coffee')) return q.key === 'coffee_' + prefs.coffee
@@ -423,44 +621,44 @@ export default function Nutrition() {
             if (q.key === 'protein_shake') return prefs.proteinShake
             return false
           }).map(q => (
-            <button key={q.key} className="nu-quick" onClick={() => quickAdd(q)} title={`+${q.kcal} ккал`}>+ {q.label}</button>
+            <button key={q.key} className="nu-quick" onClick={() => quickAdd(q)} title={`+${q.kcal} ${t.kcal}`}>+ {t.quick[q.label] || q.label}</button>
           ))}
         </div>
 
         <div className="nu-target-hint muted">
-          Обмен покоя ~{base.bmr} ккал · обычная активность ~{base.tdee} ккал · цель: {GOALS.find(g => g.key === profile.goal)?.label.toLowerCase()}
+          {t.bmrHint}{base.bmr}{t.tdeeHint}{base.tdee}{t.goalHint}{(() => { const gl = GOALS.find(g => g.key === profile.goal)?.label; return (t.goals[gl] || gl || '').toLowerCase() })()}
           {target.recNote ? ` · ${target.recNote}` : ''}
         </div>
         <AnimatePresence>
           {editProfile && (
             <motion.div className="nu-profile" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
               <div className="nu-fields">
-                <label className="nu-field"><span>Вес, кг</span>
+                <label className="nu-field"><span>{t.fWeight}</span>
                   <input type="number" value={profile.weight} onChange={e => updateProfile('weight', +e.target.value || 0)} /></label>
-                <label className="nu-field"><span>Рост, см</span>
+                <label className="nu-field"><span>{t.fHeight}</span>
                   <input type="number" value={profile.height} onChange={e => updateProfile('height', +e.target.value || 0)} /></label>
-                <label className="nu-field"><span>Возраст</span>
+                <label className="nu-field"><span>{t.fAge}</span>
                   <input type="number" value={profile.age} onChange={e => updateProfile('age', +e.target.value || 0)} /></label>
-                <label className="nu-field"><span>Пол</span>
+                <label className="nu-field"><span>{t.fSex}</span>
                   <select value={profile.sex} onChange={e => updateProfile('sex', e.target.value)}>
-                    <option value="male">Мужской</option><option value="female">Женский</option>
+                    <option value="male">{t.male}</option><option value="female">{t.female}</option>
                   </select></label>
               </div>
               <div className="nu-seg-row">
-                <span className="nu-seg-lbl muted">Активность</span>
+                <span className="nu-seg-lbl muted">{t.activity}</span>
                 <div className="nu-seg">
                   {ACTIVITY_LEVELS.map(a => (
                     <button key={a.key} className={`nu-seg-btn ${profile.activity === a.key ? 'active' : ''}`}
-                      onClick={() => updateProfile('activity', a.key)} title={a.hint}>{a.label}</button>
+                      onClick={() => updateProfile('activity', a.key)} title={a.hint}>{t.activities[a.label] || a.label}</button>
                   ))}
                 </div>
               </div>
               <div className="nu-seg-row">
-                <span className="nu-seg-lbl muted">Цель</span>
+                <span className="nu-seg-lbl muted">{t.goal}</span>
                 <div className="nu-seg">
                   {GOALS.map(g => (
                     <button key={g.key} className={`nu-seg-btn ${profile.goal === g.key ? 'active' : ''}`}
-                      onClick={() => updateProfile('goal', g.key)}>{g.label}</button>
+                      onClick={() => updateProfile('goal', g.key)}>{t.goals[g.label] || g.label}</button>
                   ))}
                 </div>
               </div>
@@ -471,13 +669,13 @@ export default function Nutrition() {
 
       {/* Меню недели */}
       <motion.div className="card" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
-        <div className="card-title">Меню недели</div>
+        <div className="card-title">{t.weekMenu}</div>
         <div className="nu-week">
           {week.map(d => {
             const info = dayPlanned(plan, d.key)
             return (
               <button key={d.key} className={`nu-day ${d.key === selectedDay ? 'active' : ''} ${d.isToday ? 'today' : ''}`} onClick={() => selectDay(d.key)}>
-                <span className="nu-day-wd">{d.wd}</span>
+                <span className="nu-day-wd">{t.wd[d.wd] || d.wd}</span>
                 <span className="nu-day-num">{d.day}</span>
                 <span className="nu-day-dots">{MEAL_KEYS.map(k => <i key={k} className={plan[d.key]?.[k] ? 'on' : ''} />)}</span>
               </button>
@@ -486,8 +684,8 @@ export default function Nutrition() {
         </div>
 
         <div className="nu-day-head">
-          <span className="nu-day-title">{dayLabel}{selDay?.isToday ? ' · сегодня' : ''}</span>
-          <span className="muted nu-day-kcal">{dayInfo.count > 0 ? `выбрано ~${dayInfo.kcal} из ${target.kcal} ккал` : `цель ${target.kcal} ккал`}</span>
+          <span className="nu-day-title">{dayLabel}{selDay?.isToday ? t.todaySuffix : ''}</span>
+          <span className="muted nu-day-kcal">{dayInfo.count > 0 ? `${t.chosenOf}${dayInfo.kcal}${t.ofTarget}${target.kcal} ${t.kcal}` : `${t.target}${target.kcal} ${t.kcal}`}</span>
         </div>
 
         <div className="nu-slots">
@@ -498,22 +696,22 @@ export default function Nutrition() {
             return (
               <div key={m.key} className={`nu-slot ${dish ? 'filled' : ''} ${active ? 'sel' : ''}`}>
                 <div className="nu-slot-head">
-                  <span className="nu-slot-name">{m.emoji} {m.key}</span>
-                  <span className="nu-slot-target muted">≈{pm.kcal} ккал</span>
+                  <span className="nu-slot-name">{m.emoji} {t.meals[m.key] || m.key}</span>
+                  <span className="nu-slot-target muted">{t.mealApprox}{pm.kcal} {t.kcal}</span>
                 </div>
                 {dish ? (
                   <>
                     <button className="nu-slot-dish" onClick={() => openPlannedDetail(selectedDay, m.key)}>
                       {dish.imageUrl && <div className="nu-slot-img" style={{ backgroundImage: `url(${dish.imageUrl})` }} />}
                       <span className="nu-slot-dish-name">{dish.name}</span>
-                      <span className="nu-slot-dish-macros muted">{dish.kcal} ккал · Б{dish.protein} Ж{dish.fat} У{dish.carb}</span>
-                      {dish.rated && <span className={`nu-slot-rated ${dish.rating}`}>{dish.rating === 'up' ? '👍 понравилось' : '👎 не очень'}</span>}
+                      <span className="nu-slot-dish-macros muted">{dish.kcal} {t.kcal} · {t.bMacro}{dish.protein} {t.fMacro}{dish.fat} {t.uMacro}{dish.carb}</span>
+                      {dish.rated && <span className={`nu-slot-rated ${dish.rating}`}>{dish.rating === 'up' ? t.liked : t.disliked}</span>}
                     </button>
-                    <button className="nu-slot-cancel" onClick={() => removePlannedSlot(selectedDay, m.key)}>Отменить выбор</button>
+                    <button className="nu-slot-cancel" onClick={() => removePlannedSlot(selectedDay, m.key)}>{t.cancelChoice}</button>
                   </>
                 ) : (
                   <button className="nu-slot-empty" onClick={() => pickSlot(m.key)} disabled={loadingMeals}>
-                    {loadingMeals && active ? 'Подбираю…' : '＋ Подобрать'}
+                    {loadingMeals && active ? t.picking : t.pickBtn}
                   </button>
                 )}
               </div>
@@ -532,28 +730,28 @@ export default function Nutrition() {
       {/* Список покупок */}
       <motion.div className="card nu-shop" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
         <div className="nu-head">
-          <div className="card-title" style={{ margin: 0 }}>Список покупок на неделю</div>
-          {shopping.items.length > 0 && <button className="nu-edit" onClick={clearShopping}>Очистить</button>}
+          <div className="card-title" style={{ margin: 0 }}>{t.shopTitle}</div>
+          {shopping.items.length > 0 && <button className="nu-edit" onClick={clearShopping}>{t.clear}</button>}
         </div>
         {shopping.items.length === 0 ? (
-          <div className="nu-empty muted">Пусто. Выбирайте блюда кнопкой «На кухню» — продукты соберутся здесь на всю неделю.</div>
+          <div className="nu-empty muted">{t.shopEmpty}</div>
         ) : (
           <>
-            <div className="nu-shop-hint muted">Количества округлены до того, что реально покупать в магазине.</div>
+            <div className="nu-shop-hint muted">{t.shopHint}</div>
             <div className="nu-shop-list">
               {shopping.items.map((it, i) => {
                 const recent = recentlyBought(pantry, it.name)
                 return (
                   <div key={i} className="nu-shop-item">
-                    <span className="nu-shop-name">{it.name}{recent && <span className="nu-recent" title="Покупали недавно — возможно, ещё есть дома">недавно покупали</span>}</span>
+                    <span className="nu-shop-name">{it.name}{recent && <span className="nu-recent" title={t.recentTitle}>{t.recentBought}</span>}</span>
                     <span className="nu-shop-qty muted">{formatProduct(it)}</span>
-                    <button className="nu-shop-del" onClick={() => removeShoppingItem(i)} title="Убрать">×</button>
+                    <button className="nu-shop-del" onClick={() => removeShoppingItem(i)} title={t.removeItem}>×</button>
                   </div>
                 )
               })}
             </div>
-            <button className="nu-send" disabled title="Появится, когда подключим отправку сообщений">
-              Отправить водителю (скоро)
+            <button className="nu-send" disabled title={t.sendDriverTitle}>
+              {t.sendDriver}
             </button>
           </>
         )}
@@ -567,23 +765,23 @@ export default function Nutrition() {
               initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.97 }}>
               <div className="nu-modal-head">
                 <div>
-                  <h3>Подбор: {mealType}</h3>
-                  <div className="nu-modal-sub muted">{dayLabel} · ≈{perMeal.kcal} ккал на приём</div>
+                  <h3>{t.pickHead}{t.meals[mealType] || mealType}</h3>
+                  <div className="nu-modal-sub muted">{dayLabel} · {t.mealApprox}{perMeal.kcal}{t.perMeal}</div>
                 </div>
-                <button className="nu-close" onClick={() => setResultsOpen(false)} aria-label="Закрыть">×</button>
+                <button className="nu-close" onClick={() => setResultsOpen(false)} aria-label={t.close}>×</button>
               </div>
               <div className="nu-comp-row">
-                <span className="muted nu-comp-lbl">Что в приёме:</span>
+                <span className="muted nu-comp-lbl">{t.inMeal}</span>
                 {COMPONENTS.map(c => (
-                  <button key={c} className={`nu-comp ${components.includes(c) ? 'on' : ''}`} onClick={() => toggleComponent(c)}>{c}</button>
+                  <button key={c} className={`nu-comp ${components.includes(c) ? 'on' : ''}`} onClick={() => toggleComponent(c)}>{t.comps[c] || c}</button>
                 ))}
               </div>
               <div className="nu-note-row">
-                <input className="nu-note" placeholder="Изменить подбор: например «полегче», «без молочного», «другое»"
+                <input className="nu-note" placeholder={t.notePlaceholder}
                   value={note} onChange={e => setNote(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') suggestMeals() }} />
-                <MicButton primary onText={t => setNote(prev => (prev ? prev.trim() + ' ' : '') + t)} />
+                <MicButton primary onText={txt => setNote(prev => (prev ? prev.trim() + ' ' : '') + txt)} />
                 <button className="nu-suggest" onClick={() => suggestMeals()} disabled={loadingMeals}>
-                  {loadingMeals ? 'Подбираю…' : 'Подобрать заново'}
+                  {loadingMeals ? t.picking : t.pickAgain}
                 </button>
               </div>
               <div className="nu-meal-list">
@@ -596,27 +794,27 @@ export default function Nutrition() {
                       {combo ? (
                         <div className="nu-parts">
                           {m.parts.map((p, k) => (
-                            <div key={k} className="nu-part"><span className="nu-part-c muted">{p.component}</span> {p.name} <span className="muted">· {p.kcal} ккал</span></div>
+                            <div key={k} className="nu-part"><span className="nu-part-c muted">{t.comps[p.component] || p.component}</span> {p.name} <span className="muted">· {p.kcal} {t.kcal}</span></div>
                           ))}
                         </div>
                       ) : (m.short && <div className="nu-meal-short muted">{m.short}</div>)}
                       <div className="nu-meal-macros">
-                        <span style={{ color: 'var(--orange)' }}>{m.kcal} ккал</span>
-                        <span>Б {m.protein}</span><span>Ж {m.fat}</span><span>У {m.carb}</span>
+                        <span style={{ color: 'var(--orange)' }}>{m.kcal} {t.kcal}</span>
+                        <span>{t.bMacro} {m.protein}</span><span>{t.fMacro} {m.fat}</span><span>{t.uMacro} {m.carb}</span>
                       </div>
-                      {m.tags?.length > 0 && <div className="nu-tags">{m.tags.map(t => <span key={t} className="nu-tag">{t}</span>)}</div>}
+                      {m.tags?.length > 0 && <div className="nu-tags">{m.tags.map(tag => <span key={tag} className="nu-tag">{tag}</span>)}</div>}
                       <div className="nu-card-actions">
                         <button className="nu-kitchen-card" onClick={() => quickKitchen(m)} disabled={kitchenBusy === m.name}>
-                          {kitchenBusy === m.name ? 'Добавляю…' : '🍳 На кухню'}
+                          {kitchenBusy === m.name ? t.adding : t.toKitchenCard}
                         </button>
-                        <button className="nu-recipe-btn" onClick={() => openSuggestDetail(m)}>Подробнее →</button>
+                        <button className="nu-recipe-btn" onClick={() => openSuggestDetail(m)}>{t.more}</button>
                       </div>
                     </motion.div>
                   )
                 })}
               </div>
               <button className="nu-more" onClick={moreMeals} disabled={loadingMore}>
-                {loadingMore ? 'Подбираю ещё…' : '＋ Показать ещё блюда'}
+                {loadingMore ? t.pickingMore : t.showMore}
               </button>
             </motion.div>
           </div>
@@ -631,9 +829,9 @@ export default function Nutrition() {
               initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }}>
               <div className="nu-modal-head">
                 <h3>{detail.meal.name}</h3>
-                <button className="nu-close" onClick={closeDetail} aria-label="Закрыть">×</button>
+                <button className="nu-close" onClick={closeDetail} aria-label={t.close}>×</button>
               </div>
-              <div className="nu-modal-sub muted">{detail.mealKey} · {dayLabel}</div>
+              <div className="nu-modal-sub muted">{t.meals[detail.mealKey] || detail.mealKey} · {dayLabel}</div>
               {(() => {
                 const im = detail.source === 'planned'
                   ? (detail.meal.imageUrl ? { url: detail.meal.imageUrl, author: detail.meal.imageAuthor, authorUrl: detail.meal.imageAuthorUrl, unsplashUrl: detail.meal.imageUnsplash } : null)
@@ -643,23 +841,23 @@ export default function Nutrition() {
                   <div className="nu-modal-img-wrap">
                     <div className="nu-modal-img" style={{ backgroundImage: `url(${im.url})` }} />
                     {im.author && (
-                      <div className="nu-credit muted">Фото: <a href={im.authorUrl} target="_blank" rel="noreferrer">{im.author}</a> · <a href={im.unsplashUrl} target="_blank" rel="noreferrer">Unsplash</a></div>
+                      <div className="nu-credit muted">{t.photoBy}<a href={im.authorUrl} target="_blank" rel="noreferrer">{im.author}</a> · <a href={im.unsplashUrl} target="_blank" rel="noreferrer">Unsplash</a></div>
                     )}
                   </div>
                 )
               })()}
               <div className="nu-meal-macros nu-detail-total">
-                <span style={{ color: 'var(--orange)' }}>{detail.meal.kcal} ккал</span>
-                <span>Б {detail.meal.protein}</span><span>Ж {detail.meal.fat}</span><span>У {detail.meal.carb}</span>
+                <span style={{ color: 'var(--orange)' }}>{detail.meal.kcal} {t.kcal}</span>
+                <span>{t.bMacro} {detail.meal.protein}</span><span>{t.fMacro} {detail.meal.fat}</span><span>{t.uMacro} {detail.meal.carb}</span>
               </div>
               {detailParts.map((p, pi) => (
                 <div key={pi} className="nu-part-sec">
-                  {detailParts.length > 1 && <div className="nu-part-head"><span className="nu-part-c muted">{p.component}</span> {p.name}</div>}
+                  {detailParts.length > 1 && <div className="nu-part-head"><span className="nu-part-c muted">{t.comps[p.component] || p.component}</span> {p.name}</div>}
                   {!p.recipe ? (
-                    <div className="nu-empty muted">{detailLoading ? 'ИИ собирает рецепт…' : 'Рецепт недоступен'}</div>
+                    <div className="nu-empty muted">{detailLoading ? t.recipeBuilding : t.recipeUnavailable}</div>
                   ) : (
                     <>
-                      <div className="nu-sec-title">Ингредиенты</div>
+                      <div className="nu-sec-title">{t.ingredients}</div>
                       <div className="nu-ing-list">
                         {(p.recipe.ingredients || []).map((ing, i) => (
                           <div key={i} className="nu-ing">
@@ -668,7 +866,7 @@ export default function Nutrition() {
                           </div>
                         ))}
                       </div>
-                      <div className="nu-sec-title">Приготовление</div>
+                      <div className="nu-sec-title">{t.steps}</div>
                       <ol className="nu-steps">
                         {(p.recipe.steps || []).map((s, i) => <li key={i}>{s}</li>)}
                       </ol>
@@ -678,9 +876,9 @@ export default function Nutrition() {
               ))}
               <div className="nu-modal-actions">
                 {detail.source === 'suggest' ? (
-                  <button className="nu-suggest nu-kitchen" onClick={toKitchen}>🍳 На кухню{detailLoading ? ' (рецепт дособерётся)' : ''}</button>
+                  <button className="nu-suggest nu-kitchen" onClick={toKitchen}>{t.toKitchen}{detailLoading ? t.recipeWillFinish : ''}</button>
                 ) : (
-                  <button className="nu-remove" onClick={removePlanned}>Отменить выбор</button>
+                  <button className="nu-remove" onClick={removePlanned}>{t.cancelChoice}</button>
                 )}
               </div>
             </motion.div>
@@ -695,71 +893,71 @@ export default function Nutrition() {
             <motion.div className="card nu-modal" onClick={e => e.stopPropagation()}
               initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }}>
               <div className="nu-modal-head">
-                <h3>Вкусовые предпочтения</h3>
-                <button className="nu-close" onClick={() => setPrefsOpen(false)} aria-label="Закрыть">×</button>
+                <h3>{t.prefsTitle}</h3>
+                <button className="nu-close" onClick={() => setPrefsOpen(false)} aria-label={t.close}>×</button>
               </div>
-              <div className="nu-modal-sub muted">ИИ будет учитывать это при подборе — но со здравым смыслом.</div>
+              <div className="nu-modal-sub muted">{t.prefsSub}</div>
 
-              <div className="nu-sec-title">Острота</div>
+              <div className="nu-sec-title">{t.spicy}</div>
               <div className="nu-slider-row">
                 <input type="range" min="0" max="10" value={prefsDraft.spicy} onChange={e => setDraft('spicy', +e.target.value)} />
-                <span className="nu-slider-val">{prefsDraft.spicy <= 2 ? 'почти не острое' : prefsDraft.spicy >= 7 ? 'люблю острое' : 'умеренно'} · {prefsDraft.spicy}/10</span>
+                <span className="nu-slider-val">{prefsDraft.spicy <= 2 ? t.spicyLow : prefsDraft.spicy >= 7 ? t.spicyHigh : t.spicyMid} · {prefsDraft.spicy}/10</span>
               </div>
-              <div className="nu-sec-title">Сладкое</div>
+              <div className="nu-sec-title">{t.sweet}</div>
               <div className="nu-slider-row">
                 <input type="range" min="0" max="10" value={prefsDraft.sweet} onChange={e => setDraft('sweet', +e.target.value)} />
-                <span className="nu-slider-val">{prefsDraft.sweet <= 2 ? 'не люблю' : prefsDraft.sweet >= 7 ? 'сладкоежка' : 'умеренно'} · {prefsDraft.sweet}/10</span>
+                <span className="nu-slider-val">{prefsDraft.sweet <= 2 ? t.sweetLow : prefsDraft.sweet >= 7 ? t.sweetHigh : t.sweetMid} · {prefsDraft.sweet}/10</span>
               </div>
 
-              <div className="nu-sec-title">Что ест</div>
+              <div className="nu-sec-title">{t.eats}</div>
               <div className="nu-foods">
                 {FOODS.map(([key, label]) => (
                   <button key={key} className={`nu-food ${prefsDraft[key] ? 'yes' : 'no'}`} onClick={() => setDraft(key, !prefsDraft[key])}>
-                    {label} <b>{prefsDraft[key] ? 'да' : 'нет'}</b>
+                    {t.foods[label] || label} <b>{prefsDraft[key] ? t.yes : t.no}</b>
                   </button>
                 ))}
               </div>
 
-              <div className="nu-sec-title">Любимые кухни</div>
+              <div className="nu-sec-title">{t.favCuisines}</div>
               <div className="nu-foods">
                 {CUISINES.map(c => (
-                  <button key={c} className={`nu-chip ${(prefsDraft.cuisines || []).includes(c) ? 'on' : ''}`} onClick={() => toggleCuisine(c)}>{c}</button>
+                  <button key={c} className={`nu-chip ${(prefsDraft.cuisines || []).includes(c) ? 'on' : ''}`} onClick={() => toggleCuisine(c)}>{t.cuisines[c] || c}</button>
                 ))}
               </div>
 
-              <div className="nu-sec-title">Время на готовку</div>
+              <div className="nu-sec-title">{t.cookTime}</div>
               <div className="nu-seg">
-                <button className={`nu-seg-btn ${prefsDraft.cookTime === 'fast' ? 'active' : ''}`} onClick={() => setDraft('cookTime', 'fast')}>Быстро (до 30 мин)</button>
-                <button className={`nu-seg-btn ${prefsDraft.cookTime === 'any' ? 'active' : ''}`} onClick={() => setDraft('cookTime', 'any')}>Не важно</button>
+                <button className={`nu-seg-btn ${prefsDraft.cookTime === 'fast' ? 'active' : ''}`} onClick={() => setDraft('cookTime', 'fast')}>{t.cookFast}</button>
+                <button className={`nu-seg-btn ${prefsDraft.cookTime === 'any' ? 'active' : ''}`} onClick={() => setDraft('cookTime', 'any')}>{t.cookAny}</button>
               </div>
 
-              <div className="nu-sec-title">Кофе (тоже считаем в КБЖУ)</div>
+              <div className="nu-sec-title">{t.coffee}</div>
               <div className="nu-seg">
-                {[['no', 'Не пью'], ['black', 'Чёрный'], ['milk', 'С молоком'], ['milk_sugar', 'С молоком и сахаром']].map(([k, l]) => (
+                {[['no', t.coffeeNo], ['black', t.coffeeBlack], ['milk', t.coffeeMilk], ['milk_sugar', t.coffeeMilkSugar]].map(([k, l]) => (
                   <button key={k} className={`nu-seg-btn ${prefsDraft.coffee === k ? 'active' : ''}`} onClick={() => setDraft('coffee', k)}>{l}</button>
                 ))}
               </div>
               {prefsDraft.coffee !== 'no' && (
                 <div className="nu-slider-row" style={{ marginTop: 8 }}>
-                  <span className="muted" style={{ fontSize: 13 }}>Чашек в день</span>
+                  <span className="muted" style={{ fontSize: 13 }}>{t.cupsPerDay}</span>
                   <input type="range" min="1" max="6" value={prefsDraft.coffeeCups || 1} onChange={e => setDraft('coffeeCups', +e.target.value)} />
                   <span className="nu-slider-val">{prefsDraft.coffeeCups || 1}</span>
                 </div>
               )}
-              <div className="nu-sec-title">Спортпит</div>
+              <div className="nu-sec-title">{t.sportNutrition}</div>
               <div className="nu-foods">
-                <button className={`nu-food ${prefsDraft.proteinBar ? 'yes' : 'no'}`} onClick={() => setDraft('proteinBar', !prefsDraft.proteinBar)}>Протеиновые батончики <b>{prefsDraft.proteinBar ? 'да' : 'нет'}</b></button>
-                <button className={`nu-food ${prefsDraft.proteinShake ? 'yes' : 'no'}`} onClick={() => setDraft('proteinShake', !prefsDraft.proteinShake)}>Протеиновые коктейли <b>{prefsDraft.proteinShake ? 'да' : 'нет'}</b></button>
+                <button className={`nu-food ${prefsDraft.proteinBar ? 'yes' : 'no'}`} onClick={() => setDraft('proteinBar', !prefsDraft.proteinBar)}>{t.proteinBars} <b>{prefsDraft.proteinBar ? t.yes : t.no}</b></button>
+                <button className={`nu-food ${prefsDraft.proteinShake ? 'yes' : 'no'}`} onClick={() => setDraft('proteinShake', !prefsDraft.proteinShake)}>{t.proteinShakes} <b>{prefsDraft.proteinShake ? t.yes : t.no}</b></button>
               </div>
 
-              <div className="nu-sec-title">Аллергии (строго исключить)</div>
-              <input className="nu-note" placeholder="Например: орехи, мёд" value={prefsDraft.allergies} onChange={e => setDraft('allergies', e.target.value)} />
-              <div className="nu-sec-title">Не люблю</div>
-              <input className="nu-note" placeholder="Например: кинза, печень" value={prefsDraft.avoid} onChange={e => setDraft('avoid', e.target.value)} />
+              <div className="nu-sec-title">{t.allergies}</div>
+              <input className="nu-note" placeholder={t.allergiesPlaceholder} value={prefsDraft.allergies} onChange={e => setDraft('allergies', e.target.value)} />
+              <div className="nu-sec-title">{t.avoid}</div>
+              <input className="nu-note" placeholder={t.avoidPlaceholder} value={prefsDraft.avoid} onChange={e => setDraft('avoid', e.target.value)} />
 
               <div className="nu-modal-actions">
-                <button className="nu-suggest" onClick={savePrefsModal}>Сохранить</button>
-                <button className="nu-edit" onClick={() => setPrefsDraft({ ...DEFAULT_PREFS, likes: prefs.likes, dislikes: prefs.dislikes })}>Сбросить</button>
+                <button className="nu-suggest" onClick={savePrefsModal}>{t.save}</button>
+                <button className="nu-edit" onClick={() => setPrefsDraft({ ...DEFAULT_PREFS, likes: prefs.likes, dislikes: prefs.dislikes })}>{t.reset}</button>
               </div>
             </motion.div>
           </div>
@@ -772,15 +970,15 @@ export default function Nutrition() {
           <div className="nu-backdrop">
             <motion.div className="card nu-rate" onClick={e => e.stopPropagation()}
               initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}>
-              <div className="nu-rate-meal muted">{rate.mealKey} · как вам было?</div>
+              <div className="nu-rate-meal muted">{t.meals[rate.mealKey] || rate.mealKey}{t.rateHow}</div>
               <h3>{rate.dish.name}</h3>
-              <textarea className="nu-note nu-rate-text" rows={2} placeholder="Пара слов (необязательно): что понравилось / что поменять"
+              <textarea className="nu-note nu-rate-text" rows={2} placeholder={t.ratePlaceholder}
                 value={rateText} onChange={e => setRateText(e.target.value)} />
               <div className="nu-rate-btns">
-                <button className="nu-rate-up" onClick={() => submitRate(true)}>👍 Понравилось</button>
-                <button className="nu-rate-down" onClick={() => submitRate(false)}>👎 Не очень</button>
+                <button className="nu-rate-up" onClick={() => submitRate(true)}>{t.rateUp}</button>
+                <button className="nu-rate-down" onClick={() => submitRate(false)}>{t.rateDown}</button>
               </div>
-              <button className="nu-rate-later" onClick={laterRate}>Позже</button>
+              <button className="nu-rate-later" onClick={laterRate}>{t.rateLater}</button>
             </motion.div>
           </div>
         )}

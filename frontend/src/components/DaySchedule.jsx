@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import AddEventModal, { repeatLabel, PRIORITY_MAP } from './AddEventModal.jsx'
 import MiniCalendar from './MiniCalendar.jsx'
 import { useEvents, dateKey } from '../context/EventsContext.jsx'
+import { useLang, useT } from '../context/LanguageContext.jsx'
 
 /*
   Расписание дня — вертикальный таймлайн (референс скрин 1).
@@ -70,6 +71,12 @@ const MOCK_NOTIFICATIONS = [
   { text: 'Эдвард принял приглашение на встречу', time: 'вчера' }
 ]
 
+const MOCK_NOTIFICATIONS_EN = [
+  { text: 'In 40 minutes: Call with the team', time: '14:20' },
+  { text: 'Whoop: recovery updated — 78%', time: '08:05' },
+  { text: 'Edward accepted the meeting invitation', time: 'yesterday' }
+]
+
 function toMinutes(t) {
   const [h, m] = t.split(':').map(Number)
   return h * 60 + m
@@ -79,9 +86,17 @@ function topFor(t) {
   return ((toMinutes(t) - HOUR_START * 60) / 60) * PX_PER_HOUR
 }
 
-function formatRu(offset) {
+function formatRu(offset, lang = 'ru') {
   const d = mskNow()
   d.setDate(d.getDate() + offset)
+  if (lang === 'en') {
+    const monthsEn = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+    let prefixEn = ''
+    if (offset === 0) prefixEn = 'Today, '
+    else if (offset === 1) prefixEn = 'Tomorrow, '
+    else if (offset === -1) prefixEn = 'Yesterday, '
+    return `${prefixEn}${monthsEn[d.getMonth()]} ${d.getDate()}`
+  }
   // родительный падеж: "5 июня"
   const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
   let prefix = ''
@@ -248,6 +263,84 @@ function compactDay(evs, direction) {
 }
 
 export default function DaySchedule({ extended = false }) {
+  const { lang } = useLang()
+  const t = useT({
+    ru: {
+      day: 'День', week: 'Неделя', month: 'Месяц',
+      list: 'Список', columns: 'Колонки',
+      prevDay: 'Предыдущий день', nextDay: 'Следующий день', pickDate: 'Выбрать дату',
+      findTime: 'Найди время', findTimeTitle: 'Найти время',
+      need: 'Нужно', hoursShort: 'ч',
+      contig: 'Подряд', parts: 'Частями',
+      findTimeBtn: 'Найти время',
+      ftNote: 'Учитываю, что дел после 21:00 быть не должно',
+      freeContig: 'Свободно подряд:',
+      book: 'забронировать',
+      availableParts: (h) => `Доступно ${h} ч по частям:`,
+      noContig: (h) => `Подряд ${h} ч нет. Варианты:`,
+      noVariants: 'Нет вариантов без сдвига неотложных дел. Попробуйте «Частями» или другой день.',
+      slotArrow: 'слот',
+      shiftBtn: 'Подвинуть',
+      partsNotEnough: (h) => `Свободно всего ${h} ч — меньше нужного. Подвиньте события или выберите другой день.`,
+      notifications: 'Уведомления',
+      menu: 'Меню',
+      goToday: 'Перейти на сегодня', resetEvents: 'Сбросить события', addEvent: 'Добавить событие',
+      emptyTimeline: 'На этот день событий нет. Нажмите «+», чтобы добавить.',
+      emptyColumns: 'Нет событий на этот день',
+      priorityTip: (n, label) => `Приоритет ${n} · ${label}`,
+      edit: 'Редактировать', move: 'Перенести', remove: 'Удалить',
+      addEventTitle: 'Добавить событие',
+      close: 'Закрыть',
+      willChange: (n, word) => `Изменится ${n} ${word}. Освободится `,
+      colEvent: 'Событие', colWas: 'Было', colWill: 'Станет',
+      pvRemove: 'убрать',
+      apply: 'Применить', cancel: 'Отмена',
+      conflictTitle: 'События пересекаются по времени',
+      keepBoth: 'Оставить оба', keepBothSub: 'Покажу рядом в одно время',
+      shiftNew: 'Сдвинуть новое',
+      replaceOld: 'Заменить прошлое',
+      // movers
+      shiftEventsTitle: 'Подвинуть события',
+      freeByRemovingTitle: 'Освободить, убрав'
+    },
+    en: {
+      day: 'Day', week: 'Week', month: 'Month',
+      list: 'List', columns: 'Columns',
+      prevDay: 'Previous day', nextDay: 'Next day', pickDate: 'Pick a date',
+      findTime: 'Find time', findTimeTitle: 'Find time',
+      need: 'Need', hoursShort: 'h',
+      contig: 'In a row', parts: 'In parts',
+      findTimeBtn: 'Find time',
+      ftNote: 'I take into account that there should be no tasks after 21:00',
+      freeContig: 'Free in a row:',
+      book: 'book',
+      availableParts: (h) => `Available ${h} h in parts:`,
+      noContig: (h) => `No ${h} h in a row. Options:`,
+      noVariants: 'No options without moving urgent tasks. Try “In parts” or another day.',
+      slotArrow: 'slot',
+      shiftBtn: 'Shift',
+      partsNotEnough: (h) => `Only ${h} h free in total — less than needed. Move events or pick another day.`,
+      notifications: 'Notifications',
+      menu: 'Menu',
+      goToday: 'Go to today', resetEvents: 'Reset events', addEvent: 'Add event',
+      emptyTimeline: 'No events for this day. Tap “+” to add one.',
+      emptyColumns: 'No events for this day',
+      priorityTip: (n, label) => `Priority ${n} · ${label}`,
+      edit: 'Edit', move: 'Reschedule', remove: 'Delete',
+      addEventTitle: 'Add event',
+      close: 'Close',
+      willChange: (n, word) => `${n} ${word} will change. This frees up `,
+      colEvent: 'Event', colWas: 'Was', colWill: 'Becomes',
+      pvRemove: 'remove',
+      apply: 'Apply', cancel: 'Cancel',
+      conflictTitle: 'Events overlap in time',
+      keepBoth: 'Keep both', keepBothSub: 'I’ll show them side by side at the same time',
+      shiftNew: 'Shift the new one',
+      replaceOld: 'Replace the old one',
+      shiftEventsTitle: 'Shift events',
+      freeByRemovingTitle: 'Free up by removing'
+    }
+  })
   const hours = useMemo(() => {
     const arr = []
     for (let h = HOUR_START; h <= HOUR_END; h++) arr.push(h)
@@ -431,10 +524,14 @@ export default function DaySchedule({ extended = false }) {
       const plan = planShift(dayEvents, need)
       if (plan) {
         const n = plan.moved.length
+        const gapStr = `${minutesToStr(plan.gap[0])}–${minutesToStr(plan.gap[1])}`
+        const desc = lang === 'en'
+          ? `I’ll move ${n} ${n === 1 ? 'event' : 'events'}, freeing up ${gapStr}`
+          : `Перенесу ${n} ${n === 1 ? 'событие' : 'события'}, освободится ${gapStr}`
         variants.push({
           kind: 'shift', changes: plan.changes,
-          title: 'Подвинуть события',
-          desc: `Перенесу ${n} ${n === 1 ? 'событие' : 'события'}, освободится ${minutesToStr(plan.gap[0])}–${minutesToStr(plan.gap[1])}`,
+          title: t.shiftEventsTitle,
+          desc,
           slot: { start: plan.gap[0], end: plan.gap[1] }
         })
       }
@@ -442,10 +539,11 @@ export default function DaySchedule({ extended = false }) {
       // ЗАПАСНОЙ: убрать (только если подвинуть нельзя или как альтернатива)
       const rem = suggestMoves(dayEvents, need)
       if (rem && allowed(rem.removed)) {
+        const names = rem.removed.map(e => e.title).join(', ')
         variants.push({
           kind: 'remove', events: rem.removed, slot: rem.slot,
-          title: 'Освободить, убрав',
-          desc: `Уберу: ${rem.removed.map(e => e.title).join(', ')}`
+          title: t.freeByRemovingTitle,
+          desc: lang === 'en' ? `I’ll remove: ${names}` : `Уберу: ${names}`
         })
       }
 
@@ -498,21 +596,21 @@ export default function DaySchedule({ extended = false }) {
         {/* Переключатель вида */}
         {extended ? (
           <div className="ds-view-switch text">
-            <button className={`ds-view-txt ${viewMode === 'day' ? 'active' : ''}`} onClick={() => setViewMode('day')}>День</button>
-            <button className={`ds-view-txt ${viewMode === 'week' ? 'active' : ''}`} onClick={() => setViewMode('week')}>Неделя</button>
-            <button className={`ds-view-txt ${viewMode === 'month' ? 'active' : ''}`} onClick={() => setViewMode('month')}>Месяц</button>
+            <button className={`ds-view-txt ${viewMode === 'day' ? 'active' : ''}`} onClick={() => setViewMode('day')}>{t.day}</button>
+            <button className={`ds-view-txt ${viewMode === 'week' ? 'active' : ''}`} onClick={() => setViewMode('week')}>{t.week}</button>
+            <button className={`ds-view-txt ${viewMode === 'month' ? 'active' : ''}`} onClick={() => setViewMode('month')}>{t.month}</button>
           </div>
         ) : (
           <div className="ds-view-switch">
             <button
               className={`ds-view ${viewMode === 'list' ? 'active' : ''}`}
-              title="Список" onClick={() => setViewMode('list')}
+              title={t.list} onClick={() => setViewMode('list')}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
             </button>
             <button
               className={`ds-view ${viewMode === 'columns' ? 'active' : ''}`}
-              title="Колонки" onClick={() => setViewMode('columns')}
+              title={t.columns} onClick={() => setViewMode('columns')}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg>
             </button>
@@ -521,10 +619,10 @@ export default function DaySchedule({ extended = false }) {
 
         {/* Навигация по дням: ‹ дата › (клик по дате — открыть календарь) */}
         <div className="ds-nav">
-          <button className="ds-arrow" onClick={prevDay} title="Предыдущий день"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+          <button className="ds-arrow" onClick={prevDay} title={t.prevDay}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
           <div className="ds-menu-wrap">
-            <button className={`ds-date ${openMenu === 'cal' ? 'active' : ''}`} onClick={() => toggleMenu('cal')} title="Выбрать дату">
-              {formatRu(dayOffset)}
+            <button className={`ds-date ${openMenu === 'cal' ? 'active' : ''}`} onClick={() => toggleMenu('cal')} title={t.pickDate}>
+              {formatRu(dayOffset, lang)}
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 6, opacity: 0.6 }}><polyline points="6 9 12 15 18 9"/></svg>
             </button>
             <AnimatePresence>
@@ -535,7 +633,7 @@ export default function DaySchedule({ extended = false }) {
               )}
             </AnimatePresence>
           </div>
-          <button className="ds-arrow" onClick={nextDay} title="Следующий день"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+          <button className="ds-arrow" onClick={nextDay} title={t.nextDay}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></button>
         </div>
 
         {/* Колокольчик и меню */}
@@ -545,48 +643,48 @@ export default function DaySchedule({ extended = false }) {
             <div className="ds-menu-wrap">
               <button className={`ds-findtime ${openMenu === 'findtime' ? 'active' : ''}`} onClick={() => toggleMenu('findtime')}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>
-                Найди время
+                {t.findTime}
               </button>
               <AnimatePresence>
                 {openMenu === 'findtime' && (
                   <motion.div className="ds-dropdown wide ft-pop" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.15 }}>
-                    <div className="ds-dropdown-title">Найти время · {formatRu(dayOffset).replace('Сегодня, ', '')}</div>
+                    <div className="ds-dropdown-title">{t.findTimeTitle} · {formatRu(dayOffset, lang).replace(lang === 'en' ? 'Today, ' : 'Сегодня, ', '')}</div>
 
                     {/* Параметры поиска */}
                     <div className="ds-ft-controls">
                       <div className="ds-ft-hours">
-                        <span>Нужно</span>
+                        <span>{t.need}</span>
                         <button className="ds-ft-step" onClick={() => setFtHours(h => Math.max(0.5, h - 0.5))}>−</button>
-                        <span className="ds-ft-hval">{ftHours} ч</span>
+                        <span className="ds-ft-hval">{ftHours} {t.hoursShort}</span>
                         <button className="ds-ft-step" onClick={() => setFtHours(h => Math.min(12, h + 0.5))}>+</button>
                       </div>
                       <div className="ds-ft-toggle">
-                        <button className={ftContig ? 'active' : ''} onClick={() => { setFtContig(true); setFtResult(null) }}>Подряд</button>
-                        <button className={!ftContig ? 'active' : ''} onClick={() => { setFtContig(false); setFtResult(null) }}>Частями</button>
+                        <button className={ftContig ? 'active' : ''} onClick={() => { setFtContig(true); setFtResult(null) }}>{t.contig}</button>
+                        <button className={!ftContig ? 'active' : ''} onClick={() => { setFtContig(false); setFtResult(null) }}>{t.parts}</button>
                       </div>
                     </div>
-                    <button className="ds-ft-run" onClick={runFindTime}>Найти время</button>
-                    <span className="ds-ft-note">Учитываю, что дел после 21:00 быть не должно</span>
+                    <button className="ds-ft-run" onClick={runFindTime}>{t.findTimeBtn}</button>
+                    <span className="ds-ft-note">{t.ftNote}</span>
 
                     {/* Результат */}
                     {ftResult && ftResult.ok && ftResult.mode === 'contig' && (
                       <div className="ds-ft-res">
-                        <div className="ds-ft-res-title">Свободно подряд:</div>
+                        <div className="ds-ft-res-title">{t.freeContig}</div>
                         {ftResult.slots.map((s, i) => (
                           <button key={i} className="ds-ft-slot" onClick={() => addAtSlot(s)}>
                             <span className="ds-ft-time">{minutesToStr(s.start)} – {minutesToStr(s.end)}</span>
-                            <span className="ds-ft-dur">забронировать</span>
+                            <span className="ds-ft-dur">{t.book}</span>
                           </button>
                         ))}
                       </div>
                     )}
                     {ftResult && ftResult.ok && ftResult.mode === 'parts' && (
                       <div className="ds-ft-res">
-                        <div className="ds-ft-res-title">Доступно {Math.round(ftResult.total / 60 * 10) / 10} ч по частям:</div>
+                        <div className="ds-ft-res-title">{t.availableParts(Math.round(ftResult.total / 60 * 10) / 10)}</div>
                         {ftResult.windows.map(([s, e], i) => (
                           <button key={i} className="ds-ft-slot" onClick={() => addAtSlot({ start: s, end: e })}>
                             <span className="ds-ft-time">{minutesToStr(s)} – {minutesToStr(e)}</span>
-                            <span className="ds-ft-dur">{Math.round((e - s) / 60 * 10) / 10} ч</span>
+                            <span className="ds-ft-dur">{Math.round((e - s) / 60 * 10) / 10} {t.hoursShort}</span>
                           </button>
                         ))}
                       </div>
@@ -595,26 +693,26 @@ export default function DaySchedule({ extended = false }) {
                       <div className="ds-ft-res">
                         {ftResult.variants && ftResult.variants.length > 0 ? (
                           <>
-                            <div className="ds-ft-res-title warn">Подряд {ftHours} ч нет. Варианты:</div>
+                            <div className="ds-ft-res-title warn">{t.noContig(ftHours)}</div>
                             {ftResult.variants.map((v, i) => (
                               <div key={i} className="ds-ft-variant">
                                 <div className="ds-ft-var-info">
                                   <span className="ds-ft-var-title">{v.title}</span>
                                   <span className="ds-ft-var-desc">{v.desc}</span>
-                                  <span className="ds-ft-var-slot">→ слот {minutesToStr(v.slot.start)}–{minutesToStr(v.slot.end)}</span>
+                                  <span className="ds-ft-var-slot">→ {t.slotArrow} {minutesToStr(v.slot.start)}–{minutesToStr(v.slot.end)}</span>
                                 </div>
-                                <button className="ds-ft-apply" onClick={() => openPreview(v)}>Подвинуть</button>
+                                <button className="ds-ft-apply" onClick={() => openPreview(v)}>{t.shiftBtn}</button>
                               </div>
                             ))}
                           </>
                         ) : (
-                          <div className="ds-ft-res-title warn">Нет вариантов без сдвига неотложных дел. Попробуйте «Частями» или другой день.</div>
+                          <div className="ds-ft-res-title warn">{t.noVariants}</div>
                         )}
                       </div>
                     )}
                     {ftResult && !ftResult.ok && ftResult.mode === 'parts' && (
                       <div className="ds-ft-res">
-                        <div className="ds-ft-res-title warn">Свободно всего {Math.round(ftResult.total / 60 * 10) / 10} ч — меньше нужного. Подвиньте события или выберите другой день.</div>
+                        <div className="ds-ft-res-title warn">{t.partsNotEnough(Math.round(ftResult.total / 60 * 10) / 10)}</div>
                       </div>
                     )}
                   </motion.div>
@@ -624,15 +722,15 @@ export default function DaySchedule({ extended = false }) {
           )}
 
           <div className="ds-menu-wrap">
-            <button className={`ds-icon-btn ${openMenu === 'bell' ? 'active' : ''}`} onClick={() => toggleMenu('bell')} title="Уведомления">
+            <button className={`ds-icon-btn ${openMenu === 'bell' ? 'active' : ''}`} onClick={() => toggleMenu('bell')} title={t.notifications}>
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
               <span className="ds-bell-dot" />
             </button>
             <AnimatePresence>
               {openMenu === 'bell' && (
                 <motion.div className="ds-dropdown wide" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.15 }}>
-                  <div className="ds-dropdown-title">Уведомления</div>
-                  {MOCK_NOTIFICATIONS.map((n, i) => (
+                  <div className="ds-dropdown-title">{t.notifications}</div>
+                  {(lang === 'en' ? MOCK_NOTIFICATIONS_EN : MOCK_NOTIFICATIONS).map((n, i) => (
                     <div key={i} className="ds-notif">
                       <span className="ds-notif-text">{n.text}</span>
                       <span className="ds-notif-time">{n.time}</span>
@@ -644,15 +742,15 @@ export default function DaySchedule({ extended = false }) {
           </div>
 
           <div className="ds-menu-wrap">
-            <button className={`ds-icon-btn ${openMenu === 'header' ? 'active' : ''}`} onClick={() => toggleMenu('header')} title="Меню">
+            <button className={`ds-icon-btn ${openMenu === 'header' ? 'active' : ''}`} onClick={() => toggleMenu('header')} title={t.menu}>
               <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>
             </button>
             <AnimatePresence>
               {openMenu === 'header' && (
                 <motion.div className="ds-dropdown" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.15 }}>
-                  <button className="ds-dropdown-item" onClick={goToday}>Перейти на сегодня</button>
-                  <button className="ds-dropdown-item" onClick={() => { resetEvents(); setOpenMenu(null) }}>Сбросить события</button>
-                  <button className="ds-dropdown-item" onClick={openAdd}>Добавить событие</button>
+                  <button className="ds-dropdown-item" onClick={goToday}>{t.goToday}</button>
+                  <button className="ds-dropdown-item" onClick={() => { resetEvents(); setOpenMenu(null) }}>{t.resetEvents}</button>
+                  <button className="ds-dropdown-item" onClick={openAdd}>{t.addEvent}</button>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -684,7 +782,7 @@ export default function DaySchedule({ extended = false }) {
             )}
 
             {dayEvents.length === 0 && (
-              <p className="ds-empty-list">На этот день событий нет. Нажмите «+», чтобы добавить.</p>
+              <p className="ds-empty-list">{t.emptyTimeline}</p>
             )}
 
             {/* События (с учётом наложения — деление ширины по колонкам) */}
@@ -715,12 +813,12 @@ export default function DaySchedule({ extended = false }) {
                       {e.priority && (
                         <span
                           className="ds-pri-emoji"
-                          title={`Приоритет ${e.priority} · ${PRIORITY_MAP[e.priority]?.label}`}
+                          title={t.priorityTip(e.priority, lang === 'en' ? PRIORITY_MAP[e.priority]?.labelEn : PRIORITY_MAP[e.priority]?.label)}
                         >{PRIORITY_MAP[e.priority]?.emoji}</span>
                       )}
                       {e.title}
                       {e.repeat && e.repeat !== 'none' && (
-                        <svg className="ds-repeat-ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-label={repeatLabel(e.repeat, e.customDays)}><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                        <svg className="ds-repeat-ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-label={repeatLabel(e.repeat, e.customDays, lang)}><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
                       )}
                     </span>
                     <span className="ds-event-meta">{e.start} – {e.end} <span className="ds-dot">•</span> {e.who}</span>
@@ -732,9 +830,9 @@ export default function DaySchedule({ extended = false }) {
                     <AnimatePresence>
                       {openMenu === `ev-${i}` && (
                         <motion.div className="ds-dropdown ev-drop" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.15 }}>
-                          <button className="ds-dropdown-item" onClick={() => startEdit(ev)}>Редактировать</button>
-                          <button className="ds-dropdown-item" onClick={() => startEdit(ev)}>Перенести</button>
-                          <button className="ds-dropdown-item danger" onClick={() => deleteEvent(ev)}>Удалить</button>
+                          <button className="ds-dropdown-item" onClick={() => startEdit(ev)}>{t.edit}</button>
+                          <button className="ds-dropdown-item" onClick={() => startEdit(ev)}>{t.move}</button>
+                          <button className="ds-dropdown-item danger" onClick={() => deleteEvent(ev)}>{t.remove}</button>
                         </motion.div>
                       )}
                     </AnimatePresence>
@@ -749,7 +847,7 @@ export default function DaySchedule({ extended = false }) {
       {/* Режим "Колонки" — компактная сетка событий */}
       {viewMode === 'columns' && (
         <div className="ds-columns">
-          {dayEvents.length === 0 && <p className="ds-empty">Нет событий на этот день</p>}
+          {dayEvents.length === 0 && <p className="ds-empty">{t.emptyColumns}</p>}
           {dayEvents.map((e, i) => (
             <div key={i} className="ds-col-card" style={{ '--ev-color': COLORS[e.type] }}>
               <span className="ds-event-icon" style={{ background: COLORS[e.type] }}>{ICONS[e.type]}</span>
@@ -767,7 +865,9 @@ export default function DaySchedule({ extended = false }) {
           {weekDays.map((d, i) => {
             const evs = eventsOf(d)
             const isToday = dateKey(d) === dateKey(now)
-            const wdNames = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
+            const wdNames = lang === 'en'
+              ? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+              : ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']
             return (
               <div key={i} className={`ds-wk-col ${isToday ? 'today' : ''}`}>
                 <button className="ds-wk-head" onClick={() => goToDay(d)}>
@@ -793,7 +893,7 @@ export default function DaySchedule({ extended = false }) {
       {viewMode === 'month' && (
         <div className="ds-month">
           <div className="ds-month-week">
-            {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map(w => <span key={w} className="ds-month-wd">{w}</span>)}
+            {(lang === 'en' ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] : ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']).map(w => <span key={w} className="ds-month-wd">{w}</span>)}
           </div>
           <div className="ds-month-grid">
             {monthCells.map((d, i) => {
@@ -817,7 +917,7 @@ export default function DaySchedule({ extended = false }) {
       )}
 
       {/* FAB — добавить событие */}
-      <button className="ds-fab" title="Добавить событие" onClick={openAdd}>
+      <button className="ds-fab" title={t.addEventTitle} onClick={openAdd}>
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1e1b18" strokeWidth="2.6" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </button>
 
@@ -849,14 +949,14 @@ export default function DaySchedule({ extended = false }) {
             >
               <div className="ds-pv-head">
                 <h3>{ftPreview.variant.title}</h3>
-                <button className="ds-pv-close" onClick={() => setFtPreview(null)} aria-label="Закрыть">
+                <button className="ds-pv-close" onClick={() => setFtPreview(null)} aria-label={t.close}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
               </div>
-              <p className="ds-pv-sub">Изменится {ftPreview.rows.length} {ftPreview.rows.length === 1 ? 'событие' : 'события'}. Освободится <b>{minutesToStr(ftPreview.slot.start)}–{minutesToStr(ftPreview.slot.end)}</b>.</p>
+              <p className="ds-pv-sub">{t.willChange(ftPreview.rows.length, lang === 'en' ? (ftPreview.rows.length === 1 ? 'event' : 'events') : (ftPreview.rows.length === 1 ? 'событие' : 'события'))}<b>{minutesToStr(ftPreview.slot.start)}–{minutesToStr(ftPreview.slot.end)}</b>.</p>
 
               <div className="ds-pv-cols">
-                <div className="ds-pv-col-head"><span>Событие</span><span>Было</span><span></span><span>Станет</span></div>
+                <div className="ds-pv-col-head"><span>{t.colEvent}</span><span>{t.colWas}</span><span></span><span>{t.colWill}</span></div>
                 {ftPreview.rows.map((r, i) => (
                   <div key={i} className={`ds-pv-row ${r.kind === 'remove' ? 'rm' : ''}`}>
                     <span className="ds-pv-ev">
@@ -866,15 +966,15 @@ export default function DaySchedule({ extended = false }) {
                     <span className="ds-pv-old">{r.before}</span>
                     <span className="ds-pv-arrow">→</span>
                     {r.kind === 'remove'
-                      ? <span className="ds-pv-rm">убрать</span>
+                      ? <span className="ds-pv-rm">{t.pvRemove}</span>
                       : <span className="ds-pv-new">{r.after}</span>}
                   </div>
                 ))}
               </div>
 
               <div className="ds-pv-actions">
-                <button className="ds-pv-btn primary" onClick={confirmPreview}>Применить</button>
-                <button className="ds-pv-btn ghost" onClick={() => setFtPreview(null)}>Отмена</button>
+                <button className="ds-pv-btn primary" onClick={confirmPreview}>{t.apply}</button>
+                <button className="ds-pv-btn ghost" onClick={() => setFtPreview(null)}>{t.cancel}</button>
               </div>
             </motion.div>
           </div>
@@ -898,27 +998,37 @@ export default function DaySchedule({ extended = false }) {
                   <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
                 </svg>
               </div>
-              <h3>События пересекаются по времени</h3>
+              <h3>{t.conflictTitle}</h3>
               <p className="ds-conflict-text">
-                Новое событие <b>«{conflict.pending.title}»</b> ({conflict.pending.start}–{conflict.pending.end})
-                попадает на время уже запланированного <b>«{conflict.existing.title}»</b> ({conflict.existing.start}–{conflict.existing.end}).
-                Как поступить?
+                {lang === 'en' ? (
+                  <>
+                    The new event <b>“{conflict.pending.title}”</b> ({conflict.pending.start}–{conflict.pending.end})
+                    overlaps with the already planned <b>“{conflict.existing.title}”</b> ({conflict.existing.start}–{conflict.existing.end}).
+                    What would you like to do?
+                  </>
+                ) : (
+                  <>
+                    Новое событие <b>«{conflict.pending.title}»</b> ({conflict.pending.start}–{conflict.pending.end})
+                    попадает на время уже запланированного <b>«{conflict.existing.title}»</b> ({conflict.existing.start}–{conflict.existing.end}).
+                    Как поступить?
+                  </>
+                )}
               </p>
               <div className="ds-conflict-actions">
                 <button className="ds-conflict-btn" onClick={resolveKeepBoth}>
-                  <span className="ds-cb-title">Оставить оба</span>
-                  <span className="ds-cb-sub">Покажу рядом в одно время</span>
+                  <span className="ds-cb-title">{t.keepBoth}</span>
+                  <span className="ds-cb-sub">{t.keepBothSub}</span>
                 </button>
                 <button className="ds-conflict-btn" onClick={resolveShift}>
-                  <span className="ds-cb-title">Сдвинуть новое</span>
-                  <span className="ds-cb-sub">Поставлю сразу после «{conflict.existing.title}»</span>
+                  <span className="ds-cb-title">{t.shiftNew}</span>
+                  <span className="ds-cb-sub">{lang === 'en' ? `I’ll place it right after “${conflict.existing.title}”` : `Поставлю сразу после «${conflict.existing.title}»`}</span>
                 </button>
                 <button className="ds-conflict-btn danger" onClick={resolveReplace}>
-                  <span className="ds-cb-title">Заменить прошлое</span>
-                  <span className="ds-cb-sub">Удалю «{conflict.existing.title}»</span>
+                  <span className="ds-cb-title">{t.replaceOld}</span>
+                  <span className="ds-cb-sub">{lang === 'en' ? `I’ll delete “${conflict.existing.title}”` : `Удалю «${conflict.existing.title}»`}</span>
                 </button>
                 <button className="ds-conflict-btn ghost" onClick={() => setConflict(null)}>
-                  <span className="ds-cb-title">Отмена</span>
+                  <span className="ds-cb-title">{t.cancel}</span>
                 </button>
               </div>
             </motion.div>

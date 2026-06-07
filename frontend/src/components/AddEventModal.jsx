@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { mskDateKey } from '../utils/time.js'
+import { useLang } from '../context/LanguageContext.jsx'
 
 /*
   Модалка добавления события.
@@ -10,56 +11,110 @@ import { mskDateKey } from '../utils/time.js'
 */
 
 const TYPES = [
-  { value: 'call', label: 'Звонок', color: '#818cf8' },
-  { value: 'calendar', label: 'Событие', color: '#38bdf8' },
-  { value: 'email', label: 'Письмо', color: '#22c55e' },
-  { value: 'meeting', label: 'Встреча', color: '#f97316' }
+  { value: 'call', label: 'Звонок', labelEn: 'Call', color: '#818cf8' },
+  { value: 'calendar', label: 'Событие', labelEn: 'Event', color: '#38bdf8' },
+  { value: 'email', label: 'Письмо', labelEn: 'Email', color: '#22c55e' },
+  { value: 'meeting', label: 'Встреча', labelEn: 'Meeting', color: '#f97316' }
 ]
 
 // Варианты повторения (как в Google Calendar)
 const REPEATS = [
-  { value: 'none', label: 'Не повторяется' },
-  { value: 'daily', label: 'Каждый день' },
-  { value: 'weekdays', label: 'По будням (Пн–Пт)' },
-  { value: 'weekly', label: 'Каждую неделю' },
-  { value: 'monthly', label: 'Каждый месяц' },
-  { value: 'yearly', label: 'Каждый год' },
-  { value: 'custom', label: 'По дням (выбрать)' }
+  { value: 'none', label: 'Не повторяется', labelEn: 'Does not repeat' },
+  { value: 'daily', label: 'Каждый день', labelEn: 'Every day' },
+  { value: 'weekdays', label: 'По будням (Пн–Пт)', labelEn: 'On weekdays (Mon–Fri)' },
+  { value: 'weekly', label: 'Каждую неделю', labelEn: 'Every week' },
+  { value: 'monthly', label: 'Каждый месяц', labelEn: 'Every month' },
+  { value: 'yearly', label: 'Каждый год', labelEn: 'Every year' },
+  { value: 'custom', label: 'По дням (выбрать)', labelEn: 'On days (choose)' }
 ]
 
 const WEEKDAYS = [
-  { value: 1, short: 'Пн' },
-  { value: 2, short: 'Вт' },
-  { value: 3, short: 'Ср' },
-  { value: 4, short: 'Чт' },
-  { value: 5, short: 'Пт' },
-  { value: 6, short: 'Сб' },
-  { value: 0, short: 'Вс' }
+  { value: 1, short: 'Пн', shortEn: 'Mon' },
+  { value: 2, short: 'Вт', shortEn: 'Tue' },
+  { value: 3, short: 'Ср', shortEn: 'Wed' },
+  { value: 4, short: 'Чт', shortEn: 'Thu' },
+  { value: 5, short: 'Пт', shortEn: 'Fri' },
+  { value: 6, short: 'Сб', shortEn: 'Sat' },
+  { value: 0, short: 'Вс', shortEn: 'Sun' }
 ]
 
 export const REPEAT_LABELS = Object.fromEntries(REPEATS.map(r => [r.value, r.label]))
+export const REPEAT_LABELS_EN = Object.fromEntries(REPEATS.map(r => [r.value, r.labelEn]))
 
 // Приоритеты: 1 — самый важный (неотложный)
 export const PRIORITIES = [
-  { value: 1, label: 'Неотложный', color: '#ef4444', emoji: '🔴' },
-  { value: 2, label: 'Важный', color: '#f59e0b', emoji: '🟡' },
-  { value: 3, label: 'Обычный', color: '#9ca3af', emoji: '⚪️' }
+  { value: 1, label: 'Неотложный', labelEn: 'Urgent', color: '#ef4444', emoji: '🔴' },
+  { value: 2, label: 'Важный', labelEn: 'Important', color: '#f59e0b', emoji: '🟡' },
+  { value: 3, label: 'Обычный', labelEn: 'Normal', color: '#9ca3af', emoji: '⚪️' }
 ]
 export const PRIORITY_MAP = Object.fromEntries(PRIORITIES.map(p => [p.value, p]))
 
 // Человекочитаемая подпись повторения (для отображения в событии)
-export function repeatLabel(repeat, customDays) {
+export function repeatLabel(repeat, customDays, lang = 'ru') {
+  const labels = lang === 'en' ? REPEAT_LABELS_EN : REPEAT_LABELS
   if (!repeat || repeat === 'none') return ''
   if (repeat === 'custom') {
-    if (!customDays?.length) return 'По дням'
+    if (!customDays?.length) return lang === 'en' ? 'On days' : 'По дням'
     const order = [1, 2, 3, 4, 5, 6, 0]
-    const map = { 1: 'Пн', 2: 'Вт', 3: 'Ср', 4: 'Чт', 5: 'Пт', 6: 'Сб', 0: 'Вс' }
+    const map = lang === 'en'
+      ? { 1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri', 6: 'Sat', 0: 'Sun' }
+      : { 1: 'Пн', 2: 'Вт', 3: 'Ср', 4: 'Чт', 5: 'Пт', 6: 'Сб', 0: 'Вс' }
     return order.filter(d => customDays.includes(d)).map(d => map[d]).join(', ')
   }
-  return REPEAT_LABELS[repeat] || ''
+  return labels[repeat] || ''
 }
 
 export default function AddEventModal({ onAdd, onClose, initial, defaultDate, defaultStart, defaultEnd }) {
+  const { lang } = useLang()
+  const t = useT({
+    ru: {
+      editTitle: 'Редактировать событие',
+      newTitle: 'Новое событие',
+      name: 'Название',
+      namePlaceholder: 'Например, Звонок с командой',
+      date: 'Дата',
+      start: 'Начало',
+      end: 'Конец',
+      timeError: 'Время указано неправильно: конец должен быть позже начала',
+      contact: 'Контакт',
+      contactPlaceholder: 'Имя или «Личное»',
+      priority: 'Приоритет',
+      whatIsThis: 'Что это?',
+      priHelp1: 'Приоритет определяет, чем можно пожертвовать. При поиске свободного времени ИИ предлагает подвинуть события с низким приоритетом, а ',
+      priHelpUrgent: 'неотложные',
+      priHelp2: ' (1) не трогает. Если не выбрать — будет «Обычный».',
+      repeat: 'Повторение',
+      addRepeat: 'Добавить повторение',
+      done: 'Готово',
+      save: 'Сохранить',
+      add: 'Добавить',
+      cancel: 'Отмена'
+    },
+    en: {
+      editTitle: 'Edit event',
+      newTitle: 'New event',
+      name: 'Title',
+      namePlaceholder: 'E.g. Call with the team',
+      date: 'Date',
+      start: 'Start',
+      end: 'End',
+      timeError: 'Invalid time: the end must be later than the start',
+      contact: 'Contact',
+      contactPlaceholder: 'Name or “Personal”',
+      priority: 'Priority',
+      whatIsThis: 'What is this?',
+      priHelp1: 'Priority defines what can be sacrificed. When looking for free time, the AI suggests moving low-priority events and leaves ',
+      priHelpUrgent: 'urgent',
+      priHelp2: ' (1) ones untouched. If you don’t choose one, it defaults to “Normal”.',
+      repeat: 'Repeat',
+      addRepeat: 'Add repeat',
+      done: 'Done',
+      save: 'Save',
+      add: 'Add',
+      cancel: 'Cancel'
+    }
+  })
+  const personalName = lang === 'en' ? 'Personal' : 'Личное'
   const isEdit = !!initial
   const [type, setType] = useState(initial?.type || 'call')
   const [title, setTitle] = useState(initial?.title || '')
@@ -103,7 +158,7 @@ export default function AddEventModal({ onAdd, onClose, initial, defaultDate, de
         transition={{ duration: 0.2 }}
       >
         <div className="aem-head">
-          <h3>{isEdit ? 'Редактировать событие' : 'Новое событие'}</h3>
+          <h3>{isEdit ? t.editTitle : t.newTitle}</h3>
           <button className="aem-close" onClick={onClose}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
@@ -118,65 +173,63 @@ export default function AddEventModal({ onAdd, onClose, initial, defaultDate, de
               onClick={() => setType(t.value)}
             >
               <span className="aem-type-dot" style={{ background: t.color }} />
-              {t.label}
+              {lang === 'en' ? t.labelEn : t.label}
             </button>
           ))}
         </div>
 
         <label className="aem-field">
-          <span>Название</span>
+          <span>{t.name}</span>
           <input
             className="aem-input"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Например, Звонок с командой"
+            placeholder={t.namePlaceholder}
             autoFocus
           />
         </label>
 
         <label className="aem-field">
-          <span>Дата</span>
+          <span>{t.date}</span>
           <input className="aem-input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </label>
 
         <div className="aem-row">
           <label className="aem-field">
-            <span>Начало</span>
+            <span>{t.start}</span>
             <input className="aem-input" type="time" value={start} onChange={(e) => changeStart(e.target.value)} />
           </label>
           <label className="aem-field">
-            <span>Конец</span>
+            <span>{t.end}</span>
             <input className={`aem-input ${invalidTime ? 'error' : ''}`} type="time" value={end} onChange={(e) => setEnd(e.target.value)} />
           </label>
         </div>
         {invalidTime && (
           <div className="aem-time-error">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            Время указано неправильно: конец должен быть позже начала
+            {t.timeError}
           </div>
         )}
 
         <label className="aem-field">
-          <span>Контакт</span>
+          <span>{t.contact}</span>
           <input
             className="aem-input"
             value={who}
             onChange={(e) => setWho(e.target.value)}
-            placeholder="Имя или «Личное»"
+            placeholder={t.contactPlaceholder}
           />
         </label>
 
         {/* Приоритет (обязательное поле) */}
         <div className="aem-field">
           <span className="aem-pri-label">
-            Приоритет
-            <button className="aem-help" onClick={() => setShowPriHelp(v => !v)} title="Что это?">?</button>
+            {t.priority}
+            <button className="aem-help" onClick={() => setShowPriHelp(v => !v)} title={t.whatIsThis}>?</button>
           </span>
           {showPriHelp && (
             <div className="aem-help-box">
-              Приоритет определяет, чем можно пожертвовать. При поиске свободного времени
-              ИИ предлагает подвинуть события с низким приоритетом, а <b>неотложные</b> (1) не трогает.
-              Если не выбрать — будет «Обычный».
+              {t.priHelp1}<b>{t.priHelpUrgent}</b>{t.priHelp2}
             </div>
           )}
           <div className="aem-pri-row">
@@ -194,7 +247,7 @@ export default function AddEventModal({ onAdd, onClose, initial, defaultDate, de
                   onClick={() => setPriority(p.value)}
                 >
                   <span className="aem-pri-dot" style={{ background: p.color }} />
-                  {p.value} · {p.label}
+                  {p.value} · {lang === 'en' ? p.labelEn : p.label}
                 </button>
               )
             })}
@@ -203,13 +256,13 @@ export default function AddEventModal({ onAdd, onClose, initial, defaultDate, de
 
         {/* Повторение (как в Google Calendar) */}
         <div className="aem-field">
-          <span>Повторение</span>
+          <span>{t.repeat}</span>
           {!repeatOpen ? (
             <button className="aem-repeat-toggle" onClick={() => setRepeatOpen(true)}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
               </svg>
-              {repeat === 'none' ? 'Добавить повторение' : repeatLabel(repeat, customDays)}
+              {repeat === 'none' ? t.addRepeat : repeatLabel(repeat, customDays, lang)}
             </button>
           ) : (
             <div className="aem-repeat-list">
@@ -224,7 +277,7 @@ export default function AddEventModal({ onAdd, onClose, initial, defaultDate, de
                     }}
                   >
                     <span className="aem-radio">{repeat === r.value && <span className="aem-radio-dot" />}</span>
-                    {r.label}
+                    {lang === 'en' ? r.labelEn : r.label}
                   </button>
                   {/* Выбор конкретных дней недели */}
                   {r.value === 'custom' && repeat === 'custom' && (
@@ -235,10 +288,10 @@ export default function AddEventModal({ onAdd, onClose, initial, defaultDate, de
                           className={`aem-weekday ${customDays.includes(d.value) ? 'active' : ''}`}
                           onClick={() => toggleDay(d.value)}
                         >
-                          {d.short}
+                          {lang === 'en' ? d.shortEn : d.short}
                         </button>
                       ))}
-                      <button className="aem-weekdays-done" onClick={() => setRepeatOpen(false)} disabled={!customDays.length}>Готово</button>
+                      <button className="aem-weekdays-done" onClick={() => setRepeatOpen(false)} disabled={!customDays.length}>{t.done}</button>
                     </div>
                   )}
                 </div>
@@ -248,8 +301,8 @@ export default function AddEventModal({ onAdd, onClose, initial, defaultDate, de
         </div>
 
         <div className="aem-actions">
-          <button className="aem-btn primary" onClick={submit} disabled={!title.trim() || invalidTime}>{isEdit ? 'Сохранить' : 'Добавить'}</button>
-          <button className="aem-btn ghost" onClick={onClose}>Отмена</button>
+          <button className="aem-btn primary" onClick={submit} disabled={!title.trim() || invalidTime}>{isEdit ? t.save : t.add}</button>
+          <button className="aem-btn ghost" onClick={onClose}>{t.cancel}</button>
         </div>
 
         <style>{`

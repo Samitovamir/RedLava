@@ -2,8 +2,9 @@ import { useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { useHistory } from '../context/HistoryContext.jsx'
 import AssistantMemory from '../components/AssistantMemory.jsx'
+import { useLang, useT } from '../context/LanguageContext.jsx'
 import {
-  ACTION_TYPES, STATUS_INFO, ACTOR_INFO, dayLabel, timeOf, dateOf
+  ACTION_TYPES, STATUS_INFO, ACTOR_INFO, dayLabel, timeOf, dateOf, pickLabel
 } from '../utils/history.js'
 
 // Иконка по типу действия
@@ -22,6 +23,21 @@ function ActionIcon({ name }) {
 
 export default function History() {
   const { entries } = useHistory()
+  const { lang } = useLang()
+  const t = useT({
+    ru: {
+      heading: 'История', sub: 'Журнал действий ИИ-помощника',
+      total: 'Всего действий', emails: 'Письма', events: 'События', searches: 'Поиски',
+      all: 'Все', ai: 'ИИ', self: 'Сам',
+      empty: 'Здесь пока пусто — по этому фильтру действий нет.'
+    },
+    en: {
+      heading: 'History', sub: 'Activity log of the AI assistant',
+      total: 'Total actions', emails: 'Emails', events: 'Events', searches: 'Searches',
+      all: 'All', ai: 'AI', self: 'You',
+      empty: 'Nothing here yet — no actions match this filter.'
+    }
+  })
   const [filter, setFilter] = useState('all')
   const [actorFilter, setActorFilter] = useState('all')
 
@@ -46,19 +62,19 @@ export default function History() {
 
   // Статистика
   const stats = [
-    { key: 'all', label: 'Всего действий', count: entries.length, color: 'var(--primary)' },
-    { key: 'email', label: 'Письма', count: entries.filter(a => a.type === 'email').length, color: ACTION_TYPES.email.color },
-    { key: 'event', label: 'События', count: entries.filter(a => a.type === 'event').length, color: ACTION_TYPES.event.color },
-    { key: 'search', label: 'Поиски', count: entries.filter(a => a.type === 'search').length, color: ACTION_TYPES.search.color }
+    { key: 'all', label: t.total, count: entries.length, color: 'var(--primary)' },
+    { key: 'email', label: t.emails, count: entries.filter(a => a.type === 'email').length, color: ACTION_TYPES.email.color },
+    { key: 'event', label: t.events, count: entries.filter(a => a.type === 'event').length, color: ACTION_TYPES.event.color },
+    { key: 'search', label: t.searches, count: entries.filter(a => a.type === 'search').length, color: ACTION_TYPES.search.color }
   ]
 
-  const filterChips = [{ key: 'all', label: 'Все' }, ...Object.entries(ACTION_TYPES).map(([k, v]) => ({ key: k, label: v.label }))]
+  const filterChips = [{ key: 'all', label: t.all }, ...Object.entries(ACTION_TYPES).map(([k, v]) => ({ key: k, label: pickLabel(v, lang) }))]
 
   return (
     <div className="history-page">
       <div className="page-header">
-        <h2>История</h2>
-        <span className="muted">Журнал действий ИИ-помощника</span>
+        <h2>{t.heading}</h2>
+        <span className="muted">{t.sub}</span>
       </div>
 
       {/* Долгая память помощника */}
@@ -86,7 +102,7 @@ export default function History() {
           ))}
         </div>
         <div className="hist-actor-toggle">
-          {[{ key: 'all', label: 'Все' }, { key: 'ai', label: 'ИИ' }, { key: 'user', label: 'Сам' }].map(a => (
+          {[{ key: 'all', label: t.all }, { key: 'ai', label: t.ai }, { key: 'user', label: t.self }].map(a => (
             <button key={a.key}
               className={`hist-actor-btn ${actorFilter === a.key ? 'active' : ''}`}
               onClick={() => setActorFilter(a.key)}>
@@ -99,34 +115,34 @@ export default function History() {
       {/* Таймлайн */}
       <div className="card hist-timeline">
         {groups.length === 0 && (
-          <div className="hist-empty muted">Здесь пока пусто — по этому фильтру действий нет.</div>
+          <div className="hist-empty muted">{t.empty}</div>
         )}
         {groups.map(([date, items]) => (
           <div key={date} className="hist-group">
-            <div className="hist-day">{dayLabel(date)}</div>
+            <div className="hist-day">{dayLabel(date, lang)}</div>
             <div className="hist-items">
               {items.map((a, i) => {
-                const t = ACTION_TYPES[a.type] || ACTION_TYPES.task
+                const ti = ACTION_TYPES[a.type] || ACTION_TYPES.task
                 const st = STATUS_INFO[a.status] || STATUS_INFO.done
                 return (
                   <motion.div key={a.id} className="hist-item"
                     initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.3, delay: 0.03 * i }}>
                     <div className="hist-rail">
-                      <span className="hist-dot" style={{ background: t.color }}>
-                        <ActionIcon name={t.icon} />
+                      <span className="hist-dot" style={{ background: ti.color }}>
+                        <ActionIcon name={ti.icon} />
                       </span>
                     </div>
                     <div className="hist-body">
                       <div className="hist-item-head">
-                        <span className="hist-title">{a.title}</span>
+                        <span className="hist-title">{(lang === 'en' && a.titleEn) || a.title}</span>
                         <span className="hist-time muted">{timeOf(a.datetime)}</span>
                       </div>
-                      <p className="hist-detail muted">{a.detail}</p>
+                      <p className="hist-detail muted">{(lang === 'en' && a.detailEn) || a.detail}</p>
                       <div className="hist-tags">
-                        <span className={`hist-actor ${a.actor}`}>{ACTOR_INFO[a.actor]?.label}</span>
-                        <span className="hist-type" style={{ color: t.color, borderColor: t.color }}>{t.label}</span>
-                        <span className="hist-status" style={{ color: st.color }}>● {st.label}</span>
+                        <span className={`hist-actor ${a.actor}`}>{pickLabel(ACTOR_INFO[a.actor], lang)}</span>
+                        <span className="hist-type" style={{ color: ti.color, borderColor: ti.color }}>{pickLabel(ti, lang)}</span>
+                        <span className="hist-status" style={{ color: st.color }}>● {pickLabel(st, lang)}</span>
                       </div>
                     </div>
                   </motion.div>

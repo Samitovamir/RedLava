@@ -4,13 +4,20 @@ import WorkoutModal from './WorkoutModal.jsx'
 import { useEvents } from '../context/EventsContext.jsx'
 import { isGuest } from '../api/authFetch.js'
 import { demoPlanned } from '../utils/demo.js'
+import { useT, useLang } from '../context/LanguageContext.jsx'
 
-// Спорт-тип Garmin → по-русски (для плановых тренировок)
-const SPORT_RU = {
-  running: 'Бег', cycling: 'Велосипед', lap_swimming: 'Плавание', swimming: 'Плавание',
-  strength_training: 'Силовая', cardio: 'Кардио', walking: 'Ходьба', other: 'Тренировка'
+// Спорт-тип Garmin → локализованная подпись (для плановых тренировок)
+const SPORT_LABELS = {
+  ru: {
+    running: 'Бег', cycling: 'Велосипед', lap_swimming: 'Плавание', swimming: 'Плавание',
+    strength_training: 'Силовая', cardio: 'Кардио', walking: 'Ходьба', other: 'Тренировка'
+  },
+  en: {
+    running: 'Running', cycling: 'Cycling', lap_swimming: 'Swimming', swimming: 'Swimming',
+    strength_training: 'Strength', cardio: 'Cardio', walking: 'Walking', other: 'Workout'
+  }
 }
-const sportRu = s => SPORT_RU[s] || (s ? s.replace(/_/g, ' ') : 'Тренировка')
+const sportLabel = (s, map, fallback) => map[s] || (s ? s.replace(/_/g, ' ') : fallback)
 
 const hmToMin = hm => { const [h, m] = String(hm).split(':').map(Number); return h * 60 + (m || 0) }
 const minToHm = t => `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`
@@ -38,10 +45,13 @@ function readLive() {
   try { const s = localStorage.getItem('albert-garmin-live'); return s ? JSON.parse(s) : null } catch { return null }
 }
 
-function fmtDate(d) {
+const MONTHS = {
+  ru: ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'],
+  en: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+}
+function fmtDate(d, months = MONTHS.ru) {
   if (!d) return ''
   const [, m, day] = d.split('-')
-  const months = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек']
   return `${Number(day)} ${months[Number(m) - 1]}`
 }
 
@@ -68,23 +78,74 @@ const ICON_HEART = (
 )
 
 // Метрики hero-карточки (показываем только заполненные)
-function heroMetrics(w) {
+function heroMetrics(w, t) {
   const out = []
-  if (w.distanceKm != null) out.push({ k: 'Дистанция', v: w.distanceKm, u: 'км' })
-  if (w.durationMin != null) out.push({ k: 'Время', v: w.durationMin, u: 'мин' })
-  if (w.pace) out.push({ k: 'Темп', v: w.pace, u: '/км' })
-  else if (w.speedKmh != null) out.push({ k: 'Скорость', v: w.speedKmh, u: 'км/ч' })
-  if (w.avgHr != null) out.push({ k: 'Ср. пульс', v: w.avgHr, u: 'уд/мин', accent: 'var(--green)' })
-  if (w.maxHr != null) out.push({ k: 'Макс. пульс', v: w.maxHr, u: 'уд/мин' })
-  if (w.calories != null) out.push({ k: 'Калории', v: w.calories, u: 'ккал' })
-  if (w.elevationGain != null) out.push({ k: 'Набор высоты', v: w.elevationGain, u: 'м' })
-  if (w.cadence != null) out.push({ k: 'Каденс', v: w.cadence, u: 'шаг/мин' })
-  if (w.avgPower != null) out.push({ k: 'Мощность', v: w.avgPower, u: 'Вт' })
-  if (w.trainingEffect != null) out.push({ k: 'Эффект', v: w.trainingEffect, u: w.trainingLabel || '', accent: 'var(--accent)' })
+  if (w.distanceKm != null) out.push({ k: t.mDistance, v: w.distanceKm, u: t.uKm })
+  if (w.durationMin != null) out.push({ k: t.mTime, v: w.durationMin, u: t.uMin })
+  if (w.pace) out.push({ k: t.mPace, v: w.pace, u: t.uPerKm })
+  else if (w.speedKmh != null) out.push({ k: t.mSpeed, v: w.speedKmh, u: t.uKmh })
+  if (w.avgHr != null) out.push({ k: t.mAvgHr, v: w.avgHr, u: t.uBpm, accent: 'var(--green)' })
+  if (w.maxHr != null) out.push({ k: t.mMaxHr, v: w.maxHr, u: t.uBpm })
+  if (w.calories != null) out.push({ k: t.mCalories, v: w.calories, u: t.uKcal })
+  if (w.elevationGain != null) out.push({ k: t.mElevation, v: w.elevationGain, u: t.uM })
+  if (w.cadence != null) out.push({ k: t.mCadence, v: w.cadence, u: t.uSpm })
+  if (w.avgPower != null) out.push({ k: t.mPower, v: w.avgPower, u: t.uW })
+  if (w.trainingEffect != null) out.push({ k: t.mEffect, v: w.trainingEffect, u: w.trainingLabel || '', accent: 'var(--accent)' })
   return out
 }
 
 export default function GarminLive() {
+  const t = useT({
+    ru: {
+      header: 'Спорт', source: 'Garmin Connect',
+      stepsToday: 'Шаги сегодня', restingHr: 'Пульс покоя', vo2max: 'VO₂max', week: 'За неделю',
+      bpm: 'уд/мин', vo2unit: 'мл/кг/мин',
+      defaultWorkout: 'Тренировка', lastWorkout: 'последняя тренировка', more: 'подробнее →',
+      // hero metric labels
+      mDistance: 'Дистанция', mTime: 'Время', mPace: 'Темп', mSpeed: 'Скорость',
+      mAvgHr: 'Ср. пульс', mMaxHr: 'Макс. пульс', mCalories: 'Калории',
+      mElevation: 'Набор высоты', mCadence: 'Каденс', mPower: 'Мощность', mEffect: 'Эффект',
+      // units
+      uKm: 'км', uMin: 'мин', uPerKm: '/км', uKmh: 'км/ч', uBpm: 'уд/мин',
+      uKcal: 'ккал', uM: 'м', uSpm: 'шаг/мин', uW: 'Вт',
+      // sections
+      upcoming: 'Приближающиеся тренировки', recent: 'Последние тренировки',
+      collapse: 'Свернуть', expand: 'Развернуть',
+      plannedEmpty: 'Плановых тренировок пока нет. Чтобы планы появлялись здесь, свяжите TrainingPeaks с Garmin: в TrainingPeaks → Settings → Connections включите Garmin и «Automatically send workouts».',
+      inCal: '✓ в календаре', toCal: 'В календарь', toCalMorning: 'В календарь · ~6:30',
+      at: 'в',
+      plannedNote: 'Без своего времени тренировка ставится на утро (≈6:30), с учётом длительности и других дел дня.',
+      recentEmpty: 'Нет недавних тренировок в Garmin.',
+      kmShort: 'км', minShort: 'мин', perKmShort: '/км', kmhShort: 'км/ч', mUpShort: 'м ↑', kcalShort: 'ккал'
+    },
+    en: {
+      header: 'Sport', source: 'Garmin Connect',
+      stepsToday: 'Steps today', restingHr: 'Resting HR', vo2max: 'VO₂ Max', week: 'This week',
+      bpm: 'bpm', vo2unit: 'ml/kg/min',
+      defaultWorkout: 'Workout', lastWorkout: 'latest workout', more: 'details →',
+      // hero metric labels
+      mDistance: 'Distance', mTime: 'Duration', mPace: 'Pace', mSpeed: 'Speed',
+      mAvgHr: 'Avg HR', mMaxHr: 'Max HR', mCalories: 'Calories',
+      mElevation: 'Elevation gain', mCadence: 'Cadence', mPower: 'Power', mEffect: 'Effect',
+      // units
+      uKm: 'km', uMin: 'min', uPerKm: '/km', uKmh: 'km/h', uBpm: 'bpm',
+      uKcal: 'kcal', uM: 'm', uSpm: 'spm', uW: 'W',
+      // sections
+      upcoming: 'Upcoming workouts', recent: 'Recent workouts',
+      collapse: 'Collapse', expand: 'Expand',
+      plannedEmpty: 'No planned workouts yet. To see plans here, link TrainingPeaks with Garmin: in TrainingPeaks → Settings → Connections enable Garmin and "Automatically send workouts".',
+      inCal: '✓ in calendar', toCal: 'Add to calendar', toCalMorning: 'Add to calendar · ~6:30',
+      at: 'at',
+      plannedNote: 'Without a set time, the workout is scheduled in the morning (≈6:30), accounting for its duration and other plans of the day.',
+      recentEmpty: 'No recent workouts in Garmin.',
+      kmShort: 'km', minShort: 'min', perKmShort: '/km', kmhShort: 'km/h', mUpShort: 'm ↑', kcalShort: 'kcal'
+    }
+  })
+  const { lang } = useLang()
+  const months = MONTHS[lang] || MONTHS.ru
+  const sportMap = SPORT_LABELS[lang] || SPORT_LABELS.ru
+  const sportRu = s => sportLabel(s, sportMap, t.defaultWorkout)
+
   const [g, setG] = useState(readLive)
   const [selected, setSelected] = useState(null)   // открытая тренировка (окно деталей)
 
@@ -101,7 +162,7 @@ export default function GarminLive() {
 
   const eventInput = (w, start, end) => ({
     name: 'create_event',
-    input: { type: 'meeting', title: w.title || 'Тренировка', date: w.date, start, end, who: 'Тренировка', priority: 2 }
+    input: { type: 'meeting', title: w.title || t.defaultWorkout, date: w.date, start, end, who: t.defaultWorkout, priority: 2 }
   })
   // Уже есть такое событие в календаре? (защита от дублей, в т.ч. с другого устройства)
   const existsInCal = (date, start, title) =>
@@ -150,18 +211,22 @@ export default function GarminLive() {
   const workouts = g?.workouts || []
   const accent = typeColor(last?.type)
 
+  const weekCountLabel = g?.weekCount == null ? ''
+    : lang === 'en'
+      ? `${g.weekCount} ${g.weekCount === 1 ? 'workout' : 'workouts'}`
+      : `${g.weekCount} ${plural(g.weekCount, 'тренировка', 'тренировки', 'тренировок')}`
   const stats = [
-    { label: 'Шаги сегодня', value: g?.steps != null ? g.steps.toLocaleString('ru-RU') : '—', color: 'var(--orange)' },
-    { label: 'Пульс покоя', value: g?.restingHr != null ? `${g.restingHr}` : '—', sub: 'уд/мин', color: 'var(--green)' },
-    { label: 'VO₂max', value: g?.vo2Max != null ? `${g.vo2Max}` : '—', sub: 'мл/кг/мин', color: 'var(--accent)' },
-    { label: 'За неделю', value: g?.weekKm != null ? `${g.weekKm} км` : '—', sub: g?.weekCount != null ? `${g.weekCount} ${plural(g.weekCount, 'тренировка', 'тренировки', 'тренировок')}` : '', color: 'var(--yellow)' }
+    { label: t.stepsToday, value: g?.steps != null ? g.steps.toLocaleString('ru-RU') : '—', color: 'var(--orange)' },
+    { label: t.restingHr, value: g?.restingHr != null ? `${g.restingHr}` : '—', sub: t.bpm, color: 'var(--green)' },
+    { label: t.vo2max, value: g?.vo2Max != null ? `${g.vo2Max}` : '—', sub: t.vo2unit, color: 'var(--accent)' },
+    { label: t.week, value: g?.weekKm != null ? `${g.weekKm} ${t.uKm}` : '—', sub: weekCountLabel, color: 'var(--yellow)' }
   ]
 
   return (
     <div className="gl-page">
       <div className="page-header">
-        <h2>Спорт</h2>
-        <span className="muted">Garmin Connect</span>
+        <h2>{t.header}</h2>
+        <span className="muted">{t.source}</span>
       </div>
 
       <div className="gl-stats">
@@ -185,12 +250,12 @@ export default function GarminLive() {
             <div className="gl-hero-badge" style={{ color: accent, background: `color-mix(in srgb, ${accent} 16%, transparent)` }}>
               {last.label}
             </div>
-            <span className="gl-hero-date muted">{fmtDate(last.date)} · последняя тренировка</span>
-            {last.id && <span className="gl-hero-cta" style={{ color: accent }}>подробнее →</span>}
+            <span className="gl-hero-date muted">{fmtDate(last.date, months)} · {t.lastWorkout}</span>
+            {last.id && <span className="gl-hero-cta" style={{ color: accent }}>{t.more}</span>}
           </div>
           <h3 className="gl-hero-title">{last.title}</h3>
           <div className="gl-hero-grid">
-            {heroMetrics(last).map(m => (
+            {heroMetrics(last, t).map(m => (
               <div key={m.k} className="gl-metric">
                 <span className="gl-metric-value" style={m.accent ? { color: m.accent } : undefined}>{m.v}</span>
                 <span className="gl-metric-unit muted">{m.u}</span>
@@ -204,14 +269,14 @@ export default function GarminLive() {
       <motion.div className="card gl-list-card"
         initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.14 }}>
         <div className="gl-card-head">
-          <div className="card-title" style={{ margin: 0 }}>Приближающиеся тренировки</div>
-          <button className="gl-collapse" onClick={() => toggleSec('planned')} aria-label={openSec.planned ? 'Свернуть' : 'Развернуть'}>
+          <div className="card-title" style={{ margin: 0 }}>{t.upcoming}</div>
+          <button className="gl-collapse" onClick={() => toggleSec('planned')} aria-label={openSec.planned ? t.collapse : t.expand}>
             <svg className={`gl-chev ${openSec.planned ? 'open' : ''}`} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
           </button>
         </div>
         {openSec.planned && (planned.length === 0 ? (
           <div className="gl-empty muted">
-            Плановых тренировок пока нет. Чтобы планы появлялись здесь, свяжите TrainingPeaks с Garmin: в TrainingPeaks → Settings → Connections включите Garmin и «Automatically send workouts».
+            {t.plannedEmpty}
           </div>
         ) : (<>
           <div className="gl-planned">
@@ -224,35 +289,35 @@ export default function GarminLive() {
                   <div className="gl-row-main">
                     <span className="gl-row-title">{w.title}</span>
                     <span className="gl-row-sub muted">
-                      {fmtDate(w.date)} · {sportRu(w.sport)}
-                      {w.durationMin ? ` · ${w.durationMin} мин` : ''}
-                      {w.distanceKm ? ` · ${w.distanceKm} км` : ''}
-                      {w.time ? ` · в ${w.time}` : ''}
+                      {fmtDate(w.date, months)} · {sportRu(w.sport)}
+                      {w.durationMin ? ` · ${w.durationMin} ${t.minShort}` : ''}
+                      {w.distanceKm ? ` · ${w.distanceKm} ${t.kmShort}` : ''}
+                      {w.time ? ` · ${t.at} ${w.time}` : ''}
                     </span>
                   </div>
                   {info
-                    ? <span className="gl-added">✓ в календаре{info.start ? `, ${info.start}` : ''}</span>
+                    ? <span className="gl-added">{t.inCal}{info.start ? `, ${info.start}` : ''}</span>
                     : <button className="gl-add-btn" onClick={() => scheduleWorkout(w)}>
-                        {w.time ? 'В календарь' : 'В календарь · ~6:30'}
+                        {w.time ? t.toCal : t.toCalMorning}
                       </button>}
                 </div>
               )
             })}
           </div>
-          <div className="gl-planned-note muted">Без своего времени тренировка ставится на утро (≈6:30), с учётом длительности и других дел дня.</div>
+          <div className="gl-planned-note muted">{t.plannedNote}</div>
           </>))}
         </motion.div>
 
       <motion.div className="card gl-list-card"
         initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.16 }}>
         <div className="gl-card-head">
-          <div className="card-title" style={{ margin: 0 }}>Последние тренировки</div>
-          <button className="gl-collapse" onClick={() => toggleSec('recent')} aria-label={openSec.recent ? 'Свернуть' : 'Развернуть'}>
+          <div className="card-title" style={{ margin: 0 }}>{t.recent}</div>
+          <button className="gl-collapse" onClick={() => toggleSec('recent')} aria-label={openSec.recent ? t.collapse : t.expand}>
             <svg className={`gl-chev ${openSec.recent ? 'open' : ''}`} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
           </button>
         </div>
         {!openSec.recent ? null : workouts.length === 0 ? (
-          <div className="gl-empty muted">Нет недавних тренировок в Garmin.</div>
+          <div className="gl-empty muted">{t.recentEmpty}</div>
         ) : (
           <div className="gl-list">
             {workouts.map((w, i) => {
@@ -263,15 +328,15 @@ export default function GarminLive() {
                   <span className="gl-row-dot" style={{ background: c }} />
                   <div className="gl-row-main">
                     <span className="gl-row-title">{w.title}</span>
-                    <span className="gl-row-sub muted">{fmtDate(w.date)} · {w.label}</span>
+                    <span className="gl-row-sub muted">{fmtDate(w.date, months)} · {w.label}</span>
                   </div>
                   <div className="gl-row-stats">
-                    {w.distanceKm != null && <span><b>{w.distanceKm}</b> км</span>}
-                    {w.durationMin != null && <span><b>{w.durationMin}</b> мин</span>}
-                    {w.pace ? <span><b>{w.pace}</b> /км</span> : w.speedKmh != null && <span><b>{w.speedKmh}</b> км/ч</span>}
+                    {w.distanceKm != null && <span><b>{w.distanceKm}</b> {t.kmShort}</span>}
+                    {w.durationMin != null && <span><b>{w.durationMin}</b> {t.minShort}</span>}
+                    {w.pace ? <span><b>{w.pace}</b> {t.perKmShort}</span> : w.speedKmh != null && <span><b>{w.speedKmh}</b> {t.kmhShort}</span>}
                     {w.avgHr != null && <span className="gl-hr"><span className="gl-hr-ico">{ICON_HEART}</span>{w.avgHr}</span>}
-                    {w.elevationGain != null && <span><b>{w.elevationGain}</b> м ↑</span>}
-                    {w.calories != null && <span><b>{w.calories}</b> ккал</span>}
+                    {w.elevationGain != null && <span><b>{w.elevationGain}</b> {t.mUpShort}</span>}
+                    {w.calories != null && <span><b>{w.calories}</b> {t.kcalShort}</span>}
                   </div>
                 </div>
               )

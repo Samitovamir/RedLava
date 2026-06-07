@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { mskNow } from '../utils/time.js'
+import { useLang } from '../context/LanguageContext.jsx'
 
 /*
   Мини-календарь для быстрого перехода к любой дате.
@@ -8,13 +9,19 @@ import { mskNow } from '../utils/time.js'
 */
 
 const MONTHS = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь']
+const MONTHS_EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 const WEEK = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
+const WEEK_EN = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 function sameDay(a, b) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate()
 }
 
 export default function MiniCalendar({ value, onSelect, onToday }) {
+  const { lang } = useLang()
+  const months = lang === 'en' ? MONTHS_EN : MONTHS
+  const week = lang === 'en' ? WEEK_EN : WEEK
+  const todayLabel = lang === 'en' ? 'Today' : 'Сегодня'
   const [view, setView] = useState(new Date(value.getFullYear(), value.getMonth(), 1))
   const today = mskNow()
 
@@ -46,14 +53,14 @@ export default function MiniCalendar({ value, onSelect, onToday }) {
         <button className="mc-nav" onClick={prevMonth}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
-        <span className="mc-title">{MONTHS[month]} {year}</span>
+        <span className="mc-title">{months[month]} {year}</span>
         <button className="mc-nav" onClick={nextMonth}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
       </div>
 
       <div className="mc-week">
-        {WEEK.map(w => <span key={w} className="mc-wd">{w}</span>)}
+        {week.map(w => <span key={w} className="mc-wd">{w}</span>)}
       </div>
 
       <div className="mc-grid">
@@ -74,7 +81,7 @@ export default function MiniCalendar({ value, onSelect, onToday }) {
         })}
       </div>
 
-      <button className="mc-today" onClick={onToday}>Сегодня</button>
+      <button className="mc-today" onClick={onToday}>{todayLabel}</button>
 
       <style>{`
         .mc {

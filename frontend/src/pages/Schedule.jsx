@@ -1,13 +1,18 @@
 import { motion } from 'framer-motion'
 import DaySchedule from '../components/DaySchedule.jsx'
 import DaySummary from '../components/DaySummary.jsx'
+import { useT } from '../context/LanguageContext.jsx'
 
 export default function Schedule() {
+  const t = useT({
+    ru: { title: 'Расписание', source: 'Google Calendar' },
+    en: { title: 'Schedule', source: 'Google Calendar' }
+  })
   return (
     <div className="schedule-page">
       <div className="page-header">
-        <h2>Расписание</h2>
-        <span className="muted">Google Calendar</span>
+        <h2>{t.title}</h2>
+        <span className="muted">{t.source}</span>
       </div>
       <div className="schedule-layout">
         <motion.div

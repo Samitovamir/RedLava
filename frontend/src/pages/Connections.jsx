@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { clearToken, isGuest } from '../api/authFetch'
+import { useT, useLang } from '../context/LanguageContext.jsx'
 
 /*
   Страница «Подключения».
@@ -70,7 +71,85 @@ const SERVICES = [
   }
 ]
 
+// Английские варианты названий/описаний сервисов (русские — в SERVICES выше).
+const SERVICES_EN = {
+  google: { name: 'Google Calendar', desc: 'Events, meetings and reminders — will appear in the “Schedule” section.' },
+  whoop:  { name: 'Whoop',           desc: 'Recovery, sleep, HRV and resting heart rate — “Health” section.' },
+  garmin: { name: 'Garmin',          desc: 'Workouts, heart rate, steps and activity — “Sports” section.' },
+  yandex: { name: 'Yandex.Disk (lab results)', desc: 'Folder with blood test results — the AI recognizes the metrics and builds history in the “Health” section.' }
+}
+
 export default function Connections() {
+  const t = useT({
+    ru: {
+      heading: 'Подключения', sub: 'Сервисы владельца',
+      intro: 'Подключите ваши сервисы — и дашборд будет показывать настоящие данные: расписание, тренировки и здоровье. Подключить можно прямо здесь.',
+      connected: 'Подключено', notConnected: 'Не подключено', demo: 'демо',
+      connectedFallback: 'Подключено',
+      btnDisconnect: 'Отключить', btnConnect: 'Подключить', btnConnecting: 'Подключение…',
+      btnCollapse: 'Свернуть',
+      yandexLabel: 'Ссылка на публичную папку Яндекс.Диска',
+      yandexNote: '🔒 Папка читается только на чтение. Кладите туда файлы анализов (можно в подпапки по датам) — ИИ сам распознает показатели.',
+      btnConnectFolder: 'Подключить папку',
+      garminEmailLabel: 'Email Garmin Connect', garminEmailPh: 'ваш@email.com',
+      pwLabel: 'Пароль', pwPh: '••••••••',
+      garminNote: '🔒 Пароль уходит на сервер по защищённому соединению и не хранится в браузере.',
+      btnLoginConnect: 'Войти и подключить',
+      foot: 'Все сервисы подключаются по-настоящему: данные появятся в разделах сразу после подключения.',
+      guestName: 'Гостевой вход', mainName: 'Аккаунт владельца', mainBadge: 'Основной',
+      guestDesc: 'Сейчас вы в гостевом режиме — показаны демо-данные. Войдите в основной аккаунт, чтобы видеть настоящие данные владельца.',
+      mainDesc: 'Вы вошли в основной аккаунт с реальными данными. Можно выйти и войти под другим аккаунтом.',
+      btnLoginMain: 'Войти в основной аккаунт', btnSwitch: 'Сменить аккаунт',
+      resetBtn: 'Сбросить все данные', resetPwLabel: 'Пароль для сброса:', resetPwPh: 'Пароль',
+      resetGo: 'Сбросить всё', resetBusy: 'Сбрасываю…', resetCancel: 'Отмена', resetWrong: 'Неверный пароль',
+      noticeConnectedSuffix: 'подключён ✓',
+      noticeErrPrefix: 'Не удалось подключить', noticeErrSuffix: 'Попробуйте ещё раз.',
+      noticeNotConfigured: 'ещё не настроен на сервере (нужны ключи доступа).',
+      noticeStartFail: 'Не удалось начать подключение.',
+      noticeNoServer: 'Нет связи с сервером.',
+      noticeYandexOk: 'Яндекс.Диск подключён ✓ Анализы начнут распознаваться в разделе «Здоровье».',
+      noticeYandexFail: 'Не удалось подключить Яндекс.Диск.',
+      noticeConnectFailPrefix: 'Не удалось подключить',
+      folderConnected: 'Папка подключена',
+      googleName: 'Google Календарь', whoopName: 'Whoop'
+    },
+    en: {
+      heading: 'Connections', sub: 'Owner’s services',
+      intro: 'Connect your services and the dashboard will show real data: schedule, workouts and health. You can connect right here.',
+      connected: 'Connected', notConnected: 'Not connected', demo: 'demo',
+      connectedFallback: 'Connected',
+      btnDisconnect: 'Disconnect', btnConnect: 'Connect', btnConnecting: 'Connecting…',
+      btnCollapse: 'Collapse',
+      yandexLabel: 'Link to a public Yandex.Disk folder',
+      yandexNote: '🔒 The folder is read-only. Put your lab result files there (subfolders by date are fine) — the AI will recognize the metrics itself.',
+      btnConnectFolder: 'Connect folder',
+      garminEmailLabel: 'Garmin Connect email', garminEmailPh: 'you@email.com',
+      pwLabel: 'Password', pwPh: '••••••••',
+      garminNote: '🔒 The password is sent to the server over a secure connection and is not stored in the browser.',
+      btnLoginConnect: 'Sign in and connect',
+      foot: 'All services connect for real: data appears in the sections right after connecting.',
+      guestName: 'Guest access', mainName: 'Owner’s account', mainBadge: 'Primary',
+      guestDesc: 'You are currently in guest mode — demo data is shown. Sign in to the primary account to see the owner’s real data.',
+      mainDesc: 'You are signed in to the primary account with real data. You can sign out and sign in with another account.',
+      btnLoginMain: 'Sign in to primary account', btnSwitch: 'Switch account',
+      resetBtn: 'Reset all data', resetPwLabel: 'Reset password:', resetPwPh: 'Password',
+      resetGo: 'Reset everything', resetBusy: 'Resetting…', resetCancel: 'Cancel', resetWrong: 'Wrong password',
+      noticeConnectedSuffix: 'connected ✓',
+      noticeErrPrefix: 'Couldn’t connect', noticeErrSuffix: 'Please try again.',
+      noticeNotConfigured: 'isn’t set up on the server yet (access keys required).',
+      noticeStartFail: 'Couldn’t start the connection.',
+      noticeNoServer: 'No connection to the server.',
+      noticeYandexOk: 'Yandex.Disk connected ✓ Lab results will start being recognized in the “Health” section.',
+      noticeYandexFail: 'Couldn’t connect Yandex.Disk.',
+      noticeConnectFailPrefix: 'Couldn’t connect',
+      folderConnected: 'Folder connected',
+      googleName: 'Google Calendar', whoopName: 'Whoop'
+    }
+  })
+  const { lang } = useLang()
+  // Локализованное имя/описание сервиса (EN-вариант или русский из SERVICES).
+  const svcName = (svc) => (lang === 'en' && SERVICES_EN[svc.id]) ? SERVICES_EN[svc.id].name : svc.name
+  const svcDesc = (svc) => (lang === 'en' && SERVICES_EN[svc.id]) ? SERVICES_EN[svc.id].desc : svc.desc
   const [conns, setConns] = useState(() => {
     try { const s = localStorage.getItem(STORE); if (s) return JSON.parse(s) } catch { /* ignore */ }
     return {}
@@ -88,7 +167,7 @@ export default function Connections() {
   // Полный сброс данных (пароль 9986): отвязывает сервисы и стирает локальные данные
   async function submitReset(e) {
     e.preventDefault()
-    if (resetPw.trim() !== '9986') { setResetErr('Неверный пароль'); return }
+    if (resetPw.trim() !== '9986') { setResetErr(t.resetWrong); return }
     setResetBusy(true)
     await Promise.all([
       fetch('/api/calendar/disconnect', { method: 'POST' }).catch(() => {}),
@@ -119,12 +198,12 @@ export default function Connections() {
   // Возврат из Google OAuth + актуальный статус живых сервисов
   useEffect(() => {
     const p = new URLSearchParams(window.location.search)
-    const names = { google: 'Google Календарь', whoop: 'Whoop' }
+    const names = { google: t.googleName, whoop: t.whoopName }
     let changed = false
     for (const key of Object.keys(names)) {
       const v = p.get(key)
-      if (v === 'ok') { setNotice(`${names[key]} подключён ✓`); changed = true }
-      else if (v === 'err') { setNotice(`Не удалось подключить ${names[key]}. Попробуйте ещё раз.`); changed = true }
+      if (v === 'ok') { setNotice(`${names[key]} ${t.noticeConnectedSuffix}`); changed = true }
+      else if (v === 'err') { setNotice(`${t.noticeErrPrefix} ${names[key]}. ${t.noticeErrSuffix}`); changed = true }
     }
     if (changed) window.history.replaceState({}, '', '/connections')
 
@@ -141,17 +220,17 @@ export default function Connections() {
       setBusy(svc.id)
       try {
         const r = await fetch(svc.endpoints.url)
-        if (r.status === 503) { setNotice(`${svc.name} ещё не настроен на сервере (нужны ключи доступа).`); setBusy(null); return }
+        if (r.status === 503) { setNotice(`${svcName(svc)} ${t.noticeNotConfigured}`); setBusy(null); return }
         const d = await r.json()
         if (d.url) { window.location.href = d.url; return } // уходим на экран входа Google
-        setNotice('Не удалось начать подключение.'); setBusy(null)
-      } catch { setNotice('Нет связи с сервером.'); setBusy(null) }
+        setNotice(t.noticeStartFail); setBusy(null)
+      } catch { setNotice(t.noticeNoServer); setBusy(null) }
       return
     }
     // демо-режим (Whoop/Garmin пока)
     setBusy(svc.id)
     setTimeout(() => {
-      setConns(c => ({ ...c, [svc.id]: { connected: true, account: `Аккаунт ${svc.name}` } }))
+      setConns(c => ({ ...c, [svc.id]: { connected: true, account: `${svcName(svc)}` } }))
       setBusy(null)
     }, 900)
   }
@@ -175,13 +254,13 @@ export default function Connections() {
       })
       const d = await r.json()
       if (d.ok) {
-        setConns(c => ({ ...c, [svc.id]: { connected: true, account: 'Папка подключена' } }))
-        setNotice('Яндекс.Диск подключён ✓ Анализы начнут распознаваться в разделе «Здоровье».')
+        setConns(c => ({ ...c, [svc.id]: { connected: true, account: t.folderConnected } }))
+        setNotice(t.noticeYandexOk)
         setOpenForm(null)
       } else {
-        setNotice(d.message || 'Не удалось подключить Яндекс.Диск.')
+        setNotice(d.message || t.noticeYandexFail)
       }
-    } catch { setNotice('Нет связи с сервером.') }
+    } catch { setNotice(t.noticeNoServer) }
     setBusy(null)
   }
 
@@ -197,12 +276,12 @@ export default function Connections() {
         const d = await r.json()
         if (d.success) {
           setConns(c => ({ ...c, [svc.id]: { connected: true, email: form.email.trim() } }))
-          setNotice(`${svc.name} подключён ✓`)
+          setNotice(`${svcName(svc)} ${t.noticeConnectedSuffix}`)
           setForm({ email: '', password: '' }); setOpenForm(null)
         } else {
-          setNotice(d.message || `Не удалось подключить ${svc.name}.`)
+          setNotice(d.message || `${t.noticeConnectFailPrefix} ${svcName(svc)}.`)
         }
-      } catch { setNotice('Нет связи с сервером.') }
+      } catch { setNotice(t.noticeNoServer) }
       setBusy(null)
       return
     }
@@ -234,13 +313,12 @@ export default function Connections() {
   return (
     <div className="conn-page">
       <div className="page-header">
-        <h2>Подключения</h2>
-        <span className="muted">Сервисы владельца</span>
+        <h2>{t.heading}</h2>
+        <span className="muted">{t.sub}</span>
       </div>
 
       <p className="conn-intro muted">
-        Подключите ваши сервисы — и дашборд будет показывать настоящие данные:
-        расписание, тренировки и здоровье. Подключить можно прямо здесь.
+        {t.intro}
       </p>
 
       {notice && <div className="conn-notice">{notice}</div>}
@@ -264,25 +342,25 @@ export default function Connections() {
                 </span>
                 <div className="conn-info">
                   <div className="conn-name">
-                    {svc.name}
+                    {svcName(svc)}
                     {connected
-                      ? <span className="conn-badge on">Подключено</span>
-                      : <span className="conn-badge">Не подключено</span>}
-                    {!svc.live && <span className="conn-soon">демо</span>}
+                      ? <span className="conn-badge on">{t.connected}</span>
+                      : <span className="conn-badge">{t.notConnected}</span>}
+                    {!svc.live && <span className="conn-soon">{t.demo}</span>}
                   </div>
-                  <div className="conn-desc muted">{svc.desc}</div>
-                  {connected && <div className="conn-account">{c.email || c.account || 'Подключено'}</div>}
+                  <div className="conn-desc muted">{svcDesc(svc)}</div>
+                  {connected && <div className="conn-account">{c.email || c.account || t.connectedFallback}</div>}
                 </div>
                 <div className="conn-action">
                   {connected ? (
-                    <button className="conn-btn ghost" onClick={() => disconnect(svc)}>Отключить</button>
+                    <button className="conn-btn ghost" onClick={() => disconnect(svc)}>{t.btnDisconnect}</button>
                   ) : svc.kind === 'oauth' ? (
                     <button className="conn-btn primary" disabled={isBusy} onClick={() => connect(svc)}>
-                      {isBusy ? 'Подключение…' : 'Подключить'}
+                      {isBusy ? t.btnConnecting : t.btnConnect}
                     </button>
                   ) : (
                     <button className="conn-btn primary" disabled={isBusy} onClick={() => formOpen ? setOpenForm(null) : (svc.kind === 'url' ? startUrlForm(svc) : startLoginForm(svc))}>
-                      {formOpen ? 'Свернуть' : 'Подключить'}
+                      {formOpen ? t.btnCollapse : t.btnConnect}
                     </button>
                   )}
                 </div>
@@ -291,14 +369,14 @@ export default function Connections() {
               {svc.kind === 'url' && formOpen && !connected && (
                 <motion.div className="conn-form" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
                   <div className="conn-field">
-                    <label>Ссылка на публичную папку Яндекс.Диска</label>
+                    <label>{t.yandexLabel}</label>
                     <input type="text" placeholder="https://disk.yandex.ru/d/..." value={urlForm}
                       onChange={e => setUrlForm(e.target.value)} />
                   </div>
                   <div className="conn-form-foot">
-                    <span className="conn-note muted">🔒 Папка читается только на чтение. Кладите туда файлы анализов (можно в подпапки по датам) — ИИ сам распознает показатели.</span>
+                    <span className="conn-note muted">{t.yandexNote}</span>
                     <button className="conn-btn primary" disabled={isBusy || !urlForm.trim()} onClick={() => submitUrl(svc)}>
-                      {isBusy ? 'Подключение…' : 'Подключить папку'}
+                      {isBusy ? t.btnConnecting : t.btnConnectFolder}
                     </button>
                   </div>
                 </motion.div>
@@ -307,19 +385,19 @@ export default function Connections() {
               {svc.kind === 'login' && formOpen && !connected && (
                 <motion.div className="conn-form" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
                   <div className="conn-field">
-                    <label>Email Garmin Connect</label>
-                    <input type="email" placeholder="ваш@email.com" value={form.email}
+                    <label>{t.garminEmailLabel}</label>
+                    <input type="email" placeholder={t.garminEmailPh} value={form.email}
                       onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
                   </div>
                   <div className="conn-field">
-                    <label>Пароль</label>
-                    <input type="password" placeholder="••••••••" value={form.password}
+                    <label>{t.pwLabel}</label>
+                    <input type="password" placeholder={t.pwPh} value={form.password}
                       onChange={e => setForm(f => ({ ...f, password: e.target.value }))} />
                   </div>
                   <div className="conn-form-foot">
-                    <span className="conn-note muted">🔒 Пароль уходит на сервер по защищённому соединению и не хранится в браузере.</span>
+                    <span className="conn-note muted">{t.garminNote}</span>
                     <button className="conn-btn primary" disabled={isBusy || !form.email.trim() || !form.password.trim()} onClick={() => submitLogin(svc)}>
-                      {isBusy ? 'Подключение…' : 'Войти и подключить'}
+                      {isBusy ? t.btnConnecting : t.btnLoginConnect}
                     </button>
                   </div>
                 </motion.div>
@@ -330,7 +408,7 @@ export default function Connections() {
       </div>
 
       <p className="conn-foot muted">
-        Все сервисы подключаются по-настоящему: данные появятся в разделах сразу после подключения.
+        {t.foot}
       </p>
 
       <motion.div
@@ -346,20 +424,18 @@ export default function Connections() {
           </span>
           <div className="conn-info">
             <div className="conn-name">
-              {guest ? 'Гостевой вход' : 'Аккаунт владельца'}
+              {guest ? t.guestName : t.mainName}
               {guest
-                ? <span className="conn-soon">демо</span>
-                : <span className="conn-badge on">Основной</span>}
+                ? <span className="conn-soon">{t.demo}</span>
+                : <span className="conn-badge on">{t.mainBadge}</span>}
             </div>
             <div className="conn-desc muted">
-              {guest
-                ? 'Сейчас вы в гостевом режиме — показаны демо-данные. Войдите в основной аккаунт, чтобы видеть настоящие данные владельца.'
-                : 'Вы вошли в основной аккаунт с реальными данными. Можно выйти и войти под другим аккаунтом.'}
+              {guest ? t.guestDesc : t.mainDesc}
             </div>
           </div>
           <div className="conn-action">
             <button className={`conn-btn ${guest ? 'primary' : 'ghost'}`} onClick={switchAccount}>
-              {guest ? 'Войти в основной аккаунт' : 'Сменить аккаунт'}
+              {guest ? t.btnLoginMain : t.btnSwitch}
             </button>
           </div>
         </div>
@@ -368,21 +444,21 @@ export default function Connections() {
       <div className="conn-reset">
         {!resetOpen ? (
           <button className="conn-reset-btn" onClick={() => { setResetOpen(true); setResetErr('') }}>
-            Сбросить все данные
+            {t.resetBtn}
           </button>
         ) : (
           <form className="conn-reset-form" onSubmit={submitReset}>
-            <span className="muted">Пароль для сброса:</span>
+            <span className="muted">{t.resetPwLabel}</span>
             <input
-              className="conn-reset-input" type="password" placeholder="Пароль"
+              className="conn-reset-input" type="password" placeholder={t.resetPwPh}
               value={resetPw} onChange={e => { setResetPw(e.target.value); setResetErr('') }}
               autoFocus inputMode="numeric"
             />
             <button className="conn-reset-go" type="submit" disabled={resetBusy || !resetPw.trim()}>
-              {resetBusy ? 'Сбрасываю…' : 'Сбросить всё'}
+              {resetBusy ? t.resetBusy : t.resetGo}
             </button>
             <button type="button" className="conn-reset-cancel" onClick={() => { setResetOpen(false); setResetPw(''); setResetErr('') }}>
-              Отмена
+              {t.resetCancel}
             </button>
             {resetErr && <span className="conn-reset-err">{resetErr}</span>}
           </form>

@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { useT } from '../context/LanguageContext.jsx'
 
 /*
   Пустое состояние для неподключённого сервиса — вместо выдуманных данных.
@@ -6,6 +7,7 @@ import { useNavigate } from 'react-router-dom'
 */
 export default function ConnectPrompt({ heading, sub, title, text, children }) {
   const nav = useNavigate()
+  const t = useT({ ru: { go: 'Перейти к подключениям' }, en: { go: 'Go to connections' } })
   return (
     <div className="cp-page">
       <div className="cp-header">
@@ -22,7 +24,7 @@ export default function ConnectPrompt({ heading, sub, title, text, children }) {
         </div>
         <div className="cp-title">{title}</div>
         <div className="cp-text">{text}</div>
-        <button className="cp-btn" onClick={() => nav('/connections')}>Перейти к подключениям</button>
+        <button className="cp-btn" onClick={() => nav('/connections')}>{t.go}</button>
       </div>
 
       {children}

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useT } from '../context/LanguageContext.jsx'
 
 /*
   Окно «Что нового» — показывается ОДИН раз при первом заходе и больше не появляется.
@@ -9,45 +10,99 @@ import { motion, AnimatePresence } from 'framer-motion'
 const VERSION = 'v1'
 const STORAGE_KEY = `albert-whatsnew-${VERSION}`
 
-const SECTIONS = [
-  {
-    emoji: '🏃',
-    title: 'Спорт и тренировки',
-    items: [
-      'Подробное окно тренировки, как в Garmin: графики пульса и темпа, карта маршрута, отрезки.',
-      'Плановые тренировки из TrainingPeaks/Garmin видны прямо в календаре.'
-    ]
-  },
-  {
-    emoji: '❤️',
-    title: 'Здоровье',
-    items: [
-      'Кольца Сон / Восстановление / Нагрузка, а также Заряд тела и Стресс.',
-      'Клик по дню недели — короткий совет на этот день.',
-      'Анализы крови: загрузка файлов, авто-распознавание и раскладка по системам организма.'
-    ]
-  },
-  {
-    emoji: '🤖',
-    title: 'Помощник',
-    items: [
-      'Голосовой ввод по-русски во всех полях — просто говорите.',
-      'Строит маршруты и подсказывает, во сколько выезжать, чтобы успеть.'
-    ]
-  },
-  {
-    emoji: '🍽️',
-    title: 'Питание (новый раздел)',
-    items: [
-      'Цель по калориям, которая меняется под тренировки и восстановление.',
-      'Подбор блюд на каждый день и автоматический список покупок на неделю.',
-      'Учитывает ваши предпочтения; можно сфотографировать экран CalAI — посчитает съеденное.'
-    ]
-  }
-]
+const SECTIONS_BY_LANG = {
+  ru: [
+    {
+      emoji: '🏃',
+      title: 'Спорт и тренировки',
+      items: [
+        'Подробное окно тренировки, как в Garmin: графики пульса и темпа, карта маршрута, отрезки.',
+        'Плановые тренировки из TrainingPeaks/Garmin видны прямо в календаре.'
+      ]
+    },
+    {
+      emoji: '❤️',
+      title: 'Здоровье',
+      items: [
+        'Кольца Сон / Восстановление / Нагрузка, а также Заряд тела и Стресс.',
+        'Клик по дню недели — короткий совет на этот день.',
+        'Анализы крови: загрузка файлов, авто-распознавание и раскладка по системам организма.'
+      ]
+    },
+    {
+      emoji: '🤖',
+      title: 'Помощник',
+      items: [
+        'Голосовой ввод по-русски во всех полях — просто говорите.',
+        'Строит маршруты и подсказывает, во сколько выезжать, чтобы успеть.'
+      ]
+    },
+    {
+      emoji: '🍽️',
+      title: 'Питание (новый раздел)',
+      items: [
+        'Цель по калориям, которая меняется под тренировки и восстановление.',
+        'Подбор блюд на каждый день и автоматический список покупок на неделю.',
+        'Учитывает ваши предпочтения; можно сфотографировать экран CalAI — посчитает съеденное.'
+      ]
+    }
+  ],
+  en: [
+    {
+      emoji: '🏃',
+      title: 'Sport & training',
+      items: [
+        'A detailed workout view, like in Garmin: heart-rate and pace charts, route map, splits.',
+        'Planned workouts from TrainingPeaks/Garmin show up right in the calendar.'
+      ]
+    },
+    {
+      emoji: '❤️',
+      title: 'Health',
+      items: [
+        'Sleep / Recovery / Strain rings, plus Body Battery and Stress.',
+        'Click a day of the week for a short tip for that day.',
+        'Blood tests: upload files, auto-recognition and a breakdown by body system.'
+      ]
+    },
+    {
+      emoji: '🤖',
+      title: 'Assistant',
+      items: [
+        'Voice input in Russian in every field — just speak.',
+        'Builds routes and tells you when to leave to make it on time.'
+      ]
+    },
+    {
+      emoji: '🍽️',
+      title: 'Nutrition (new section)',
+      items: [
+        'A calorie goal that adjusts to your training and recovery.',
+        'Meal suggestions for each day and an automatic weekly shopping list.',
+        'Takes your preferences into account; you can snap a photo of the CalAI screen — it’ll count what you ate.'
+      ]
+    }
+  ]
+}
 
 export default function WhatsNew() {
   const [open, setOpen] = useState(false)
+  const t = useT({
+    ru: {
+      badge: 'Обновление',
+      title: 'Что нового на сайте',
+      sub: 'Пока вы не заходили, здесь кое-что добавилось 👇',
+      ok: 'Понятно, спасибо!',
+      sections: SECTIONS_BY_LANG.ru,
+    },
+    en: {
+      badge: 'Update',
+      title: 'What’s new on the site',
+      sub: 'While you were away, a few things were added 👇',
+      ok: 'Got it, thanks!',
+      sections: SECTIONS_BY_LANG.en,
+    },
+  })
 
   useEffect(() => {
     try {
@@ -69,13 +124,13 @@ export default function WhatsNew() {
             initial={{ opacity: 0, scale: 0.96, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 12 }} transition={{ type: 'spring', stiffness: 320, damping: 30 }}>
             <div className="wn-head">
-              <span className="wn-badge">Обновление</span>
-              <h2 className="wn-title">Что нового на сайте</h2>
-              <p className="wn-sub">Пока вы не заходили, здесь кое-что добавилось 👇</p>
+              <span className="wn-badge">{t.badge}</span>
+              <h2 className="wn-title">{t.title}</h2>
+              <p className="wn-sub">{t.sub}</p>
             </div>
 
             <div className="wn-body">
-              {SECTIONS.map(s => (
+              {t.sections.map(s => (
                 <div key={s.title} className="wn-section">
                   <div className="wn-section-head"><span className="wn-emoji">{s.emoji}</span>{s.title}</div>
                   <ul className="wn-list">
@@ -85,7 +140,7 @@ export default function WhatsNew() {
               ))}
             </div>
 
-            <button className="wn-ok" onClick={close}>Понятно, спасибо!</button>
+            <button className="wn-ok" onClick={close}>{t.ok}</button>
           </motion.div>
 
           <style>{`

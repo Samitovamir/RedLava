@@ -1,10 +1,14 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-
-const FIRST_TEXT = 'Дисциплина 99% успеха'
-const SECOND_TEXT = 'Хули-Ули2'
+import { useT } from '../context/LanguageContext.jsx'
 
 export default function DisintegratingText() {
+  const t = useT({
+    ru: { firstText: 'Дисциплина 99% успеха', secondText: 'Хули-Ули2' },
+    en: { firstText: 'Discipline is 99% of success', secondText: 'Huli-Uli2' },
+  })
+  const FIRST_TEXT = t.firstText
+  const SECOND_TEXT = t.secondText
   const [phase, setPhase] = useState('visible') // 'visible' | 'disintegrating' | 'done'
   const [fallenChars, setFallenChars] = useState([])
   const timerRef = useRef(null)

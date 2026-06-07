@@ -6,8 +6,93 @@ import {
 } from '../utils/labs.js'
 import MicButton from './MicButton.jsx'
 import { isGuest } from '../api/authFetch.js'
+import { useLang, useT } from '../context/LanguageContext.jsx'
 
 const STORE_KEY = LABS_STORE_KEY
+
+const STR = {
+  ru: {
+    aiBadge: 'ИИ',
+    title: 'Анализы крови и расшифровка',
+    sub: 'Загружайте анализы по мере сдачи — ИИ копит историю и расшифровывает простыми словами',
+    decodeAll: 'Расшифровать всё',
+    syncing: (done, total) => `ИИ распознаёт анализы из Яндекс.Диска: ${done} из ${total}…`,
+    recognizing: (name) => `ИИ распознаёт «${name}»…`,
+    recognizingHint: 'Извлекаем показатели и добавляем в историю',
+    dropTitle: 'Перетащите файл или нажмите',
+    dropHint: 'PDF, фото · можно по одному, в разные дни',
+    files: (n) => `Загруженные файлы (${n})`,
+    markersCount: 'показ.',
+    decodeHead: 'Расшифровка', decodePrep: 'Готовлю расшифровку…',
+    askHead: 'Спросите ИИ про ваши анализы',
+    chatPlaceholder: 'Скажите или спросите: почему повышен холестерин? что есть, чтобы снизить сахар?',
+    typing: 'ИИ печатает…',
+    outOfNorm: 'Вне нормы:',
+    minorHide: 'Скрыть второстепенные', minor: 'Второстепенные', minorShow: 'Показать показатели',
+    minorFlags: (n) => ` · ${n} вне нормы`,
+    noNorm: 'норма не указана', norm: 'норма', was: 'было', taken: 'сдан', noNormShort: '—',
+    status: { ok: 'норма', low: 'понижен', high: 'повышен', unknown: 'нет нормы' },
+    decodeFail: 'Не удалось получить расшифровку.',
+    decodeNoServer: 'Нет связи с сервером. Запустите backend с ключом ИИ для расшифровки. Диаграммы и динамика ниже работают и без него.',
+    fileFail: 'Не удалось загрузить файл. Попробуйте ещё раз или другой файл.',
+    parseFail: 'Не удалось распознать показатели в этом файле. Проверьте, что это анализ крови.',
+    answerFail: 'Не удалось ответить.', chatNoServer: 'Нет связи с сервером. Запустите backend с ключом ИИ.',
+    groups: {}   // ru: показываем названия групп как есть
+  },
+  en: {
+    aiBadge: 'AI',
+    title: 'Blood tests and AI decoding',
+    sub: 'Upload your tests as you take them — the AI builds up a history and explains them in plain words',
+    decodeAll: 'Decode all',
+    syncing: (done, total) => `AI is reading tests from Yandex.Disk: ${done} of ${total}…`,
+    recognizing: (name) => `AI is reading “${name}”…`,
+    recognizingHint: 'Extracting markers and adding them to the history',
+    dropTitle: 'Drag a file here or click',
+    dropHint: 'PDF, photo · one at a time, on different days',
+    files: (n) => `Uploaded files (${n})`,
+    markersCount: 'markers',
+    decodeHead: 'Decoding', decodePrep: 'Preparing the decoding…',
+    askHead: 'Ask the AI about your tests',
+    chatPlaceholder: 'Say or ask: why is my cholesterol high? what to eat to lower blood sugar?',
+    typing: 'AI is typing…',
+    outOfNorm: 'Out of range:',
+    minorHide: 'Hide secondary', minor: 'Secondary', minorShow: 'Show markers',
+    minorFlags: (n) => ` · ${n} out of range`,
+    noNorm: 'no reference range', norm: 'range', was: 'was', taken: 'taken', noNormShort: '—',
+    status: { ok: 'normal', low: 'low', high: 'high', unknown: 'no range' },
+    decodeFail: 'Could not get the decoding.',
+    decodeNoServer: 'No connection to the server. Start the backend with an AI key for decoding. The charts and trends below work without it.',
+    fileFail: 'Could not upload the file. Try again or use a different file.',
+    parseFail: 'Could not recognize any markers in this file. Make sure it is a blood test.',
+    answerFail: 'Could not answer.', chatNoServer: 'No connection to the server. Start the backend with an AI key.',
+    // Названия групп показателей по их стабильному key (см. buildGroups в labs.js)
+    groups: {
+      blood: 'Complete blood count', lipids: 'Lipids & heart', metabolic: 'Sugar & metabolism',
+      liver: 'Liver', kidney: 'Kidneys', iron: 'Iron metabolism', vitamins: 'Vitamins',
+      electrolytes: 'Electrolytes & minerals', thyroid: 'Thyroid', hormones: 'Hormones',
+      inflammation: 'Inflammation & immunity', coagulation: 'Coagulation',
+      infections: 'Infections & antibodies', other: 'Other markers'
+    }
+  }
+}
+
+// Демо-расшифровка для гостя (английская версия — выбирается по языку интерфейса)
+const GUEST_DEMO_DECODE_EN =
+  'Overall the picture is calm: the complete blood count, liver enzymes (ALT, AST), ' +
+  'kidneys (creatinine), blood sugar and thyroid hormones are all within range. ' +
+  'Total cholesterol and “bad” cholesterol (LDL) are slightly above normal, and ' +
+  'vitamin D is low — a common story, especially at the end of winter. The ' +
+  'inflammation marker CRP was slightly elevated in April, but in the latest retest ' +
+  'it is already back to normal — a good sign. Lifestyle-wise, more vegetables and fish, ' +
+  'less fatty and sugary food, regular activity and taking vitamin D will help. ' +
+  'This is not a diagnosis: if the deviations persist, it is better to show the tests to a doctor.'
+
+// Английские названия демо-файлов гостя (имена показателей-ключей не трогаем)
+const GUEST_DEMO_FILE_EN = {
+  'ОАК и биохимия.pdf': 'CBC and biochemistry.pdf',
+  'Гормоны и витамины.pdf': 'Hormones and vitamins.pdf',
+  'Липидограмма (пересдача).pdf': 'Lipid panel (retest).pdf'
+}
 
 // Демо-данные для гостя: реальные результаты заблокированы на сервере, поэтому
 // показываем правдоподобный пример (несколько отчётов в разные даты + готовую
@@ -81,6 +166,8 @@ function MiniSpark({ points, color }) {
 }
 
 export default function LabResults() {
+  const { lang } = useLang()
+  const t = useT(STR)
   const [reports, setReports] = useState(() => {
     try {
       // Старые демо-данные уже вычищены централизованно при импорте labs.js (по версии).
@@ -103,8 +190,16 @@ export default function LabResults() {
   // Гостю сразу показываем готовую демо-расшифровку (реальный /api/labs/parse заблокирован)
   const [stage, setStage] = useState(() => (isGuest() ? 'done' : 'idle'))   // idle | analyzing | done
   const [busyName, setBusyName] = useState(null)
-  const [aiText, setAiText] = useState(() => (isGuest() ? GUEST_DEMO_DECODE : ''))
+  const [aiText, setAiText] = useState(() => (isGuest() ? (lang === 'en' ? GUEST_DEMO_DECODE_EN : GUEST_DEMO_DECODE) : ''))
   const fileInput = useRef(null)
+
+  // Гость + смена языка интерфейса → переключаем язык демо-расшифровки
+  useEffect(() => {
+    if (!isGuest()) return
+    setAiText(prev => (prev === GUEST_DEMO_DECODE || prev === GUEST_DEMO_DECODE_EN || !prev)
+      ? (lang === 'en' ? GUEST_DEMO_DECODE_EN : GUEST_DEMO_DECODE)
+      : prev)
+  }, [lang])
 
   // Чат по анализам
   const [chat, setChat] = useState([])         // [{ role:'user'|'assistant', text }]
@@ -185,14 +280,14 @@ export default function LabResults() {
           <div className="lm-marker-dot" style={{ left: `${st === 'unknown' ? 50 : g.valuePos}%`, background: c }} />
         </div>
         <div className="lm-bottom">
-          <span className="lm-range muted">{st === 'unknown' ? 'норма не указана' : `норма ${rangeText(def.min, def.max)}`}</span>
-          <span className="lm-status" style={{ color: c }}>{STATUS_INFO[st].label}</span>
+          <span className="lm-range muted">{st === 'unknown' ? t.noNorm : `${t.norm} ${rangeText(def.min, def.max)}`}</span>
+          <span className="lm-status" style={{ color: c }}>{t.status[st]}</span>
         </div>
         {prev && (
           <div className="lm-trend">
             <MiniSpark points={h} color="var(--muted-foreground)" />
             <span className="lm-trend-txt muted">
-              {last.value > prev.value ? '↑' : last.value < prev.value ? '↓' : '→'} было {prev.value} · {fmtDate(prev.date)}
+              {last.value > prev.value ? '↑' : last.value < prev.value ? '↓' : '→'} {t.was} {prev.value} · {fmtDate(prev.date)}
             </span>
           </div>
         )}
@@ -208,8 +303,8 @@ export default function LabResults() {
       <div key={key} className="lab-mini">
         <span className="lab-mini-name">{def.name}</span>
         <span className="lab-mini-val" style={{ color: c }}>{last.value}<span className="muted"> {def.unit}</span></span>
-        <span className="lab-mini-norm muted">{st === 'unknown' ? '—' : rangeText(def.min, def.max)}</span>
-        <span className="lab-mini-dot" style={{ background: c }} title={STATUS_INFO[st].label} />
+        <span className="lab-mini-norm muted">{st === 'unknown' ? t.noNormShort : rangeText(def.min, def.max)}</span>
+        <span className="lab-mini-dot" style={{ background: c }} title={t.status[st]} />
       </div>
     )
   }
@@ -236,7 +331,8 @@ export default function LabResults() {
       `Ты — внимательный врач-терапевт, который объясняет анализы крови владельцу, пожилому человеку без медицинского образования. ` +
       `Вот его последние результаты: ${labSummaryText(snapshotReports)}. ` +
       `Отвечай простыми словами, спокойно и поддерживающе. Опирайся на эти цифры и их динамику. ` +
-      `Не ставь диагноз и не назначай лекарства — при отклонениях мягко советуй обратиться к врачу.`
+      `Не ставь диагноз и не назначай лекарства — при отклонениях мягко советуй обратиться к врачу.` +
+      (lang === 'en' ? ' Always reply to the user in English.' : '')
     )
   }
 
@@ -250,9 +346,9 @@ export default function LabResults() {
         body: JSON.stringify({ message: 'Расшифруй мои анализы крови с учётом динамики', context })
       })
       const data = await res.json()
-      setAiText(data.reply || 'Не удалось получить расшифровку.')
+      setAiText(data.reply || t.decodeFail)
     } catch {
-      setAiText('Нет связи с сервером. Запустите backend с ключом ИИ для расшифровки. Диаграммы и динамика ниже работают и без него.')
+      setAiText(t.decodeNoServer)
     }
   }
 
@@ -280,7 +376,7 @@ export default function LabResults() {
       const out = await res.json()
       if (!out.ok || !out.report) {
         setStage('done')
-        setAiText(out.message || 'Не удалось распознать показатели в этом файле. Проверьте, что это анализ крови.')
+        setAiText(out.message || t.parseFail)
         return
       }
       const r = out.report
@@ -292,7 +388,7 @@ export default function LabResults() {
       runAi(next)
     } catch {
       setStage('done')
-      setAiText('Не удалось загрузить файл. Попробуйте ещё раз или другой файл.')
+      setAiText(t.fileFail)
     }
   }
 
@@ -322,9 +418,9 @@ export default function LabResults() {
         body: JSON.stringify({ message: q, context: doctorContext(reports), history })
       })
       const data = await res.json()
-      setChat(prev => [...prev, { role: 'assistant', text: data.reply || 'Не удалось ответить.' }])
+      setChat(prev => [...prev, { role: 'assistant', text: data.reply || t.answerFail }])
     } catch {
-      setChat(prev => [...prev, { role: 'assistant', text: 'Нет связи с сервером. Запустите backend с ключом ИИ.' }])
+      setChat(prev => [...prev, { role: 'assistant', text: t.chatNoServer }])
     } finally {
       setChatBusy(false)
     }
@@ -338,11 +434,11 @@ export default function LabResults() {
     <div className="card lab-block">
       <div className="lab-head">
         <div>
-          <div className="lab-title">Анализы крови и расшифровка</div>
-          <div className="lab-sub muted">Загружайте анализы по мере сдачи — ИИ копит историю и расшифровывает простыми словами</div>
+          <div className="lab-title">{t.title}</div>
+          <div className="lab-sub muted">{t.sub}</div>
         </div>
         <button className="lab-ai-btn" onClick={analyzeExisting} disabled={stage === 'analyzing'}>
-          Расшифровать всё
+          {t.decodeAll}
         </button>
       </div>
 
@@ -350,7 +446,7 @@ export default function LabResults() {
         <div className="lab-sync">
           <div className="lab-sync-row">
             <div className="lab-spinner" />
-            <span>ИИ распознаёт анализы из Яндекс.Диска: {syncDone} из {syncTotal}…</span>
+            <span>{t.syncing(syncDone, syncTotal)}</span>
           </div>
           <div className="lab-sync-bar"><div className="lab-sync-fill" style={{ width: `${syncTotal ? (syncDone / syncTotal) * 100 : 0}%` }} /></div>
         </div>
@@ -368,8 +464,8 @@ export default function LabResults() {
         {stage === 'analyzing' ? (
           <>
             <div className="lab-spinner" />
-            <span className="lab-drop-title">ИИ распознаёт «{busyName}»…</span>
-            <span className="lab-drop-hint muted">Извлекаем показатели и добавляем в историю</span>
+            <span className="lab-drop-title">{t.recognizing(busyName)}</span>
+            <span className="lab-drop-hint muted">{t.recognizingHint}</span>
           </>
         ) : (
           <>
@@ -377,8 +473,8 @@ export default function LabResults() {
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
               <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
             </svg>
-            <span className="lab-drop-title">Перетащите файл или нажмите</span>
-            <span className="lab-drop-hint muted">PDF, фото · можно по одному, в разные дни</span>
+            <span className="lab-drop-title">{t.dropTitle}</span>
+            <span className="lab-drop-hint muted">{t.dropHint}</span>
           </>
         )}
       </div>
@@ -388,20 +484,23 @@ export default function LabResults() {
         <div className="lab-timeline">
           <button className="lab-tl-toggle" onClick={() => setFilesOpen(o => !o)} aria-expanded={filesOpen}>
             <span className={`lab-tl-chev ${filesOpen ? 'open' : ''}`}>▸</span>
-            Загруженные файлы ({reportsByDate.length})
+            {t.files(reportsByDate.length)}
           </button>
           <AnimatePresence initial={false}>
             {filesOpen && (
               <motion.div className="lab-tl-list"
                 initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
                 transition={{ duration: 0.2 }}>
-                {reportsByDate.map(r => (
-                  <div key={r.id} className="lab-tl-item" title={r.fileName}>
+                {reportsByDate.map(r => {
+                  const fname = (lang === 'en' && GUEST_DEMO_FILE_EN[r.fileName]) || r.fileName
+                  return (
+                  <div key={r.id} className="lab-tl-item" title={fname}>
                     <span className="lab-tl-date">{fmtDate(r.date)}</span>
-                    <span className="lab-tl-name">{r.fileName}</span>
-                    <span className="lab-tl-count muted">{Object.keys(r.values).length} показ.</span>
+                    <span className="lab-tl-name">{fname}</span>
+                    <span className="lab-tl-count muted">{Object.keys(r.values).length} {t.markersCount}</span>
                   </div>
-                ))}
+                  )
+                })}
               </motion.div>
             )}
           </AnimatePresence>
@@ -414,17 +513,17 @@ export default function LabResults() {
           <motion.div className="lab-ai"
             initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
             <div className="summary-head">
-              <span className="summary-badge">ИИ</span>
-              <div className="card-title" style={{ margin: 0 }}>Расшифровка</div>
+              <span className="summary-badge">{t.aiBadge}</span>
+              <div className="card-title" style={{ margin: 0 }}>{t.decodeHead}</div>
             </div>
-            <p className="lab-ai-text">{aiText || 'Готовлю расшифровку…'}</p>
+            <p className="lab-ai-text">{aiText || t.decodePrep}</p>
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* Чат по анализам — можно спросить ИИ что угодно про свои показатели */}
       <div className="lab-chat">
-        <div className="lab-chat-head muted">Спросите ИИ про ваши анализы</div>
+        <div className="lab-chat-head muted">{t.askHead}</div>
         {chat.length > 0 && (
           <div className="lab-chat-thread">
             {chat.map((m, i) => (
@@ -434,17 +533,17 @@ export default function LabResults() {
             ))}
             {chatBusy && (
               <div className="lab-msg assistant">
-                <span className="lab-msg-text lab-typing">ИИ печатает…</span>
+                <span className="lab-msg-text lab-typing">{t.typing}</span>
               </div>
             )}
             <div ref={chatEnd} />
           </div>
         )}
         <form className="lab-chat-bar" onSubmit={sendChat}>
-          <MicButton primary onText={t => setChatInput(prev => (prev ? prev.trim() + ' ' : '') + t)} />
+          <MicButton primary onText={txt => setChatInput(prev => (prev ? prev.trim() + ' ' : '') + txt)} />
           <input
             className="lab-chat-input"
-            placeholder="Скажите или спросите: почему повышен холестерин? что есть, чтобы снизить сахар?"
+            placeholder={t.chatPlaceholder}
             value={chatInput}
             onChange={e => setChatInput(e.target.value)}
             disabled={chatBusy}
@@ -460,7 +559,7 @@ export default function LabResults() {
       {/* Сводка отклонений */}
       {flagged.length > 0 && (
         <div className="lab-flags">
-          <span className="lab-flags-lbl muted">Вне нормы:</span>
+          <span className="lab-flags-lbl muted">{t.outOfNorm}</span>
           {flagged.map(({ def, last }) => {
             const st = markerStatus(last.value, def.min, def.max)
             return (
@@ -481,7 +580,7 @@ export default function LabResults() {
           return (
             <div key={group.key} className="lab-panel">
               <div className="lab-panel-title">
-                <span className="lab-panel-icon">{group.icon}</span>{group.name}
+                <span className="lab-panel-icon">{group.icon}</span>{t.groups?.[group.key] || group.name}
                 <span className="lab-panel-wait muted">{group.major.length + group.minor.length}</span>
               </div>
 
@@ -494,7 +593,7 @@ export default function LabResults() {
                 // Иначе — прячем под кнопку (важно для огромных профилей: микробиом и т.п.)
                 <div className="lab-minor">
                   <button className="lab-minor-toggle" onClick={() => setOpenMinor(s => ({ ...s, [group.key]: !s[group.key] }))}>
-                    <span>{open ? 'Скрыть второстепенные' : (hasMajor ? 'Второстепенные' : 'Показать показатели')} ({group.minor.length}){!open && minorFlags > 0 ? ` · ${minorFlags} вне нормы` : ''}</span>
+                    <span>{open ? t.minorHide : (hasMajor ? t.minor : t.minorShow)} ({group.minor.length}){!open && minorFlags > 0 ? t.minorFlags(minorFlags) : ''}</span>
                     <span className={`lab-minor-caret ${open ? 'open' : ''}`}>▾</span>
                   </button>
                   {open && <div className="lab-minor-list">{group.minor.map(renderMinorRow)}</div>}

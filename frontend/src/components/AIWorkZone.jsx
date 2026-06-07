@@ -7,6 +7,7 @@ import { useEvents } from '../context/EventsContext.jsx'
 import { useMail } from '../context/MailContext.jsx'
 import { useMemoryFacts } from '../context/MemoryContext.jsx'
 import { useHistory } from '../context/HistoryContext.jsx'
+import { useLang, useT } from '../context/LanguageContext.jsx'
 import VoiceInput from './VoiceInput.jsx'
 
 /*
@@ -35,6 +36,71 @@ export default function AIWorkZone() {
 
   // Снимок данных (расписание/спорт/здоровье/анализы) и инструменты — чтобы ИИ в рабочей зоне
   // ВИДЕЛ календарь и реально выполнял задачи, как командная строка.
+  const { lang } = useLang()
+  const t = useT({
+    ru: {
+      badge: 'ИИ', titleMain: 'Рабочая зона',
+      titleSub: 'Главный помощник — скажите или напишите задачу',
+      tabText: 'Текстовая задача', tabFile: 'Файл',
+      fileTitle: 'Загрузка и разбор файлов',
+      fileSub: 'ИИ будет распределять файлы по папкам и делать разбор',
+      inDev: 'В РАЗРАБОТКЕ',
+      processing: 'Выполняется…',
+      analyzing: (name) => `Анализирую «${name}»`,
+      processingTask: 'Обрабатываю задачу',
+      confirmDistribute: 'Подтвердить распределение', cancel: 'Отмена',
+      to: 'Кому', subject: 'Тема',
+      approveSend: 'Одобрить и отправить', edit: 'Править', cancelMsg: 'Отменить',
+      done: 'Готово', newTask: 'Новая задача',
+      // фолбэки/уведомления
+      recipient: 'Получатель', noSubject: 'Без темы',
+      msgFail: 'Не удалось подготовить текст. Проверьте, что backend запущен с ключом ИИ.',
+      noServerMsg: 'Нет связи с сервером. Запустите backend с ключом ИИ.',
+      noServer: 'Нет связи с сервером.', startBackend: 'Запустите backend с ключом ИИ.',
+      ready: 'Готово.', accepted: 'Принято.',
+      readFail: 'Не удалось получить ответ.',
+      readNoServer: 'Нет связи с сервером. Запустите backend с ключом ИИ.',
+      remembered: (f) => `Запомнил: ${f}`,
+      fileSummaryTitle: (name) => name,
+      fileFolder: 'Проекты / Входящие',
+      fileSummary: 'Файл проанализирован. Это документ по проекту — предлагаю поместить в папку «Проекты / Входящие». Ключевые пункты: бюджет, сроки, ответственные.',
+      fileDoneTitle: 'Файл распределён',
+      fileDoneDetail: (title, folder) => `«${title}» перемещён в папку «${folder}».`,
+      mailDoneTitle: 'Письмо отправлено',
+      mailDoneDetail: (subject, to) => `Сообщение «${subject}» отправлено получателю «${to}».`
+    },
+    en: {
+      badge: 'AI', titleMain: 'Work zone',
+      titleSub: 'Your main assistant — say or type a task',
+      tabText: 'Text task', tabFile: 'File',
+      fileTitle: 'Upload and analyze files',
+      fileSub: 'The AI will sort files into folders and analyze them',
+      inDev: 'IN DEVELOPMENT',
+      processing: 'Working…',
+      analyzing: (name) => `Analyzing “${name}”`,
+      processingTask: 'Processing the task',
+      confirmDistribute: 'Confirm placement', cancel: 'Cancel',
+      to: 'To', subject: 'Subject',
+      approveSend: 'Approve and send', edit: 'Edit', cancelMsg: 'Cancel',
+      done: 'Done', newTask: 'New task',
+      recipient: 'Recipient', noSubject: 'No subject',
+      msgFail: 'Couldn’t prepare the text. Make sure the backend is running with the AI key.',
+      noServerMsg: 'No connection to the server. Start the backend with the AI key.',
+      noServer: 'No connection to the server.', startBackend: 'Start the backend with the AI key.',
+      ready: 'Done.', accepted: 'Got it.',
+      readFail: 'Couldn’t get a response.',
+      readNoServer: 'No connection to the server. Start the backend with the AI key.',
+      remembered: (f) => `Remembered: ${f}`,
+      fileSummaryTitle: (name) => name,
+      fileFolder: 'Projects / Inbox',
+      fileSummary: 'File analyzed. This is a project document — I suggest placing it in the “Projects / Inbox” folder. Key points: budget, deadlines, owners.',
+      fileDoneTitle: 'File sorted',
+      fileDoneDetail: (title, folder) => `“${title}” moved to the “${folder}” folder.`,
+      mailDoneTitle: 'Email sent',
+      mailDoneDetail: (subject, to) => `Message “${subject}” sent to “${to}”.`
+    }
+  })
+
   const snapshot = useSiteSnapshot()
   const { applyAiActions } = useEvents()
   const { openDraft } = useMail()
@@ -61,8 +127,8 @@ export default function AIWorkZone() {
     setResult({
       kind: 'file',
       title: f.name,
-      folder: 'Проекты / Входящие',
-      summary: 'Файл проанализирован. Это документ по проекту — предлагаю поместить в папку «Проекты / Входящие». Ключевые пункты: бюджет, сроки, ответственные.'
+      folder: t.fileFolder,
+      summary: t.fileSummary
     })
     setStatus('result')
   }
@@ -80,7 +146,8 @@ export default function AIWorkZone() {
       const context =
         'Ты — личный секретарь владельца. Составь готовый текст письма/сообщения по его просьбе. ' +
         'Верни ТОЛЬКО сам текст сообщения, без пояснений и без подписи «от ИИ». Вежливо, тепло, по-деловому. ' +
-        'Если уместна подпись — подпиши «С уважением, владелец».'
+        'Если уместна подпись — подпиши «С уважением, владелец».' +
+        (lang === 'en' ? ' Always reply to the user in English.' : '')
       try {
         const res = await fetch('/api/ai/chat', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -89,12 +156,12 @@ export default function AIWorkZone() {
         const data = await res.json()
         setResult({
           kind: 'message',
-          to: 'Получатель',
-          subject: 'Без темы',
-          body: data.reply || 'Не удалось подготовить текст. Проверьте, что backend запущен с ключом ИИ.'
+          to: t.recipient,
+          subject: t.noSubject,
+          body: data.reply || t.msgFail
         })
       } catch {
-        setResult({ kind: 'message', to: 'Получатель', subject: 'Без темы', body: 'Нет связи с сервером. Запустите backend с ключом ИИ.' })
+        setResult({ kind: 'message', to: t.recipient, subject: t.noSubject, body: t.noServerMsg })
       }
       setStatus('result')
       return
@@ -105,7 +172,7 @@ export default function AIWorkZone() {
       try {
         const res = await fetch('/api/ai/agent', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: q, snapshot, context: 'Запрос из рабочей зоны на главном экране.' })
+          body: JSON.stringify({ message: q, snapshot, context: 'Запрос из рабочей зоны на главном экране.' + (lang === 'en' ? ' Always reply to the user in English.' : '') })
         })
         const data = await res.json()
         const actions = data.actions || []
@@ -115,11 +182,11 @@ export default function AIWorkZone() {
         if (eventActions.length) applyAiActions(eventActions)
         if (mailActions.length) openDraft(mailActions[0].input)
         memActions.forEach(a => {
-          if (a.input?.fact) { addFact(a.input.fact); logAction({ actor: 'ai', type: 'task', title: `Запомнил: ${a.input.fact}` }) }
+          if (a.input?.fact) { addFact(a.input.fact); logAction({ actor: 'ai', type: 'task', title: t.remembered(a.input.fact) }) }
         })
-        complete(data.reply || (actions.length ? 'Готово.' : 'Принято.'), '')
+        complete(data.reply || (actions.length ? t.ready : t.accepted), '')
       } catch {
-        complete('Нет связи с сервером.', 'Запустите backend с ключом ИИ.')
+        complete(t.noServer, t.startBackend)
       }
       return
     }
@@ -137,10 +204,10 @@ export default function AIWorkZone() {
     try {
       const res = await fetch('/api/ai/read', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: q, history, snapshot })
+        body: JSON.stringify({ message: q, history, snapshot, context: lang === 'en' ? 'Always reply to the user in English.' : '' })
       })
       const data = await res.json()
-      const entry = { q, text: data.text || 'Не удалось получить ответ.', images: [], loadingImages: !!(data.images?.length) }
+      const entry = { q, text: data.text || t.readFail, images: [], loadingImages: !!(data.images?.length) }
       setReading({ open: true, entries: [...base, entry], loading: false })
       if (data.images?.length) {
         const imgs = await fetchImagesForQueries(data.images)
@@ -153,7 +220,7 @@ export default function AIWorkZone() {
         })
       }
     } catch {
-      setReading({ open: true, entries: [...base, { q, text: 'Нет связи с сервером. Запустите backend с ключом ИИ.', images: [] }], loading: false })
+      setReading({ open: true, entries: [...base, { q, text: t.readNoServer, images: [] }], loading: false })
     }
   }
 
@@ -207,10 +274,10 @@ export default function AIWorkZone() {
       {/* Шапка с переключателем режимов */}
       <div className="awz-head">
         <div className="awz-title">
-          <span className="awz-badge">ИИ</span>
+          <span className="awz-badge">{t.badge}</span>
           <div className="awz-title-text">
-            <span className="awz-title-main">Рабочая зона</span>
-            <span className="awz-title-sub">Главный помощник — скажите или напишите задачу</span>
+            <span className="awz-title-main">{t.titleMain}</span>
+            <span className="awz-title-sub">{t.titleSub}</span>
           </div>
         </div>
         {status === 'idle' && (
@@ -222,7 +289,7 @@ export default function AIWorkZone() {
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="14" y2="18"/>
               </svg>
-              Текстовая задача
+              {t.tabText}
             </button>
             <button
               className={`awz-tab ${mode === 'file' ? 'active' : ''}`}
@@ -231,7 +298,7 @@ export default function AIWorkZone() {
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
               </svg>
-              Файл
+              {t.tabFile}
             </button>
           </div>
         )}
@@ -251,10 +318,10 @@ export default function AIWorkZone() {
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
               </svg>
             </div>
-            <p>Загрузка и разбор файлов</p>
-            <span>ИИ будет распределять файлы по папкам и делать разбор</span>
+            <p>{t.fileTitle}</p>
+            <span>{t.fileSub}</span>
             <div className="awz-dev-overlay">
-              <div className="awz-dev-tape">В РАЗРАБОТКЕ</div>
+              <div className="awz-dev-tape">{t.inDev}</div>
             </div>
           </motion.div>
         )}
@@ -279,8 +346,8 @@ export default function AIWorkZone() {
             className="awz-processing"
           >
             <div className="awz-spinner" />
-            <p>Выполняется…</p>
-            <span>{file ? `Анализирую «${file.name}»` : 'Обрабатываю задачу'}</span>
+            <p>{t.processing}</p>
+            <span>{file ? t.analyzing(file.name) : t.processingTask}</span>
           </motion.div>
         )}
 
@@ -299,9 +366,9 @@ export default function AIWorkZone() {
             <div className="awz-actions">
               <button
                 className="awz-btn primary"
-                onClick={() => complete('Файл распределён', `«${result.title}» перемещён в папку «${result.folder}».`)}
-              >Подтвердить распределение</button>
-              <button className="awz-btn ghost" onClick={reset}>Отмена</button>
+                onClick={() => complete(t.fileDoneTitle, t.fileDoneDetail(result.title, result.folder))}
+              >{t.confirmDistribute}</button>
+              <button className="awz-btn ghost" onClick={reset}>{t.cancel}</button>
             </div>
           </motion.div>
         )}
@@ -314,17 +381,17 @@ export default function AIWorkZone() {
             className="awz-result"
           >
             <div className="awz-msg-preview">
-              <div className="awz-msg-row"><span className="awz-msg-label">Кому</span><span>{result.to}</span></div>
-              <div className="awz-msg-row"><span className="awz-msg-label">Тема</span><span>{result.subject}</span></div>
+              <div className="awz-msg-row"><span className="awz-msg-label">{t.to}</span><span>{result.to}</span></div>
+              <div className="awz-msg-row"><span className="awz-msg-label">{t.subject}</span><span>{result.subject}</span></div>
               <div className="awz-msg-body">{result.body}</div>
             </div>
             <div className="awz-actions">
               <button
                 className="awz-btn primary"
-                onClick={() => complete('Письмо отправлено', `Сообщение «${result.subject}» отправлено получателю «${result.to}».`)}
-              >Одобрить и отправить</button>
-              <button className="awz-btn ghost" onClick={startEditMsg}>Править</button>
-              <button className="awz-btn ghost" onClick={backToTask}>Отменить</button>
+                onClick={() => complete(t.mailDoneTitle, t.mailDoneDetail(result.subject, result.to))}
+              >{t.approveSend}</button>
+              <button className="awz-btn ghost" onClick={startEditMsg}>{t.edit}</button>
+              <button className="awz-btn ghost" onClick={backToTask}>{t.cancelMsg}</button>
             </div>
           </motion.div>
         )}
@@ -338,7 +405,7 @@ export default function AIWorkZone() {
           >
             <div className="awz-msg-edit">
               <div className="awz-edit-field">
-                <span className="awz-msg-label">Кому</span>
+                <span className="awz-msg-label">{t.to}</span>
                 <input
                   className="awz-edit-input"
                   value={result.to}
@@ -346,7 +413,7 @@ export default function AIWorkZone() {
                 />
               </div>
               <div className="awz-edit-field">
-                <span className="awz-msg-label">Тема</span>
+                <span className="awz-msg-label">{t.subject}</span>
                 <input
                   className="awz-edit-input"
                   value={result.subject}
@@ -361,8 +428,8 @@ export default function AIWorkZone() {
               />
             </div>
             <div className="awz-actions">
-              <button className="awz-btn primary" onClick={saveEditMsg}>Готово</button>
-              <button className="awz-btn ghost" onClick={cancelEditMsg}>Отменить</button>
+              <button className="awz-btn primary" onClick={saveEditMsg}>{t.done}</button>
+              <button className="awz-btn ghost" onClick={cancelEditMsg}>{t.cancelMsg}</button>
             </div>
           </motion.div>
         )}
@@ -380,10 +447,10 @@ export default function AIWorkZone() {
               </svg>
             </div>
             <div className="awz-done-text">
-              <p className="awz-done-title">Готово · {doneInfo.title}</p>
+              <p className="awz-done-title">{t.done} · {doneInfo.title}</p>
               <span className="awz-done-detail">{doneInfo.detail}</span>
             </div>
-            <button className="awz-btn green" onClick={reset}>Новая задача</button>
+            <button className="awz-btn green" onClick={reset}>{t.newTask}</button>
           </motion.div>
         )}
       </AnimatePresence>

@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import { useLang, useT } from '../context/LanguageContext.jsx'
 
 /*
   Голосовой ввод как ОСНОВНОЙ способ: большая кнопка-микрофон с живой расшифровкой
@@ -10,6 +11,25 @@ import { motion } from 'framer-motion'
 const SR = typeof window !== 'undefined' ? (window.SpeechRecognition || window.webkitSpeechRecognition) : null
 
 export default function VoiceInput({ value, onChange, onSubmit, busy }) {
+  const { lang } = useLang()
+  const t = useT({
+    ru: {
+      stop: 'Остановить запись', start: 'Начать запись голосом',
+      noVoice: 'Голос недоступен в этом браузере. Напечатайте задачу ниже.',
+      hear: (i) => `Слышу: ${i}`, listening: 'Слушаю… говорите', press: 'Нажмите и говорите',
+      placeholder: 'Здесь появится распознанный текст — можно поправить или напечатать задачу',
+      clear: 'Очистить', submit: 'Выполнить',
+      hideField: 'Скрыть поле ввода', typeInstead: 'или напечатать текстом'
+    },
+    en: {
+      stop: 'Stop recording', start: 'Start voice recording',
+      noVoice: 'Voice input is not available in this browser. Type your task below.',
+      hear: (i) => `Hearing: ${i}`, listening: 'Listening… go ahead', press: 'Tap and speak',
+      placeholder: 'Recognized text will appear here — you can edit it or type a task',
+      clear: 'Clear', submit: 'Run',
+      hideField: 'Hide input field', typeInstead: 'or type instead'
+    }
+  })
   const supported = !!SR
   const [listening, setListening] = useState(false)
   const [interim, setInterim] = useState('')
@@ -23,7 +43,7 @@ export default function VoiceInput({ value, onChange, onSubmit, busy }) {
     if (!supported) { setShowText(true); return }
     if (listening) { try { recRef.current?.stop() } catch { /* ignore */ } return }
     const rec = new SR()
-    rec.lang = 'ru-RU'
+    rec.lang = lang === 'en' ? 'en-US' : 'ru-RU'
     rec.interimResults = true
     rec.continuous = true
     rec.onresult = (e) => {
@@ -55,7 +75,7 @@ export default function VoiceInput({ value, onChange, onSubmit, busy }) {
           className={`vi-mic ${listening ? 'listening' : ''}`}
           onClick={toggle}
           whileTap={{ scale: 0.94 }}
-          aria-label={listening ? 'Остановить запись' : 'Начать запись голосом'}
+          aria-label={listening ? t.stop : t.start}
         >
           <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <rect x="9" y="2" width="6" height="12" rx="3" />
@@ -65,15 +85,15 @@ export default function VoiceInput({ value, onChange, onSubmit, busy }) {
         </motion.button>
         <div className="vi-hint">
           {!supported
-            ? 'Голос недоступен в этом браузере. Напечатайте задачу ниже.'
-            : listening ? (interim ? `Слышу: ${interim}` : 'Слушаю… говорите') : 'Нажмите и говорите'}
+            ? t.noVoice
+            : listening ? (interim ? t.hear(interim) : t.listening) : t.press}
         </div>
       </div>
 
       {showField && (
         <textarea
           className="vi-field"
-          placeholder="Здесь появится распознанный текст — можно поправить или напечатать задачу"
+          placeholder={t.placeholder}
           value={value}
           onChange={e => onChange(e.target.value)}
           rows={3}
@@ -81,9 +101,9 @@ export default function VoiceInput({ value, onChange, onSubmit, busy }) {
       )}
 
       <div className="vi-actions">
-        {hasText && <button type="button" className="vi-clear" onClick={() => onChange('')}>Очистить</button>}
+        {hasText && <button type="button" className="vi-clear" onClick={() => onChange('')}>{t.clear}</button>}
         <button type="button" className="vi-submit" onClick={onSubmit} disabled={busy || !hasText}>
-          Выполнить
+          {t.submit}
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
           </svg>
@@ -92,7 +112,7 @@ export default function VoiceInput({ value, onChange, onSubmit, busy }) {
 
       {supported && !hasText && !listening && (
         <button type="button" className="vi-text-toggle" onClick={() => setShowText(s => !s)}>
-          {showText ? 'Скрыть поле ввода' : 'или напечатать текстом'}
+          {showText ? t.hideField : t.typeInstead}
         </button>
       )}
 

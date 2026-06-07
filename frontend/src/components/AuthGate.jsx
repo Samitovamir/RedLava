@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { getToken, setToken, clearToken, setRole } from '../api/authFetch.js'
 import { seedGuestDemo } from '../utils/demo.js'
+import { useT } from '../context/LanguageContext.jsx'
 
 /*
   Ворота входа. Пока не введён правильный пароль — показываем экран входа,
@@ -14,6 +15,36 @@ export default function AuthGate({ children }) {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const t = useT({
+    ru: {
+      title: 'Дашборд владельца',
+      sub: 'Личный кабинет. Введите имя и пароль, чтобы войти.',
+      name: 'Имя',
+      password: 'Пароль',
+      checking: 'Проверяю…',
+      login: 'Войти',
+      errCreds: 'Неверное имя или пароль',
+      errNotConfigured: 'Вход ещё не настроен на сервере.',
+      errFailed: 'Не удалось войти. Попробуйте позже.',
+      errNoConnection: 'Нет связи с сервером.',
+      guestPre: 'Хотите просто посмотреть? Войдите как ',
+      guestPost: ' — увидите демо без личных данных.',
+    },
+    en: {
+      title: 'Owner’s Dashboard',
+      sub: 'Personal account. Enter your name and password to sign in.',
+      name: 'Name',
+      password: 'Password',
+      checking: 'Checking…',
+      login: 'Sign in',
+      errCreds: 'Wrong name or password',
+      errNotConfigured: 'Sign-in is not set up on the server yet.',
+      errFailed: 'Couldn’t sign in. Please try again later.',
+      errNoConnection: 'No connection to the server.',
+      guestPre: 'Just want to look around? Sign in as ',
+      guestPost: ' — you’ll see a demo with no personal data.',
+    },
+  })
 
   // Если токен протух во время работы — вернуть на экран входа
   useEffect(() => {
@@ -51,14 +82,14 @@ export default function AuthGate({ children }) {
         if (d.role === 'guest') seedGuestDemo({ force: true })  // свежий демо при входе
         setAuthed(true)
       } else if (r.status === 401) {
-        setError('Неверное имя или пароль')
+        setError(t.errCreds)
       } else if (r.status === 503) {
-        setError('Вход ещё не настроен на сервере.')
+        setError(t.errNotConfigured)
       } else {
-        setError('Не удалось войти. Попробуйте позже.')
+        setError(t.errFailed)
       }
     } catch {
-      setError('Нет связи с сервером.')
+      setError(t.errNoConnection)
     }
     setBusy(false)
   }
@@ -70,12 +101,12 @@ export default function AuthGate({ children }) {
     <div className="auth-screen">
       <form className="auth-card" onSubmit={submit}>
         <div className="auth-logo">A</div>
-        <h1 className="auth-title">Дашборд владельца</h1>
-        <p className="auth-sub">Личный кабинет. Введите имя и пароль, чтобы войти.</p>
+        <h1 className="auth-title">{t.title}</h1>
+        <p className="auth-sub">{t.sub}</p>
         <input
           className="auth-input"
           type="text"
-          placeholder="Имя"
+          placeholder={t.name}
           autoCapitalize="off"
           autoCorrect="off"
           value={username}
@@ -85,15 +116,15 @@ export default function AuthGate({ children }) {
         <input
           className="auth-input"
           type="password"
-          placeholder="Пароль"
+          placeholder={t.password}
           value={password}
           onChange={e => setPassword(e.target.value)}
         />
         {error && <div className="auth-error">{error}</div>}
         <button className="auth-btn" type="submit" disabled={busy || !username.trim() || !password.trim()}>
-          {busy ? 'Проверяю…' : 'Войти'}
+          {busy ? t.checking : t.login}
         </button>
-        <p className="auth-guest">Хотите просто посмотреть? Войдите как <b>guest</b> / <b>123</b> — увидите демо без личных данных.</p>
+        <p className="auth-guest">{t.guestPre}<b>guest</b> / <b>123</b>{t.guestPost}</p>
       </form>
 
       <style>{`
