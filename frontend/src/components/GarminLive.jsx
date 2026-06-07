@@ -78,7 +78,7 @@ const ICON_HEART = (
 )
 
 // Метрики hero-карточки (показываем только заполненные)
-function heroMetrics(w, t) {
+function heroMetrics(w, t, trainingLabel) {
   const out = []
   if (w.distanceKm != null) out.push({ k: t.mDistance, v: w.distanceKm, u: t.uKm })
   if (w.durationMin != null) out.push({ k: t.mTime, v: w.durationMin, u: t.uMin })
@@ -90,7 +90,7 @@ function heroMetrics(w, t) {
   if (w.elevationGain != null) out.push({ k: t.mElevation, v: w.elevationGain, u: t.uM })
   if (w.cadence != null) out.push({ k: t.mCadence, v: w.cadence, u: t.uSpm })
   if (w.avgPower != null) out.push({ k: t.mPower, v: w.avgPower, u: t.uW })
-  if (w.trainingEffect != null) out.push({ k: t.mEffect, v: w.trainingEffect, u: w.trainingLabel || '', accent: 'var(--accent)' })
+  if (w.trainingEffect != null) out.push({ k: t.mEffect, v: w.trainingEffect, u: (trainingLabel ?? w.trainingLabel) || '', accent: 'var(--accent)' })
   return out
 }
 
@@ -142,6 +142,9 @@ export default function GarminLive() {
     }
   })
   const { lang } = useLang()
+  // Выбрать английский вариант поля (field+'En') при lang==='en', иначе оригинал.
+  // Реальные данные Garmin не содержат *En — всегда есть RU-фолбэк.
+  const pickL = (o, f) => (lang === 'en' && o && o[f + 'En']) ? o[f + 'En'] : (o ? o[f] : '')
   const months = MONTHS[lang] || MONTHS.ru
   const sportMap = SPORT_LABELS[lang] || SPORT_LABELS.ru
   const sportRu = s => sportLabel(s, sportMap, t.defaultWorkout)
@@ -248,14 +251,14 @@ export default function GarminLive() {
           style={{ '--hero-accent': accent }}>
           <div className="gl-hero-head">
             <div className="gl-hero-badge" style={{ color: accent, background: `color-mix(in srgb, ${accent} 16%, transparent)` }}>
-              {last.label}
+              {pickL(last, 'label')}
             </div>
             <span className="gl-hero-date muted">{fmtDate(last.date, months)} · {t.lastWorkout}</span>
             {last.id && <span className="gl-hero-cta" style={{ color: accent }}>{t.more}</span>}
           </div>
-          <h3 className="gl-hero-title">{last.title}</h3>
+          <h3 className="gl-hero-title">{pickL(last, 'title')}</h3>
           <div className="gl-hero-grid">
-            {heroMetrics(last, t).map(m => (
+            {heroMetrics(last, t, pickL(last, 'trainingLabel')).map(m => (
               <div key={m.k} className="gl-metric">
                 <span className="gl-metric-value" style={m.accent ? { color: m.accent } : undefined}>{m.v}</span>
                 <span className="gl-metric-unit muted">{m.u}</span>
@@ -287,7 +290,7 @@ export default function GarminLive() {
                 <div key={w.id} className="gl-prow">
                   <span className="gl-row-dot" style={{ background: c }} />
                   <div className="gl-row-main">
-                    <span className="gl-row-title">{w.title}</span>
+                    <span className="gl-row-title">{pickL(w, 'title')}</span>
                     <span className="gl-row-sub muted">
                       {fmtDate(w.date, months)} · {sportRu(w.sport)}
                       {w.durationMin ? ` · ${w.durationMin} ${t.minShort}` : ''}
@@ -327,8 +330,8 @@ export default function GarminLive() {
                   onClick={w.id ? () => setSelected(w) : undefined}>
                   <span className="gl-row-dot" style={{ background: c }} />
                   <div className="gl-row-main">
-                    <span className="gl-row-title">{w.title}</span>
-                    <span className="gl-row-sub muted">{fmtDate(w.date, months)} · {w.label}</span>
+                    <span className="gl-row-title">{pickL(w, 'title')}</span>
+                    <span className="gl-row-sub muted">{fmtDate(w.date, months)} · {pickL(w, 'label')}</span>
                   </div>
                   <div className="gl-row-stats">
                     {w.distanceKm != null && <span><b>{w.distanceKm}</b> {t.kmShort}</span>}

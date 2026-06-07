@@ -21,33 +21,33 @@ const demoWorkouts = () => {
   const k = (o) => dk(addDays(t, o))   // o<0 — дни назад
   return [
     {
-      id: 'demo-w1', type: 'running', label: 'Бег', title: 'Утренняя пробежка', date: k(-1),
+      id: 'demo-w1', type: 'running', label: 'Бег', labelEn: 'Run', title: 'Утренняя пробежка', titleEn: 'Morning run', date: k(-1),
       distanceKm: 10.4, durationMin: 53, pace: '5:06', avgHr: 142, maxHr: 161,
-      calories: 612, elevationGain: 74, cadence: 173, trainingEffect: 3.4, trainingLabel: 'аэробный'
+      calories: 612, elevationGain: 74, cadence: 173, trainingEffect: 3.4, trainingLabel: 'аэробный', trainingLabelEn: 'aerobic'
     },
     {
-      id: 'demo-w2', type: 'lap_swimming', label: 'Плавание', title: 'Бассейн · техника', date: k(-2),
+      id: 'demo-w2', type: 'lap_swimming', label: 'Плавание', labelEn: 'Swim', title: 'Бассейн · техника', titleEn: 'Pool · technique', date: k(-2),
       distanceKm: 2.0, durationMin: 42, avgHr: 128, maxHr: 148, calories: 430
     },
     {
-      id: 'demo-w3', type: 'cycling', label: 'Велосипед', title: 'Велозаезд по набережной', date: k(-4),
+      id: 'demo-w3', type: 'cycling', label: 'Велосипед', labelEn: 'Bike', title: 'Велозаезд по набережной', titleEn: 'Waterfront bike ride', date: k(-4),
       distanceKm: 42.6, durationMin: 88, speedKmh: 29.0, avgHr: 134, maxHr: 156,
-      calories: 980, elevationGain: 312, avgPower: 198, trainingEffect: 3.1, trainingLabel: 'аэробный'
+      calories: 980, elevationGain: 312, avgPower: 198, trainingEffect: 3.1, trainingLabel: 'аэробный', trainingLabelEn: 'aerobic'
     },
     {
-      id: 'demo-w4', type: 'running', label: 'Бег', title: 'Интервалы 6×800', date: k(-6),
+      id: 'demo-w4', type: 'running', label: 'Бег', labelEn: 'Run', title: 'Интервалы 6×800', titleEn: 'Intervals 6×800', date: k(-6),
       distanceKm: 8.1, durationMin: 41, pace: '5:04', avgHr: 158, maxHr: 182,
-      calories: 540, elevationGain: 38, cadence: 178, trainingEffect: 4.2, trainingLabel: 'анаэробный'
+      calories: 540, elevationGain: 38, cadence: 178, trainingEffect: 4.2, trainingLabel: 'анаэробный', trainingLabelEn: 'anaerobic'
     },
     {
-      id: 'demo-w5', type: 'cycling', label: 'Велосипед', title: 'Восстановительный велозаезд', date: k(-8),
+      id: 'demo-w5', type: 'cycling', label: 'Велосипед', labelEn: 'Bike', title: 'Восстановительный велозаезд', titleEn: 'Recovery bike ride', date: k(-8),
       distanceKm: 28.3, durationMin: 64, speedKmh: 26.5, avgHr: 118, maxHr: 138,
       calories: 620, elevationGain: 145, avgPower: 162
     },
     {
-      id: 'demo-w6', type: 'running', label: 'Бег', title: 'Длительная пробежка', date: k(-10),
+      id: 'demo-w6', type: 'running', label: 'Бег', labelEn: 'Run', title: 'Длительная пробежка', titleEn: 'Long run', date: k(-10),
       distanceKm: 18.2, durationMin: 99, pace: '5:26', avgHr: 138, maxHr: 154,
-      calories: 1080, elevationGain: 126, cadence: 169, trainingEffect: 3.8, trainingLabel: 'аэробный'
+      calories: 1080, elevationGain: 126, cadence: 169, trainingEffect: 3.8, trainingLabel: 'аэробный', trainingLabelEn: 'aerobic'
     }
   ]
 }
@@ -69,10 +69,10 @@ export function demoPlanned() {
   const t = mskNow()
   const k = (o) => dk(addDays(t, o))
   return [
-    { id: 'demo-p1', title: 'Темповый бег', date: k(0), sport: 'running', durationMin: 50, distanceKm: 9, time: '06:30' },
-    { id: 'demo-p2', title: 'Плавание · интервалы', date: k(1), sport: 'lap_swimming', durationMin: 45, distanceKm: 2 },
-    { id: 'demo-p3', title: 'Длинный велозаезд', date: k(2), sport: 'cycling', durationMin: 120, distanceKm: 55 },
-    { id: 'demo-p4', title: 'Лёгкая восстановительная пробежка', date: k(4), sport: 'running', durationMin: 35, distanceKm: 6 }
+    { id: 'demo-p1', title: 'Темповый бег', titleEn: 'Tempo run', date: k(0), sport: 'running', durationMin: 50, distanceKm: 9, time: '06:30' },
+    { id: 'demo-p2', title: 'Плавание · интервалы', titleEn: 'Swim · intervals', date: k(1), sport: 'lap_swimming', durationMin: 45, distanceKm: 2 },
+    { id: 'demo-p3', title: 'Длинный велозаезд', titleEn: 'Long bike ride', date: k(2), sport: 'cycling', durationMin: 120, distanceKm: 55 },
+    { id: 'demo-p4', title: 'Лёгкая восстановительная пробежка', titleEn: 'Easy recovery run', date: k(4), sport: 'running', durationMin: 35, distanceKm: 6 }
   ]
 }
 
@@ -80,21 +80,30 @@ const demoEvents = () => {
   const t = mskNow()
   const k = (o) => dk(addDays(t, o))
   return [
-    { type: 'meeting', title: 'Утренняя пробежка', date: k(0), start: '06:30', end: '07:15', who: 'Личное', priority: 3 },
-    { type: 'call', title: 'Созвон по проекту', date: k(0), start: '11:00', end: '11:30', who: 'Команда', priority: 2 },
-    { type: 'calendar', title: 'Обед с контактем', date: k(0), start: '13:30', end: '14:30', who: 'контакт', priority: 3 },
-    { type: 'meeting', title: 'Бассейн', date: k(1), start: '07:00', end: '08:00', who: 'Личное', priority: 3 },
-    { type: 'email', title: 'Отправить отчёт', date: k(1), start: '10:00', end: '10:30', who: '', priority: 1 },
-    { type: 'calendar', title: 'Велотренировка', date: k(2), start: '08:00', end: '09:30', who: 'Личное', priority: 3 }
+    { type: 'meeting', title: 'Утренняя пробежка', titleEn: 'Morning run', date: k(0), start: '06:30', end: '07:15', who: 'Личное', whoEn: 'Personal', priority: 3 },
+    { type: 'call', title: 'Созвон по проекту', titleEn: 'Project call', date: k(0), start: '11:00', end: '11:30', who: 'Команда', whoEn: 'Team', priority: 2 },
+    { type: 'calendar', title: 'Обед с контактем', titleEn: 'Lunch with Igor', date: k(0), start: '13:30', end: '14:30', who: 'контакт', whoEn: 'Igor', priority: 3 },
+    { type: 'meeting', title: 'Бассейн', titleEn: 'Pool', date: k(1), start: '07:00', end: '08:00', who: 'Личное', whoEn: 'Personal', priority: 3 },
+    { type: 'email', title: 'Отправить отчёт', titleEn: 'Send report', date: k(1), start: '10:00', end: '10:30', who: '', whoEn: '', priority: 1 },
+    { type: 'calendar', title: 'Велотренировка', titleEn: 'Bike workout', date: k(2), start: '08:00', end: '09:30', who: 'Личное', whoEn: 'Personal', priority: 3 }
   ]
 }
 
 const set = (key, val) => { try { localStorage.setItem(key, JSON.stringify(val)) } catch { /* ignore */ } }
 const has = (key) => { try { return !!localStorage.getItem(key) } catch { return false } }
 
+// Версия демо-данных. Меняй при изменении содержимого, чтобы вернувшиеся гости
+// получили обновлённый (теперь двуязычный) набор.
+const DEMO_VERSION = '2'
+
 // Заполнить localStorage демо-данными. force=true — перезаписать (свежий демо при входе).
+// Несовпадение версии (albert-demo-ver !== DEMO_VERSION) тоже считается force.
 export function seedGuestDemo({ force = false } = {}) {
-  if (force || !has('albert-whoop-live')) set('albert-whoop-live', demoWhoop())
-  if (force || !has('albert-garmin-live')) set('albert-garmin-live', demoGarmin())
-  if (force || !has('albert-events')) set('albert-events', demoEvents())
+  let ver = null
+  try { ver = localStorage.getItem('albert-demo-ver') } catch { /* ignore */ }
+  const overwrite = force || ver !== DEMO_VERSION
+  if (overwrite || !has('albert-whoop-live')) set('albert-whoop-live', demoWhoop())
+  if (overwrite || !has('albert-garmin-live')) set('albert-garmin-live', demoGarmin())
+  if (overwrite || !has('albert-events')) set('albert-events', demoEvents())
+  try { localStorage.setItem('albert-demo-ver', DEMO_VERSION) } catch { /* ignore */ }
 }

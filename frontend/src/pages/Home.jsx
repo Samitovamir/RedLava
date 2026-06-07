@@ -7,7 +7,7 @@ import DaySummary from '../components/DaySummary.jsx'
 import HealthBrief from '../components/HealthBrief.jsx'
 import { getQuoteOfDay } from '../utils/quotes.js'
 import { useEvents } from '../context/EventsContext.jsx'
-import { useT } from '../context/LanguageContext.jsx'
+import { useT, useLang } from '../context/LanguageContext.jsx'
 import { mskNow } from '../utils/time.js'
 
 const FALL_STEP = 0.028          // задержка между падением соседних символов/единиц (сек)
@@ -152,6 +152,9 @@ export default function Home() {
     }
   }
   const navigate = useNavigate()
+  const { lang } = useLang()
+  // Английский вариант текста демо-данных, если он есть; иначе исходный (русский)
+  const pick = (o, f) => (lang === 'en' && o && o[f + 'En']) ? o[f + 'En'] : (o ? o[f] : '')
   const quote = getQuoteOfDay()
   const { events } = useEvents()
 
@@ -162,10 +165,10 @@ export default function Home() {
   const nextEv = nextEvent(events)
   const cards = [
     nextEv
-      ? { label: t.nextEvent, value: nextEv.title, sub: `${humanDate(nextEv.date, t)} · ${nextEv.start}`, color: 'var(--accent)', scrollTo: true, icon: ICON_CAL }
+      ? { label: t.nextEvent, value: pick(nextEv, 'title'), sub: `${humanDate(nextEv.date, t)} · ${nextEv.start}`, color: 'var(--accent)', scrollTo: true, icon: ICON_CAL }
       : { label: t.nextEvent, value: t.noEvents, sub: events.length ? t.soon : t.connectCalendar, color: 'var(--accent)', link: events.length ? undefined : '/connections', scrollTo: !!events.length, icon: ICON_CAL },
     lastW
-      ? { label: t.lastWorkout, value: lastW.label, sub: [lastW.distanceKm ? `${lastW.distanceKm} ${t.km}` : null, lastW.durationMin ? `${lastW.durationMin} ${t.min}` : null, lastW.pace ? `${lastW.pace}${t.perKm}` : null].filter(Boolean).join(' · ') || humanDate(lastW.date, t), color: 'var(--orange)', link: '/sport', icon: ICON_RUN }
+      ? { label: t.lastWorkout, value: pick(lastW, 'label'), sub: [lastW.distanceKm ? `${lastW.distanceKm} ${t.km}` : null, lastW.durationMin ? `${lastW.durationMin} ${t.min}` : null, lastW.pace ? `${lastW.pace}${t.perKm}` : null].filter(Boolean).join(' · ') || humanDate(lastW.date, t), color: 'var(--orange)', link: '/sport', icon: ICON_RUN }
       : { label: t.lastWorkout, value: '—', sub: t.connectGarmin, color: 'var(--orange)', link: '/connections', icon: ICON_RUN },
     whoop
       ? { label: t.recoverySleep, combined: true, recovery: whoop.recovery, sleepH: whoop.sleep.hoursSlept, eff: whoop.sleep.efficiency, color: 'var(--green)', link: '/health', icon: ICON_WHOOP }

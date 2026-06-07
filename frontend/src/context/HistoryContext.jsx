@@ -3,11 +3,29 @@ import { INITIAL_HISTORY, nowStamp, buildGuestHistory } from '../utils/history.j
 import { isGuest } from '../api/authFetch.js'
 
 const STORAGE_KEY = 'albert-history'
+// Версия демо-журнала гостя. Подними при изменении buildGuestHistory(),
+// чтобы у вернувшихся гостей устаревший демо-журнал заменился свежим
+// (например, чтобы появились английские поля titleEn/detailEn).
+const GUEST_HIST_VER = '2'
+const GUEST_HIST_VER_KEY = 'albert-hist-demo-ver'
 const HistoryContext = createContext(null)
 
 export function HistoryProvider({ children }) {
   const [entries, setEntries] = useState(() => {
     try {
+      // Гость: если версия демо-журнала устарела — пересеять свежим демо.
+      // Только для гостей — журнал реального владельца не трогаем.
+      if (isGuest()) {
+        const storedVer = localStorage.getItem(GUEST_HIST_VER_KEY)
+        if (storedVer !== GUEST_HIST_VER) {
+          const fresh = buildGuestHistory()
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(fresh))
+            localStorage.setItem(GUEST_HIST_VER_KEY, GUEST_HIST_VER)
+          } catch { /* ignore */ }
+          return fresh
+        }
+      }
       const saved = localStorage.getItem(STORAGE_KEY)
       const parsed = saved ? JSON.parse(saved) : null
       // Гость без записей — наполняем демо-журналом, чтобы раздел не был пустым.

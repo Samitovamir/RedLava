@@ -264,6 +264,8 @@ function compactDay(evs, direction) {
 
 export default function DaySchedule({ extended = false }) {
   const { lang } = useLang()
+  // Английский вариант текста демо-событий, если он есть; иначе исходный (русский)
+  const pick = (o, f) => (lang === 'en' && o && o[f + 'En']) ? o[f + 'En'] : (o ? o[f] : '')
   const t = useT({
     ru: {
       day: 'День', week: 'Неделя', month: 'Месяц',
@@ -816,12 +818,12 @@ export default function DaySchedule({ extended = false }) {
                           title={t.priorityTip(e.priority, lang === 'en' ? PRIORITY_MAP[e.priority]?.labelEn : PRIORITY_MAP[e.priority]?.label)}
                         >{PRIORITY_MAP[e.priority]?.emoji}</span>
                       )}
-                      {e.title}
+                      {pick(e, 'title')}
                       {e.repeat && e.repeat !== 'none' && (
                         <svg className="ds-repeat-ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-label={repeatLabel(e.repeat, e.customDays, lang)}><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
                       )}
                     </span>
-                    <span className="ds-event-meta">{e.start} – {e.end} <span className="ds-dot">•</span> {e.who}</span>
+                    <span className="ds-event-meta">{e.start} – {e.end} <span className="ds-dot">•</span> {pick(e, 'who')}</span>
                   </div>
                   <div className="ds-menu-wrap">
                     <button className="ds-event-menu" onClick={() => toggleMenu(`ev-${i}`)}>
@@ -851,9 +853,9 @@ export default function DaySchedule({ extended = false }) {
           {dayEvents.map((e, i) => (
             <div key={i} className="ds-col-card" style={{ '--ev-color': COLORS[e.type] }}>
               <span className="ds-event-icon" style={{ background: COLORS[e.type] }}>{ICONS[e.type]}</span>
-              <span className="ds-event-title">{e.title}</span>
+              <span className="ds-event-title">{pick(e, 'title')}</span>
               <span className="ds-event-meta">{e.start} – {e.end}</span>
-              <span className="ds-event-meta">{e.who}</span>
+              <span className="ds-event-meta">{pick(e, 'who')}</span>
             </div>
           ))}
         </div>
@@ -879,7 +881,7 @@ export default function DaySchedule({ extended = false }) {
                   {evs.map((e, k) => (
                     <button key={k} className="ds-wk-ev" style={{ '--ev-color': COLORS[e.type] }} onClick={() => startEdit(e)}>
                       <span className="ds-wk-ev-time">{e.start}</span>
-                      <span className="ds-wk-ev-title">{e.priority && <span className="ds-pri-emoji">{PRIORITY_MAP[e.priority]?.emoji}</span>}{e.title}</span>
+                      <span className="ds-wk-ev-title">{e.priority && <span className="ds-pri-emoji">{PRIORITY_MAP[e.priority]?.emoji}</span>}{pick(e, 'title')}</span>
                     </button>
                   ))}
                 </div>
