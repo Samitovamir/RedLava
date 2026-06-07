@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import { clearToken, isGuest } from '../api/authFetch'
 
 /*
   Страница «Подключения».
@@ -100,6 +101,14 @@ export default function Connections() {
         if (k.startsWith('albert-') || k.startsWith('ai-sum')) localStorage.removeItem(k)
       })
     } catch { /* ignore */ }
+    window.location.reload()
+  }
+
+  const guest = isGuest()
+
+  // Сменить аккаунт: чистим токен и роль, перезагружаем — AuthGate покажет экран входа
+  function switchAccount() {
+    clearToken()
     window.location.reload()
   }
 
@@ -324,6 +333,38 @@ export default function Connections() {
         Все сервисы подключаются по-настоящему: данные появятся в разделах сразу после подключения.
       </p>
 
+      <motion.div
+        className="card conn-account-card"
+        initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: 0.1 }}
+      >
+        <div className="conn-row">
+          <span className="conn-icon" style={{ background: 'rgba(129,140,248,0.13)', color: 'var(--accent)' }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+            </svg>
+          </span>
+          <div className="conn-info">
+            <div className="conn-name">
+              {guest ? 'Гостевой вход' : 'Аккаунт владельца'}
+              {guest
+                ? <span className="conn-soon">демо</span>
+                : <span className="conn-badge on">Основной</span>}
+            </div>
+            <div className="conn-desc muted">
+              {guest
+                ? 'Сейчас вы в гостевом режиме — показаны демо-данные. Войдите в основной аккаунт, чтобы видеть настоящие данные владельца.'
+                : 'Вы вошли в основной аккаунт с реальными данными. Можно выйти и войти под другим аккаунтом.'}
+            </div>
+          </div>
+          <div className="conn-action">
+            <button className={`conn-btn ${guest ? 'primary' : 'ghost'}`} onClick={switchAccount}>
+              {guest ? 'Войти в основной аккаунт' : 'Сменить аккаунт'}
+            </button>
+          </div>
+        </div>
+      </motion.div>
+
       <div className="conn-reset">
         {!resetOpen ? (
           <button className="conn-reset-btn" onClick={() => { setResetOpen(true); setResetErr('') }}>
@@ -384,6 +425,7 @@ export default function Connections() {
         .conn-form-foot { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
         .conn-note { font-size: 12.5px; line-height: 1.4; flex: 1; min-width: 200px; }
         .conn-foot { font-size: 13px; margin-top: 4px; }
+        .conn-account-card { padding: 18px 20px; }
         .conn-reset { margin-top: 8px; padding-top: 18px; border-top: 1px solid var(--border); }
         .conn-reset-btn {
           background: transparent; border: 1px solid var(--border); color: var(--muted-foreground);

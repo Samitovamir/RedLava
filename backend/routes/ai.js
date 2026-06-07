@@ -1,7 +1,33 @@
 import { Router } from 'express'
 import Anthropic from '@anthropic-ai/sdk'
+import { kvGet, kvSet } from '../store.js'
 
 const router = Router()
+
+// --- Дневной лимит ИИ для гостей (демо-режим) ---
+// Гость может попробовать ассистента, но не «писать сочинения». владелец — без этого лимита.
+const GUEST_DAILY_LIMIT = Number(process.env.AI_GUEST_DAILY_LIMIT) || 15
+
+// Текущая дата по Москве (YYYY-MM-DD) — счётчик сбрасывается каждый день в полночь МСК.
+function mskDateKey() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Moscow', year: 'numeric', month: '2-digit', day: '2-digit'
+  }).format(new Date())
+}
+
+// Проверяет и инкрементирует дневной счётчик гостя.
+// Возвращает true, если лимит на сегодня уже исчерпан (запрос НЕ нужно выполнять).
+// Для не-гостей (albert) всегда false.
+async function guestOverDailyLimit(req) {
+  if (req.role !== 'guest') return false
+  const key = `ai:guest:limit:${mskDateKey()}`
+  const used = Number(await kvGet(key)) || 0
+  if (used >= GUEST_DAILY_LIMIT) return true
+  await kvSet(key, used + 1)
+  return false
+}
+
+const GUEST_LIMIT_MSG = 'Дневной лимит ИИ в демо-режиме исчерпан. Зайдите завтра или войдите в основной аккаунт.'
 
 function getClient() {
   return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -108,6 +134,7 @@ const STYLE_RULE =
 router.post('/chat', async (req, res) => {
   const { message, context, history, snapshot } = req.body
   if (!message) return res.status(400).json({ error: 'message required' })
+  if (await guestOverDailyLimit(req)) return res.status(200).json(softBlock(GUEST_LIMIT_MSG))
   if (!process.env.ANTHROPIC_API_KEY) {
     return res.json({ reply: 'Добавьте ANTHROPIC_API_KEY в .env файл для работы ИИ.' })
   }
@@ -222,6 +249,7 @@ const ROUTE_TOOL = {
 router.post('/agent', async (req, res) => {
   const { message, snapshot, history, context } = req.body
   if (!message) return res.status(400).json({ error: 'message required' })
+  if (await guestOverDailyLimit(req)) return res.status(200).json(softBlock(GUEST_LIMIT_MSG))
   if (!process.env.ANTHROPIC_API_KEY) {
     return res.json({ reply: 'Добавьте ANTHROPIC_API_KEY в .env — и я смогу реально выполнять задачи (создавать события и т.д.).', actions: [] })
   }
@@ -352,6 +380,7 @@ const ARTICLE_TOOL = [{
 router.post('/read', async (req, res) => {
   const { message, context, history, snapshot } = req.body
   if (!message) return res.status(400).json({ error: 'message required' })
+  if (await guestOverDailyLimit(req)) return res.status(200).json(softBlock(GUEST_LIMIT_MSG))
   if (!process.env.ANTHROPIC_API_KEY) {
     return res.json({ text: 'Добавьте ANTHROPIC_API_KEY в .env, и я подробно всё расскажу с картинками.', images: [] })
   }

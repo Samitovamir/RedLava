@@ -106,8 +106,8 @@ export default function History() {
             <div className="hist-day">{dayLabel(date)}</div>
             <div className="hist-items">
               {items.map((a, i) => {
-                const t = ACTION_TYPES[a.type]
-                const st = STATUS_INFO[a.status]
+                const t = ACTION_TYPES[a.type] || ACTION_TYPES.task
+                const st = STATUS_INFO[a.status] || STATUS_INFO.done
                 return (
                   <motion.div key={a.id} className="hist-item"
                     initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}

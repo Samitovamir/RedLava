@@ -47,14 +47,57 @@ const _DEMO_HISTORY = [
 ]
 
 const MONTHS = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
-const TODAY = '2026-06-04'
+
+// Сегодняшняя дата в формате 'YYYY-MM-DD' (считается каждый раз, не «замораживается»)
+function todayStr() {
+  const d = new Date()
+  const p = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
+
+// Демо-журнал для гостя. Даты считаются от сегодняшнего дня, чтобы
+// записи всегда выглядели свежими («Сегодня» / «Вчера» / последние дни).
+// daysAgo — сколько дней назад, time — 'HH:MM'.
+export function buildGuestHistory() {
+  const stamp = (daysAgo, time) => {
+    const d = new Date()
+    d.setDate(d.getDate() - daysAgo)
+    const p = n => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${time}`
+  }
+  const raw = [
+    // Сегодня
+    { actor: 'ai',   type: 'event',    status: 'done',    daysAgo: 0, time: '09:24', title: 'ИИ создал событие «Звонок с врачом»', detail: 'Сегодня 15:00–15:30, добавлено в расписание.' },
+    { actor: 'ai',   type: 'email',    status: 'done',    daysAgo: 0, time: '09:40', title: 'ИИ подготовил письмо Ивану',          detail: 'Ответ по встрече в четверг — предложил время 14:00.' },
+    { actor: 'user', type: 'workout',  status: 'done',    daysAgo: 0, time: '07:40', title: 'Вы отметили тренировку «Бег 8.2 км»',  detail: '42 мин, средний пульс 133. Данные из Garmin.' },
+    { actor: 'ai',   type: 'task',     status: 'pending', daysAgo: 0, time: '11:35', title: 'ИИ готовит сводку по анализам',         detail: 'Жду загрузки последнего файла с гормонами.' },
+    // Вчера
+    { actor: 'ai',   type: 'reminder', status: 'done',    daysAgo: 1, time: '20:00', title: 'ИИ напомнил о приёме лекарств',        detail: 'Ежедневное напоминание в 20:00.' },
+    { actor: 'user', type: 'event',    status: 'done',    daysAgo: 1, time: '18:10', title: 'Вы перенесли тренировку',              detail: 'С 18:00 на 19:30 вручную.' },
+    { actor: 'ai',   type: 'search',   status: 'done',    daysAgo: 1, time: '13:15', title: 'ИИ нашёл ресторан на годовщину',       detail: '3 варианта рядом, забронировал «Веранду» на 19:00.' },
+    // Позавчера
+    { actor: 'ai',   type: 'task',     status: 'done',    daysAgo: 2, time: '10:05', title: 'ИИ запомнил факт о вас',               detail: 'Кофе пьёте только до обеда — учту при планировании дня.' },
+    { actor: 'user', type: 'workout',  status: 'done',    daysAgo: 2, time: '19:20', title: 'Вы отметили силовую тренировку',       detail: '55 мин, зал. Хорошее восстановление после.' },
+    { actor: 'ai',   type: 'email',    status: 'failed',  daysAgo: 3, time: '19:50', title: 'ИИ не смог отправить письмо риелтору', detail: 'Не удалось приложить документ — нужно прикрепить файл вручную.' }
+  ]
+  return raw.map((e, i) => ({
+    id: `guest-${i}`,
+    actor: e.actor,
+    type: e.type,
+    status: e.status,
+    datetime: stamp(e.daysAgo, e.time),
+    title: e.title,
+    detail: e.detail
+  }))
+}
 
 // Метка группы по дате: Сегодня / Вчера / 1 июня
 export function dayLabel(dateStr) {
-  if (dateStr === TODAY) return 'Сегодня'
+  const today = todayStr()
+  if (dateStr === today) return 'Сегодня'
   const d = new Date(dateStr + 'T00:00:00')
-  const today = new Date(TODAY + 'T00:00:00')
-  const diff = Math.round((today - d) / 86400000)
+  const t = new Date(today + 'T00:00:00')
+  const diff = Math.round((t - d) / 86400000)
   if (diff === 1) return 'Вчера'
   return `${d.getDate()} ${MONTHS[d.getMonth()]}`
 }

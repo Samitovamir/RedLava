@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
-import { INITIAL_HISTORY, nowStamp } from '../utils/history.js'
+import { INITIAL_HISTORY, nowStamp, buildGuestHistory } from '../utils/history.js'
+import { isGuest } from '../api/authFetch.js'
 
 const STORAGE_KEY = 'albert-history'
 const HistoryContext = createContext(null)
@@ -8,9 +9,12 @@ export function HistoryProvider({ children }) {
   const [entries, setEntries] = useState(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY)
-      return saved ? JSON.parse(saved) : INITIAL_HISTORY
+      const parsed = saved ? JSON.parse(saved) : null
+      // Гость без записей — наполняем демо-журналом, чтобы раздел не был пустым.
+      if (Array.isArray(parsed) && parsed.length) return parsed
+      return isGuest() ? buildGuestHistory() : INITIAL_HISTORY
     } catch {
-      return INITIAL_HISTORY
+      return isGuest() ? buildGuestHistory() : INITIAL_HISTORY
     }
   })
 

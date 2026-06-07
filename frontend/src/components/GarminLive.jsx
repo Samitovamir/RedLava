@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import WorkoutModal from './WorkoutModal.jsx'
 import { useEvents } from '../context/EventsContext.jsx'
+import { isGuest } from '../api/authFetch.js'
+import { demoPlanned } from '../utils/demo.js'
 
 // Спорт-тип Garmin → по-русски (для плановых тренировок)
 const SPORT_RU = {
@@ -125,8 +127,10 @@ export default function GarminLive() {
     }).catch(() => {})
   }, [])
 
-  // Плановые тренировки: грузим и СРАЗУ добавляем те, у которых уже есть время
+  // Плановые тренировки: грузим и СРАЗУ добавляем те, у которых уже есть время.
+  // Гостю бэкенд планы не отдаёт — показываем демо-планы.
   useEffect(() => {
+    if (isGuest()) { setPlanned(demoPlanned()); return }
     fetch('/api/garmin/planned').then(r => r.json()).then(d => {
       const list = d?.planned || []
       setPlanned(list)

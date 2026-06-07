@@ -2,11 +2,67 @@ import { useState, useRef, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   INITIAL_REPORTS, buildHistory, markerStatus, STATUS_INFO,
-  rangeText, barGeom, fmtDate, LABS_STORE_KEY, buildGroups
+  rangeText, barGeom, fmtDate, LABS_STORE_KEY, LABS_STORE_VERSION, buildGroups
 } from '../utils/labs.js'
 import MicButton from './MicButton.jsx'
+import { isGuest } from '../api/authFetch.js'
 
 const STORE_KEY = LABS_STORE_KEY
+
+// Демо-данные для гостя: реальные результаты заблокированы на сервере, поэтому
+// показываем правдоподобный пример (несколько отчётов в разные даты + готовую
+// расшифровку), чтобы функциональность была видна. Имена показателей — строго
+// из справочника labs.js, чтобы нормы и статусы считались правильно. Часть значений
+// намеренно вне нормы (Холестерин/ЛПНП/СРБ), остальные — в пределах нормы.
+const GUEST_DEMO_REPORTS = [
+  {
+    id: 'demo-2026-04-12', date: '2026-04-12', fileName: 'ОАК и биохимия.pdf',
+    values: {
+      'Гемоглобин': 152,
+      'Эритроциты': 5.0,
+      'Лейкоциты': 6.1,
+      'Тромбоциты': 248,
+      'Глюкоза': 5.2,
+      'Холестерин общий': 5.8,        // повышен (норма до 5.2)
+      'ЛПНП («плохой»)': 3.6,         // повышен (норма до 3.0)
+      'ЛПВП («хороший»)': 1.2,
+      'Креатинин': 92,
+      'АЛТ': 28,
+      'АСТ': 25
+    }
+  },
+  {
+    id: 'demo-2026-05-08', date: '2026-05-08', fileName: 'Гормоны и витамины.pdf',
+    values: {
+      'ТТГ': 2.1,
+      'Тестостерон': 18.4,
+      'Витамин D': 24,               // понижен (норма от 30)
+      'Витамин B12': 410,
+      'СРБ': 7.2                      // повышен (норма до 5.0)
+    }
+  },
+  {
+    id: 'demo-2026-05-29', date: '2026-05-29', fileName: 'Липидограмма (пересдача).pdf',
+    values: {
+      'Холестерин общий': 5.5,        // всё ещё повышен, но динамика вниз
+      'ЛПНП («плохой»)': 3.3,
+      'ЛПВП («хороший»)': 1.3,
+      'Триглицериды': 1.5,
+      'Глюкоза': 5.0,
+      'СРБ': 4.1                      // вернулся в норму
+    }
+  }
+]
+
+const GUEST_DEMO_DECODE =
+  'В целом картина спокойная: общий анализ крови, печёночные пробы (АЛТ, АСТ), ' +
+  'почки (креатинин), сахар и гормоны щитовидной железы — в пределах нормы. ' +
+  'Немного выше нормы общий холестерин и «плохой» холестерин (ЛПНП), а ещё ' +
+  'снижен витамин D — это частая история, особенно к концу зимы. Маркер ' +
+  'воспаления СРБ в апреле был слегка повышен, но в последней пересдаче уже ' +
+  'пришёл в норму — хороший знак. По образу жизни помогут больше овощей и рыбы, ' +
+  'меньше жирного и сладкого, регулярная активность и приём витамина D. ' +
+  'Это не диагноз: при сохраняющихся отклонениях лучше показать анализы врачу.'
 
 // Мини-тренд значения по истории
 function MiniSpark({ points, color }) {
@@ -29,14 +85,25 @@ export default function LabResults() {
     try {
       // Старые демо-данные уже вычищены централизованно при импорте labs.js (по версии).
       const saved = localStorage.getItem(STORE_KEY)
-      if (saved) return JSON.parse(saved)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed) && parsed.length) return parsed
+      }
+      // Гость: реальные анализы заблокированы на сервере — показываем демо-пример,
+      // чтобы функциональность (история, нормы, отклонения, расшифровка) была видна.
+      if (isGuest()) {
+        localStorage.setItem(STORE_KEY, JSON.stringify(GUEST_DEMO_REPORTS))
+        localStorage.setItem('albert-labs-ver', LABS_STORE_VERSION)
+        return GUEST_DEMO_REPORTS
+      }
     } catch { /* ignore */ }
     return INITIAL_REPORTS
   })
   const [dragOver, setDragOver] = useState(false)
-  const [stage, setStage] = useState('idle')   // idle | analyzing | done
+  // Гостю сразу показываем готовую демо-расшифровку (реальный /api/labs/parse заблокирован)
+  const [stage, setStage] = useState(() => (isGuest() ? 'done' : 'idle'))   // idle | analyzing | done
   const [busyName, setBusyName] = useState(null)
-  const [aiText, setAiText] = useState('')
+  const [aiText, setAiText] = useState(() => (isGuest() ? GUEST_DEMO_DECODE : ''))
   const fileInput = useRef(null)
 
   // Чат по анализам
