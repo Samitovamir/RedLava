@@ -23,6 +23,20 @@ export const setRole = (r) => {
 }
 export const isGuest = () => getRole() === 'guest'
 
+// Постоянный идентификатор устройства — чтобы дневной лимит ИИ для гостей считался
+// ПО УСТРОЙСТВУ, а не общим на всех гостей. Создаётся один раз и хранится в браузере.
+const DEVICE_KEY = 'albert-device'
+export const getDeviceId = () => {
+  try {
+    let id = localStorage.getItem(DEVICE_KEY)
+    if (!id) {
+      id = (crypto?.randomUUID?.() || (Date.now().toString(36) + Math.random().toString(36).slice(2)))
+      localStorage.setItem(DEVICE_KEY, id)
+    }
+    return id
+  } catch { return 'nodevice' }
+}
+
 let installed = false
 export function installAuthFetch() {
   if (installed || typeof window === 'undefined') return
@@ -35,6 +49,7 @@ export function installAuthFetch() {
     const headers = new Headers(init.headers || (typeof input !== 'string' && input.headers) || {})
     const token = getToken()
     if (token) headers.set('Authorization', 'Bearer ' + token)
+    headers.set('X-Device-Id', getDeviceId())
 
     const res = await orig(input, { ...init, headers })
     // Токен протух / неверный — кроме самих эндпоинтов входа

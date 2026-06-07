@@ -15,12 +15,21 @@ function mskDateKey() {
   }).format(new Date())
 }
 
-// Проверяет и инкрементирует дневной счётчик гостя.
+// Идентификатор устройства гостя: чтобы лимит был ПО УСТРОЙСТВУ, а не общий на всех.
+// Берём заголовок X-Device-Id (его шлёт фронт), фолбэк — IP.
+function guestDeviceId(req) {
+  const raw = String(req.headers['x-device-id'] || '').trim().replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64)
+  if (raw) return raw
+  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip || 'noip'
+  return 'ip-' + ip.replace(/[^a-zA-Z0-9_.:-]/g, '').slice(0, 45)
+}
+
+// Проверяет и инкрементирует дневной счётчик гостя ДЛЯ ЕГО УСТРОЙСТВА.
 // Возвращает true, если лимит на сегодня уже исчерпан (запрос НЕ нужно выполнять).
 // Для не-гостей (albert) всегда false.
 async function guestOverDailyLimit(req) {
   if (req.role !== 'guest') return false
-  const key = `ai:guest:limit:${mskDateKey()}`
+  const key = `ai:guest:limit:${guestDeviceId(req)}:${mskDateKey()}`
   const used = Number(await kvGet(key)) || 0
   if (used >= GUEST_DAILY_LIMIT) return true
   await kvSet(key, used + 1)
