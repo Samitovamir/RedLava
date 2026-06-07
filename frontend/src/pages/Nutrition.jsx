@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import MicButton from '../components/MicButton.jsx'
 import {
-  loadProfile, saveProfile, computeTarget, ACTIVITY_LEVELS, GOALS,
+  loadProfile, saveProfile, computeTarget, GOALS,
   MEALS, MEAL_KEYS, mealTarget,
   loadPrefs, savePrefs, DEFAULT_PREFS, CUISINES, rememberDish,
   loadPlan, savePlan, setPlanMeal, clearPlanMeal, rateMeal, weekDays, dayPlanned, pendingRating,
@@ -64,7 +64,7 @@ export default function Nutrition() {
       calaiReading: 'Читаю скрин…', calaiBtn: '📷 Внести из CalAI',
       quickAddTitle: 'ккал',
       // Подсказка цели
-      bmrHint: 'Обмен покоя ~', tdeeHint: ' ккал · обычная активность ~', goalHint: ' ккал · цель: ',
+      bmrHint: 'Обмен покоя ~', tdeeHint: ' ккал · быт без спорта ~', goalHint: ' ккал · цель: ',
       // Профиль
       fWeight: 'Вес, кг', fHeight: 'Рост, см', fAge: 'Возраст', fSex: 'Пол',
       male: 'Мужской', female: 'Женский',
@@ -163,7 +163,7 @@ export default function Nutrition() {
       fromCalai: ' · from CalAI', resetDay: 'reset', resetDayTitle: 'Reset the day’s tally',
       calaiReading: 'Reading screenshot…', calaiBtn: '📷 Import from CalAI',
       quickAddTitle: 'kcal',
-      bmrHint: 'Resting metabolism ~', tdeeHint: ' kcal · normal activity ~', goalHint: ' kcal · goal: ',
+      bmrHint: 'Resting metabolism ~', tdeeHint: ' kcal · daily living ~', goalHint: ' kcal · goal: ',
       fWeight: 'Weight, kg', fHeight: 'Height, cm', fAge: 'Age', fSex: 'Sex',
       male: 'Male', female: 'Female',
       activity: 'Activity', goal: 'Goal',
@@ -303,7 +303,7 @@ export default function Nutrition() {
 
   // Динамическая цель на выбранный день: база + тренировки + восстановление + перенос со вчера
   const isToday = selectedDay === mskDateKey()
-  const burned = workoutKcal(garmin, selectedDay)
+  const burned = workoutKcal(garmin, selectedDay, base.bmr)
   const recovery = isToday ? (whoop?.recovery ?? null) : null
   const carry = carryFromYesterday(plan, selectedDay, base.kcal)
   const target = dynamicTarget(base, profile, { burned, hasGarmin: !!garmin, recovery, carry })
@@ -586,12 +586,10 @@ export default function Nutrition() {
         {/* Из чего сложилась цель */}
         <div className="nu-breakdown">
           <span className="nu-bd-chip">{t.bdBase} {target.base}</span>
-          {target.trainDelta !== 0 && (
-            <span className={`nu-bd-chip ${target.trainDelta > 0 ? 'plus' : 'minus'}`}>
-              🏃 {sgn(target.trainDelta)} · {burned > 0 ? `${t.bdTraining} ${burned} ${t.kcal}` : t.bdRestDay}
-            </span>
+          {target.trainDelta > 0 && (
+            <span className="nu-bd-chip plus">🏃 {sgn(target.trainDelta)} · {t.bdTraining}</span>
           )}
-          {target.trainDelta === 0 && burned > 0 && <span className="nu-bd-chip">🏃 {t.bdTraining} {burned} {t.kcal}</span>}
+          {garmin && target.trainDelta === 0 && <span className="nu-bd-chip">🏃 {t.bdRestDay}</span>}
           {target.recDelta !== 0 && <span className="nu-bd-chip minus">💤 {sgn(target.recDelta)} {t.bdRecovery}</span>}
           {target.carryDelta !== 0 && <span className={`nu-bd-chip ${target.carryDelta > 0 ? 'plus' : 'minus'}`}>↩ {sgn(target.carryDelta)} {t.bdCarry}</span>}
           {!garmin && <span className="nu-bd-chip muted-chip">{t.bdNoGarmin}</span>}
@@ -626,7 +624,7 @@ export default function Nutrition() {
         </div>
 
         <div className="nu-target-hint muted">
-          {t.bmrHint}{base.bmr}{t.tdeeHint}{base.tdee}{t.goalHint}{(() => { const gl = GOALS.find(g => g.key === profile.goal)?.label; return (t.goals[gl] || gl || '').toLowerCase() })()}
+          {t.bmrHint}{base.bmr}{t.tdeeHint}{base.neat}{t.goalHint}{(() => { const gl = GOALS.find(g => g.key === profile.goal)?.label; return (t.goals[gl] || gl || '').toLowerCase() })()}
           {target.recNote ? ` · ${target.recNote}` : ''}
         </div>
         <AnimatePresence>
@@ -643,15 +641,6 @@ export default function Nutrition() {
                   <select value={profile.sex} onChange={e => updateProfile('sex', e.target.value)}>
                     <option value="male">{t.male}</option><option value="female">{t.female}</option>
                   </select></label>
-              </div>
-              <div className="nu-seg-row">
-                <span className="nu-seg-lbl muted">{t.activity}</span>
-                <div className="nu-seg">
-                  {ACTIVITY_LEVELS.map(a => (
-                    <button key={a.key} className={`nu-seg-btn ${profile.activity === a.key ? 'active' : ''}`}
-                      onClick={() => updateProfile('activity', a.key)} title={a.hint}>{t.activities[a.label] || a.label}</button>
-                  ))}
-                </div>
               </div>
               <div className="nu-seg-row">
                 <span className="nu-seg-lbl muted">{t.goal}</span>

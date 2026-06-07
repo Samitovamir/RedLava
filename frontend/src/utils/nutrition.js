@@ -8,19 +8,16 @@ export const SHOPPING_KEY = 'albert-shopping-2'   // v2: копим в базо�
 export const TASTE_KEY = 'albert-taste'
 export const PLAN_KEY = 'albert-meal-plan'
 
-// Профиль по умолчанию (триатлет; реальные цифры владелец поправит)
+// Профиль по умолчанию (реальные цифры владелец поправит).
+// Уровень активности больше не выбирается: тренировки берём из Garmin (реальный расход).
 export const DEFAULT_PROFILE = {
   weight: 75, height: 178, age: 52, sex: 'male',
-  activity: 'athlete', goal: 'maintain'
+  goal: 'lose'
 }
 
-export const ACTIVITY_LEVELS = [
-  { key: 'low', label: 'Низкая', mult: 1.2, hint: 'почти без движения' },
-  { key: 'light', label: 'Лёгкая', mult: 1.375, hint: 'лёгкие тренировки 1–3/нед' },
-  { key: 'moderate', label: 'Средняя', mult: 1.55, hint: '3–5 тренировок/нед' },
-  { key: 'high', label: 'Высокая', mult: 1.725, hint: '6–7 тренировок/нед' },
-  { key: 'athlete', label: 'Спортсмен', mult: 1.9, hint: 'дважды в день / триатлон' }
-]
+// Множитель повседневной активности (быт без спорта): обмен покоя × NEAT.
+// Сами тренировки НЕ зашиты сюда — они приходят отдельно из Garmin (реальные калории).
+const NEAT_MULT = 1.35
 
 export const GOALS = [
   { key: 'lose', label: 'Снизить вес', delta: -400 },
@@ -46,15 +43,15 @@ export function computeTarget(profile) {
   const age = Math.min(100, Math.max(14, +profile.age || 40))
   const sex = profile.sex
   const bmr = mifflinBMR({ weight, height, age, sex })
-  const lvl = ACTIVITY_LEVELS.find(a => a.key === profile.activity) || ACTIVITY_LEVELS[2]
   const goal = GOALS.find(g => g.key === profile.goal) || GOALS[1]
-  const tdee = bmr * lvl.mult
-  const kcal = Math.round((tdee + goal.delta) / 10) * 10
+  // База = обмен покоя × быт (NEAT), БЕЗ спорта. Тренировки добавляются отдельно из Garmin.
+  const neat = bmr * NEAT_MULT
+  const kcal = Math.round((neat + goal.delta) / 10) * 10
   // Белок: 2.0 г/кг при наборе, иначе 1.8; жир ~27% ккал; остальное — углеводы
   const protein = Math.round(weight * (profile.goal === 'gain' ? 2.0 : 1.8))
   const fat = Math.round((kcal * 0.27) / 9)
   const carb = Math.max(0, Math.round((kcal - protein * 4 - fat * 9) / 4))
-  return { kcal, protein, fat, carb, bmr: Math.round(bmr), tdee: Math.round(tdee) }
+  return { kcal, protein, fat, carb, bmr: Math.round(bmr), neat: Math.round(neat) }
 }
 
 // Приёмы пищи: доля от дневной цели + ориентир по времени (для напоминания «оцени блюдо»)
@@ -79,10 +76,18 @@ export function mealTarget(dayTarget, share) {
 export function loadGarmin() { try { const s = localStorage.getItem('albert-garmin-live'); if (s) return JSON.parse(s) } catch { /* ignore */ } return null }
 export function loadWhoop() { try { const s = localStorage.getItem('albert-whoop-live'); if (s) return JSON.parse(s) } catch { /* ignore */ } return null }
 
-// Калории, сожжённые на тренировках за дату (из данных Garmin)
-export function workoutKcal(garmin, dateKey) {
+// АКТИВНЫЕ калории тренировок за дату (из Garmin), т.е. СВЕРХ обмена покоя.
+// Garmin отдаёт полные калории активности (включая обмен покоя за время тренировки),
+// поэтому вычитаем покой за минуты тренировки — иначе он бы посчитался дважды
+// (один раз в базе NEAT, второй — здесь). bmr нужен для этого вычета.
+export function workoutKcal(garmin, dateKey, bmr = 0) {
   if (!garmin?.workouts) return 0
-  return Math.round(garmin.workouts.filter(w => w.date === dateKey).reduce((s, w) => s + (w.calories || 0), 0))
+  const perMin = bmr > 0 ? bmr / 1440 : 0
+  return Math.round(
+    garmin.workouts
+      .filter(w => w.date === dateKey)
+      .reduce((s, w) => s + Math.max(0, (w.calories || 0) - perMin * (w.durationMin || 0)), 0)
+  )
 }
 
 // Сколько примерно уже съедено в этот день: приёмы, оценённые или у которых время уже прошло
@@ -101,13 +106,12 @@ export function eatenKcal(plan, dateKey) {
 }
 
 // Динамическая цель на конкретный день.
-// База учитывает обычную активность; тренировки сверх «лёгкого» уровня добавляют, день отдыха снижает.
+// База = обмен покоя + быт (без спорта). Сверху ПОЛНОСТЬЮ добавляем реальный активный
+// расход тренировок из Garmin — без срезающих клампов, чтобы тяжёлый день (длинная
+// тренировка на 1500+ ккал) не недодавал. Верхний предел — только защита от сбоя трекера.
 export function dynamicTarget(base, profile, opts = {}) {
   const { burned = 0, hasGarmin = false, recovery = null, carry = 0 } = opts
-  const lvl = ACTIVITY_LEVELS.find(a => a.key === profile.activity) || ACTIVITY_LEVELS[2]
-  const expectedTraining = Math.max(0, Math.round((lvl.mult - 1.4) * base.bmr))
-  let trainDelta = hasGarmin ? Math.round(burned - expectedTraining) : 0
-  trainDelta = Math.max(-600, Math.min(900, trainDelta))
+  const trainDelta = hasGarmin ? Math.max(0, Math.min(3000, Math.round(burned))) : 0
   let recDelta = 0, recNote = ''
   if (typeof recovery === 'number' && recovery > 0) {
     if (recovery < 34) { recDelta = -150; recNote = 'низкое восстановление — сегодня полегче' }
@@ -120,7 +124,7 @@ export function dynamicTarget(base, profile, opts = {}) {
   const protein = Math.round(weight * (profile.goal === 'gain' ? 2.0 : 1.8))
   const fat = Math.round(kcal * 0.27 / 9)
   const carbG = Math.max(0, Math.round((kcal - protein * 4 - fat * 9) / 4))
-  return { kcal, protein, fat, carb: carbG, base: base.kcal, trainDelta, recDelta, recNote, carryDelta, burned, expectedTraining }
+  return { kcal, protein, fat, carb: carbG, base: base.kcal, trainDelta, recDelta, recNote, carryDelta, burned }
 }
 
 // Мягкий перенос со вчера: переел → сегодня чуть меньше, недоел → чуть больше (по записанным приёмам)
