@@ -8,10 +8,10 @@ export const SHOPPING_KEY = 'albert-shopping-2'   // v2: копим в базо�
 export const TASTE_KEY = 'albert-taste'
 export const PLAN_KEY = 'albert-meal-plan'
 
-// Профиль по умолчанию (реальные цифры владелец поправит).
+// Профиль по умолчанию — реальные данные владельца.
 // Уровень активности больше не выбирается: тренировки берём из Garmin (реальный расход).
 export const DEFAULT_PROFILE = {
-  weight: 75, height: 178, age: 52, sex: 'male',
+  weight: 75, height: 175, age: 35, sex: 'male',
   goal: 'lose'
 }
 
