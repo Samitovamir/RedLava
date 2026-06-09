@@ -104,7 +104,7 @@ export default function AIWorkZone() {
   const snapshot = useSiteSnapshot()
   const { applyAiActions } = useEvents()
   const { openDraft } = useMail()
-  const { addFact } = useMemoryFacts()
+  const { addFact, updateFact } = useMemoryFacts()
   const { logAction } = useHistory()
 
   function handleDrop(e) {
@@ -176,13 +176,18 @@ export default function AIWorkZone() {
         })
         const data = await res.json()
         const actions = data.actions || []
-        const eventActions = actions.filter(a => a.name !== 'remember_fact' && a.name !== 'send_email')
+        const memNames = ['remember_fact', 'update_fact']
+        const eventActions = actions.filter(a => !memNames.includes(a.name) && a.name !== 'send_email')
         const memActions = actions.filter(a => a.name === 'remember_fact')
+        const updateActions = actions.filter(a => a.name === 'update_fact')
         const mailActions = actions.filter(a => a.name === 'send_email')
         if (eventActions.length) applyAiActions(eventActions)
         if (mailActions.length) openDraft(mailActions[0].input)
         memActions.forEach(a => {
           if (a.input?.fact) { addFact(a.input.fact); logAction({ actor: 'ai', type: 'task', title: t.remembered(a.input.fact) }) }
+        })
+        updateActions.forEach(a => {
+          if (a.input?.old) { updateFact(a.input.old, a.input.new); logAction({ actor: 'ai', type: 'task', title: a.input.new ? t.remembered(a.input.new) : `Забыл устаревшее: ${a.input.old}` }) }
         })
         complete(data.reply || (actions.length ? t.ready : t.accepted), '')
       } catch {

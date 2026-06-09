@@ -52,7 +52,7 @@ export default function AICommandBar() {
   const location = useLocation()
   const { applyAiActions } = useEvents()
   const { openDraft } = useMail()
-  const { addFact } = useMemoryFacts()
+  const { addFact, updateFact } = useMemoryFacts()
   const { logAction } = useHistory()
   const snapshot = useSiteSnapshot()
 
@@ -88,14 +88,20 @@ export default function AICommandBar() {
       const data = await res.json()
       const actions = data.actions || []
       // События — в расписание; факты — в долгую память
-      const eventActions = actions.filter(a => a.name !== 'remember_fact' && a.name !== 'send_email')
+      const memNames = ['remember_fact', 'update_fact']
+      const eventActions = actions.filter(a => !memNames.includes(a.name) && a.name !== 'send_email')
       const memActions = actions.filter(a => a.name === 'remember_fact')
+      const updateActions = actions.filter(a => a.name === 'update_fact')
       const mailActions = actions.filter(a => a.name === 'send_email')
       if (eventActions.length) applyAiActions(eventActions)
       if (mailActions.length) openDraft(mailActions[0].input)
       memActions.forEach(a => {
         addFact(a.input?.fact)
         logAction({ actor: 'ai', type: 'task', title: `Запомнил: ${a.input?.fact}` })
+      })
+      updateActions.forEach(a => {
+        updateFact(a.input?.old, a.input?.new)
+        logAction({ actor: 'ai', type: 'task', title: a.input?.new ? `Обновил память: ${a.input.new}` : `Забыл устаревшее: ${a.input?.old}` })
       })
       setMessages(prev => [...prev, {
         role: 'assistant',
