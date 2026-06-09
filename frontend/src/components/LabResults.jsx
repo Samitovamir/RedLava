@@ -6,6 +6,8 @@ import {
 } from '../utils/labs.js'
 import MicButton from './MicButton.jsx'
 import { isGuest } from '../api/authFetch.js'
+import { useAgent } from '../hooks/useAgent.js'
+import { useSiteSnapshot } from '../hooks/useSiteSnapshot.js'
 import { useLang, useT } from '../context/LanguageContext.jsx'
 
 const STORE_KEY = LABS_STORE_KEY
@@ -205,6 +207,8 @@ export default function LabResults() {
   const [chat, setChat] = useState([])         // [{ role:'user'|'assistant', text }]
   const [chatInput, setChatInput] = useState('')
   const [chatBusy, setChatBusy] = useState(false)
+  const { ask: askAgent } = useAgent()
+  const fullSnapshot = useSiteSnapshot()
   const chatEnd = useRef(null)
 
   // Распознавание анализов из Яндекс.Диска (если подключён)
@@ -413,14 +417,8 @@ export default function LabResults() {
     setChatInput('')
     setChatBusy(true)
     try {
-      const res = await fetch('/api/ai/chat', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: q, context: doctorContext(reports), history })
-      })
-      const data = await res.json()
-      setChat(prev => [...prev, { role: 'assistant', text: data.reply || t.answerFail }])
-    } catch {
-      setChat(prev => [...prev, { role: 'assistant', text: t.chatNoServer }])
+      const { reply, error } = await askAgent({ message: q, snapshot: fullSnapshot, history, context: doctorContext(reports) })
+      setChat(prev => [...prev, { role: 'assistant', text: error ? t.chatNoServer : (reply || t.answerFail) }])
     } finally {
       setChatBusy(false)
     }

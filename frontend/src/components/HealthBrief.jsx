@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useAiSummary } from '../hooks/useAiSummary.js'
+import { useAgent } from '../hooks/useAgent.js'
+import { useSiteSnapshot } from '../hooks/useSiteSnapshot.js'
 import { useLang, useT } from '../context/LanguageContext.jsx'
 import MicButton from './MicButton.jsx'
 import {
@@ -194,6 +196,8 @@ export default function HealthBrief() {
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const endRef = useRef(null)
+  const { ask: askAgent } = useAgent()
+  const fullSnapshot = useSiteSnapshot()
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [chat])
 
   async function ask() {
@@ -207,16 +211,9 @@ export default function HealthBrief() {
       'Если вопрос касается тренировок — учитывай его данные и здоровье: по мелочам не отговаривай от спорта, но при реально опасных отклонениях (сердце, сильная анемия, воспаление) чётко советуй снизить нагрузку. ' +
       'Не нагнетай: мелкие или некритичные отклонения объясняй спокойно. Опирайся на данные ниже.' +
       (lang === 'en' ? ' Always reply to the user in English.' : '')
-    try {
-      const res = await fetch('/api/ai/chat', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: q, context, snapshot: healthData, history: prior })
-      })
-      const data = await res.json()
-      setChat(prev => [...prev, { role: 'assistant', text: data.reply || t.answerFail }])
-    } catch {
-      setChat(prev => [...prev, { role: 'assistant', text: t.noServer }])
-    }
+    // Единый агент: видит ВЕСЬ сайт, копит память, умеет инструменты. Контекст — фокус на здоровье.
+    const { reply, error } = await askAgent({ message: q, snapshot: fullSnapshot, history: prior, context })
+    setChat(prev => [...prev, { role: 'assistant', text: error ? t.noServer : (reply || t.answerFail) }])
     setBusy(false)
   }
 

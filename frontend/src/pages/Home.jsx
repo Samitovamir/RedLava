@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import AIWorkZone from '../components/AIWorkZone.jsx'
@@ -9,31 +9,6 @@ import { getQuoteOfDay } from '../utils/quotes.js'
 import { useEvents } from '../context/EventsContext.jsx'
 import { useT, useLang } from '../context/LanguageContext.jsx'
 import { mskNow } from '../utils/time.js'
-import { isLocked, lockSite } from '../utils/lock.js'
-
-const FALL_STEP = 0.028          // задержка между падением соседних символов/единиц (сек)
-const FALL_EASE = [0.45, 0, 0.9, 0.4] // ease-in — имитация гравитации
-
-// Текст, падающий посимвольно. start — глобальный индекс первого символа.
-function FallText({ text, fallen, start, className, tag = 'span' }) {
-  const Tag = motion[tag]
-  return (
-    <Tag className={className} aria-label={text}>
-      {[...text].map((ch, i) => (
-        <motion.span
-          key={i}
-          style={{ display: 'inline-block', whiteSpace: 'pre' }}
-          animate={fallen
-            ? { y: '110vh', x: Math.random() * 50 - 25, rotate: Math.random() * 100 - 50, opacity: 0,
-                transition: { duration: 1.1, delay: (start + i) * FALL_STEP, ease: FALL_EASE } }
-            : { y: 0, x: 0, rotate: 0, opacity: 1, transition: { duration: 0.3 } }}
-        >
-          {ch}
-        </motion.span>
-      ))}
-    </Tag>
-  )
-}
 
 function getGreeting(t) {
   const hour = mskNow().getHours()
@@ -113,7 +88,6 @@ export default function Home() {
       recoverySleep: 'Восстановление и сон', recovery: 'Восстановление',
       sleepEff: (h, e) => `Сон · эфф. ${e}%`, connectWhoop: 'Подключите Whoop',
       hours: 'ч', km: 'км', min: 'мин', perKm: '/км',
-      premiumBtn: 'Перейти на Premium',
     },
     en: {
       greetMorning: 'Good morning', greetDay: 'Good afternoon', greetEvening: 'Good evening', greetNight: 'Good night',
@@ -127,27 +101,9 @@ export default function Home() {
       recoverySleep: 'Recovery and sleep', recovery: 'Recovery',
       sleepEff: (h, e) => `Sleep · eff. ${e}%`, connectWhoop: 'Connect Whoop',
       hours: 'h', km: 'km', min: 'min', perKm: '/km',
-      premiumBtn: 'Go Premium',
     },
   })
-  // Стартуем в «упавшем» состоянии, если сайт уже заблокирован (пережило перезагрузку).
-  const [fallen, setFallen] = useState(isLocked())
   const scheduleRef = useRef(null)
-
-  // Розыгрыш «Перейти на Premium»: всё рассыпается и сайт блокируется глобально.
-  // Блокируем сразу (переживёт перезагрузку), окно с примером покажет LockGate.
-  function goPremium() {
-    setFallen(true)
-    lockSite()
-  }
-
-  // Когда замок снимут (верный ответ в LockGate) — поднимаем контент обратно.
-  useEffect(() => {
-    const onLock = () => { if (!isLocked()) setFallen(false) }
-    window.addEventListener('albert-lock', onLock)
-    return () => window.removeEventListener('albert-lock', onLock)
-  }, [])
-
   const navigate = useNavigate()
   const { lang } = useLang()
   // Английский вариант текста демо-данных, если он есть; иначе исходный (русский)
@@ -180,39 +136,21 @@ export default function Home() {
     container.scrollTo({ top: target, behavior: 'smooth' })
   }
 
-  // Тексты и их позиции в общей последовательности падения (сверху вниз)
   const dateStr = formatDate(t)
   const greetStr = `${getGreeting(t)}${t.greetName}`
   const quoteStr = quote.text
   const authorStr = `— ${quote.author}`
 
-  const iDate = 0
-  const iGreet = iDate + dateStr.length
-  const iBtn = iGreet + greetStr.length
-  const iQuote = iBtn + 1
-  const iAuthor = iQuote + quoteStr.length
-  const iCards = iAuthor + authorStr.length     // быстрые карточки
-  const iBrief = iCards + cards.length           // ИИ-выжимка по здоровью
-  const iAIWZ = iBrief + 1                        // рабочая зона
-  const iGrid = iAIWZ + 1                         // расписание + сводка
-
-  // падение крупной единицы (карточка/блок) по её индексу в последовательности
-  const unitFall = (idx) => fallen
-    ? { y: '120vh', rotate: idx % 2 ? 8 : -8, opacity: 0,
-        transition: { duration: 1.1, delay: idx * FALL_STEP, ease: FALL_EASE } }
-    : { y: 0, rotate: 0, opacity: 1, transition: { duration: 0.4 } }
-
   return (
     <div className="home-page">
       <div className="home-header">
         <div className="header-left">
-          <FallText text={dateStr} fallen={fallen} start={iDate} className="home-date" />
-          <FallText text={greetStr} fallen={fallen} start={iGreet} className="greeting" tag="h1" />
-          <motion.button className="premium-btn" onClick={goPremium} animate={unitFall(iBtn)}>✨ {t.premiumBtn}</motion.button>
+          <span className="home-date">{dateStr}</span>
+          <h1 className="greeting">{greetStr}</h1>
         </div>
         <div className="quote-of-day">
-          <FallText text={quoteStr} fallen={fallen} start={iQuote} className="quote-text" tag="p" />
-          <FallText text={authorStr} fallen={fallen} start={iAuthor} className="quote-author" />
+          <p className="quote-text">{quoteStr}</p>
+          <span className="quote-author">{authorStr}</span>
         </div>
       </div>
 
@@ -221,8 +159,7 @@ export default function Home() {
           <motion.div
             key={c.label}
             className={`card quick-card ${c.scrollTo || c.link ? 'clickable' : ''}`}
-            animate={unitFall(iCards + i)}
-            whileHover={fallen ? undefined : { y: -4 }}
+            whileHover={{ y: -4 }}
             onClick={c.scrollTo ? scrollToSchedule : c.link ? () => navigate(c.link) : undefined}
           >
             <div className="quick-card-top">
@@ -264,21 +201,13 @@ export default function Home() {
         ))}
       </div>
 
-      <motion.div animate={unitFall(iBrief)}>
-        <HealthBrief />
-      </motion.div>
+      <HealthBrief />
 
-      <motion.div animate={unitFall(iAIWZ)}>
-        <AIWorkZone />
-      </motion.div>
+      <AIWorkZone />
 
       <div className="home-grid" ref={scheduleRef} style={{ scrollMarginTop: 16 }}>
-        <motion.div animate={unitFall(iGrid)}>
-          <DaySchedule />
-        </motion.div>
-        <motion.div animate={unitFall(iGrid + 1)}>
-          <DaySummary />
-        </motion.div>
+        <DaySchedule />
+        <DaySummary />
       </div>
 
       <style>{`
@@ -317,24 +246,6 @@ export default function Home() {
           font-weight: 500;
         }
 
-        .premium-btn {
-          margin-top: 10px;
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          font-size: 12.5px;
-          font-weight: 700;
-          color: var(--accent-foreground);
-          background: var(--accent);
-          border: none;
-          border-radius: 16px;
-          padding: 7px 16px;
-          cursor: pointer;
-          font-family: inherit;
-          /* лёгкий объём: верхняя кромка света + мягкая тень снизу (без свечения) */
-          box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), 0 2px 4px rgba(0,0,0,0.32);
-        }
-        .premium-btn:hover { filter: brightness(1.06); }
         .home-date {
           font-size: 13px;
           color: var(--muted);

@@ -6,6 +6,7 @@ import ConnectPrompt from '../components/ConnectPrompt.jsx'
 import GarminLive from '../components/GarminLive.jsx'
 import MicButton from '../components/MicButton.jsx'
 import { useAiSummary } from '../hooks/useAiSummary.js'
+import { useAgent } from '../hooks/useAgent.js'
 import { useSiteSnapshot } from '../hooks/useSiteSnapshot.js'
 import { useT, useLang } from '../context/LanguageContext.jsx'
 import {
@@ -319,6 +320,7 @@ export default function Sport() {
   const msgsRef = useRef(null)
 
   const snapshot = useSiteSnapshot()
+  const { ask: askAgent } = useAgent()
   const TRAINER_CONTEXT =
     `Ты личный спортивный тренер владельца. Твоя зона — тренировки, нагрузка, восстановление, форма. ` +
     `ФОКУСИРУЙСЯ на спорте и не уходи в чужие темы (письма, дела, не относящиеся к спорту), но ты ВИДИШЬ весь контекст ` +
@@ -347,16 +349,8 @@ export default function Sport() {
     setInput('')
     setMessages(m => [...m, { role: 'user', text: q }])
     setLoading(true)
-    try {
-      const res = await fetch('/api/ai/chat', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: q, context: TRAINER_CONTEXT, snapshot, history: priorHistory })
-      })
-      const data = await res.json()
-      setMessages(m => [...m, { role: 'assistant', text: data.reply || t.errorReply }])
-    } catch {
-      setMessages(m => [...m, { role: 'assistant', text: t.noServer }])
-    }
+    const { reply, error } = await askAgent({ message: q, snapshot, history: priorHistory, context: TRAINER_CONTEXT })
+    setMessages(m => [...m, { role: 'assistant', text: error ? t.noServer : (reply || t.errorReply) }])
     setLoading(false)
   }
 

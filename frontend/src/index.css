@@ -154,7 +154,7 @@ button:not(:disabled):active { transform: translateY(1px) scale(0.97); }
 
 /* Заполненные кнопки действий: лёгкая выпуклость (кромка света сверху + тень снизу),
    БЕЗ цветных свечений. !important — чтобы перекрыть старые glow в компонентах. */
-.premium-btn, .ds-fab, .cp-btn, .hb-send, .hc-send,
+.ds-fab, .cp-btn, .hb-send, .hc-send,
 .mail-btn.primary, .conn-btn.primary, .detail-btn.primary, .mail-done-btn,
 .nu-suggest, .nu-kitchen-card, .aem-btn.primary, .ds-pv-btn.primary, .awz-submit {
   box-shadow:
@@ -202,10 +202,8 @@ body {
 .card {
   /* Плоская поверхность; объём — за счёт кромки света сверху, тени снизу и прошивки. */
   background: var(--bg-surface);
-  border-top: 1px solid var(--edge-light);
-  border-bottom: 1px solid var(--edge-dark);
-  border-left: 1px solid var(--border-soft);
-  border-right: 1px solid var(--border-soft);
+  border: 1px solid var(--border-soft);
+  border-top-color: var(--edge-light);
   border-radius: var(--radius);
   padding: 20px;
   box-shadow: var(--shadow-card);
@@ -226,10 +224,8 @@ body {
 /* Панель-якорь (крупный вывод дня) — больше объёма + та же прошивка */
 .anchor-card {
   background: var(--bg-surface);
-  border-top: 1px solid var(--edge-light);
-  border-bottom: 1px solid var(--edge-dark);
-  border-left: 1px solid var(--border-soft);
-  border-right: 1px solid var(--border-soft);
+  border: 1px solid var(--border-soft);
+  border-top-color: var(--edge-light);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-anchor);
   position: relative;

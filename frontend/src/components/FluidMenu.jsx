@@ -68,7 +68,6 @@ const NAV_ITEMS = [
   {
     path: '/mail',
     label: 'Письма',
-    beta: true,
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <rect x="2" y="4" width="20" height="16" rx="2"/>
@@ -128,7 +127,6 @@ export default function FluidMenu() {
               >
                 {item.icon}
               </motion.div>
-              {item.beta && <span className="nav-beta">beta</span>}
               {isActive && (
                 <motion.div
                   className="active-indicator"
@@ -216,21 +214,6 @@ export default function FluidMenu() {
           display: flex;
           align-items: center;
           justify-content: center;
-        }
-        .nav-beta {
-          position: absolute;
-          top: -3px;
-          right: -7px;
-          font-size: 8px;
-          font-weight: 700;
-          letter-spacing: 0.04em;
-          text-transform: uppercase;
-          color: var(--accent-foreground);
-          background: var(--accent);
-          padding: 1px 4px;
-          border-radius: 5px;
-          line-height: 1.3;
-          pointer-events: none;
         }
         .active-indicator {
           position: absolute;

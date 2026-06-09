@@ -9,6 +9,7 @@ import AiRefreshButton from '../components/AiRefreshButton.jsx'
 import MicButton from '../components/MicButton.jsx'
 import { useAiSummary } from '../hooks/useAiSummary.js'
 import { useSiteSnapshot } from '../hooks/useSiteSnapshot.js'
+import { useAgent } from '../hooks/useAgent.js'
 import { useLang, useT } from '../context/LanguageContext.jsx'
 import {
   WHOOP, WHOOP_DAYS, SLEEP_STAGES, recoveryColor, fmtHm
@@ -167,6 +168,7 @@ export default function Health() {
   const msgsRef = useRef(null)
 
   const snapshot = useSiteSnapshot()
+  const { ask: askAgent } = useAgent()
   const HEALTH_CONTEXT =
     `Ты личный консультант владельца по здоровью, сну и восстановлению. Твоя зона — Whoop, восстановление, сон, самочувствие, анализы крови. ` +
     `ФОКУСИРУЙСЯ на здоровье и не уходи в чужие темы, но ты ВИДИШЬ весь контекст (тренировки, расписание) и учитываешь его для связных советов. ` +
@@ -197,16 +199,8 @@ export default function Health() {
     setInput('')
     setMessages(m => [...m, { role: 'user', text: q }])
     setLoading(true)
-    try {
-      const res = await fetch('/api/ai/chat', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: q, context: HEALTH_CONTEXT, snapshot, history: priorHistory })
-      })
-      const data = await res.json()
-      setMessages(m => [...m, { role: 'assistant', text: data.reply || t.replyError }])
-    } catch {
-      setMessages(m => [...m, { role: 'assistant', text: t.noServer }])
-    }
+    const { reply, error } = await askAgent({ message: q, snapshot, history: priorHistory, context: HEALTH_CONTEXT })
+    setMessages(m => [...m, { role: 'assistant', text: error ? t.noServer : (reply || t.replyError) }])
     setLoading(false)
   }
 
