@@ -325,19 +325,16 @@ export default function Home() {
           font-size: 12.5px;
           font-weight: 700;
           color: var(--accent-foreground);
-          background: linear-gradient(135deg, var(--accent), var(--yellow));
+          background: var(--accent);
           border: none;
           border-radius: 16px;
           padding: 7px 16px;
           cursor: pointer;
           font-family: inherit;
-          box-shadow: 0 2px 12px color-mix(in srgb, var(--accent) 35%, transparent);
-          transition: transform 0.15s, box-shadow 0.15s;
+          /* лёгкий объём: верхняя кромка света + мягкая тень снизу (без свечения) */
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), 0 2px 4px rgba(0,0,0,0.32);
         }
-        .premium-btn:hover {
-          transform: translateY(-1px);
-          box-shadow: 0 4px 18px color-mix(in srgb, var(--accent) 45%, transparent);
-        }
+        .premium-btn:hover { filter: brightness(1.06); }
         .home-date {
           font-size: 13px;
           color: var(--muted);

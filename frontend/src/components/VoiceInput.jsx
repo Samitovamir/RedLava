@@ -123,10 +123,11 @@ export default function VoiceInput({ value, onChange, onSubmit, busy }) {
           width: 96px; height: 96px; border-radius: 50%;
           background: var(--accent); color: var(--accent-foreground);
           border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
-          box-shadow: 0 8px 28px color-mix(in srgb, var(--accent) 40%, transparent);
-          transition: background 0.15s, box-shadow 0.2s;
+          /* объём без свечения: верхняя кромка света + мягкая тень снизу */
+          box-shadow: inset 0 2px 0 rgba(255,255,255,0.16), 0 4px 10px rgba(0,0,0,0.4);
+          transition: filter 0.15s, box-shadow 0.2s;
         }
-        .vi-mic:hover { box-shadow: 0 10px 34px color-mix(in srgb, var(--accent) 55%, transparent); }
+        .vi-mic:hover { filter: brightness(1.06); }
         .vi-mic.listening {
           background: var(--red); color: #fff;
           box-shadow: 0 0 0 0 rgba(168, 90, 74,0.55);

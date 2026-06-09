@@ -453,7 +453,7 @@ export default function Health() {
         .rc-strain { display: flex; flex-direction: column; gap: 6px; }
         .rc-strain-lbl { font-size: 12px; color: var(--muted-foreground); }
         .strain-bar { height: 8px; border-radius: 4px; background: var(--bg-secondary); overflow: hidden; }
-        .strain-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, #6E8CA8, #B07B52); }
+        .strain-fill { height: 100%; border-radius: 4px; background: var(--accent); }
         .rc-strain-val { font-size: 15px; font-weight: 700; color: var(--foreground); }
 
         .rc-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }

@@ -148,6 +148,10 @@
   padding: 0;
 }
 
+/* Единая анимация нажатия для всех кнопок (плавно «вдавливаются») */
+button { transition: transform var(--dur-fast, 150ms) cubic-bezier(0.4,0,0.2,1), filter var(--dur-fast, 150ms) ease, background var(--dur-fast, 150ms) ease, border-color var(--dur-fast, 150ms) ease; }
+button:not(:disabled):active { transform: translateY(1px) scale(0.97); }
+
 html, body, #root {
   height: 100%;
   width: 100%;
@@ -185,8 +189,8 @@ body {
 }
 
 .card {
-  /* Объём: светлая верхняя кромка ловит свет, низ уходит в тень + мягкая тень снизу. */
-  background: linear-gradient(var(--bg-card-top), var(--bg-card-bot));
+  /* Плоская поверхность; объём — за счёт кромки света сверху, тени снизу и прошивки. */
+  background: var(--bg-surface);
   border-top: 1px solid var(--edge-light);
   border-bottom: 1px solid var(--edge-dark);
   border-left: 1px solid var(--border-soft);
@@ -210,7 +214,7 @@ body {
 
 /* Панель-якорь (крупный вывод дня) — больше объёма + та же прошивка */
 .anchor-card {
-  background: linear-gradient(var(--bg-anchor-top), var(--bg-anchor-bot));
+  background: var(--bg-surface);
   border-top: 1px solid var(--edge-light);
   border-bottom: 1px solid var(--edge-dark);
   border-left: 1px solid var(--border-soft);

@@ -1007,7 +1007,7 @@ export default function Nutrition() {
         .nu-bd-chip.muted-chip { color: var(--muted); font-weight: 500; }
         .nu-progress { margin-top: 14px; display: flex; flex-direction: column; gap: 7px; }
         .nu-prog-bar { height: 8px; border-radius: 6px; background: var(--bg-secondary); overflow: hidden; }
-        .nu-prog-fill { height: 100%; background: linear-gradient(90deg, var(--green), var(--accent)); border-radius: 6px; transition: width .4s; }
+        .nu-prog-fill { height: 100%; background: var(--accent); border-radius: 6px; transition: width .4s; }
         .nu-prog-text { font-size: 13px; }
 
         .nu-profile { overflow: hidden; }

@@ -59,8 +59,11 @@ export default function MicButton({ onText, title = 'Надиктовать го
           transition: color 0.15s, border-color 0.15s, background 0.15s;
         }
         .mic-btn:hover { color: var(--accent); border-color: var(--border-hover); }
-        .mic-btn.primary { background: var(--accent); color: var(--accent-foreground); border-color: var(--accent); }
-        .mic-btn.primary:hover { opacity: 0.9; color: var(--accent-foreground); }
+        .mic-btn.primary {
+          background: var(--accent); color: var(--accent-foreground); border-color: var(--accent);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), 0 2px 4px rgba(0,0,0,0.3);
+        }
+        .mic-btn.primary:hover { filter: brightness(1.07); color: var(--accent-foreground); }
         .mic-btn.listening {
           color: #fff; background: var(--red); border-color: var(--red);
           animation: mic-pulse 1.3s ease-in-out infinite;

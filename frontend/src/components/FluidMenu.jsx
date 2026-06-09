@@ -172,7 +172,7 @@ export default function FluidMenu() {
           justify-content: center;
           font-weight: 700;
           font-size: 19px;
-          box-shadow: 0 4px 14px rgba(176, 123, 82,0.35);
+          box-shadow: none;
           flex-shrink: 0;
         }
         .fluid-menu-inner {
