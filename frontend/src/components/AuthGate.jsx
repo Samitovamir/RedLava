@@ -133,9 +133,7 @@ export default function AuthGate({ children }) {
           position: fixed; inset: 0;
           display: flex; align-items: center; justify-content: center;
           padding: 24px;
-          background:
-            radial-gradient(700px circle at 50% -10%, rgba(176, 123, 82,0.10), transparent 60%),
-            var(--bg-primary, #16191D);
+          background: var(--bg-primary, #16191D);
           font-family: Inter, system-ui, sans-serif;
         }
         .auth-card {

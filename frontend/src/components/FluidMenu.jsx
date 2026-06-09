@@ -165,7 +165,7 @@ export default function FluidMenu() {
           width: 40px;
           height: 40px;
           border-radius: 12px;
-          background: linear-gradient(145deg, var(--accent), #A06B45);
+          background: var(--accent);
           color: var(--accent-foreground);
           display: flex;
           align-items: center;

@@ -1348,7 +1348,7 @@ export default function DaySchedule({ extended = false }) {
           align-items: center;
           gap: 14px;
           padding: 12px 14px;
-          background: linear-gradient(140deg, var(--bg-secondary), #322d29);
+          background: var(--bg-secondary);
           border: 1px solid var(--border);
           border-radius: 18px;
           box-shadow: 0 4px 14px rgba(0,0,0,0.25);
@@ -1407,7 +1407,7 @@ export default function DaySchedule({ extended = false }) {
           flex-direction: column;
           gap: 6px;
           padding: 14px;
-          background: linear-gradient(140deg, var(--bg-secondary), #322d29);
+          background: var(--bg-secondary);
           border: 1px solid var(--border);
           border-left: 3px solid var(--ev-color);
           border-radius: 14px;

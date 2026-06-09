@@ -156,9 +156,6 @@ html, body, #root {
 body {
   font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, sans-serif;
   background-color: var(--background);
-  background-image:
-    radial-gradient(900px circle at 12% -5%, rgba(176,123,82,0.05), transparent 45%),
-    radial-gradient(700px circle at 95% 8%, rgba(110,140,168,0.04), transparent 40%);
   color: var(--foreground);
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
@@ -188,24 +185,18 @@ body {
 }
 
 .card {
-  background: linear-gradient(var(--bg-card-top), var(--bg-card-bot));
-  border-top: 1px solid var(--edge-light);
-  border-bottom: 1px solid var(--edge-dark);
-  border-left: 0.5px solid var(--border-soft);
-  border-right: 0.5px solid var(--border-soft);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-soft);
   border-radius: var(--radius);
   padding: 20px;
-  box-shadow: var(--shadow-card);
   color: var(--text-body);
 }
 
-/* Панель-якорь (крупный вывод дня) — с объёмом и тонкой строчкой-прошивкой */
+/* Панель-якорь (крупный вывод дня) — плоская, с тонкой строчкой-прошивкой по краю */
 .anchor-card {
-  background: linear-gradient(var(--bg-anchor-top), var(--bg-anchor-bot));
-  border-top: 1px solid var(--edge-light);
-  border-bottom: 1px solid var(--edge-dark);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-soft);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-anchor);
   position: relative;
 }
 .anchor-card::after {
