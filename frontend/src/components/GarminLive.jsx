@@ -369,7 +369,8 @@ export default function GarminLive() {
 
         .gl-hero { position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 14px; padding: 22px 24px; }
         .gl-hero::before {
-          content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%;
+          content: ''; position: absolute; top: 16px; bottom: 16px; left: 0; width: 4px;
+          border-radius: 0 3px 3px 0;
           background: var(--hero-accent);
         }
         .gl-hero-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
