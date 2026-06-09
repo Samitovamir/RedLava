@@ -188,11 +188,32 @@ body {
 }
 
 .card {
-  background: linear-gradient(160deg, var(--card), #181C22);
+  background: linear-gradient(var(--bg-card-top), var(--bg-card-bot));
+  border-top: 1px solid var(--edge-light);
+  border-bottom: 1px solid var(--edge-dark);
+  border-left: 0.5px solid var(--border-soft);
+  border-right: 0.5px solid var(--border-soft);
   border-radius: var(--radius);
-  border: 1px solid var(--border);
   padding: 20px;
   box-shadow: var(--shadow-card);
+  color: var(--text-body);
+}
+
+/* Панель-якорь (крупный вывод дня) — с объёмом и тонкой строчкой-прошивкой */
+.anchor-card {
+  background: linear-gradient(var(--bg-anchor-top), var(--bg-anchor-bot));
+  border-top: 1px solid var(--edge-light);
+  border-bottom: 1px solid var(--edge-dark);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-anchor);
+  position: relative;
+}
+.anchor-card::after {
+  content: "";
+  position: absolute; inset: 7px;
+  border: 1px dashed var(--stitch);
+  border-radius: 11px;
+  opacity: 0.55; pointer-events: none;
 }
 
 .card-title {
@@ -217,4 +238,115 @@ body {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--muted-foreground);
+}
+
+/* ============================================================
+   ТЕМЫ ОФОРМЛЕНИЯ (THEMES_1.md) — 4 палитры через data-theme.
+   Базовые токены (сетка/типографика/переходы) + 4 темы + МОСТ,
+   который маппит новые токены на «старые» имена переменных,
+   используемые компонентами, — поэтому переключение мгновенно
+   подхватывают все экраны без переписывания компонентов.
+   ============================================================ */
+:root {
+  /* Отступы (8px) */
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px;
+  --space-4: 16px; --space-6: 24px; --space-8: 32px;
+  /* Радиусы */
+  --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px;
+  /* Типографика (размеры; --text-body занят под цвет в темах) */
+  --text-anchor: 27px; --text-title: 18px; --text-label: 13px; --text-hint: 12px;
+  --weight-regular: 400; --weight-medium: 500;
+  /* Переходы */
+  --dur-fast: 150ms; --dur-base: 200ms; --dur-slow: 300ms;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Плавная смена темы */
+body { transition: background-color var(--dur-base) var(--ease), color var(--dur-base) var(--ease); }
+
+/* ТЕМА 1: ЧЁРНАЯ КОЖА (по умолчанию) */
+[data-theme="black-leather"] {
+  --bg-app: #0F0F0E; --bg-surface: #191816;
+  --bg-anchor-top: #201F1C; --bg-anchor-bot: #1A1917;
+  --bg-card-top: #1B1A18; --bg-card-bot: #171614;
+  --edge-light: #34322D; --edge-dark: #100F0E; --border-soft: #2A2825;
+  --text-primary: #F2EEE6; --text-body: #DCD6CC; --text-secondary: #ABA59B; --text-muted: #807A72; --text-faint: #5E594F;
+  --accent: #7BA3C9; --accent-btn-top: #4A7BA6; --accent-btn-bot: #356087; --on-accent: #F2EEE6;
+  --status-ok: #7E9B6E; --status-warn: #C98A5E; --status-crit: #A85A4A;
+  --stitch: #3E3C36;
+  --shadow-anchor: 0 18px 40px -16px rgba(0,0,0,0.7);
+  --shadow-card: 0 10px 24px -14px rgba(0,0,0,0.6);
+}
+
+/* ТЕМА 2: КОРИЧНЕВАЯ КОЖА */
+[data-theme="brown-leather"] {
+  --bg-app: #14100D; --bg-surface: #241D18;
+  --bg-anchor-top: #2A211B; --bg-anchor-bot: #221A15;
+  --bg-card-top: #241D18; --bg-card-bot: #1E1611;
+  --edge-light: #463729; --edge-dark: #14100D; --border-soft: #3A2E24;
+  --text-primary: #F2E9DC; --text-body: #E6DAC8; --text-secondary: #C2B19B; --text-muted: #9C8B76; --text-faint: #6E5E4C;
+  --accent: #C89B6A; --accent-btn-top: #B87844; --accent-btn-bot: #9A6035; --on-accent: #F2E9DC;
+  --status-ok: #8A9B6B; --status-warn: #C2703F; --status-crit: #A85A4A;
+  --stitch: #5C4836;
+  --shadow-anchor: 0 18px 40px -16px rgba(0,0,0,0.7);
+  --shadow-card: 0 10px 24px -14px rgba(0,0,0,0.6);
+}
+
+/* ТЕМА 3: КРЕМОВАЯ (светлая) */
+[data-theme="cream"] {
+  --bg-app: #F4F0E8; --bg-surface: #FBF8F2;
+  --bg-anchor-top: #EAE1D0; --bg-anchor-bot: #E8DFCE;
+  --bg-card-top: #FBF8F2; --bg-card-bot: #F7F2E9;
+  --edge-light: #FFFFFF; --edge-dark: #E2D9C8; --border-soft: #E2D9C8;
+  --text-primary: #3D3528; --text-body: #4A4234; --text-secondary: #6B6355; --text-muted: #9A8F7D; --text-faint: #B0A48E;
+  --accent: #C97B4A; --accent-btn-top: #C97B4A; --accent-btn-bot: #B0683B; --on-accent: #FBF8F2;
+  --status-ok: #7E9B6E; --status-warn: #C97B4A; --status-crit: #C0563E;
+  --stitch: #D8CDB8;
+  --shadow-anchor: 0 16px 36px -18px rgba(120,100,70,0.35);
+  --shadow-card: 0 8px 20px -14px rgba(120,100,70,0.25);
+}
+
+/* ТЕМА 4: ОРИГИНАЛЬНАЯ — реальные «родные» цвета сайта (тёплый near-black + индиго) */
+[data-theme="original"] {
+  --bg-app: #1E1B18; --bg-surface: #2C2825;
+  --bg-anchor-top: #2C2825; --bg-anchor-bot: #29251F;
+  --bg-card-top: #2C2825; --bg-card-bot: #29251F;
+  --edge-light: #3A3633; --edge-dark: #3A3633; --border-soft: #3A3633;
+  --text-primary: #E2E8F0; --text-body: #D1D5DB; --text-secondary: #9CA3AF; --text-muted: #9CA3AF; --text-faint: #6B7280;
+  --accent: #818CF8; --accent-btn-top: #818CF8; --accent-btn-bot: #6366F1; --on-accent: #1E1B18;
+  --status-ok: #22C55E; --status-warn: #F59E0B; --status-crit: #EF4444;
+  --stitch: transparent;
+  --shadow-anchor: 0 8px 28px rgba(0,0,0,0.35);
+  --shadow-card: 0 1px 2px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.2);
+}
+
+/* МОСТ: новые токены тем → «старые» имена, на которые завязаны компоненты.
+   Идёт ПОСЛЕ .dark и блоков тем, поэтому переопределяет их. */
+[data-theme] {
+  --background: var(--bg-app);
+  --bg-primary: var(--bg-app);
+  --card: var(--bg-surface);
+  --bg-card: var(--bg-surface);
+  --popover: var(--bg-surface);
+  --secondary: var(--bg-surface);
+  --bg-secondary: var(--bg-surface);
+  --foreground: var(--text-primary);
+  --card-foreground: var(--text-primary);
+  --popover-foreground: var(--text-primary);
+  --secondary-foreground: var(--text-body);
+  --muted-foreground: var(--text-muted);
+  --muted: var(--text-muted);
+  --primary: var(--accent);
+  --accent-foreground: var(--on-accent);
+  --primary-foreground: var(--on-accent);
+  --ring: var(--accent);
+  --border: var(--border-soft);
+  --input: var(--border-soft);
+  --border-hover: var(--accent);
+  --green: var(--status-ok);
+  --yellow: var(--status-warn);
+  --orange: var(--status-warn);
+  --red: var(--status-crit);
+  --destructive: var(--status-crit);
+  --destructive-foreground: var(--on-accent);
 }

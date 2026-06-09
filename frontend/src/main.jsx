@@ -9,6 +9,11 @@ import './index.css'
 // Подключаем токен ко всем /api запросам до старта приложения
 installAuthFetch()
 
+// Применяем сохранённую тему до рендера (чтобы не мелькала дефолтная)
+try {
+  document.documentElement.setAttribute('data-theme', localStorage.getItem('albert-theme') || 'black-leather')
+} catch { /* ignore */ }
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <LanguageProvider>
