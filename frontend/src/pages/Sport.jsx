@@ -841,7 +841,7 @@ export default function Sport() {
         .load-card { display: flex; flex-direction: column; gap: 16px; }
         .load-bar-wrap { display: flex; flex-direction: column; gap: 10px; }
         .load-track { position: relative; height: 14px; border-radius: 7px; background: var(--bg-secondary); }
-        .load-optimal { position: absolute; top: 0; height: 100%; background: rgba(34,197,94,0.3); border-radius: 7px; }
+        .load-optimal { position: absolute; top: 0; height: 100%; background: rgba(126, 155, 110,0.3); border-radius: 7px; }
         .load-marker {
           position: absolute; top: 50%; width: 16px; height: 16px; border-radius: 50%;
           background: var(--primary); border: 3px solid var(--card);

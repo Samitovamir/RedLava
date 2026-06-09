@@ -47,9 +47,9 @@ export function recoveryLabel(r) {
 // Фазы сна — для полосы и легенды (порядок: бодрствование → лёгкий → REM → глубокий)
 export const SLEEP_STAGES = [
   { key: 'awake', label: 'Бодрствование', color: '#9ca3af' },
-  { key: 'light', label: 'Лёгкий сон',    color: '#38bdf8' },
-  { key: 'rem',   label: 'REM (быстрый)', color: '#818cf8' },
-  { key: 'deep',  label: 'Глубокий сон',  color: '#22c55e' }
+  { key: 'light', label: 'Лёгкий сон',    color: '#6E8CA8' },
+  { key: 'rem',   label: 'REM (быстрый)', color: '#B07B52' },
+  { key: 'deep',  label: 'Глубокий сон',  color: '#7E9B6E' }
 ]
 
 // Часы:минуты из минут

@@ -482,10 +482,10 @@ export default function AIWorkZone() {
         .awz-title-sub { font-size: 12px; color: var(--muted); }
         /* Зелёное оформление всей карточки после выполнения */
         .ai-work-zone.is-done {
-          border-color: rgba(34,197,94,0.5);
-          box-shadow: 0 0 0 1px rgba(34,197,94,0.25), 0 8px 32px rgba(34,197,94,0.10);
+          border-color: rgba(126, 155, 110,0.5);
+          box-shadow: 0 0 0 1px rgba(126, 155, 110,0.25), 0 8px 32px rgba(126, 155, 110,0.10);
           background:
-            radial-gradient(700px circle at 50% -10%, rgba(34,197,94,0.08), transparent 60%),
+            radial-gradient(700px circle at 50% -10%, rgba(126, 155, 110,0.08), transparent 60%),
             linear-gradient(160deg, var(--card), #29251f);
         }
         .ai-work-zone.is-done .awz-badge { background: var(--green); }
@@ -559,7 +559,7 @@ export default function AIWorkZone() {
         .awz-dropzone:hover { border-color: var(--border-hover); }
         .awz-dropzone.dragging {
           border-color: var(--primary);
-          background: rgba(129,140,248,0.07);
+          background: rgba(176, 123, 82,0.07);
         }
         /* «В разработке» — полупрозрачное окно + жёлтая лента */
         .awz-dropzone.awz-dev { position: relative; cursor: default; }
@@ -572,17 +572,17 @@ export default function AIWorkZone() {
         }
         .awz-dev-tape {
           transform: rotate(-5deg);
-          background: repeating-linear-gradient(45deg, #f59e0b 0 16px, #161310 16px 32px);
+          background: repeating-linear-gradient(45deg, #C98A5E 0 16px, #161310 16px 32px);
           color: #fff; font-weight: 800; letter-spacing: 0.18em; font-size: 16px;
           padding: 12px 44px; border-radius: 4px;
-          border-top: 3px solid #f59e0b; border-bottom: 3px solid #f59e0b;
+          border-top: 3px solid #C98A5E; border-bottom: 3px solid #C98A5E;
           text-shadow: 0 1px 4px rgba(0,0,0,0.9);
           box-shadow: 0 8px 24px rgba(0,0,0,0.45);
         }
         .awz-drop-icon {
           width: 60px; height: 60px;
           border-radius: 18px;
-          background: rgba(129,140,248,0.12);
+          background: rgba(176, 123, 82,0.12);
           display: flex; align-items: center; justify-content: center;
         }
         .awz-dropzone p { font-size: 15px; font-weight: 600; color: var(--foreground); }
@@ -653,7 +653,7 @@ export default function AIWorkZone() {
         .awz-folder-tag {
           font-size: 12px;
           color: var(--primary);
-          background: rgba(129,140,248,0.12);
+          background: rgba(176, 123, 82,0.12);
           padding: 4px 12px;
           border-radius: 20px;
           font-weight: 500;
@@ -763,7 +763,7 @@ export default function AIWorkZone() {
         .awz-done-icon {
           width: 56px; height: 56px;
           border-radius: 50%;
-          background: rgba(34,197,94,0.16);
+          background: rgba(126, 155, 110,0.16);
           display: flex; align-items: center; justify-content: center;
         }
         .awz-done-text { display: flex; flex-direction: column; gap: 6px; }

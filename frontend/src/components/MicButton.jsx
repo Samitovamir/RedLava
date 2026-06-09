@@ -66,8 +66,8 @@ export default function MicButton({ onText, title = 'Надиктовать го
           animation: mic-pulse 1.3s ease-in-out infinite;
         }
         @keyframes mic-pulse {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.5); }
-          50% { box-shadow: 0 0 0 7px rgba(239,68,68,0); }
+          0%, 100% { box-shadow: 0 0 0 0 rgba(168, 90, 74,0.5); }
+          50% { box-shadow: 0 0 0 7px rgba(168, 90, 74,0); }
         }
       `}</style>
     </button>

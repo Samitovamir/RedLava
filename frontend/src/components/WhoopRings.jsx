@@ -72,7 +72,7 @@ export default function WhoopRings({ w, garmin }) {
       initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
       <div className="wr-rings">
         <CircularChart
-          value={sleepPerf} label={t.sleep} color="#38bdf8" size={124}
+          value={sleepPerf} label={t.sleep} color="#6E8CA8" size={124}
           sublabel={w.sleep?.hoursSlept != null ? fmtHm((w.sleep.hoursSlept || 0) * 60) : null}
         />
         <CircularChart

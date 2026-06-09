@@ -1,11 +1,11 @@
 // Mock-данные тренировок (как будто из Garmin Connect). Заменятся на реальный API.
 
 export const WORKOUT_TYPES = {
-  run:   { label: 'Бег',        color: '#f97316', emoji: '🏃' },
-  bike:  { label: 'Велосипед',  color: '#38bdf8', emoji: '🚴' },
-  swim:  { label: 'Плавание',   color: '#22c55e', emoji: '🏊' },
-  gym:   { label: 'Силовая',    color: '#818cf8', emoji: '🏋️' },
-  walk:  { label: 'Ходьба',     color: '#f59e0b', emoji: '🚶' }
+  run:   { label: 'Бег',        color: '#BC7B4E', emoji: '🏃' },
+  bike:  { label: 'Велосипед',  color: '#6E8CA8', emoji: '🚴' },
+  swim:  { label: 'Плавание',   color: '#7E9B6E', emoji: '🏊' },
+  gym:   { label: 'Силовая',    color: '#B07B52', emoji: '🏋️' },
+  walk:  { label: 'Ходьба',     color: '#C98A5E', emoji: '🚶' }
 }
 
 // Случайный ряд пульса для мини-графика
@@ -138,7 +138,7 @@ export const GARMIN = {
 }
 
 export const HR_ZONE_LABELS = ['Зона 1 · Разминка', 'Зона 2 · Лёгкая', 'Зона 3 · Аэробная', 'Зона 4 · Порог', 'Зона 5 · Максимум']
-export const HR_ZONE_COLORS = ['#9ca3af', '#38bdf8', '#22c55e', '#f59e0b', '#ef4444']
+export const HR_ZONE_COLORS = ['#9ca3af', '#6E8CA8', '#7E9B6E', '#C98A5E', '#A85A4A']
 
 export function formatWorkoutDate(d) {
   const today = new Date(); today.setHours(0, 0, 0, 0)

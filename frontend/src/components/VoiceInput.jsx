@@ -129,12 +129,12 @@ export default function VoiceInput({ value, onChange, onSubmit, busy }) {
         .vi-mic:hover { box-shadow: 0 10px 34px color-mix(in srgb, var(--accent) 55%, transparent); }
         .vi-mic.listening {
           background: var(--red); color: #fff;
-          box-shadow: 0 0 0 0 rgba(239,68,68,0.55);
+          box-shadow: 0 0 0 0 rgba(168, 90, 74,0.55);
           animation: vi-pulse 1.4s ease-in-out infinite;
         }
         @keyframes vi-pulse {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.5); }
-          50% { box-shadow: 0 0 0 16px rgba(239,68,68,0); }
+          0%, 100% { box-shadow: 0 0 0 0 rgba(168, 90, 74,0.5); }
+          50% { box-shadow: 0 0 0 16px rgba(168, 90, 74,0); }
         }
         .vi-hint { font-size: 15px; font-weight: 600; color: var(--muted); text-align: center; }
 

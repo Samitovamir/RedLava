@@ -207,7 +207,7 @@ export default function AICommandBar() {
             overflow: hidden;
           }
           .ai-bar.expanded {
-            border-color: rgba(129,140,248,0.3);
+            border-color: rgba(176, 123, 82,0.3);
           }
           .ai-messages {
             overflow-y: auto;
@@ -231,7 +231,7 @@ export default function AICommandBar() {
           .ai-example:hover { color: var(--accent); border-color: var(--accent); }
           .ai-done-badge {
             display: inline-block; margin-left: 8px; font-size: 11px; font-weight: 700;
-            color: var(--green); background: rgba(34,197,94,0.14);
+            color: var(--green); background: rgba(126, 155, 110,0.14);
             padding: 2px 8px; border-radius: 10px; white-space: nowrap;
           }
           .ai-message {

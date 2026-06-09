@@ -195,7 +195,7 @@ function DaySummaryInner({ dayContext, snapshot, eventCount }) {
         .summary-text { font-size: 17.5px; line-height: 1.7; color: var(--foreground); white-space: pre-wrap; }
         .ds-done-badge {
           display: inline-block; margin-top: 6px; font-size: 11px; font-weight: 600;
-          color: var(--green); background: rgba(34,197,94,0.14);
+          color: var(--green); background: rgba(126, 155, 110,0.14);
           padding: 2px 8px; border-radius: 10px;
         }
         .summary-tags { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -203,7 +203,7 @@ function DaySummaryInner({ dayContext, snapshot, eventCount }) {
           font-size: 12px; padding: 5px 12px; border-radius: 20px;
           background: var(--bg-secondary); color: var(--muted-foreground); font-weight: 500;
         }
-        .summary-tag.accent { background: rgba(34,197,94,0.14); color: var(--green); }
+        .summary-tag.accent { background: rgba(126, 155, 110,0.14); color: var(--green); }
 
         .ds-chat {
           margin-top: auto;

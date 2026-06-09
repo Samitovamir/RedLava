@@ -618,7 +618,7 @@ export default function LabResults() {
           border: 1px solid var(--primary); background: transparent; color: var(--primary);
           font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s;
         }
-        .lab-ai-btn:hover:not(:disabled) { background: rgba(129,140,248,0.12); }
+        .lab-ai-btn:hover:not(:disabled) { background: rgba(176, 123, 82,0.12); }
         .lab-ai-btn:disabled { opacity: 0.4; cursor: default; }
 
         .lab-drop {
@@ -628,7 +628,7 @@ export default function LabResults() {
           color: var(--muted-foreground); cursor: pointer; text-align: center; transition: all 0.18s;
         }
         .lab-drop:hover { border-color: var(--primary); color: var(--primary); }
-        .lab-drop.over { border-color: var(--primary); background: rgba(129,140,248,0.08); color: var(--primary); }
+        .lab-drop.over { border-color: var(--primary); background: rgba(176, 123, 82,0.08); color: var(--primary); }
         .lab-drop.busy { cursor: default; border-style: solid; }
         .lab-drop-title { font-size: 14px; font-weight: 600; color: var(--foreground); }
         .lab-drop-hint { font-size: 12px; }
@@ -650,7 +650,7 @@ export default function LabResults() {
         .lab-tl-name { color: var(--foreground); max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .lab-tl-count { font-size: 11px; }
 
-        .lab-ai { display: flex; flex-direction: column; gap: 10px; background: rgba(129,140,248,0.07); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+        .lab-ai { display: flex; flex-direction: column; gap: 10px; background: rgba(176, 123, 82,0.07); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
         .summary-head { display: flex; align-items: center; gap: 10px; }
         .summary-badge { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: var(--primary-foreground); background: var(--primary); padding: 3px 8px; border-radius: 6px; }
         .lab-ai-text { font-size: 17.5px; line-height: 1.7; color: var(--foreground); white-space: pre-wrap; }
@@ -719,7 +719,7 @@ export default function LabResults() {
         .lm-unit { font-size: 11px; font-weight: 400; }
         .lm-await { font-size: 11px; font-style: italic; }
         .lm-bar { position: relative; height: 8px; border-radius: 4px; background: var(--bg-primary); }
-        .lm-band { position: absolute; top: 0; height: 100%; background: rgba(34,197,94,0.28); border-radius: 4px; }
+        .lm-band { position: absolute; top: 0; height: 100%; background: rgba(126, 155, 110,0.28); border-radius: 4px; }
         .lm-marker-dot { position: absolute; top: 50%; width: 12px; height: 12px; border-radius: 50%; transform: translate(-50%, -50%); border: 2px solid var(--card); }
         .lm-bottom { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
         .lm-range { font-size: 11px; }

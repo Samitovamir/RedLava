@@ -128,54 +128,54 @@ export default function AuthGate({ children }) {
       </form>
 
       <style>{`
-        .auth-splash { position: fixed; inset: 0; background: var(--bg-primary, #1e1b18); }
+        .auth-splash { position: fixed; inset: 0; background: var(--bg-primary, #16191D); }
         .auth-screen {
           position: fixed; inset: 0;
           display: flex; align-items: center; justify-content: center;
           padding: 24px;
           background:
-            radial-gradient(700px circle at 50% -10%, rgba(129,140,248,0.10), transparent 60%),
-            var(--bg-primary, #1e1b18);
+            radial-gradient(700px circle at 50% -10%, rgba(176, 123, 82,0.10), transparent 60%),
+            var(--bg-primary, #16191D);
           font-family: Inter, system-ui, sans-serif;
         }
         .auth-card {
           width: 100%; max-width: 380px;
           display: flex; flex-direction: column; align-items: center; gap: 14px;
-          background: var(--bg-card, #2c2825);
-          border: 1px solid var(--border, #3a3633);
+          background: var(--bg-card, #1B2027);
+          border: 1px solid var(--border, #232A33);
           border-radius: 20px;
           padding: 36px 28px;
           box-shadow: 0 24px 60px rgba(0,0,0,0.5);
         }
         .auth-logo {
           width: 52px; height: 52px; border-radius: 14px;
-          background: var(--accent, #818cf8); color: var(--bg-primary, #1e1b18);
+          background: var(--accent, #B07B52); color: var(--bg-primary, #16191D);
           display: flex; align-items: center; justify-content: center;
           font-size: 26px; font-weight: 800;
         }
-        .auth-title { font-size: 22px; font-weight: 700; color: var(--foreground, #e2e8f0); margin: 6px 0 0; }
+        .auth-title { font-size: 22px; font-weight: 700; color: var(--foreground, #ECEEF1); margin: 6px 0 0; }
         .auth-sub { font-size: 14px; color: var(--muted, #9ca3af); text-align: center; margin: 0 0 6px; line-height: 1.5; }
         .auth-input {
           width: 100%; box-sizing: border-box;
-          background: var(--bg-secondary, #3a3633);
-          border: 1px solid var(--border, #3a3633);
+          background: var(--bg-secondary, #232A33);
+          border: 1px solid var(--border, #232A33);
           border-radius: 12px; padding: 14px 16px;
-          font-family: inherit; font-size: 16px; color: var(--foreground, #e2e8f0);
+          font-family: inherit; font-size: 16px; color: var(--foreground, #ECEEF1);
           outline: none; transition: border-color 0.15s;
         }
-        .auth-input:focus { border-color: var(--accent, #818cf8); }
+        .auth-input:focus { border-color: var(--accent, #B07B52); }
         .auth-input::placeholder { color: var(--muted, #9ca3af); }
-        .auth-error { width: 100%; font-size: 13.5px; color: var(--red, #ef4444); text-align: center; }
+        .auth-error { width: 100%; font-size: 13.5px; color: var(--red, #A85A4A); text-align: center; }
         .auth-btn {
           width: 100%; padding: 14px; border: none; border-radius: 12px;
-          background: var(--accent, #818cf8); color: var(--bg-primary, #1e1b18);
+          background: var(--accent, #B07B52); color: var(--bg-primary, #16191D);
           font-family: inherit; font-size: 16px; font-weight: 700; cursor: pointer;
           transition: opacity 0.15s;
         }
         .auth-btn:hover:not(:disabled) { opacity: 0.9; }
         .auth-btn:disabled { opacity: 0.5; cursor: default; }
         .auth-guest { font-size: 12.5px; color: var(--muted, #9ca3af); text-align: center; line-height: 1.5; margin-top: 2px; }
-        .auth-guest b { color: var(--foreground, #e2e8f0); font-weight: 700; }
+        .auth-guest b { color: var(--foreground, #ECEEF1); font-weight: 700; }
       `}</style>
     </div>
   )

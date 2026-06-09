@@ -62,7 +62,7 @@ const SERVICES = [
     kind: 'url',
     live: true,
     endpoints: { connect: '/api/labs/connect', disconnect: '/api/labs/disconnect', status: '/api/labs/status' },
-    color: '#ef4444',
+    color: '#A85A4A',
     icon: (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
         <path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
@@ -417,7 +417,7 @@ export default function Connections() {
         transition={{ duration: 0.35, delay: 0.1 }}
       >
         <div className="conn-row">
-          <span className="conn-icon" style={{ background: 'rgba(129,140,248,0.13)', color: 'var(--accent)' }}>
+          <span className="conn-icon" style={{ background: 'rgba(176, 123, 82,0.13)', color: 'var(--accent)' }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
             </svg>
@@ -470,19 +470,19 @@ export default function Connections() {
         .page-header { display: flex; align-items: baseline; gap: 12px; }
         .conn-intro { font-size: 15px; line-height: 1.6; max-width: 620px; margin: -4px 0 2px; }
         .conn-notice {
-          background: rgba(129,140,248,0.12); border: 1px solid var(--accent);
+          background: rgba(176, 123, 82,0.12); border: 1px solid var(--accent);
           color: var(--foreground); border-radius: 12px; padding: 12px 16px; font-size: 14px;
         }
         .conn-list { display: flex; flex-direction: column; gap: 14px; }
         .conn-card { padding: 18px 20px; transition: border-color 0.2s, box-shadow 0.2s; }
-        .conn-card.on { border-color: rgba(34,197,94,0.4); box-shadow: 0 0 0 1px rgba(34,197,94,0.15); }
+        .conn-card.on { border-color: rgba(126, 155, 110,0.4); box-shadow: 0 0 0 1px rgba(126, 155, 110,0.15); }
         .conn-row { display: flex; align-items: center; gap: 16px; }
         .conn-icon { width: 48px; height: 48px; border-radius: 14px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
         .conn-info { flex: 1; min-width: 0; }
         .conn-name { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 700; color: var(--foreground); }
         .conn-badge { font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: 20px; background: var(--bg-secondary); color: var(--muted-foreground); }
-        .conn-badge.on { background: rgba(34,197,94,0.16); color: var(--green); }
-        .conn-soon { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--yellow); background: rgba(245,158,11,0.14); padding: 2px 7px; border-radius: 20px; }
+        .conn-badge.on { background: rgba(126, 155, 110,0.16); color: var(--green); }
+        .conn-soon { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--yellow); background: rgba(201, 138, 94,0.14); padding: 2px 7px; border-radius: 20px; }
         .conn-desc { font-size: 13.5px; line-height: 1.5; margin-top: 3px; }
         .conn-account { font-size: 13px; color: var(--green); margin-top: 5px; font-weight: 500; }
         .conn-action { flex-shrink: 0; }

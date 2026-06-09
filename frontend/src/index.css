@@ -50,40 +50,40 @@
 }
 
 .dark {
-  --card: #2c2825;
-  --ring: #818cf8;
-  --input: #3a3633;
-  --muted: #2c2825;
-  --accent: #484441;
-  --border: #3a3633;
+  --card: #1B2027;
+  --ring: #B07B52;
+  --input: #2C333C;
+  --muted: #1B2027;
+  --accent: #B07B52;
+  --border: #272D35;
   --radius: 1.25rem;
-  --chart-1: #818cf8;
-  --chart-2: #6366f1;
-  --chart-3: #4f46e5;
-  --chart-4: #4338ca;
-  --chart-5: #3730a3;
-  --popover: #2c2825;
-  --primary: #818cf8;
-  --sidebar: #3a3633;
-  --secondary: #3a3633;
-  --background: #1e1b18;
-  --foreground: #e2e8f0;
-  --destructive: #ef4444;
+  --chart-1: #B07B52;   /* коньяк */
+  --chart-2: #6E8CA8;   /* сталь */
+  --chart-3: #7E9B6E;   /* шалфей */
+  --chart-4: #C98A5E;   /* тёплый янтарь */
+  --chart-5: #8A93A0;   /* серый */
+  --popover: #1B2027;
+  --primary: #B07B52;
+  --sidebar: #1B2027;
+  --secondary: #232A33;
+  --background: #16191D;
+  --foreground: #ECEEF1;
+  --destructive: #A85A4A;
   --shadow-color: hsl(0 0% 0%);
-  --sidebar-ring: #818cf8;
-  --sidebar-accent: #484441;
-  --sidebar-border: #3a3633;
-  --card-foreground: #e2e8f0;
-  --sidebar-primary: #818cf8;
-  --muted-foreground: #9ca3af;
-  --accent-foreground: #d1d5db;
-  --popover-foreground: #e2e8f0;
-  --primary-foreground: #1e1b18;
-  --sidebar-foreground: #e2e8f0;
-  --secondary-foreground: #d1d5db;
-  --destructive-foreground: #1e1b18;
-  --sidebar-accent-foreground: #d1d5db;
-  --sidebar-primary-foreground: #1e1b18;
+  --sidebar-ring: #B07B52;
+  --sidebar-accent: #232A33;
+  --sidebar-border: #272D35;
+  --card-foreground: #ECEEF1;
+  --sidebar-primary: #B07B52;
+  --muted-foreground: #9AA3AF;
+  --accent-foreground: #F0EBE5;
+  --popover-foreground: #ECEEF1;
+  --primary-foreground: #F0EBE5;
+  --sidebar-foreground: #ECEEF1;
+  --secondary-foreground: #DDE1E6;
+  --destructive-foreground: #F0EBE5;
+  --sidebar-accent-foreground: #DDE1E6;
+  --sidebar-primary-foreground: #F0EBE5;
 }
 
 /* ============================================================
@@ -91,17 +91,44 @@
    маппятся на токены темы. Всегда активна тёмная тема (html.dark).
    ============================================================ */
 :root {
-  /* статусные цвета (не входят в базовую тему) */
-  --green: #22c55e;
-  --red: #ef4444;
-  --yellow: #f59e0b;
-  --orange: #f97316;
+  /* ── Палитра «коньяк / графит» (задана пользователем) ───────── */
+  --bg-app: #16191D;        /* фон всего приложения */
+  --bg-surface: #1B2027;    /* карточки, поля ввода */
+  --bg-anchor: #1E232A;     /* панель-якорь (вывод дня) */
+  --bg-sidebar: #1B2027;    /* боковое меню */
+
+  --border-soft: #272D35;   /* обычные границы карточек */
+  --border-med: #2C333C;    /* акцентные границы, поля */
+
+  --text-primary: #ECEEF1;  /* заголовки, якорь */
+  --text-body: #DDE1E6;     /* основной */
+  --text-secondary: #9AA3AF;/* вторичный */
+  --text-muted: #7E8794;    /* подписи, лейблы */
+  --text-faint: #5C6470;    /* подсказки, плейсхолдеры */
+
+  --accent-cognac: #B07B52;     /* главный тёплый акцент */
+  --accent-cognac-btn: #A06B45; /* кнопки (чуть темнее) */
+  --accent-steel: #6E8CA8;      /* холодный акцент: иконки, ссылки */
+
+  --status-ok: #7E9B6E;     /* норма — шалфейный */
+  --status-warn: #C98A5E;   /* отклонение — коньячный */
+  --status-crit: #A85A4A;   /* критично — кирпичный */
+  --status-ok-bg: #1F2A22;  /* фон-плашка нормы */
+  --status-warn-bg: #2E2018;/* фон-плашка отклонения */
+
+  --on-accent: #F0EBE5;     /* текст на коньячной кнопке */
+
+  /* статусные цвета — маппинг на старые имена компонентов */
+  --green: #7E9B6E;
+  --red: #A85A4A;
+  --yellow: #C98A5E;
+  --orange: #BC7B4E;
 
   /* лейаут / тени */
   --sidebar-width: 72px;
-  --border-hover: rgba(129, 140, 248, 0.35);
-  --shadow-card: 0 1px 2px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.2);
-  --shadow-lift: 0 8px 28px rgba(0,0,0,0.35);
+  --border-hover: rgba(176, 123, 82, 0.40);
+  --shadow-card: 0 1px 2px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.25);
+  --shadow-lift: 0 8px 28px rgba(0,0,0,0.4);
 }
 
 .dark {
@@ -130,8 +157,8 @@ body {
   font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, sans-serif;
   background-color: var(--background);
   background-image:
-    radial-gradient(900px circle at 12% -5%, rgba(129,140,248,0.06), transparent 45%),
-    radial-gradient(700px circle at 95% 8%, rgba(249,115,22,0.04), transparent 40%);
+    radial-gradient(900px circle at 12% -5%, rgba(176,123,82,0.05), transparent 45%),
+    radial-gradient(700px circle at 95% 8%, rgba(110,140,168,0.04), transparent 40%);
   color: var(--foreground);
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
@@ -161,7 +188,7 @@ body {
 }
 
 .card {
-  background: linear-gradient(160deg, var(--card), #29251f);
+  background: linear-gradient(160deg, var(--card), #181C22);
   border-radius: var(--radius);
   border: 1px solid var(--border);
   padding: 20px;

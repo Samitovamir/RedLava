@@ -94,7 +94,7 @@ export default function MailForm({ initial, onSent, onCancel, sendLabel }) {
 
       <style>{`
         .mail-form { display: flex; flex-direction: column; gap: 14px; }
-        .mail-warn { font-size: 13px; color: var(--orange); background: rgba(249,115,22,0.1); border: 1px solid var(--orange); border-radius: 12px; padding: 10px 12px; }
+        .mail-warn { font-size: 13px; color: var(--orange); background: rgba(188, 123, 78,0.1); border: 1px solid var(--orange); border-radius: 12px; padding: 10px 12px; }
         .mail-field { display: flex; flex-direction: column; gap: 6px; }
         .mail-label { font-size: 13px; font-weight: 600; color: var(--muted); }
         .mail-input, .mail-textarea {

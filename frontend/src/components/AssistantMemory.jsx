@@ -73,7 +73,7 @@ export default function AssistantMemory() {
         .mem-empty { font-size: 13px; }
         .mem-fact {
           display: inline-flex; align-items: center; gap: 8px;
-          background: rgba(129,140,248,0.12); color: var(--foreground);
+          background: rgba(176, 123, 82,0.12); color: var(--foreground);
           border: 1px solid var(--border); border-radius: 20px;
           padding: 6px 8px 6px 14px; font-size: 13px;
         }
@@ -97,7 +97,7 @@ export default function AssistantMemory() {
           border: 1px solid var(--primary); background: transparent; color: var(--primary);
           font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s;
         }
-        .mem-add-btn:hover:not(:disabled) { background: rgba(129,140,248,0.12); }
+        .mem-add-btn:hover:not(:disabled) { background: rgba(176, 123, 82,0.12); }
         .mem-add-btn:disabled { opacity: 0.4; cursor: default; }
       `}</style>
     </div>

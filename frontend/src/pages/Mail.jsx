@@ -61,7 +61,7 @@ export default function Mail() {
         .mail-card { display: flex; flex-direction: column; gap: 16px; }
         .mail-hint { font-size: 14px; line-height: 1.6; }
         .mail-done { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 30px 0; text-align: center; }
-        .mail-done-icon { width: 56px; height: 56px; border-radius: 50%; background: rgba(34,197,94,0.15); color: var(--green); font-size: 28px; display: flex; align-items: center; justify-content: center; }
+        .mail-done-icon { width: 56px; height: 56px; border-radius: 50%; background: rgba(126, 155, 110,0.15); color: var(--green); font-size: 28px; display: flex; align-items: center; justify-content: center; }
         .mail-done-title { font-size: 19px; font-weight: 700; color: var(--foreground); }
         .mail-done-sub { font-size: 14px; }
         .mail-done-btn { margin-top: 10px; padding: 11px 20px; border-radius: 12px; border: none; background: var(--accent); color: var(--accent-foreground); font-family: inherit; font-size: 14.5px; font-weight: 700; cursor: pointer; }

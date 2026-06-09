@@ -173,7 +173,7 @@ export default function History() {
         }
         .hist-actor-btn.active { background: var(--primary); color: var(--primary-foreground); }
         .hist-actor { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 20px; }
-        .hist-actor.ai { background: rgba(129,140,248,0.16); color: var(--primary); }
+        .hist-actor.ai { background: rgba(176, 123, 82,0.16); color: var(--primary); }
         .hist-actor.user { background: var(--bg-secondary); color: var(--muted-foreground); }
         .hist-chip {
           font-size: 13px; padding: 7px 14px; border-radius: 20px;

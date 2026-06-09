@@ -11,10 +11,10 @@ import { useLang } from '../context/LanguageContext.jsx'
 */
 
 const TYPES = [
-  { value: 'call', label: 'Звонок', labelEn: 'Call', color: '#818cf8' },
-  { value: 'calendar', label: 'Событие', labelEn: 'Event', color: '#38bdf8' },
-  { value: 'email', label: 'Письмо', labelEn: 'Email', color: '#22c55e' },
-  { value: 'meeting', label: 'Встреча', labelEn: 'Meeting', color: '#f97316' }
+  { value: 'call', label: 'Звонок', labelEn: 'Call', color: '#B07B52' },
+  { value: 'calendar', label: 'Событие', labelEn: 'Event', color: '#6E8CA8' },
+  { value: 'email', label: 'Письмо', labelEn: 'Email', color: '#7E9B6E' },
+  { value: 'meeting', label: 'Встреча', labelEn: 'Meeting', color: '#BC7B4E' }
 ]
 
 // Варианты повторения (как в Google Calendar)
@@ -43,8 +43,8 @@ export const REPEAT_LABELS_EN = Object.fromEntries(REPEATS.map(r => [r.value, r.
 
 // Приоритеты: 1 — самый важный (неотложный)
 export const PRIORITIES = [
-  { value: 1, label: 'Неотложный', labelEn: 'Urgent', color: '#ef4444', emoji: '🔴' },
-  { value: 2, label: 'Важный', labelEn: 'Important', color: '#f59e0b', emoji: '🟡' },
+  { value: 1, label: 'Неотложный', labelEn: 'Urgent', color: '#A85A4A', emoji: '🔴' },
+  { value: 2, label: 'Важный', labelEn: 'Important', color: '#C98A5E', emoji: '🟡' },
   { value: 3, label: 'Обычный', labelEn: 'Normal', color: '#9ca3af', emoji: '⚪️' }
 ]
 export const PRIORITY_MAP = Object.fromEntries(PRIORITIES.map(p => [p.value, p]))

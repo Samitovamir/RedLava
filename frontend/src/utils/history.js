@@ -3,12 +3,12 @@
 // actor: 'ai' — сделал помощник, 'user' — сделал сам.
 
 export const ACTION_TYPES = {
-  email:    { label: 'Письмо',      labelEn: 'Email',     color: '#818cf8', icon: 'mail' },
-  event:    { label: 'Событие',     labelEn: 'Event',     color: '#22c55e', icon: 'calendar' },
-  search:   { label: 'Поиск',       labelEn: 'Search',    color: '#f59e0b', icon: 'search' },
-  task:     { label: 'Задача',      labelEn: 'Task',      color: '#38bdf8', icon: 'check' },
-  reminder: { label: 'Напоминание', labelEn: 'Reminder',  color: '#f97316', icon: 'bell' },
-  workout:  { label: 'Тренировка',  labelEn: 'Workout',   color: '#ef4444', icon: 'activity' }
+  email:    { label: 'Письмо',      labelEn: 'Email',     color: '#B07B52', icon: 'mail' },
+  event:    { label: 'Событие',     labelEn: 'Event',     color: '#7E9B6E', icon: 'calendar' },
+  search:   { label: 'Поиск',       labelEn: 'Search',    color: '#C98A5E', icon: 'search' },
+  task:     { label: 'Задача',      labelEn: 'Task',      color: '#6E8CA8', icon: 'check' },
+  reminder: { label: 'Напоминание', labelEn: 'Reminder',  color: '#BC7B4E', icon: 'bell' },
+  workout:  { label: 'Тренировка',  labelEn: 'Workout',   color: '#A85A4A', icon: 'activity' }
 }
 
 export const STATUS_INFO = {

@@ -165,14 +165,14 @@ export default function FluidMenu() {
           width: 40px;
           height: 40px;
           border-radius: 12px;
-          background: linear-gradient(145deg, var(--accent), #6366f1);
+          background: linear-gradient(145deg, var(--accent), #A06B45);
           color: var(--accent-foreground);
           display: flex;
           align-items: center;
           justify-content: center;
           font-weight: 700;
           font-size: 19px;
-          box-shadow: 0 4px 14px rgba(129,140,248,0.35);
+          box-shadow: 0 4px 14px rgba(176, 123, 82,0.35);
           flex-shrink: 0;
         }
         .fluid-menu-inner {
@@ -210,7 +210,7 @@ export default function FluidMenu() {
           background: var(--bg-secondary);
         }
         .nav-item.active {
-          background: rgba(129, 140, 248, 0.12);
+          background: rgba(176, 123, 82, 0.12);
         }
         .nav-icon {
           display: flex;

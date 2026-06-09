@@ -42,10 +42,10 @@ const ICONS = {
 }
 
 const COLORS = {
-  call: '#818cf8',
-  calendar: '#38bdf8',
-  email: '#22c55e',
-  meeting: '#f97316'
+  call: '#B07B52',
+  calendar: '#6E8CA8',
+  email: '#7E9B6E',
+  meeting: '#BC7B4E'
 }
 
 // Происходит ли событие в указанный день (с учётом повторения)
@@ -920,7 +920,7 @@ export default function DaySchedule({ extended = false }) {
 
       {/* FAB — добавить событие */}
       <button className="ds-fab" title={t.addEventTitle} onClick={openAdd}>
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1e1b18" strokeWidth="2.6" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16191D" strokeWidth="2.6" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </button>
 
       {/* Модалка добавления / редактирования */}
@@ -1079,7 +1079,7 @@ export default function DaySchedule({ extended = false }) {
         }
         .ds-view.active {
           background: var(--yellow);
-          color: #1e1b18;
+          color: #16191D;
         }
         .ds-view-switch.text { padding: 3px; }
         .ds-view-txt {
@@ -1090,7 +1090,7 @@ export default function DaySchedule({ extended = false }) {
           transition: all 0.15s;
         }
         .ds-view-txt:hover { color: var(--foreground); }
-        .ds-view-txt.active { background: var(--yellow); color: #1e1b18; }
+        .ds-view-txt.active { background: var(--yellow); color: #16191D; }
 
         .ds-findtime {
           display: flex; align-items: center; gap: 7px;
@@ -1179,7 +1179,7 @@ export default function DaySchedule({ extended = false }) {
           border-radius: 12px; padding: 6px;
           background: rgba(255,255,255,0.015);
         }
-        .ds-wk-col.today { background: rgba(245,158,11,0.07); }
+        .ds-wk-col.today { background: rgba(201, 138, 94,0.07); }
         .ds-wk-head {
           display: flex; flex-direction: column; align-items: center; gap: 2px;
           border: none; background: transparent; cursor: pointer;
@@ -1296,7 +1296,7 @@ export default function DaySchedule({ extended = false }) {
         }
         .ds-dropdown-item:hover { background: rgba(255,255,255,0.06); }
         .ds-dropdown-item.danger { color: var(--red); }
-        .ds-dropdown-item.danger:hover { background: rgba(239,68,68,0.12); }
+        .ds-dropdown-item.danger:hover { background: rgba(168, 90, 74,0.12); }
         .ds-notif {
           display: flex; flex-direction: column; gap: 3px;
           padding: 9px 10px; border-radius: 8px;
@@ -1330,7 +1330,7 @@ export default function DaySchedule({ extended = false }) {
         .ds-now-label {
           font-size: 11px;
           font-weight: 700;
-          color: #1e1b18;
+          color: #16191D;
           background: var(--yellow);
           padding: 3px 9px;
           border-radius: 6px 6px 6px 0;
@@ -1429,7 +1429,7 @@ export default function DaySchedule({ extended = false }) {
           background: var(--yellow);
           cursor: pointer;
           display: flex; align-items: center; justify-content: center;
-          box-shadow: 0 6px 20px rgba(245,158,11,0.4);
+          box-shadow: 0 6px 20px rgba(201, 138, 94,0.4);
           transition: transform 0.15s;
           z-index: 10;
         }
@@ -1509,7 +1509,7 @@ export default function DaySchedule({ extended = false }) {
         .ds-conflict-icon {
           width: 48px; height: 48px;
           border-radius: 14px;
-          background: rgba(245,158,11,0.14);
+          background: rgba(201, 138, 94,0.14);
           display: flex; align-items: center; justify-content: center;
         }
         .ds-conflict h3 { font-size: 18px; font-weight: 700; color: var(--foreground); }
@@ -1528,7 +1528,7 @@ export default function DaySchedule({ extended = false }) {
           transition: border-color 0.15s, background 0.15s;
         }
         .ds-conflict-btn:hover { border-color: var(--border-hover); }
-        .ds-conflict-btn.danger:hover { border-color: rgba(239,68,68,0.5); }
+        .ds-conflict-btn.danger:hover { border-color: rgba(168, 90, 74,0.5); }
         .ds-conflict-btn.ghost { background: transparent; align-items: center; }
         .ds-conflict-btn.ghost:hover { border-color: var(--border-hover); }
         .ds-cb-title { font-size: 14px; font-weight: 600; color: var(--foreground); }
