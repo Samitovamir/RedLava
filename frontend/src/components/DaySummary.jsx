@@ -18,22 +18,45 @@ import { useLang, useT } from '../context/LanguageContext.jsx'
   Контекст строится из реальных событий — отражает все перестановки.
 */
 
+function readWhoopLive() { try { const s = localStorage.getItem('albert-whoop-live'); return s ? JSON.parse(s) : null } catch { return null } }
+function readGarminLive() { try { const s = localStorage.getItem('albert-garmin-live'); return s ? JSON.parse(s) : null } catch { return null } }
+
+// Маленькие чипы-метрики дня из реальных данных (тренировка / нагрузка / восстановление)
+function buildMetrics(whoop, garmin, todayKey, en) {
+  const m = []
+  const todW = (garmin?.workouts || []).filter(w => w.date === todayKey)
+  let mins = todW.reduce((s, w) => s + (w.durationMin || 0), 0)
+  if (!mins && garmin?.lastWorkout?.date === todayKey) mins = garmin.lastWorkout.durationMin || 0
+  if (mins) m.push(`${en ? 'Workout' : 'Тренировка'} ${mins} ${en ? 'min' : 'мин'}`)
+  if (whoop?.strain != null) m.push(`${en ? 'Strain' : 'Нагрузка'} ${whoop.strain}/21`)
+  if (whoop?.recovery != null) m.push(`${en ? 'Recovery' : 'Восстановление'} ${whoop.recovery}%`)
+  return m
+}
+
 export default function DaySummary() {
   const { lang } = useLang()
   const { events } = useEvents()
+  const { facts } = useMemoryFacts()
   const snapshot = useSiteSnapshot()
 
   const todayKey = dateKey(mskNow())
   const todayEvents = events.filter(e => e.date === todayKey)
+  const metrics = buildMetrics(readWhoopLive(), readGarminLive(), todayKey, lang === 'en')
+
+  // Пока долгосрочная память не наполнилась — не советуем по рабочим встречам/звонкам.
+  const memThin = (facts?.length || 0) < 8
   const DAY_CONTEXT =
     `Ты помощник владельца по организации дня. Фокусируйся на расписании и планах, но ты ВИДИШЬ всю картину (спорт, здоровье, анализы) и учитываешь её в советах. ` +
     `Отвечай кратко и по делу на русском. Учитывай приоритеты событий и предпочтения из памяти.` +
+    (memThin
+      ? ` ВАЖНО: ты пока мало знаешь о рабочем ритме владельца — поэтому НЕ давай советов и рекомендаций про рабочие встречи и звонки (не пиши «нужны силы на завтрашние звонки», не советуй, как с ними быть). Сосредоточься на спорте, нагрузке, восстановлении и здоровье. Рабочие события можно лишь нейтрально упомянуть как факт расписания, без советов.`
+      : '') +
     (lang === 'en' ? ' Always reply to the user in English.' : '')
 
-  return <DaySummaryInner dayContext={DAY_CONTEXT} snapshot={snapshot} eventCount={todayEvents.length} />
+  return <DaySummaryInner dayContext={DAY_CONTEXT} snapshot={snapshot} eventCount={todayEvents.length} metrics={metrics} />
 }
 
-function DaySummaryInner({ dayContext, snapshot, eventCount }) {
+function DaySummaryInner({ dayContext, snapshot, eventCount, metrics = [] }) {
   const DAY_CONTEXT = dayContext
   const { lang } = useLang()
   const t = useT({
@@ -49,7 +72,7 @@ function DaySummaryInner({ dayContext, snapshot, eventCount }) {
       noServer: 'Нет связи с сервером. Запустите backend.',
       placeholder: 'Скажите или спросите про день…',
       suggests: ['Что важного сегодня?', 'Когда лучше тренироваться?', 'Освободи мне час'],
-      summaryMessage: 'Дай очень короткую сводку дня (2–3 предложения): общая нагрузка, на что обратить внимание и один совет. Без приветствия и без списков.'
+      summaryMessage: 'Учитывай ВСЕ данные дашборда (расписание, спорт, здоровье, анализы, питание, память). Сформулируй сводку дня СТРОГО так: ПЕРВАЯ строка — короткий вывод-заголовок из 3–6 слов без точки в конце (например «Вечер лучше оставить спокойным»). Затем с НОВОЙ строки — 1–2 коротких предложения по сути: что уже было сегодня и на что обратить внимание. Без приветствия, без списков, без воды.'
     },
     en: {
       aiBadge: 'AI',
@@ -63,7 +86,7 @@ function DaySummaryInner({ dayContext, snapshot, eventCount }) {
       noServer: 'No connection to the server. Start the backend.',
       placeholder: 'Say or ask about your day…',
       suggests: ['What’s important today?', 'When is the best time to train?', 'Free up an hour for me'],
-      summaryMessage: 'Give a very short summary of the day (2–3 sentences): overall load, what to pay attention to, and one piece of advice. No greeting and no lists.'
+      summaryMessage: 'Use ALL dashboard data (schedule, sport, health, labs, nutrition, memory). Format the day summary STRICTLY like this: FIRST line — a short verdict headline of 3–6 words with no trailing period (e.g. “Keep the evening calm”). Then on a NEW line — 1–2 short sentences on the essentials: what already happened today and what to watch. No greeting, no lists, no fluff.'
     }
   })
   const { applyAiActions } = useEvents()
@@ -78,11 +101,11 @@ function DaySummaryInner({ dayContext, snapshot, eventCount }) {
   // ИИ-сводка дня (с кэшем; шаблон — как фолбэк без backend)
   const fallbackSummary = lang === 'en'
     ? (eventCount > 0
-        ? `Today there ${eventCount === 1 ? 'is' : 'are'} ${eventCount} ${eventCount === 1 ? 'event' : 'events'}. Recovery is good (78%) — you can go full intensity. Close out the important tasks before the evening workout.`
-        : 'No events today — a good day to rest or clear out backlog tasks. Recovery 78%.')
+        ? `Wrap up the day calmly\nToday: ${eventCount} ${eventCount === 1 ? 'event' : 'events'}. Do the important tasks first, leave the workout for the evening.`
+        : 'A good day to recover\nNo events today — rest or clear out backlog tasks.')
     : (eventCount > 0
-        ? `Сегодня ${eventCount} ${eventCount === 1 ? 'событие' : 'событий'}. Восстановление хорошее (78%) — можно дать полную интенсивность. Закройте важные дела до вечерней тренировки.`
-        : 'На сегодня событий нет — хороший день, чтобы отдохнуть или закрыть отложенные задачи. Восстановление 78%.')
+        ? `Спокойно закрой день\nСегодня ${eventCount} ${eventCount === 1 ? 'событие' : 'событий'}. Сначала важные дела, тренировку — на вечер.`
+        : 'Хороший день для восстановления\nСобытий нет — можно отдохнуть или закрыть отложенное.')
   const summary = useAiSummary({
     id: 'daysummary',
     context: DAY_CONTEXT,
@@ -140,18 +163,29 @@ function DaySummaryInner({ dayContext, snapshot, eventCount }) {
   return (
     <div className="card day-summary">
       <div className="summary-head">
-        <span className="summary-badge">{t.aiBadge}</span>
-        <div className="card-title" style={{ margin: 0 }}>{t.summaryTitle}</div>
+        <span className="summary-eyebrow">{t.summaryTitle}</span>
         <AiRefreshButton onClick={summary.refresh} loading={summary.loading} />
       </div>
 
-      <p className="summary-text">
-        {summary.loading ? t.collecting : summary.text}
-      </p>
-      <div className="summary-tags">
-        <span className="summary-tag">{eventCount} {eventCount === 1 ? t.eventOne : eventCount >= 2 && eventCount <= 4 ? t.eventFew : t.eventMany}</span>
-        <span className="summary-tag accent">{t.recovery}</span>
-      </div>
+      {summary.loading ? (
+        <p className="summary-sub">{t.collecting}</p>
+      ) : (() => {
+        const lines = (summary.text || '').split('\n').map(s => s.trim()).filter(Boolean)
+        const headline = lines[0] || ''
+        const subtitle = lines.slice(1).join(' ')
+        return (
+          <>
+            {headline && <h2 className="summary-headline">{headline}</h2>}
+            {subtitle && <p className="summary-sub">{subtitle}</p>}
+          </>
+        )
+      })()}
+
+      {metrics.length > 0 && (
+        <div className="summary-tags">
+          {metrics.map(m => <span key={m} className="summary-tag">{m}</span>)}
+        </div>
+      )}
 
       {/* Мини-чат */}
       <div className="ds-chat">
@@ -192,13 +226,18 @@ function DaySummaryInner({ dayContext, snapshot, eventCount }) {
 
       <style>{`
         .day-summary { display: flex; flex-direction: column; gap: 14px; height: 100%; min-height: 560px; }
-        .summary-head { display: flex; align-items: center; gap: 10px; }
-        .summary-badge {
-          font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
-          color: var(--primary-foreground); background: var(--primary);
-          padding: 3px 8px; border-radius: 6px;
+        .summary-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .summary-eyebrow {
+          font-size: 12px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase;
+          color: var(--accent);
         }
-        .summary-text { font-size: 17.5px; line-height: 1.7; color: var(--foreground); white-space: pre-wrap; }
+        .summary-headline {
+          font-family: var(--font-serif), Georgia, serif;
+          font-size: 26px; font-weight: 700; line-height: 1.18;
+          color: var(--foreground); letter-spacing: -0.01em;
+          margin-top: 2px;
+        }
+        .summary-sub { font-size: 15.5px; line-height: 1.55; color: var(--muted-foreground); white-space: pre-wrap; }
         .ds-done-badge {
           display: inline-block; margin-top: 6px; font-size: 11px; font-weight: 600;
           color: var(--green); background: rgba(126, 155, 110,0.14);

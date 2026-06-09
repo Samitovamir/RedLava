@@ -5,6 +5,7 @@
 import { WORKOUTS, WORKOUT_TYPES, WEEK_STATS, GARMIN } from './workouts.js'
 import { WHOOP, WHOOP_DAYS, recoveryLabel } from './whoop.js'
 import { INITIAL_REPORTS, buildHistory, markerStatus, STATUS_INFO, rangeText, resolveMarker } from './labs.js'
+import { loadProfile, computeTarget, GOALS } from './nutrition.js'
 import { mskNow } from './time.js'
 
 const PRIO = { 1: 'неотложный', 2: 'важный', 3: 'обычный' }
@@ -114,6 +115,17 @@ export function buildSiteSnapshot({ events = [], history = [], facts = [] } = {}
     ? 'Анализы крови пока не загружены (подключите Яндекс.Диск с файлами). Не придумывай показатели.'
     : flagged.length ? `Вне нормы: ${flagged.join('; ')}. Остальные показатели в норме.` : 'все показатели в норме.'
 
+  // Питание — цель КБЖУ из профиля + наличие меню недели
+  let nutrition
+  try {
+    const profile = loadProfile()
+    const tgt = computeTarget(profile)
+    const goalLabel = (GOALS.find(g => g.key === profile.goal) || {}).label || profile.goal
+    let hasPlan = false
+    try { const s = localStorage.getItem('albert-meal-plan'); const o = s ? JSON.parse(s) : null; hasPlan = !!(o && Object.keys(o).length) } catch { /* ignore */ }
+    nutrition = `Цель: ${goalLabel}. Норма ~${tgt.kcal} ккал/день (белок ${tgt.protein} г, жиры ${tgt.fat} г, углеводы ${tgt.carb} г). Профиль: ${profile.weight} кг, ${profile.height} см, ${profile.age} лет. В дни тренировок дневная цель растёт на реальный расход из Garmin. ${hasPlan ? 'Меню на неделю составлено.' : 'Меню недели пока не составлено.'}`
+  } catch { nutrition = 'Данные питания недоступны.' }
+
   const recent = history.slice(0, 6).map(h => `${h.datetime} ${h.title}`).join('\n') || 'нет'
   const factsBlock = facts.length ? facts.map(f => `- ${f.text || f}`).join('\n') : 'пока ничего не запомнено'
 
@@ -133,6 +145,9 @@ ${health}
 
 АНАЛИЗЫ КРОВИ (последние значения):
 ${labs}
+
+ПИТАНИЕ (цель КБЖУ и меню):
+${nutrition}
 
 ПАМЯТЬ О ВЛАДЕЛЬЦЕ (важные факты и предпочтения):
 ${factsBlock}
