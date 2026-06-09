@@ -185,12 +185,8 @@ body {
 }
 
 .card {
-  /* Объём: светлая верхняя кромка ловит свет, низ уходит в тень + мягкая тень снизу.
-     Поверх — тонкая диагональная «тканая» текстура (плетение). */
-  background:
-    repeating-linear-gradient(45deg,  var(--weave-hi) 0 1px, transparent 1px var(--weave-gap)),
-    repeating-linear-gradient(-45deg, var(--weave-lo) 0 1px, transparent 1px var(--weave-gap)),
-    linear-gradient(var(--bg-card-top), var(--bg-card-bot));
+  /* Объём: светлая верхняя кромка ловит свет, низ уходит в тень + мягкая тень снизу. */
+  background: linear-gradient(var(--bg-card-top), var(--bg-card-bot));
   border-top: 1px solid var(--edge-light);
   border-bottom: 1px solid var(--edge-dark);
   border-left: 1px solid var(--border-soft);
@@ -199,14 +195,22 @@ body {
   padding: 20px;
   box-shadow: var(--shadow-card);
   color: var(--text-body);
+  position: relative;
+}
+/* Строчка-прошивка: пунктирная рамка с отступом внутрь (как шов на коже) */
+.card::after {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  border: 1px dashed var(--stitch);
+  border-radius: calc(var(--radius) - 6px);
+  opacity: 0.8;
+  pointer-events: none;
 }
 
-/* Панель-якорь (крупный вывод дня) — больше объёма + строчка-прошивка по краю */
+/* Панель-якорь (крупный вывод дня) — больше объёма + та же прошивка */
 .anchor-card {
-  background:
-    repeating-linear-gradient(45deg,  var(--weave-hi) 0 1px, transparent 1px var(--weave-gap)),
-    repeating-linear-gradient(-45deg, var(--weave-lo) 0 1px, transparent 1px var(--weave-gap)),
-    linear-gradient(var(--bg-anchor-top), var(--bg-anchor-bot));
+  background: linear-gradient(var(--bg-anchor-top), var(--bg-anchor-bot));
   border-top: 1px solid var(--edge-light);
   border-bottom: 1px solid var(--edge-dark);
   border-left: 1px solid var(--border-soft);
