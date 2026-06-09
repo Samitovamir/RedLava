@@ -1362,7 +1362,7 @@ export default function DaySchedule({ extended = false }) {
           border-radius: 50%;
           display: flex; align-items: center; justify-content: center;
           flex-shrink: 0;
-          box-shadow: 0 3px 10px color-mix(in srgb, var(--ev-color) 45%, transparent);
+          box-shadow: 0 2px 6px rgba(0,0,0,0.28);
         }
         .ds-event-body { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
         .ds-event-title {

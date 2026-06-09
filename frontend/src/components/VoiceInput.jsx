@@ -123,8 +123,8 @@ export default function VoiceInput({ value, onChange, onSubmit, busy }) {
           width: 96px; height: 96px; border-radius: 50%;
           background: var(--accent); color: var(--accent-foreground);
           border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
-          /* объём без свечения: верхняя кромка света + мягкая тень снизу */
-          box-shadow: inset 0 2px 0 rgba(255,255,255,0.16), 0 4px 10px rgba(0,0,0,0.4);
+          /* выпуклость без свечения: кромка света сверху + внутренняя тень снизу + тень под кнопкой */
+          box-shadow: inset 0 2px 0.5px rgba(255,255,255,0.22), inset 0 -3px 5px rgba(0,0,0,0.22), 0 5px 12px rgba(0,0,0,0.4);
           transition: filter 0.15s, box-shadow 0.2s;
         }
         .vi-mic:hover { filter: brightness(1.06); }
