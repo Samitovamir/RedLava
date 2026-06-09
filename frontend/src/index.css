@@ -185,18 +185,34 @@ body {
 }
 
 .card {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-soft);
+  /* Объём: светлая верхняя кромка ловит свет, низ уходит в тень + мягкая тень снизу.
+     Поверх — тонкая диагональная «тканая» текстура (плетение). */
+  background:
+    repeating-linear-gradient(45deg,  var(--weave-hi) 0 1px, transparent 1px var(--weave-gap)),
+    repeating-linear-gradient(-45deg, var(--weave-lo) 0 1px, transparent 1px var(--weave-gap)),
+    linear-gradient(var(--bg-card-top), var(--bg-card-bot));
+  border-top: 1px solid var(--edge-light);
+  border-bottom: 1px solid var(--edge-dark);
+  border-left: 1px solid var(--border-soft);
+  border-right: 1px solid var(--border-soft);
   border-radius: var(--radius);
   padding: 20px;
+  box-shadow: var(--shadow-card);
   color: var(--text-body);
 }
 
-/* Панель-якорь (крупный вывод дня) — плоская, с тонкой строчкой-прошивкой по краю */
+/* Панель-якорь (крупный вывод дня) — больше объёма + строчка-прошивка по краю */
 .anchor-card {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-soft);
+  background:
+    repeating-linear-gradient(45deg,  var(--weave-hi) 0 1px, transparent 1px var(--weave-gap)),
+    repeating-linear-gradient(-45deg, var(--weave-lo) 0 1px, transparent 1px var(--weave-gap)),
+    linear-gradient(var(--bg-anchor-top), var(--bg-anchor-bot));
+  border-top: 1px solid var(--edge-light);
+  border-bottom: 1px solid var(--edge-dark);
+  border-left: 1px solid var(--border-soft);
+  border-right: 1px solid var(--border-soft);
   border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-anchor);
   position: relative;
 }
 .anchor-card::after {
@@ -250,6 +266,12 @@ body {
   /* Переходы */
   --dur-fast: 150ms; --dur-base: 200ms; --dur-slow: 300ms;
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Текстура «плетения» (тонкая диагональная штриховка поверх поверхностей).
+     По умолчанию — для тёмных кожаных тем; в cream переопределяется ниже. */
+  --weave-hi: rgba(255,255,255,0.022);
+  --weave-lo: rgba(0,0,0,0.045);
+  --weave-gap: 5px;
 }
 
 /* Плавная смена темы */
@@ -295,6 +317,8 @@ body { transition: background-color var(--dur-base) var(--ease), color var(--dur
   --stitch: #D8CDB8;
   --shadow-anchor: 0 16px 36px -18px rgba(120,100,70,0.35);
   --shadow-card: 0 8px 20px -14px rgba(120,100,70,0.25);
+  --weave-hi: rgba(255,255,255,0.5);
+  --weave-lo: rgba(120,100,70,0.05);
 }
 
 /* ТЕМА 4: ОРИГИНАЛЬНАЯ — реальные «родные» цвета сайта (тёплый near-black + индиго) */
