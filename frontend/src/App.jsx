@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import FluidMenu from './components/FluidMenu.jsx'
 import WhatsNew from './components/WhatsNew.jsx'
+import LockGate from './components/LockGate.jsx'
 import MailModal from './components/MailModal.jsx'
 import DemoBanner from './components/DemoBanner.jsx'
 import { isGuest } from './api/authFetch.js'
@@ -45,6 +46,7 @@ export default function App() {
     <BrowserRouter>
       <div className="main-layout">
         <WhatsNew />
+        <LockGate />
         <DemoBanner />
         <MailModal />
         <FluidMenu />

@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import AIWorkZone from '../components/AIWorkZone.jsx'
 import DaySchedule from '../components/DaySchedule.jsx'
 import DaySummary from '../components/DaySummary.jsx'
@@ -9,6 +9,7 @@ import { getQuoteOfDay } from '../utils/quotes.js'
 import { useEvents } from '../context/EventsContext.jsx'
 import { useT, useLang } from '../context/LanguageContext.jsx'
 import { mskNow } from '../utils/time.js'
+import { isLocked, lockSite } from '../utils/lock.js'
 
 const FALL_STEP = 0.028          // задержка между падением соседних символов/единиц (сек)
 const FALL_EASE = [0.45, 0, 0.9, 0.4] // ease-in — имитация гравитации
@@ -112,11 +113,7 @@ export default function Home() {
       recoverySleep: 'Восстановление и сон', recovery: 'Восстановление',
       sleepEff: (h, e) => `Сон · эфф. ${e}%`, connectWhoop: 'Подключите Whoop',
       hours: 'ч', km: 'км', min: 'мин', perKm: '/км',
-      huliBtn: 'хули-ули',
-      overlayTitle: 'Никогда не знаешь, когда твоя идея обернётся против тебя',
-      mathHint: 'Решите пример, чтобы вернуть сайт:',
-      answerPlaceholder: 'Дайте ответ', returnSite: 'Вернуть сайт',
-      wrongAnswer: 'Неверно. Подумайте ещё 🙂',
+      premiumBtn: 'Перейти на Premium',
     },
     en: {
       greetMorning: 'Good morning', greetDay: 'Good afternoon', greetEvening: 'Good evening', greetNight: 'Good night',
@@ -130,27 +127,27 @@ export default function Home() {
       recoverySleep: 'Recovery and sleep', recovery: 'Recovery',
       sleepEff: (h, e) => `Sleep · eff. ${e}%`, connectWhoop: 'Connect Whoop',
       hours: 'h', km: 'km', min: 'min', perKm: '/km',
-      huliBtn: 'huli-uli',
-      overlayTitle: 'You never know when your own idea will turn against you',
-      mathHint: 'Solve the equation to bring the site back:',
-      answerPlaceholder: 'Enter the answer', returnSite: 'Bring the site back',
-      wrongAnswer: 'Wrong. Think again 🙂',
+      premiumBtn: 'Go Premium',
     },
   })
-  const [fallen, setFallen] = useState(false)
-  const [answer, setAnswer] = useState('')
-  const [wrong, setWrong] = useState(false)
+  // Стартуем в «упавшем» состоянии, если сайт уже заблокирован (пережило перезагрузку).
+  const [fallen, setFallen] = useState(isLocked())
   const scheduleRef = useRef(null)
 
-  // Вернуть сайт можно, только решив пример (ответ 9986)
-  function checkAnswer(e) {
-    e.preventDefault()
-    if (answer.trim() === '9986') {
-      setFallen(false); setAnswer(''); setWrong(false)
-    } else {
-      setWrong(true)
-    }
+  // Розыгрыш «Перейти на Premium»: всё рассыпается и сайт блокируется глобально.
+  // Блокируем сразу (переживёт перезагрузку), окно с примером покажет LockGate.
+  function goPremium() {
+    setFallen(true)
+    lockSite()
   }
+
+  // Когда замок снимут (верный ответ в LockGate) — поднимаем контент обратно.
+  useEffect(() => {
+    const onLock = () => { if (!isLocked()) setFallen(false) }
+    window.addEventListener('albert-lock', onLock)
+    return () => window.removeEventListener('albert-lock', onLock)
+  }, [])
+
   const navigate = useNavigate()
   const { lang } = useLang()
   // Английский вариант текста демо-данных, если он есть; иначе исходный (русский)
@@ -198,8 +195,6 @@ export default function Home() {
   const iBrief = iCards + cards.length           // ИИ-выжимка по здоровью
   const iAIWZ = iBrief + 1                        // рабочая зона
   const iGrid = iAIWZ + 1                         // расписание + сводка
-  const iLast = iGrid + 2
-  const overlayDelay = (iLast + 2) * FALL_STEP
 
   // падение крупной единицы (карточка/блок) по её индексу в последовательности
   const unitFall = (idx) => fallen
@@ -213,7 +208,7 @@ export default function Home() {
         <div className="header-left">
           <FallText text={dateStr} fallen={fallen} start={iDate} className="home-date" />
           <FallText text={greetStr} fallen={fallen} start={iGreet} className="greeting" tag="h1" />
-          <motion.button className="huli-btn" onClick={() => setFallen(f => !f)} animate={unitFall(iBtn)}>{t.huliBtn}</motion.button>
+          <motion.button className="premium-btn" onClick={goPremium} animate={unitFall(iBtn)}>✨ {t.premiumBtn}</motion.button>
         </div>
         <div className="quote-of-day">
           <FallText text={quoteStr} fallen={fallen} start={iQuote} className="quote-text" tag="p" />
@@ -286,48 +281,6 @@ export default function Home() {
         </motion.div>
       </div>
 
-      {/* Эффект хули-ули: надпись на весь экран + кнопка возврата (после падения) */}
-      <AnimatePresence>
-        {fallen && (
-          <motion.div
-            className="huli-overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0, transition: { duration: 0.3 } }}
-            transition={{ duration: 0.8, delay: overlayDelay }}
-          >
-            <motion.h2
-              initial={{ scale: 0.85, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.8, delay: overlayDelay + 0.2, ease: 'backOut' }}
-            >
-              {t.overlayTitle}
-            </motion.h2>
-            <motion.div
-              className="huli-math"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: overlayDelay + 0.5 }}
-            >
-              <div className="huli-math-hint">{t.mathHint}</div>
-              <div className="huli-expr">√99720196 · ∫₁ᵉ (1/x) dx + ∑(n=1..∞) 1/2ⁿ − 1 = ?</div>
-              <form className="huli-answer" onSubmit={checkAnswer}>
-                <input
-                  className={`huli-input ${wrong ? 'err' : ''}`}
-                  placeholder={t.answerPlaceholder}
-                  inputMode="numeric"
-                  value={answer}
-                  onChange={e => { setAnswer(e.target.value); setWrong(false) }}
-                  autoFocus
-                />
-                <button className="huli-btn overlay" type="submit">{t.returnSite}</button>
-              </form>
-              {wrong && <div className="huli-wrong">{t.wrongAnswer}</div>}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       <style>{`
         .home-page {
           display: flex;
@@ -364,76 +317,26 @@ export default function Home() {
           font-weight: 500;
         }
 
-        .huli-btn {
-          margin-top: 8px;
-          font-size: 12px;
-          font-weight: 600;
-          color: var(--muted-foreground);
-          background: var(--bg-secondary);
-          border: 1px solid var(--border);
+        .premium-btn {
+          margin-top: 10px;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 12.5px;
+          font-weight: 700;
+          color: var(--accent-foreground);
+          background: linear-gradient(135deg, var(--accent), var(--yellow));
+          border: none;
           border-radius: 16px;
-          padding: 5px 14px;
+          padding: 7px 16px;
           cursor: pointer;
           font-family: inherit;
-          transition: all 0.18s;
+          box-shadow: 0 2px 12px color-mix(in srgb, var(--accent) 35%, transparent);
+          transition: transform 0.15s, box-shadow 0.15s;
         }
-        .huli-btn:hover { color: var(--accent); border-color: var(--border-hover); }
-        .huli-btn.overlay {
-          margin-top: 24px;
-          font-size: 14px;
-          padding: 10px 24px;
-          background: var(--accent);
-          color: var(--accent-foreground);
-          border-color: var(--accent);
-        }
-        .huli-btn.overlay:hover { opacity: 0.9; }
-
-        .huli-overlay {
-          position: fixed;
-          inset: 0;
-          z-index: 400;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 0;
-          pointer-events: auto;
-          background: radial-gradient(800px circle at 50% 50%, rgba(30,27,24,0.4), rgba(30,27,24,0.85));
-          backdrop-filter: blur(2px);
-        }
-        .huli-math {
-          display: flex; flex-direction: column; align-items: center; gap: 16px;
-          margin-top: 36px; padding: 0 24px; max-width: 760px; width: 100%;
-        }
-        .huli-math-hint { font-size: 14px; color: var(--muted-foreground); }
-        .huli-expr {
-          font-family: var(--font-serif), 'Times New Roman', Georgia, serif;
-          font-size: clamp(20px, 3.2vw, 34px);
-          color: var(--foreground);
-          text-align: center;
-          line-height: 1.5;
-          letter-spacing: 0.01em;
-        }
-        .huli-answer { display: flex; gap: 10px; align-items: center; margin-top: 6px; flex-wrap: wrap; justify-content: center; }
-        .huli-input {
-          background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
-          padding: 12px 18px; font-family: inherit; font-size: 18px; color: var(--foreground);
-          outline: none; text-align: center; width: 180px; transition: border-color 0.15s;
-        }
-        .huli-input:focus { border-color: var(--accent); }
-        .huli-input.err { border-color: var(--red); }
-        .huli-input::placeholder { color: var(--muted-foreground); }
-        .huli-wrong { font-size: 14px; color: var(--red); }
-        .huli-overlay h2 {
-          font-size: clamp(32px, 6vw, 72px);
-          font-weight: 800;
-          letter-spacing: -0.02em;
-          text-align: center;
-          background: linear-gradient(135deg, var(--foreground), var(--accent));
-          -webkit-background-clip: text;
-          background-clip: text;
-          -webkit-text-fill-color: transparent;
-          padding: 0 24px;
+        .premium-btn:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 18px color-mix(in srgb, var(--accent) 45%, transparent);
         }
         .home-date {
           font-size: 13px;
