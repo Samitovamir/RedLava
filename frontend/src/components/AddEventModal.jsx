@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { EVENT_TYPES } from '../utils/events.js'
-import { motion } from 'framer-motion'
+import { Modal, Button } from '../ui'
 import { mskDateKey } from '../utils/time.js'
-import { useLang } from '../context/LanguageContext.jsx'
+import { useLang, useT } from '../context/LanguageContext.jsx'
 import { categoryColor, categoryTint } from '../utils/categoryColor.js'
 
 /*
@@ -148,20 +148,7 @@ export default function AddEventModal({ onAdd, onClose, initial, defaultDate, de
   }
 
   return (
-    <div className="aem-backdrop" onClick={onClose}>
-      <motion.div
-        className="aem-modal card"
-        onClick={(e) => e.stopPropagation()}
-        initial={{ opacity: 0, scale: 0.95, y: 10 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.2 }}
-      >
-        <div className="aem-head">
-          <h3>{isEdit ? t.editTitle : t.newTitle}</h3>
-          <button className="aem-close" onClick={onClose}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-        </div>
+    <Modal open onClose={onClose} size="sm" title={isEdit ? t.editTitle : t.newTitle} className="aem-modal">
 
         <div className="aem-types">
           {TYPES.map(t => (
@@ -301,37 +288,12 @@ export default function AddEventModal({ onAdd, onClose, initial, defaultDate, de
         </div>
 
         <div className="aem-actions">
-          <button className="aem-btn primary" onClick={submit} disabled={!title.trim() || invalidTime}>{isEdit ? t.save : t.add}</button>
-          <button className="aem-btn ghost" onClick={onClose}>{t.cancel}</button>
+          <Button variant="primary" onClick={submit} disabled={!title.trim() || invalidTime}>{isEdit ? t.save : t.add}</Button>
+          <Button variant="ghost" onClick={onClose}>{t.cancel}</Button>
         </div>
 
         <style>{`
-          .aem-backdrop {
-            position: fixed; inset: 0;
-            background: rgba(0,0,0,0.5);
-            backdrop-filter: blur(3px);
-            z-index: 500;
-            display: flex; align-items: center; justify-content: center;
-            padding: 24px;
-          }
-          .aem-modal {
-            width: 100%;
-            max-width: 440px;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-            max-height: 88vh;
-            overflow-y: auto;
-          }
-          .aem-head { display: flex; align-items: center; justify-content: space-between; }
-          .aem-head h3 { font-size: 18px; font-weight: 700; color: var(--foreground); }
-          .aem-close {
-            border: none; background: transparent;
-            color: var(--muted-foreground);
-            cursor: pointer; padding: 4px; border-radius: 8px;
-            display: flex; transition: all 0.15s;
-          }
-          .aem-close:hover { background: var(--bg-secondary); color: var(--foreground); }
+          .aem-modal { display: flex; flex-direction: column; gap: 16px; }
           .aem-types { display: flex; gap: 8px; flex-wrap: wrap; }
           .aem-type {
             display: flex; align-items: center; gap: 7px;
@@ -479,7 +441,6 @@ export default function AddEventModal({ onAdd, onClose, initial, defaultDate, de
           .aem-btn.ghost { background: transparent; border-color: var(--border); color: var(--muted-foreground); }
           .aem-btn.ghost:hover { color: var(--foreground); border-color: var(--border-hover); }
         `}</style>
-      </motion.div>
-    </div>
+    </Modal>
   )
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
 import { Heart } from 'lucide-react'
+import { Modal } from '../ui'
 import { categoryColor } from '../utils/categoryColor.js'
 
 /*
@@ -213,12 +213,7 @@ export default function WorkoutModal({ workout, onClose }) {
   const paceColor = accent
 
   return (
-    <AnimatePresence>
-      <motion.div className="wm-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        onClick={onClose}>
-        <motion.div className="wm-panel" onClick={e => e.stopPropagation()}
-          initial={{ opacity: 0, y: 24, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 24, scale: 0.98 }} transition={{ type: 'spring', stiffness: 260, damping: 26 }}>
+    <Modal open onClose={onClose} size="lg" align="top" className="wm-panel">
 
           <button className="wm-close" onClick={onClose} aria-label="Закрыть">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -270,20 +265,7 @@ export default function WorkoutModal({ workout, onClose }) {
           )}
 
           <style>{`
-            .wm-backdrop {
-              position: fixed; inset: 0; z-index: 500;
-              background: var(--scrim);
-              backdrop-filter: blur(6px);
-              display: flex; align-items: flex-start; justify-content: center;
-              padding: 40px 20px; overflow-y: auto;
-            }
-            .wm-panel {
-              position: relative; width: 100%; max-width: 760px;
-              background: var(--bg-card); border: 1px solid var(--border);
-              border-radius: 20px; padding: 26px 28px 30px;
-              display: flex; flex-direction: column; gap: 18px;
-              box-shadow: 0 24px 60px rgba(0,0,0,0.5);
-            }
+            .wm-panel { display: flex; flex-direction: column; gap: 18px; }
             .wm-close {
               position: absolute; top: 18px; right: 18px;
               width: 34px; height: 34px; border-radius: 10px;
@@ -347,8 +329,6 @@ export default function WorkoutModal({ workout, onClose }) {
               .wm-title { font-size: 20px; }
             }
           `}</style>
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
+    </Modal>
   )
 }
