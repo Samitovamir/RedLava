@@ -1,9 +1,10 @@
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import AddEventModal, { repeatLabel, PRIORITY_MAP } from './AddEventModal.jsx'
 import MiniCalendar from './MiniCalendar.jsx'
 import { useEvents, dateKey } from '../context/EventsContext.jsx'
 import { useLang, useT } from '../context/LanguageContext.jsx'
+import { categoryColor } from '../utils/categoryColor.js'
 
 /*
   Расписание дня — вертикальный таймлайн (референс скрин 1).
@@ -13,7 +14,7 @@ import { useLang, useT } from '../context/LanguageContext.jsx'
 
 import { mskNow } from '../utils/time.js'
 
-const HOUR_START = 5
+const HOUR_START = 6
 const HOUR_END = 23
 const PX_PER_HOUR = 72
 
@@ -42,11 +43,59 @@ const ICONS = {
 }
 
 const COLORS = {
-  call: '#B07B52',
-  calendar: '#6E8CA8',
-  email: '#7E9B6E',
-  meeting: '#BC7B4E'
+  call: 'var(--cat-event-call)',
+  calendar: 'var(--cat-event-calendar)',
+  email: 'var(--cat-event-email)',
+  meeting: 'var(--cat-event-meeting)'
 }
+
+// Осмысленная иконка по СМЫСЛУ события, а не по «техническому» типу:
+// тренировка / личное / письмо / звонок / встреча / дело. Тип события узковат
+// (call/calendar/email/meeting), поэтому тренировки и личное ловим по ключевым словам.
+const WORKOUT_RE = /трениров|бассейн|плаван|заплыв|пробежк|\bбег\b|\bзал\b|спорт|йог|велосипед|\bвелик\b|кросс|кардио|растяжк|gym|run|swim|workout|ride|\bbike\b|yoga/i
+const PERSONAL_RE = /личное|семья|\bдом\b|врач|family|personal|doctor/i
+function eventCategory(e) {
+  const txt = `${e.title || ''} ${e.who || ''}`
+  if (WORKOUT_RE.test(txt)) return 'workout'
+  if (e.type === 'email') return 'mail'
+  if (e.type === 'call') return 'call'
+  if (PERSONAL_RE.test(txt)) return 'personal'
+  if (e.type === 'meeting') return 'meeting'
+  return 'event'
+}
+const CAT_ICONS = {
+  workout: (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m6.5 6.5 11 11"/><path d="m21 21-1-1"/><path d="m3 3 1 1"/><path d="m18 22 4-4"/><path d="m2 6 4-4"/><path d="m3 10 7-7"/><path d="m14 21 7-7"/>
+    </svg>
+  ),
+  personal: (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+    </svg>
+  ),
+  mail: (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/>
+    </svg>
+  ),
+  call: (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/>
+    </svg>
+  ),
+  meeting: (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
+  ),
+  event: (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+    </svg>
+  )
+}
+const eventIcon = (e) => CAT_ICONS[eventCategory(e)] || CAT_ICONS.event
 
 // Происходит ли событие в указанный день (с учётом повторения)
 function eventOccursOn(ev, viewDate) {
@@ -262,7 +311,7 @@ function compactDay(evs, direction) {
   }
 }
 
-export default function DaySchedule({ extended = false }) {
+export default function DaySchedule({ extended = false, onViewDayChange }) {
   const { lang } = useLang()
   // Английский вариант текста демо-событий, если он есть; иначе исходный (русский)
   const pick = (o, f) => (lang === 'en' && o && o[f + 'En']) ? o[f + 'En'] : (o ? o[f] : '')
@@ -370,6 +419,7 @@ export default function DaySchedule({ extended = false }) {
   const viewKey = dateKey(viewDate)
 
   // ИИ создал/перенёс событие → прыгаем на его день, чтобы было сразу видно
+  const scrollRef = useRef(null)
   useEffect(() => {
     if (!focusSignal?.date) return
     const today0 = mskNow(); today0.setHours(0, 0, 0, 0)
@@ -377,7 +427,17 @@ export default function DaySchedule({ extended = false }) {
     setDayOffset(Math.round((sel0 - today0) / 86400000))
     setViewMode(m => (m === 'week' || m === 'month' ? 'day' : m))
     setOpenMenu(null)
+    // Доскролл таймлайна к времени события (после перерисовки дня).
+    if (focusSignal.time) {
+      const top = ((toMinutes(focusSignal.time) - HOUR_START * 60) / 60) * PX_PER_HOUR
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        scrollRef.current?.scrollTo({ top: Math.max(0, top - 80), behavior: 'smooth' })
+      }))
+    }
   }, [focusSignal])
+
+  // Сообщаем наверх, какой день сейчас открыт — чтобы сводка справа была про него же.
+  useEffect(() => { onViewDayChange?.(viewKey) }, [viewKey])
 
   // События дня (с учётом повторений) для произвольной даты
   const eventsOf = (d) => events
@@ -385,6 +445,28 @@ export default function DaySchedule({ extended = false }) {
     .sort((a, b) => toMinutes(a.start) - toMinutes(b.start))
 
   const dayEvents = eventsOf(viewDate)
+
+  // Автоскролл таймлайна при открытии дня: к «сейчас» (если смотрим сегодня и время в диапазоне),
+  // иначе к первому событию дня — чтобы не упираться в мёртвые зоны сверху.
+  useEffect(() => {
+    if (viewMode !== 'list' && viewMode !== 'day') return
+    const el = scrollRef.current
+    if (!el) return
+    const n = mskNow()
+    const nMin = n.getHours() * 60 + n.getMinutes()
+    const isToday = dayOffset === 0 && nMin >= HOUR_START * 60 && nMin <= HOUR_END * 60
+    let target
+    if (isToday) {
+      target = ((nMin - HOUR_START * 60) / 60) * PX_PER_HOUR - 120
+    } else if (dayEvents.length) {
+      target = topFor(dayEvents[0].start) - 60
+    } else {
+      target = 0
+    }
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      scrollRef.current?.scrollTo({ top: Math.max(0, target), behavior: 'smooth' })
+    }))
+  }, [viewKey, viewMode])
 
   // Раскладка таймлайна с упаковкой (без наложений) + итоговая высота контейнера
   const positionedEvents = packTimeline(layoutEvents(dayEvents))
@@ -765,13 +847,20 @@ export default function DaySchedule({ extended = false }) {
 
       {/* Режим "День/Список" — вертикальный таймлайн */}
       {(viewMode === 'list' || viewMode === 'day') && (
-        <div className="ds-scroll">
+        <div className="ds-scroll" ref={scrollRef}>
           <div className="ds-timeline" style={{ height: timelineHeight }}>
-            {/* Часовые линии */}
+            {/* Часовые линии + слабые получасовые отметки (к ним привязаны карточки) */}
             {hours.map((h, i) => (
-              <div key={h} className="ds-hour-row" style={{ top: i * PX_PER_HOUR }}>
-                <span className="ds-hour-label">{String(h).padStart(2, '0')}:00</span>
-                <div className="ds-hour-line" />
+              <div key={h}>
+                <div className="ds-hour-row" style={{ top: i * PX_PER_HOUR }}>
+                  <span className="ds-hour-label">{String(h).padStart(2, '0')}:00</span>
+                  <div className="ds-hour-line" />
+                </div>
+                {h < HOUR_END && (
+                  <div className="ds-half-row" style={{ top: i * PX_PER_HOUR + PX_PER_HOUR / 2 }}>
+                    <div className="ds-half-line" />
+                  </div>
+                )}
               </div>
             ))}
 
@@ -808,15 +897,16 @@ export default function DaySchedule({ extended = false }) {
                   whileHover={{ scale: 1.01 }}
                 >
                   <span className="ds-event-icon" style={{ background: COLORS[e.type] }}>
-                    {ICONS[e.type]}
+                    {eventIcon(e)}
                   </span>
                   <div className="ds-event-body">
                     <span className="ds-event-title">
-                      {e.priority && (
+                      {e.priority && e.priority <= 2 && (
                         <span
-                          className="ds-pri-emoji"
+                          className="ds-pri-dot"
+                          style={{ background: categoryColor(PRIORITY_MAP[e.priority]?.colorKey) }}
                           title={t.priorityTip(e.priority, lang === 'en' ? PRIORITY_MAP[e.priority]?.labelEn : PRIORITY_MAP[e.priority]?.label)}
-                        >{PRIORITY_MAP[e.priority]?.emoji}</span>
+                        />
                       )}
                       {pick(e, 'title')}
                       {e.repeat && e.repeat !== 'none' && (
@@ -852,7 +942,7 @@ export default function DaySchedule({ extended = false }) {
           {dayEvents.length === 0 && <p className="ds-empty">{t.emptyColumns}</p>}
           {dayEvents.map((e, i) => (
             <div key={i} className="ds-col-card" style={{ '--ev-color': COLORS[e.type] }}>
-              <span className="ds-event-icon" style={{ background: COLORS[e.type] }}>{ICONS[e.type]}</span>
+              <span className="ds-event-icon" style={{ background: COLORS[e.type] }}>{eventIcon(e)}</span>
               <span className="ds-event-title">{pick(e, 'title')}</span>
               <span className="ds-event-meta">{e.start} – {e.end}</span>
               <span className="ds-event-meta">{pick(e, 'who')}</span>
@@ -881,7 +971,7 @@ export default function DaySchedule({ extended = false }) {
                   {evs.map((e, k) => (
                     <button key={k} className="ds-wk-ev" style={{ '--ev-color': COLORS[e.type] }} onClick={() => startEdit(e)}>
                       <span className="ds-wk-ev-time">{e.start}</span>
-                      <span className="ds-wk-ev-title">{e.priority && <span className="ds-pri-emoji">{PRIORITY_MAP[e.priority]?.emoji}</span>}{pick(e, 'title')}</span>
+                      <span className="ds-wk-ev-title">{e.priority && e.priority <= 2 && <span className="ds-pri-dot" style={{ background: categoryColor(PRIORITY_MAP[e.priority]?.colorKey) }} />}{pick(e, 'title')}</span>
                     </button>
                   ))}
                 </div>
@@ -920,7 +1010,7 @@ export default function DaySchedule({ extended = false }) {
 
       {/* FAB — добавить событие */}
       <button className="ds-fab" title={t.addEventTitle} onClick={openAdd}>
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16191D" strokeWidth="2.6" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </button>
 
       {/* Модалка добавления / редактирования */}
@@ -962,8 +1052,8 @@ export default function DaySchedule({ extended = false }) {
                 {ftPreview.rows.map((r, i) => (
                   <div key={i} className={`ds-pv-row ${r.kind === 'remove' ? 'rm' : ''}`}>
                     <span className="ds-pv-ev">
-                      <span className="ds-pv-ic" style={{ background: COLORS[r.type] }}>{ICONS[r.type]}</span>
-                      <span className="ds-pv-title">{r.priority && PRIORITY_MAP[r.priority]?.emoji} {r.title}</span>
+                      <span className="ds-pv-ic" style={{ background: COLORS[r.type] }}>{eventIcon(r)}</span>
+                      <span className="ds-pv-title">{r.priority && r.priority <= 2 && <span className="ds-pri-dot" style={{ background: categoryColor(PRIORITY_MAP[r.priority]?.colorKey) }} />}{r.title}</span>
                     </span>
                     <span className="ds-pv-old">{r.before}</span>
                     <span className="ds-pv-arrow">→</span>
@@ -1078,8 +1168,8 @@ export default function DaySchedule({ extended = false }) {
           transition: all 0.15s;
         }
         .ds-view.active {
-          background: var(--yellow);
-          color: #16191D;
+          background: var(--accent);
+          color: var(--on-accent);
         }
         .ds-view-switch.text { padding: 3px; }
         .ds-view-txt {
@@ -1090,7 +1180,7 @@ export default function DaySchedule({ extended = false }) {
           transition: all 0.15s;
         }
         .ds-view-txt:hover { color: var(--foreground); }
-        .ds-view-txt.active { background: var(--yellow); color: #16191D; }
+        .ds-view-txt.active { background: var(--accent); color: var(--on-accent); }
 
         .ds-findtime {
           display: flex; align-items: center; gap: 7px;
@@ -1179,7 +1269,7 @@ export default function DaySchedule({ extended = false }) {
           border-radius: 12px; padding: 6px;
           background: rgba(255,255,255,0.015);
         }
-        .ds-wk-col.today { background: rgba(201, 138, 94,0.07); }
+        .ds-wk-col.today { background: color-mix(in srgb, var(--accent-today) 7%, transparent); }
         .ds-wk-head {
           display: flex; flex-direction: column; align-items: center; gap: 2px;
           border: none; background: transparent; cursor: pointer;
@@ -1189,7 +1279,7 @@ export default function DaySchedule({ extended = false }) {
         .ds-wk-head:hover { background: var(--bg-secondary); }
         .ds-wk-wd { font-size: 11px; font-weight: 600; color: var(--muted-foreground); text-transform: uppercase; }
         .ds-wk-num { font-size: 17px; font-weight: 700; color: var(--foreground); }
-        .ds-wk-col.today .ds-wk-num { color: var(--yellow); }
+        .ds-wk-col.today .ds-wk-num { color: var(--accent-today, var(--yellow)); }
         .ds-wk-events { display: flex; flex-direction: column; gap: 5px; }
         .ds-wk-empty { text-align: center; color: var(--muted-foreground); font-size: 12px; padding: 8px 0; opacity: 0.5; }
         .ds-wk-ev {
@@ -1220,9 +1310,9 @@ export default function DaySchedule({ extended = false }) {
         }
         .ds-month-cell:hover { border-color: var(--border-hover); background: var(--bg-secondary); }
         .ds-month-cell.empty { background: transparent; border-color: transparent; cursor: default; }
-        .ds-month-cell.today { border-color: var(--yellow); }
+        .ds-month-cell.today { border-color: var(--accent-today, var(--yellow)); }
         .ds-month-num { font-size: 13px; font-weight: 600; color: var(--foreground); }
-        .ds-month-cell.today .ds-month-num { color: var(--yellow); }
+        .ds-month-cell.today .ds-month-num { color: var(--accent-today, var(--yellow)); }
         .ds-month-dots { display: flex; flex-wrap: wrap; gap: 3px; }
         .ds-month-dot { width: 7px; height: 7px; border-radius: 50%; }
         .ds-month-count {
@@ -1296,7 +1386,7 @@ export default function DaySchedule({ extended = false }) {
         }
         .ds-dropdown-item:hover { background: rgba(255,255,255,0.06); }
         .ds-dropdown-item.danger { color: var(--red); }
-        .ds-dropdown-item.danger:hover { background: rgba(168, 90, 74,0.12); }
+        .ds-dropdown-item.danger:hover { background: color-mix(in srgb, var(--red) 12%, transparent); }
         .ds-notif {
           display: flex; flex-direction: column; gap: 3px;
           padding: 9px 10px; border-radius: 8px;
@@ -1320,25 +1410,28 @@ export default function DaySchedule({ extended = false }) {
         .ds-hour-row { position: absolute; left: 0; right: 0; display: flex; align-items: center; gap: 12px; }
         .ds-hour-label {
           font-size: 12px;
-          color: var(--muted-foreground);
+          color: var(--text-muted);
           min-width: 42px;
           font-variant-numeric: tabular-nums;
         }
-        .ds-hour-line { flex: 1; height: 1px; background: var(--border); }
+        .ds-hour-line { flex: 1; height: 1px; background: var(--border-soft); }
+        /* получасовая отметка — слабее часовой, к ней визуально привязаны карточки */
+        .ds-half-row { position: absolute; left: 54px; right: 0; display: flex; align-items: center; }
+        .ds-half-line { flex: 1; height: 1px; background: var(--border-soft); opacity: 0.4; }
 
         .ds-now { position: absolute; left: 0; right: 0; display: flex; align-items: center; z-index: 5; }
         .ds-now-label {
           font-size: 11px;
           font-weight: 700;
-          color: #16191D;
-          background: var(--yellow);
+          color: var(--bg-app);
+          background: var(--accent-today, var(--yellow));
           padding: 3px 9px;
           border-radius: 6px 6px 6px 0;
           position: relative;
           z-index: 2;
           font-variant-numeric: tabular-nums;
         }
-        .ds-now-line { flex: 1; height: 2px; background: var(--yellow); }
+        .ds-now-line { flex: 1; height: 2px; background: var(--accent-today, var(--yellow)); }
 
         .ds-event {
           position: absolute;
@@ -1348,10 +1441,10 @@ export default function DaySchedule({ extended = false }) {
           align-items: center;
           gap: 14px;
           padding: 12px 14px;
-          background: var(--bg-secondary);
-          border: 1px solid var(--border);
-          border-radius: 18px;
-          box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+          background: var(--bg-tile);
+          border: 1px solid var(--border-med);
+          border-radius: 16px;
+          box-shadow: var(--shadow-card);
           cursor: pointer;
           z-index: 3;
           overflow: hidden;   /* подстраховка: контент не вылезает за карточку */
@@ -1368,10 +1461,10 @@ export default function DaySchedule({ extended = false }) {
         .ds-event-title {
           font-size: 14.5px;
           font-weight: 600;
-          color: var(--foreground);
+          color: var(--text-primary);
           white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
-        .ds-event-meta { font-size: 12.5px; color: var(--muted-foreground); }
+        .ds-event-meta { font-size: 12.5px; color: var(--text-muted); }
         .ds-dot { margin: 0 4px; color: var(--ev-color); }
         .ds-event-menu {
           border: none; background: transparent;
@@ -1390,7 +1483,6 @@ export default function DaySchedule({ extended = false }) {
         .ds-event.overlapped { left: auto; }
         .ds-repeat-ic { margin-left: 6px; color: var(--muted-foreground); vertical-align: middle; }
         .ds-pri-dot { width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; flex-shrink: 0; display: inline-block; }
-        .ds-pri-emoji { font-size: 11px; margin-right: 7px; flex-shrink: 0; }
 
         /* Режим колонок */
         .ds-columns {
@@ -1426,10 +1518,11 @@ export default function DaySchedule({ extended = false }) {
           width: 50px; height: 50px;
           border-radius: 50%;
           border: none;
-          background: var(--yellow);
+          background: var(--accent);
+          color: var(--on-accent);
+          box-shadow: var(--shadow-btn);
           cursor: pointer;
           display: flex; align-items: center; justify-content: center;
-          box-shadow: 0 6px 20px rgba(201, 138, 94,0.4);
           transition: transform 0.15s;
           z-index: 10;
         }
@@ -1509,7 +1602,7 @@ export default function DaySchedule({ extended = false }) {
         .ds-conflict-icon {
           width: 48px; height: 48px;
           border-radius: 14px;
-          background: rgba(201, 138, 94,0.14);
+          background: color-mix(in srgb, var(--accent-today) 14%, transparent);
           display: flex; align-items: center; justify-content: center;
         }
         .ds-conflict h3 { font-size: 18px; font-weight: 700; color: var(--foreground); }
@@ -1528,7 +1621,7 @@ export default function DaySchedule({ extended = false }) {
           transition: border-color 0.15s, background 0.15s;
         }
         .ds-conflict-btn:hover { border-color: var(--border-hover); }
-        .ds-conflict-btn.danger:hover { border-color: rgba(168, 90, 74,0.5); }
+        .ds-conflict-btn.danger:hover { border-color: color-mix(in srgb, var(--red) 50%, transparent); }
         .ds-conflict-btn.ghost { background: transparent; align-items: center; }
         .ds-conflict-btn.ghost:hover { border-color: var(--border-hover); }
         .ds-cb-title { font-size: 14px; font-weight: 600; color: var(--foreground); }

@@ -129,13 +129,13 @@ export default function VoiceInput({ value, onChange, onSubmit, busy }) {
         }
         .vi-mic:hover { filter: brightness(1.06); }
         .vi-mic.listening {
-          background: var(--red); color: #fff;
-          box-shadow: 0 0 0 0 rgba(168, 90, 74,0.55);
+          background: var(--red); color: var(--on-accent);
+          box-shadow: 0 0 0 0 color-mix(in srgb, var(--red) 55%, transparent);
           animation: vi-pulse 1.4s ease-in-out infinite;
         }
         @keyframes vi-pulse {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(168, 90, 74,0.5); }
-          50% { box-shadow: 0 0 0 16px rgba(168, 90, 74,0); }
+          0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--red) 50%, transparent); }
+          50% { box-shadow: 0 0 0 16px color-mix(in srgb, var(--red) 0%, transparent); }
         }
         .vi-hint { font-size: 15px; font-weight: 600; color: var(--muted); text-align: center; }
 
@@ -155,16 +155,16 @@ export default function VoiceInput({ value, onChange, onSubmit, busy }) {
         .vi-clear:hover { color: var(--foreground); border-color: var(--border-hover); }
         .vi-submit {
           display: flex; align-items: center; gap: 8px; padding: 11px 22px;
-          background: var(--primary); color: var(--primary-foreground); border: none; border-radius: 12px;
-          font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity 0.18s, transform 0.1s;
+          background: linear-gradient(180deg, var(--accent-btn-top), var(--accent-btn-bot)); color: var(--on-accent); border: none; border-radius: 12px;
+          font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; transition: opacity 0.18s, transform 0.1s, filter 0.15s;
         }
-        .vi-submit:hover:not(:disabled) { opacity: 0.9; }
+        .vi-submit:hover:not(:disabled) { filter: brightness(1.06); }
         .vi-submit:active:not(:disabled) { transform: scale(0.97); }
-        .vi-submit:disabled { opacity: 0.4; cursor: default; }
+        .vi-submit:disabled { background: var(--bg-tile); color: var(--text-faint); border: 1px solid var(--border-med); opacity: 0.6; cursor: not-allowed; }
 
         .vi-text-toggle {
           background: transparent; border: none; color: var(--muted); font-family: inherit;
-          font-size: 13px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; padding: 0;
+          font-size: 13px; cursor: pointer; text-decoration: none; padding: 4px 2px;
         }
         .vi-text-toggle:hover { color: var(--accent); }
       `}</style>

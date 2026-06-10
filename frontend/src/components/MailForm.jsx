@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import MicButton from './MicButton.jsx'
 import { useMail } from '../context/MailContext.jsx'
 import { useT } from '../context/LanguageContext.jsx'
@@ -47,6 +47,18 @@ export default function MailForm({ initial, onSent, onCancel, sendLabel }) {
   const [body, setBody] = useState(initial?.body || '')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
+  const bodyRef = useRef(null)
+
+  // Авто-рост textarea по содержимому (resize отключён вручную, чтобы микрофон не налезал на уголок).
+  useEffect(() => {
+    const el = bodyRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = Math.max(el.scrollHeight, 150) + 'px'
+  }, [body])
+
+  // Честное disabled: «Отправить» неактивна, пока не заполнены Кому + Текст.
+  const canSend = validEmail(to) && body.trim().length > 0
 
   async function submit() {
     setError('')
@@ -77,7 +89,7 @@ export default function MailForm({ initial, onSent, onCancel, sendLabel }) {
       <label className="mail-field">
         <span className="mail-label">{t.bodyLabel}</span>
         <div className="mail-body-wrap">
-          <textarea className="mail-textarea" rows={7} placeholder={t.bodyPlaceholder} value={body}
+          <textarea ref={bodyRef} className="mail-textarea" rows={6} placeholder={t.bodyPlaceholder} value={body}
             onChange={e => setBody(e.target.value)} />
           <div className="mail-mic"><MicButton primary onText={t => setBody(prev => (prev ? prev.trim() + ' ' : '') + t)} /></div>
         </div>
@@ -87,33 +99,38 @@ export default function MailForm({ initial, onSent, onCancel, sendLabel }) {
 
       <div className="mail-actions">
         {onCancel && <button className="mail-btn ghost" onClick={onCancel} disabled={sending}>{t.cancel}</button>}
-        <button className="mail-btn primary" onClick={submit} disabled={sending}>
+        <button className="mail-btn primary" onClick={submit} disabled={sending || !canSend}>
           {sending ? t.sending : (sendLabel || t.send)}
         </button>
       </div>
 
       <style>{`
         .mail-form { display: flex; flex-direction: column; gap: 14px; }
-        .mail-warn { font-size: 13px; color: var(--orange); background: rgba(188, 123, 78,0.1); border: 1px solid var(--orange); border-radius: 12px; padding: 10px 12px; }
+        .mail-warn { font-size: 13px; color: var(--status-warn); background: color-mix(in srgb, var(--status-warn) 12%, transparent); border: 1px solid var(--status-warn); border-radius: 12px; padding: 10px 12px; margin-bottom: 14px; }
         .mail-field { display: flex; flex-direction: column; gap: 6px; }
-        .mail-label { font-size: 13px; font-weight: 600; color: var(--muted); }
+        /* Воздух между блоками полей: первый идёт без отступа, последующие — с ритмом сверху */
+        .mail-field + .mail-field { margin-top: 16px; }
+        .mail-label { font-size: 12.5px; font-weight: 500; letter-spacing: 0.01em; color: var(--text-secondary); }
         .mail-input, .mail-textarea {
-          width: 100%; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px;
+          width: 100%; background: var(--bg-tile); border: 1px solid var(--border-med); border-radius: 12px;
           padding: 12px 14px; font-family: inherit; font-size: 15px; color: var(--foreground); outline: none; transition: border-color .15s;
         }
         .mail-input:focus, .mail-textarea:focus { border-color: var(--accent); }
-        .mail-input::placeholder, .mail-textarea::placeholder { color: var(--muted); }
-        .mail-textarea { resize: vertical; line-height: 1.6; min-height: 130px; }
+        .mail-input::placeholder, .mail-textarea::placeholder { color: var(--text-faint); }
+        .mail-textarea {
+          resize: none; line-height: 1.6; min-height: 150px; overflow: hidden;
+          padding-bottom: 48px; /* место под микрофон, чтобы текст не уезжал под него */
+        }
+        .mail-textarea::-webkit-resizer { display: none; }
         .mail-body-wrap { position: relative; }
         .mail-mic { position: absolute; right: 10px; bottom: 10px; }
         .mail-error { font-size: 13.5px; color: var(--red); }
         .mail-actions { display: flex; justify-content: flex-end; gap: 10px; }
         .mail-btn { padding: 12px 20px; border-radius: 12px; border: none; font-family: inherit; font-size: 14.5px; font-weight: 700; cursor: pointer; transition: opacity .15s; }
-        .mail-btn.primary { background: var(--accent); color: var(--accent-foreground); }
-        .mail-btn.primary:hover:not(:disabled) { opacity: .9; }
-        .mail-btn.ghost { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+        .mail-btn.primary:hover:not(:disabled) { opacity: .92; }
+        .mail-btn.ghost { background: transparent; border: 1px solid var(--border-med); color: var(--text-secondary); }
         .mail-btn.ghost:hover:not(:disabled) { color: var(--foreground); }
-        .mail-btn:disabled { opacity: .5; cursor: default; }
+        .mail-btn.ghost:disabled { opacity: .5; cursor: not-allowed; }
       `}</style>
     </div>
   )

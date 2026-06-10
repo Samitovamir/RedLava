@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { mskDateKey } from '../utils/time.js'
 import { useLang } from '../context/LanguageContext.jsx'
+import { categoryColor, categoryTint } from '../utils/categoryColor.js'
 
 /*
   Модалка добавления события.
@@ -11,10 +12,10 @@ import { useLang } from '../context/LanguageContext.jsx'
 */
 
 const TYPES = [
-  { value: 'call', label: 'Звонок', labelEn: 'Call', color: '#B07B52' },
-  { value: 'calendar', label: 'Событие', labelEn: 'Event', color: '#6E8CA8' },
-  { value: 'email', label: 'Письмо', labelEn: 'Email', color: '#7E9B6E' },
-  { value: 'meeting', label: 'Встреча', labelEn: 'Meeting', color: '#BC7B4E' }
+  { value: 'call', label: 'Звонок', labelEn: 'Call', color: 'var(--cat-event-call)' },
+  { value: 'calendar', label: 'Событие', labelEn: 'Event', color: 'var(--cat-event-calendar)' },
+  { value: 'email', label: 'Письмо', labelEn: 'Email', color: 'var(--cat-event-email)' },
+  { value: 'meeting', label: 'Встреча', labelEn: 'Meeting', color: 'var(--cat-event-meeting)' }
 ]
 
 // Варианты повторения (как в Google Calendar)
@@ -41,11 +42,12 @@ const WEEKDAYS = [
 export const REPEAT_LABELS = Object.fromEntries(REPEATS.map(r => [r.value, r.label]))
 export const REPEAT_LABELS_EN = Object.fromEntries(REPEATS.map(r => [r.value, r.labelEn]))
 
-// Приоритеты: 1 — самый важный (неотложный)
+// Приоритеты: 1 — самый важный (неотложный).
+// Цвет — токен темы --cat-pri-*, в рендере categoryColor(p.colorKey).
 export const PRIORITIES = [
-  { value: 1, label: 'Неотложный', labelEn: 'Urgent', color: '#A85A4A', emoji: '🔴' },
-  { value: 2, label: 'Важный', labelEn: 'Important', color: '#C98A5E', emoji: '🟡' },
-  { value: 3, label: 'Обычный', labelEn: 'Normal', color: '#9ca3af', emoji: '⚪️' }
+  { value: 1, label: 'Неотложный', labelEn: 'Urgent', colorKey: 'pri-1' },
+  { value: 2, label: 'Важный', labelEn: 'Important', colorKey: 'pri-2' },
+  { value: 3, label: 'Обычный', labelEn: 'Normal', colorKey: 'pri-3' }
 ]
 export const PRIORITY_MAP = Object.fromEntries(PRIORITIES.map(p => [p.value, p]))
 
@@ -235,18 +237,19 @@ export default function AddEventModal({ onAdd, onClose, initial, defaultDate, de
           <div className="aem-pri-row">
             {PRIORITIES.map(p => {
               const on = priority === p.value
+              const c = categoryColor(p.colorKey)
               return (
                 <button
                   key={p.value}
                   className={`aem-pri ${on ? 'active' : ''}`}
                   style={{
-                    borderColor: on ? p.color : 'var(--border)',
-                    color: on ? p.color : 'var(--muted-foreground)',
-                    background: on ? `color-mix(in srgb, ${p.color} 12%, transparent)` : 'var(--bg-secondary)'
+                    borderColor: on ? c : 'var(--border)',
+                    color: on ? c : 'var(--muted-foreground)',
+                    background: on ? categoryTint(p.colorKey, 0.12) : 'var(--bg-secondary)'
                   }}
                   onClick={() => setPriority(p.value)}
                 >
-                  <span className="aem-pri-dot" style={{ background: p.color }} />
+                  <span className="aem-pri-dot" style={{ background: c }} />
                   {p.value} · {lang === 'en' ? p.labelEn : p.label}
                 </button>
               )

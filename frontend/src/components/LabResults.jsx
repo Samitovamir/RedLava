@@ -4,11 +4,10 @@ import {
   INITIAL_REPORTS, buildHistory, markerStatus, STATUS_INFO,
   rangeText, barGeom, fmtDate, LABS_STORE_KEY, LABS_STORE_VERSION, buildGroups
 } from '../utils/labs.js'
-import MicButton from './MicButton.jsx'
 import { isGuest } from '../api/authFetch.js'
-import { useAgent } from '../hooks/useAgent.js'
-import { useSiteSnapshot } from '../hooks/useSiteSnapshot.js'
 import { useLang, useT } from '../context/LanguageContext.jsx'
+import Icon from '../ui/Icon.jsx'
+import { categoryColor } from '../utils/categoryColor.js'
 
 const STORE_KEY = LABS_STORE_KEY
 
@@ -16,57 +15,49 @@ const STR = {
   ru: {
     aiBadge: 'ИИ',
     title: 'Анализы крови и расшифровка',
-    sub: 'Загружайте анализы по мере сдачи — ИИ копит историю и расшифровывает простыми словами',
+    sub: 'Загружайте анализы по мере сдачи — копится история показателей, ИИ расшифровывает простыми словами',
     decodeAll: 'Расшифровать всё',
-    syncing: (done, total) => `ИИ распознаёт анализы из Яндекс.Диска: ${done} из ${total}…`,
-    recognizing: (name) => `ИИ распознаёт «${name}»…`,
+    decodeHead: 'Расшифровка', decodePrep: 'Готовлю расшифровку…',
+    decodeFail: 'Не удалось получить расшифровку.',
+    decodeNoServer: 'Нет связи с сервером. Запустите backend с ключом ИИ для расшифровки. Диаграммы и динамика ниже работают и без него.',
+    syncing: (done, total) => `Распознаём анализы из Яндекс.Диска: ${done} из ${total}…`,
+    recognizing: (name) => `Распознаём «${name}»…`,
     recognizingHint: 'Извлекаем показатели и добавляем в историю',
     dropTitle: 'Перетащите файл или нажмите',
     dropHint: 'PDF, фото · можно по одному, в разные дни',
     files: (n) => `Загруженные файлы (${n})`,
     markersCount: 'показ.',
-    decodeHead: 'Расшифровка', decodePrep: 'Готовлю расшифровку…',
-    askHead: 'Спросите ИИ про ваши анализы',
-    chatPlaceholder: 'Скажите или спросите: почему повышен холестерин? что есть, чтобы снизить сахар?',
-    typing: 'ИИ печатает…',
     outOfNorm: 'Вне нормы:',
     minorHide: 'Скрыть второстепенные', minor: 'Второстепенные', minorShow: 'Показать показатели',
     minorFlags: (n) => ` · ${n} вне нормы`,
     noNorm: 'норма не указана', norm: 'норма', was: 'было', taken: 'сдан', noNormShort: '—',
     status: { ok: 'норма', low: 'понижен', high: 'повышен', unknown: 'нет нормы' },
-    decodeFail: 'Не удалось получить расшифровку.',
-    decodeNoServer: 'Нет связи с сервером. Запустите backend с ключом ИИ для расшифровки. Диаграммы и динамика ниже работают и без него.',
     fileFail: 'Не удалось загрузить файл. Попробуйте ещё раз или другой файл.',
     parseFail: 'Не удалось распознать показатели в этом файле. Проверьте, что это анализ крови.',
-    answerFail: 'Не удалось ответить.', chatNoServer: 'Нет связи с сервером. Запустите backend с ключом ИИ.',
     groups: {}   // ru: показываем названия групп как есть
   },
   en: {
     aiBadge: 'AI',
     title: 'Blood tests and AI decoding',
-    sub: 'Upload your tests as you take them — the AI builds up a history and explains them in plain words',
+    sub: 'Upload your tests as you take them — the history builds up and the AI explains them in plain words',
     decodeAll: 'Decode all',
-    syncing: (done, total) => `AI is reading tests from Yandex.Disk: ${done} of ${total}…`,
-    recognizing: (name) => `AI is reading “${name}”…`,
+    decodeHead: 'Decoding', decodePrep: 'Preparing the decoding…',
+    decodeFail: 'Could not get the decoding.',
+    decodeNoServer: 'No connection to the server. Start the backend with an AI key for decoding. The charts and trends below work without it.',
+    syncing: (done, total) => `Reading tests from Yandex.Disk: ${done} of ${total}…`,
+    recognizing: (name) => `Reading “${name}”…`,
     recognizingHint: 'Extracting markers and adding them to the history',
     dropTitle: 'Drag a file here or click',
     dropHint: 'PDF, photo · one at a time, on different days',
     files: (n) => `Uploaded files (${n})`,
     markersCount: 'markers',
-    decodeHead: 'Decoding', decodePrep: 'Preparing the decoding…',
-    askHead: 'Ask the AI about your tests',
-    chatPlaceholder: 'Say or ask: why is my cholesterol high? what to eat to lower blood sugar?',
-    typing: 'AI is typing…',
     outOfNorm: 'Out of range:',
     minorHide: 'Hide secondary', minor: 'Secondary', minorShow: 'Show markers',
     minorFlags: (n) => ` · ${n} out of range`,
     noNorm: 'no reference range', norm: 'range', was: 'was', taken: 'taken', noNormShort: '—',
     status: { ok: 'normal', low: 'low', high: 'high', unknown: 'no range' },
-    decodeFail: 'Could not get the decoding.',
-    decodeNoServer: 'No connection to the server. Start the backend with an AI key for decoding. The charts and trends below work without it.',
     fileFail: 'Could not upload the file. Try again or use a different file.',
     parseFail: 'Could not recognize any markers in this file. Make sure it is a blood test.',
-    answerFail: 'Could not answer.', chatNoServer: 'No connection to the server. Start the backend with an AI key.',
     // Названия групп показателей по их стабильному key (см. buildGroups в labs.js)
     groups: {
       blood: 'Complete blood count', lipids: 'Lipids & heart', metabolic: 'Sugar & metabolism',
@@ -189,11 +180,12 @@ export default function LabResults() {
     return INITIAL_REPORTS
   })
   const [dragOver, setDragOver] = useState(false)
-  // Гостю сразу показываем готовую демо-расшифровку (реальный /api/labs/parse заблокирован)
-  const [stage, setStage] = useState(() => (isGuest() ? 'done' : 'idle'))   // idle | analyzing | done
+  const [analyzing, setAnalyzing] = useState(false)   // идёт распознавание загруженного файла
   const [busyName, setBusyName] = useState(null)
-  const [aiText, setAiText] = useState(() => (isGuest() ? (lang === 'en' ? GUEST_DEMO_DECODE_EN : GUEST_DEMO_DECODE) : ''))
   const fileInput = useRef(null)
+  // Полная расшифровка от ИИ (гостю — готовый демо-текст)
+  const [aiText, setAiText] = useState(() => (isGuest() ? (lang === 'en' ? GUEST_DEMO_DECODE_EN : GUEST_DEMO_DECODE) : ''))
+  const [decoding, setDecoding] = useState(false)
 
   // Гость + смена языка интерфейса → переключаем язык демо-расшифровки
   useEffect(() => {
@@ -202,14 +194,6 @@ export default function LabResults() {
       ? (lang === 'en' ? GUEST_DEMO_DECODE_EN : GUEST_DEMO_DECODE)
       : prev)
   }, [lang])
-
-  // Чат по анализам
-  const [chat, setChat] = useState([])         // [{ role:'user'|'assistant', text }]
-  const [chatInput, setChatInput] = useState('')
-  const [chatBusy, setChatBusy] = useState(false)
-  const { ask: askAgent } = useAgent()
-  const fullSnapshot = useSiteSnapshot()
-  const chatEnd = useRef(null)
 
   // Распознавание анализов из Яндекс.Диска (если подключён)
   const [syncing, setSyncing] = useState(false)
@@ -329,7 +313,6 @@ export default function LabResults() {
     }).filter(Boolean).join('. ')
   }
 
-  // Контекст «врача» с актуальными анализами — общий для расшифровки и чата
   function doctorContext(snapshotReports) {
     return (
       `Ты — внимательный врач-терапевт, который объясняет анализы крови владельцу, пожилому человеку без медицинского образования. ` +
@@ -341,8 +324,9 @@ export default function LabResults() {
   }
 
   async function runAi(snapshotReports) {
-    const context =
-      doctorContext(snapshotReports) +
+    setDecoding(true)
+    setAiText('')
+    const context = doctorContext(snapshotReports) +
       ` Сейчас сделай общую расшифровку: что в норме, на что обратить внимание (отклонения и динамика), общие рекомендации по образу жизни.`
     try {
       const res = await fetch('/api/ai/chat', {
@@ -353,6 +337,8 @@ export default function LabResults() {
       setAiText(data.reply || t.decodeFail)
     } catch {
       setAiText(t.decodeNoServer)
+    } finally {
+      setDecoding(false)
     }
   }
 
@@ -367,10 +353,12 @@ export default function LabResults() {
   }
 
   // Реальное распознавание загруженного файла через ИИ (никаких выдуманных значений)
+  const [notice, setNotice] = useState('')
+
   async function ingest(file) {
     setBusyName(file.name)
-    setStage('analyzing')
-    setAiText('')
+    setAnalyzing(true)
+    setNotice('')
     try {
       const data = await fileToBase64(file)
       const res = await fetch('/api/labs/upload', {
@@ -379,8 +367,7 @@ export default function LabResults() {
       })
       const out = await res.json()
       if (!out.ok || !out.report) {
-        setStage('done')
-        setAiText(out.message || t.parseFail)
+        setNotice(out.message || t.parseFail)
         return
       }
       const r = out.report
@@ -388,11 +375,11 @@ export default function LabResults() {
       // Заменяем отчёт той же даты, если он уже есть, иначе добавляем
       const next = [...reports.filter(x => x.date !== flat.date), flat]
       setReports(next)
-      setStage('done')
-      runAi(next)
+      runAi(next)   // сразу даём полную расшифровку с учётом нового файла
     } catch {
-      setStage('done')
-      setAiText(t.fileFail)
+      setNotice(t.fileFail)
+    } finally {
+      setAnalyzing(false)
     }
   }
 
@@ -403,30 +390,7 @@ export default function LabResults() {
   function onPick(e) {
     const f = e.target.files?.[0]; if (f) ingest(f)
   }
-  function analyzeExisting() {
-    setStage('done'); setAiText(''); runAi(reports)
-  }
-
-  // Чат: задать вопрос ИИ по своим анализам
-  async function sendChat(e) {
-    e?.preventDefault?.()
-    const q = chatInput.trim()
-    if (!q || chatBusy) return
-    const history = chat.map(m => ({ role: m.role, text: m.text }))
-    setChat(prev => [...prev, { role: 'user', text: q }])
-    setChatInput('')
-    setChatBusy(true)
-    try {
-      const { reply, error } = await askAgent({ message: q, snapshot: fullSnapshot, history, context: doctorContext(reports) })
-      setChat(prev => [...prev, { role: 'assistant', text: error ? t.chatNoServer : (reply || t.answerFail) }])
-    } finally {
-      setChatBusy(false)
-    }
-  }
-
-  useEffect(() => {
-    chatEnd.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-  }, [chat, chatBusy])
+  function analyzeExisting() { runAi(reports) }
 
   return (
     <div className="card lab-block">
@@ -435,7 +399,7 @@ export default function LabResults() {
           <div className="lab-title">{t.title}</div>
           <div className="lab-sub muted">{t.sub}</div>
         </div>
-        <button className="lab-ai-btn" onClick={analyzeExisting} disabled={stage === 'analyzing'}>
+        <button className="lab-ai-btn" onClick={analyzeExisting} disabled={decoding || reports.length === 0}>
           {t.decodeAll}
         </button>
       </div>
@@ -452,14 +416,14 @@ export default function LabResults() {
 
       {/* Зона загрузки */}
       <div
-        className={`lab-drop ${dragOver ? 'over' : ''} ${stage === 'analyzing' ? 'busy' : ''}`}
+        className={`lab-drop ${dragOver ? 'over' : ''} ${analyzing ? 'busy' : ''}`}
         onDragOver={e => { e.preventDefault(); setDragOver(true) }}
         onDragLeave={() => setDragOver(false)}
         onDrop={onDrop}
-        onClick={() => stage !== 'analyzing' && fileInput.current?.click()}
+        onClick={() => !analyzing && fileInput.current?.click()}
       >
         <input ref={fileInput} type="file" accept=".pdf,.jpg,.jpeg,.png,.heic" hidden onChange={onPick} />
-        {stage === 'analyzing' ? (
+        {analyzing ? (
           <>
             <div className="lab-spinner" />
             <span className="lab-drop-title">{t.recognizing(busyName)}</span>
@@ -505,54 +469,21 @@ export default function LabResults() {
         </div>
       )}
 
-      {/* Расшифровка от ИИ */}
+      {notice && <div className="lab-notice">{notice}</div>}
+
+      {/* Полная расшифровка от ИИ (по кнопке / после загрузки) */}
       <AnimatePresence>
-        {stage === 'done' && (
+        {(decoding || aiText) && (
           <motion.div className="lab-ai"
             initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-            <div className="summary-head">
-              <span className="summary-badge">{t.aiBadge}</span>
+            <div className="lab-ai-head">
+              <span className="lab-ai-badge">{t.aiBadge}</span>
               <div className="card-title" style={{ margin: 0 }}>{t.decodeHead}</div>
             </div>
             <p className="lab-ai-text">{aiText || t.decodePrep}</p>
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Чат по анализам — можно спросить ИИ что угодно про свои показатели */}
-      <div className="lab-chat">
-        <div className="lab-chat-head muted">{t.askHead}</div>
-        {chat.length > 0 && (
-          <div className="lab-chat-thread">
-            {chat.map((m, i) => (
-              <div key={i} className={`lab-msg ${m.role}`}>
-                <span className="lab-msg-text">{m.text}</span>
-              </div>
-            ))}
-            {chatBusy && (
-              <div className="lab-msg assistant">
-                <span className="lab-msg-text lab-typing">{t.typing}</span>
-              </div>
-            )}
-            <div ref={chatEnd} />
-          </div>
-        )}
-        <form className="lab-chat-bar" onSubmit={sendChat}>
-          <MicButton primary onText={txt => setChatInput(prev => (prev ? prev.trim() + ' ' : '') + txt)} />
-          <input
-            className="lab-chat-input"
-            placeholder={t.chatPlaceholder}
-            value={chatInput}
-            onChange={e => setChatInput(e.target.value)}
-            disabled={chatBusy}
-          />
-          <button className="lab-chat-send" type="submit" disabled={!chatInput.trim() || chatBusy}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
-            </svg>
-          </button>
-        </form>
-      </div>
 
       {/* Сводка отклонений */}
       {flagged.length > 0 && (
@@ -578,7 +509,7 @@ export default function LabResults() {
           return (
             <div key={group.key} className="lab-panel">
               <div className="lab-panel-title">
-                <span className="lab-panel-icon">{group.icon}</span>{t.groups?.[group.key] || group.name}
+                <span className="lab-panel-icon"><Icon name={`lab-${group.key}`} size={16} color={categoryColor(`lab-${group.key}`)} /></span>{t.groups?.[group.key] || group.name}
                 <span className="lab-panel-wait muted">{group.major.length + group.minor.length}</span>
               </div>
 
@@ -611,13 +542,18 @@ export default function LabResults() {
         .lab-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
         .lab-title { font-size: 17px; font-weight: 700; color: var(--foreground); }
         .lab-sub { font-size: 13px; margin-top: 3px; max-width: 560px; }
+        .lab-notice { font-size: 13.5px; color: var(--yellow); background: color-mix(in srgb, var(--yellow) 12%, transparent); border-radius: 10px; padding: 10px 14px; }
         .lab-ai-btn {
           flex-shrink: 0; padding: 8px 14px; border-radius: 10px;
-          border: 1px solid var(--primary); background: transparent; color: var(--primary);
+          border: 1px solid var(--accent); background: transparent; color: var(--accent);
           font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s;
         }
-        .lab-ai-btn:hover:not(:disabled) { background: rgba(176, 123, 82,0.12); }
+        .lab-ai-btn:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 12%, transparent); }
         .lab-ai-btn:disabled { opacity: 0.4; cursor: default; }
+        .lab-ai { display: flex; flex-direction: column; gap: 10px; background: color-mix(in srgb, var(--accent) 7%, transparent); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+        .lab-ai-head { display: flex; align-items: center; gap: 10px; }
+        .lab-ai-badge { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: var(--accent-foreground); background: var(--accent); padding: 3px 8px; border-radius: 6px; }
+        .lab-ai-text { font-size: 17px; line-height: 1.7; color: var(--foreground); white-space: pre-wrap; }
 
         .lab-drop {
           display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px;
@@ -626,7 +562,7 @@ export default function LabResults() {
           color: var(--muted-foreground); cursor: pointer; text-align: center; transition: all 0.18s;
         }
         .lab-drop:hover { border-color: var(--primary); color: var(--primary); }
-        .lab-drop.over { border-color: var(--primary); background: rgba(176, 123, 82,0.08); color: var(--primary); }
+        .lab-drop.over { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); color: var(--accent); }
         .lab-drop.busy { cursor: default; border-style: solid; }
         .lab-drop-title { font-size: 14px; font-weight: 600; color: var(--foreground); }
         .lab-drop-hint { font-size: 12px; }
@@ -648,44 +584,6 @@ export default function LabResults() {
         .lab-tl-name { color: var(--foreground); max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .lab-tl-count { font-size: 11px; }
 
-        .lab-ai { display: flex; flex-direction: column; gap: 10px; background: rgba(176, 123, 82,0.07); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
-        .summary-head { display: flex; align-items: center; gap: 10px; }
-        .summary-badge { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; color: var(--primary-foreground); background: var(--primary); padding: 3px 8px; border-radius: 6px; }
-        .lab-ai-text { font-size: 17.5px; line-height: 1.7; color: var(--foreground); white-space: pre-wrap; }
-
-        .lab-chat { display: flex; flex-direction: column; gap: 10px; }
-        .lab-chat-head { font-size: 13px; font-weight: 500; }
-        .lab-chat-thread {
-          display: flex; flex-direction: column; gap: 8px;
-          max-height: 280px; overflow-y: auto; padding: 4px 2px;
-        }
-        .lab-chat-thread::-webkit-scrollbar { width: 7px; }
-        .lab-chat-thread::-webkit-scrollbar-thumb { background: var(--bg-secondary); border-radius: 8px; }
-        .lab-msg { display: flex; max-width: 85%; }
-        .lab-msg.user { align-self: flex-end; }
-        .lab-msg.assistant { align-self: flex-start; }
-        .lab-msg-text {
-          font-size: 16.5px; line-height: 1.65; padding: 12px 16px; border-radius: 14px; white-space: pre-wrap;
-        }
-        .lab-msg.user .lab-msg-text { background: var(--primary); color: var(--primary-foreground); border-bottom-right-radius: 4px; }
-        .lab-msg.assistant .lab-msg-text { background: var(--bg-secondary); color: var(--foreground); border-bottom-left-radius: 4px; }
-        .lab-typing { color: var(--muted-foreground); font-style: italic; }
-        .lab-chat-bar { display: flex; gap: 8px; align-items: center; }
-        .lab-chat-input {
-          flex: 1; background: var(--bg-secondary); border: 1px solid var(--border);
-          border-radius: 12px; padding: 12px 14px; font-family: inherit; font-size: 14px;
-          color: var(--foreground); outline: none; transition: border-color 0.15s;
-        }
-        .lab-chat-input:focus { border-color: var(--primary); }
-        .lab-chat-input::placeholder { color: var(--muted-foreground); }
-        .lab-chat-send {
-          flex-shrink: 0; width: 42px; height: 42px; border-radius: 12px; border: none;
-          background: var(--primary); color: var(--primary-foreground);
-          display: flex; align-items: center; justify-content: center; cursor: pointer; transition: opacity 0.15s;
-        }
-        .lab-chat-send:hover:not(:disabled) { opacity: 0.9; }
-        .lab-chat-send:disabled { opacity: 0.4; cursor: default; }
-
         .lab-flags { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
         .lab-flags-lbl { font-size: 13px; }
         .lab-flag { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px; border: 1px solid; background: transparent; }
@@ -706,7 +604,7 @@ export default function LabResults() {
         .lab-mini-dot { width: 9px; height: 9px; border-radius: 50%; }
         .lab-panel { background: var(--bg-secondary); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 16px; }
         .lab-panel-title { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; color: var(--foreground); }
-        .lab-panel-icon { font-size: 16px; }
+        .lab-panel-icon { display: inline-flex; align-items: center; }
         .lab-panel-wait { font-size: 11px; font-weight: 400; margin-left: auto; }
         .lab-markers { display: flex; flex-direction: column; gap: 15px; }
         .lab-marker { display: flex; flex-direction: column; gap: 6px; }
@@ -717,7 +615,7 @@ export default function LabResults() {
         .lm-unit { font-size: 11px; font-weight: 400; }
         .lm-await { font-size: 11px; font-style: italic; }
         .lm-bar { position: relative; height: 8px; border-radius: 4px; background: var(--bg-primary); }
-        .lm-band { position: absolute; top: 0; height: 100%; background: rgba(126, 155, 110,0.28); border-radius: 4px; }
+        .lm-band { position: absolute; top: 0; height: 100%; background: color-mix(in srgb, var(--status-ok, var(--green)) 28%, transparent); border-radius: 4px; }
         .lm-marker-dot { position: absolute; top: 50%; width: 12px; height: 12px; border-radius: 50%; transform: translate(-50%, -50%); border: 2px solid var(--card); }
         .lm-bottom { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
         .lm-range { font-size: 11px; }

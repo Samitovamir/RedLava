@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { categoryColor } from '../utils/categoryColor.js'
 
 /*
   Подробное окно тренировки (как в Garmin): сводка, карта маршрута,
@@ -15,11 +16,15 @@ function fmtDate(d) {
   return `${Number(day)} ${months[Number(m) - 1]}`
 }
 
+// Цвет типа тренировки — из палитры категорий темы (--cat-sport-*),
+// чтобы совпадал с лентой тренировок и переключался вместе с темой.
 function typeColor(type = '') {
-  if (/run/.test(type)) return 'var(--orange)'
-  if (/cycl|bik/.test(type)) return 'var(--accent)'
-  if (/swim/.test(type)) return 'var(--green)'
-  return 'var(--yellow)'
+  if (/run/.test(type)) return categoryColor('sport-run')
+  if (/cycl|bik/.test(type)) return categoryColor('sport-bike')
+  if (/swim/.test(type)) return categoryColor('sport-swim')
+  if (/gym|strength|сил/.test(type)) return categoryColor('sport-gym')
+  if (/walk|hik/.test(type)) return categoryColor('sport-walk')
+  return 'var(--accent)'
 }
 
 // Сводные метрики верхней сетки
@@ -29,8 +34,8 @@ function summaryMetrics(w) {
   if (w.durationMin != null) out.push({ k: 'Время', v: w.durationMin, u: 'мин' })
   if (w.pace) out.push({ k: 'Темп', v: w.pace, u: '/км' })
   else if (w.speedKmh != null) out.push({ k: 'Скорость', v: w.speedKmh, u: 'км/ч' })
-  if (w.avgHr != null) out.push({ k: 'Ср. пульс', v: w.avgHr, u: 'уд/мин', c: 'var(--green)' })
-  if (w.maxHr != null) out.push({ k: 'Макс. пульс', v: w.maxHr, u: 'уд/мин', c: 'var(--red)' })
+  if (w.avgHr != null) out.push({ k: 'Ср. пульс', v: w.avgHr, u: 'уд/мин' })
+  if (w.maxHr != null) out.push({ k: 'Макс. пульс', v: w.maxHr, u: 'уд/мин' })
   if (w.calories != null) out.push({ k: 'Калории', v: w.calories, u: 'ккал' })
   if (w.elevationGain != null) out.push({ k: 'Набор высоты', v: w.elevationGain, u: 'м' })
   if (w.cadence != null) out.push({ k: 'Каденс', v: w.cadence, u: 'шаг/мин' })
@@ -266,7 +271,7 @@ export default function WorkoutModal({ workout, onClose }) {
           <style>{`
             .wm-backdrop {
               position: fixed; inset: 0; z-index: 500;
-              background: rgba(15, 13, 11, 0.72);
+              background: var(--scrim);
               backdrop-filter: blur(6px);
               display: flex; align-items: flex-start; justify-content: center;
               padding: 40px 20px; overflow-y: auto;
@@ -333,7 +338,7 @@ export default function WorkoutModal({ workout, onClose }) {
             .wm-split-bar-wrap { flex: 1; position: relative; height: 26px; display: flex; align-items: center; background: var(--bg-secondary); border-radius: 7px; overflow: hidden; }
             .wm-split-bar { height: 100%; border-radius: 7px; opacity: 0.42; transition: width 0.4s; min-width: 8px; }
             .wm-split-pace { position: absolute; left: 12px; font-size: 13px; font-weight: 600; color: var(--foreground); }
-            .wm-split-hr { font-size: 12.5px; color: var(--green); flex-shrink: 0; width: 52px; }
+            .wm-split-hr { font-size: 12.5px; color: var(--text-primary); flex-shrink: 0; width: 52px; }
             .wm-split-el { font-size: 12.5px; flex-shrink: 0; width: 44px; text-align: right; }
 
             @media (max-width: 560px) {

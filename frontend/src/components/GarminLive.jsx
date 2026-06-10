@@ -63,12 +63,9 @@ function plural(n, one, few, many) {
   return many
 }
 
-// Цвет-акцент по типу активности
-function typeColor(type = '') {
-  if (/run/.test(type)) return 'var(--orange)'
-  if (/cycl|bik/.test(type)) return 'var(--accent)'
-  if (/swim/.test(type)) return 'var(--green)'
-  return 'var(--yellow)'
+// Акцент карточек/точек видов спорта — ЕДИНЫЙ акцент темы (без разноцветья без легенды).
+function typeColor() {
+  return 'var(--accent)'
 }
 
 const ICON_HEART = (
@@ -77,28 +74,34 @@ const ICON_HEART = (
   </svg>
 )
 
-// Метрики hero-карточки (показываем только заполненные)
+// Метрики hero-карточки (показываем только заполненные).
+// primary: ключевые метрики (Дистанция/Время/Темп) — крупнее; остальные мельче/в --muted.
+// Единицы измерения — мелко у базовой линии; никакой выборочной окраски чисел (числа в --foreground).
 function heroMetrics(w, t, trainingLabel) {
   const out = []
-  if (w.distanceKm != null) out.push({ k: t.mDistance, v: w.distanceKm, u: t.uKm })
-  if (w.durationMin != null) out.push({ k: t.mTime, v: w.durationMin, u: t.uMin })
-  if (w.pace) out.push({ k: t.mPace, v: w.pace, u: t.uPerKm })
-  else if (w.speedKmh != null) out.push({ k: t.mSpeed, v: w.speedKmh, u: t.uKmh })
-  if (w.avgHr != null) out.push({ k: t.mAvgHr, v: w.avgHr, u: t.uBpm, accent: 'var(--green)' })
+  if (w.distanceKm != null) out.push({ k: t.mDistance, v: w.distanceKm, u: t.uKm, primary: true })
+  if (w.durationMin != null) out.push({ k: t.mTime, v: w.durationMin, u: t.uMin, primary: true })
+  if (w.pace) out.push({ k: t.mPace, v: w.pace, u: t.uPerKm, primary: true })
+  else if (w.speedKmh != null) out.push({ k: t.mSpeed, v: w.speedKmh, u: t.uKmh, primary: true })
+  if (w.avgHr != null) out.push({ k: t.mAvgHr, v: w.avgHr, u: t.uBpm })
   if (w.maxHr != null) out.push({ k: t.mMaxHr, v: w.maxHr, u: t.uBpm })
   if (w.calories != null) out.push({ k: t.mCalories, v: w.calories, u: t.uKcal })
   if (w.elevationGain != null) out.push({ k: t.mElevation, v: w.elevationGain, u: t.uM })
   if (w.cadence != null) out.push({ k: t.mCadence, v: w.cadence, u: t.uSpm })
   if (w.avgPower != null) out.push({ k: t.mPower, v: w.avgPower, u: t.uW })
-  if (w.trainingEffect != null) out.push({ k: t.mEffect, v: w.trainingEffect, u: (trainingLabel ?? w.trainingLabel) || '', accent: 'var(--accent)' })
+  // «Эффект»: число — значение, тип нагрузки (аэробный/анаэробный) уходит в подпись, не в единицу.
+  if (w.trainingEffect != null) {
+    const eff = (trainingLabel ?? w.trainingLabel) || ''
+    out.push({ k: eff ? `${t.mEffect} · ${eff}` : t.mEffect, v: w.trainingEffect, u: '' })
+  }
   return out
 }
 
-export default function GarminLive() {
+export default function GarminLive({ embedded = false }) {
   const t = useT({
     ru: {
       header: 'Спорт', source: 'Garmin Connect',
-      stepsToday: 'Шаги сегодня', restingHr: 'Пульс покоя', vo2max: 'VO₂max', week: 'За неделю',
+      stepsToday: 'Шаги сегодня', stepsGoal: 'цель 10 000', restingHr: 'Пульс покоя', vo2max: 'VO₂max', week: 'За неделю',
       bpm: 'уд/мин', vo2unit: 'мл/кг/мин',
       defaultWorkout: 'Тренировка', lastWorkout: 'последняя тренировка', more: 'подробнее →',
       // hero metric labels
@@ -120,7 +123,7 @@ export default function GarminLive() {
     },
     en: {
       header: 'Sport', source: 'Garmin Connect',
-      stepsToday: 'Steps today', restingHr: 'Resting HR', vo2max: 'VO₂ Max', week: 'This week',
+      stepsToday: 'Steps today', stepsGoal: 'goal 10,000', restingHr: 'Resting HR', vo2max: 'VO₂ Max', week: 'This week',
       bpm: 'bpm', vo2unit: 'ml/kg/min',
       defaultWorkout: 'Workout', lastWorkout: 'latest workout', more: 'details →',
       // hero metric labels
@@ -218,26 +221,33 @@ export default function GarminLive() {
     : lang === 'en'
       ? `${g.weekCount} ${g.weekCount === 1 ? 'workout' : 'workouts'}`
       : `${g.weekCount} ${plural(g.weekCount, 'тренировка', 'тренировки', 'тренировок')}`
+  // VO2max и пульс покоя в embedded-режиме (вкладка «Активность») не показываем —
+  // они живут в «Показателях». Здесь оставляем только активность: шаги + объём недели.
+  // KPI: числа в --foreground (без статусной/акцентной окраски). У шагов — подстрока «цель N».
   const stats = [
-    { label: t.stepsToday, value: g?.steps != null ? g.steps.toLocaleString('ru-RU') : '—', color: 'var(--orange)' },
-    { label: t.restingHr, value: g?.restingHr != null ? `${g.restingHr}` : '—', sub: t.bpm, color: 'var(--green)' },
-    { label: t.vo2max, value: g?.vo2Max != null ? `${g.vo2Max}` : '—', sub: t.vo2unit, color: 'var(--accent)' },
-    { label: t.week, value: g?.weekKm != null ? `${g.weekKm} ${t.uKm}` : '—', sub: weekCountLabel, color: 'var(--yellow)' }
+    { label: t.stepsToday, value: g?.steps != null ? g.steps.toLocaleString('ru-RU') : '—', sub: g?.steps != null ? t.stepsGoal : '' },
+    ...(embedded ? [] : [
+      { label: t.restingHr, value: g?.restingHr != null ? `${g.restingHr}` : '—', sub: t.bpm },
+      { label: t.vo2max, value: g?.vo2Max != null ? `${g.vo2Max}` : '—', sub: t.vo2unit }
+    ]),
+    { label: t.week, value: g?.weekKm != null ? `${g.weekKm} ${t.uKm}` : '—', sub: weekCountLabel }
   ]
 
   return (
     <div className="gl-page">
-      <div className="page-header">
-        <h2>{t.header}</h2>
-        <span className="muted">{t.source}</span>
-      </div>
+      {!embedded && (
+        <div className="page-header">
+          <h2>{t.header}</h2>
+          <span className="muted">{t.source}</span>
+        </div>
+      )}
 
       <div className="gl-stats">
         {stats.map((c, i) => (
           <motion.div key={c.label} className="card gl-stat"
             initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: i * 0.05 }}>
             <span className="gl-stat-label">{c.label}</span>
-            <span className="gl-stat-value" style={{ color: c.color }}>{c.value}</span>
+            <span className="gl-stat-value">{c.value}</span>
             {c.sub && <span className="gl-stat-sub muted">{c.sub}</span>}
           </motion.div>
         ))}
@@ -259,10 +269,11 @@ export default function GarminLive() {
           <h3 className="gl-hero-title">{pickL(last, 'title')}</h3>
           <div className="gl-hero-grid">
             {heroMetrics(last, t, pickL(last, 'trainingLabel')).map(m => (
-              <div key={m.k} className="gl-metric">
-                <span className="gl-metric-value" style={m.accent ? { color: m.accent } : undefined}>{m.v}</span>
-                <span className="gl-metric-unit muted">{m.u}</span>
-                <span className="gl-metric-label muted">{m.k}</span>
+              <div key={m.k} className={`gl-metric ${m.primary ? 'primary' : ''}`}>
+                <span className="gl-metric-value">
+                  {m.v}{m.u && <span className="gl-metric-unit"> {m.u}</span>}
+                </span>
+                <span className="gl-metric-label">{m.k}</span>
               </div>
             ))}
           </div>
@@ -295,13 +306,14 @@ export default function GarminLive() {
                       {fmtDate(w.date, months)} · {sportRu(w.sport)}
                       {w.durationMin ? ` · ${w.durationMin} ${t.minShort}` : ''}
                       {w.distanceKm ? ` · ${w.distanceKm} ${t.kmShort}` : ''}
-                      {w.time ? ` · ${t.at} ${w.time}` : ''}
+                      {/* Время: своё (· в 6:30) или предлагаемое утро (· ~6:30) — в мете, не в кнопке */}
+                      {w.time ? ` · ${t.at} ${w.time}` : ` · ~6:30`}
                     </span>
                   </div>
                   {info
                     ? <span className="gl-added">{t.inCal}{info.start ? `, ${info.start}` : ''}</span>
                     : <button className="gl-add-btn" onClick={() => scheduleWorkout(w)}>
-                        {w.time ? t.toCal : t.toCalMorning}
+                        {t.toCal}
                       </button>}
                 </div>
               )
@@ -361,33 +373,36 @@ export default function GarminLive() {
         .page-header { display: flex; align-items: baseline; gap: 12px; }
         .page-header h2 { font-size: 24px; font-weight: 700; color: var(--foreground); }
 
-        .gl-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+        /* KPI: не растягиваем на полэкрана — узкие плашки слева, число не плавает в пустоте */
+        .gl-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 280px)); justify-content: start; gap: 14px; }
         .gl-stat { display: flex; flex-direction: column; gap: 5px; padding: 16px 18px; }
         .gl-stat-label { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
-        .gl-stat-value { font-size: 26px; font-weight: 700; letter-spacing: -0.01em; }
+        .gl-stat-value { font-size: 26px; font-weight: 700; letter-spacing: -0.01em; color: var(--foreground); }
         .gl-stat-sub { font-size: 12px; }
 
-        .gl-hero { position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 14px; padding: 22px 24px; }
-        .gl-hero::before {
-          content: ''; position: absolute; top: 16px; bottom: 16px; left: 0; width: 4px;
-          border-radius: 0 3px 3px 0;
-          background: var(--hero-accent);
-        }
+        /* Левая акцентная полоса = border-left: повторяет скругление 16px углов карточки (overflow:hidden клипает) */
+        .gl-hero { position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 14px; padding: 22px 24px; border-left: 4px solid var(--hero-accent); }
         .gl-hero-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
         .gl-hero-badge { font-size: 12.5px; font-weight: 700; padding: 4px 12px; border-radius: 16px; }
         .gl-hero-date { font-size: 13px; }
         .gl-hero-title { font-size: 21px; font-weight: 700; color: var(--foreground); letter-spacing: -0.01em; }
         .gl-hero-grid {
           display: grid; grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
-          gap: 14px; margin-top: 4px;
+          gap: 12px; margin-top: 4px; align-items: end;
         }
         .gl-metric {
-          display: flex; flex-direction: column; gap: 1px;
-          background: var(--bg-secondary); border-radius: 12px; padding: 12px 14px;
+          display: flex; flex-direction: column; gap: 3px;
+          background: var(--bg-tile, var(--bg-secondary)); border: 1px solid var(--border-med, var(--border));
+          border-radius: 12px; padding: 11px 13px;
         }
-        .gl-metric-value { font-size: 20px; font-weight: 700; color: var(--foreground); line-height: 1.1; }
-        .gl-metric-unit { font-size: 12px; font-weight: 500; }
-        .gl-metric-label { font-size: 11.5px; margin-top: 4px; }
+        /* Базовые метрики — мельче и приглушённее */
+        .gl-metric-value { font-size: 16px; font-weight: 700; color: var(--muted); line-height: 1.1; }
+        /* Единица измерения — мелко (~0.5em) у базовой линии числа */
+        .gl-metric-unit { font-size: 0.62em; font-weight: 500; color: var(--muted); }
+        .gl-metric-label { font-size: 11px; color: var(--muted); }
+        /* Ключевые метрики (Дистанция/Время/Темп) — крупнее, число в --foreground */
+        .gl-metric.primary .gl-metric-value { font-size: 23px; color: var(--foreground); }
+        .gl-metric.primary .gl-metric-unit { color: var(--muted); }
 
         .gl-list-card { display: flex; flex-direction: column; gap: 12px; }
         .gl-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
@@ -402,13 +417,14 @@ export default function GarminLive() {
         .gl-planned { display: flex; flex-direction: column; }
         .gl-prow { display: flex; align-items: center; gap: 14px; padding: 13px 0; border-bottom: 1px solid var(--border); }
         .gl-prow:last-child { border-bottom: none; }
+        /* Единая ширина кнопки → ровный правый край списка (время вынесено в мету) */
         .gl-add-btn {
-          flex-shrink: 0; padding: 8px 14px; border-radius: 10px; border: 1px solid var(--accent);
+          flex-shrink: 0; min-width: 148px; padding: 8px 14px; border-radius: 10px; border: 1px solid var(--accent);
           background: transparent; color: var(--accent); font-family: inherit; font-size: 13px; font-weight: 600;
-          cursor: pointer; transition: all 0.15s; white-space: nowrap;
+          cursor: pointer; transition: all 0.15s; white-space: nowrap; text-align: center;
         }
         .gl-add-btn:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }
-        .gl-added { flex-shrink: 0; font-size: 13px; font-weight: 600; color: var(--green); white-space: nowrap; }
+        .gl-added { flex-shrink: 0; min-width: 148px; text-align: center; font-size: 13px; font-weight: 600; color: var(--green); white-space: nowrap; }
         .gl-planned-note { font-size: 12px; margin-top: 2px; }
         .gl-debug { font-size: 11px; opacity: 0.6; margin-top: 8px; word-break: break-all; }
         .gl-empty { font-size: 14px; padding: 8px 0; }
@@ -422,7 +438,7 @@ export default function GarminLive() {
         .gl-row-stats { display: flex; gap: 16px; font-size: 13px; color: var(--muted); flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
         .gl-row-stats b { color: var(--foreground); font-weight: 600; }
         .gl-hr { display: inline-flex; align-items: center; gap: 4px; }
-        .gl-hr-ico { color: var(--green); display: inline-flex; }
+        .gl-hr-ico { color: var(--muted); display: inline-flex; }
 
         @media (max-width: 900px) { .gl-stats { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 620px) {

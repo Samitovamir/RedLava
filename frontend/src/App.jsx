@@ -11,7 +11,6 @@ import { MemoryProvider } from './context/MemoryContext.jsx'
 import { MailProvider } from './context/MailContext.jsx'
 import Home from './pages/Home.jsx'
 import Schedule from './pages/Schedule.jsx'
-import Sport from './pages/Sport.jsx'
 import Health from './pages/Health.jsx'
 import Nutrition from './pages/Nutrition.jsx'
 import Mail from './pages/Mail.jsx'
@@ -52,7 +51,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/schedule" element={<Schedule />} />
-            <Route path="/sport" element={<Sport />} />
+            <Route path="/sport" element={<Navigate to="/health" replace />} />
             <Route path="/health" element={<Health />} />
             <Route path="/nutrition" element={<Nutrition />} />
             <Route path="/mail" element={<Mail />} />

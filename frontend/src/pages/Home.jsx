@@ -5,6 +5,9 @@ import AIWorkZone from '../components/AIWorkZone.jsx'
 import DaySchedule from '../components/DaySchedule.jsx'
 import DaySummary from '../components/DaySummary.jsx'
 import HealthBrief from '../components/HealthBrief.jsx'
+import HealthSignal from '../components/HealthSignal.jsx'
+import TodaySignal from '../components/TodaySignal.jsx'
+import DayStatusStrip from '../components/DayStatusStrip.jsx'
 import { getQuoteOfDay } from '../utils/quotes.js'
 import { useEvents } from '../context/EventsContext.jsx'
 import { useT, useLang } from '../context/LanguageContext.jsx'
@@ -22,7 +25,10 @@ function formatDate(t) {
   const d = mskNow()
   const days = t.days
   const months = t.months
-  return `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]}`
+  // По-русски месяцы строчные: «10 июня». Заглавная — только у первой буквы строки
+  // (имя дня недели в начале), без CSS-capitalize, который бы поднял и «Июня».
+  const s = `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]}`
+  return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
 const ICON_CAL = (
@@ -30,29 +36,6 @@ const ICON_CAL = (
     <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
   </svg>
 )
-const ICON_RUN = (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>
-  </svg>
-)
-const ICON_WHOOP = (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
-  </svg>
-)
-const ICON_SLEEP = (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-  </svg>
-)
-
-function readWhoopLive() {
-  try { const s = localStorage.getItem('albert-whoop-live'); return s ? JSON.parse(s) : null } catch { return null }
-}
-
-function readGarminLive() {
-  try { const s = localStorage.getItem('albert-garmin-live'); return s ? JSON.parse(s) : null } catch { return null }
-}
 
 // Ближайшее (или текущее) событие из расписания
 function nextEvent(events) {
@@ -82,12 +65,8 @@ export default function Home() {
       days: ['воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота'],
       months: ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'],
       today: 'сегодня', tomorrow: 'завтра',
-      nextEvent: 'Следующее событие', noEvents: 'Нет событий', soon: 'на ближайшее время',
+      scheduleTitle: 'Расписание', noEvents: 'Нет событий', soon: 'на ближайшее время',
       connectCalendar: 'Подключите Google Календарь',
-      lastWorkout: 'Последняя тренировка', connectGarmin: 'Подключите Garmin',
-      recoverySleep: 'Восстановление и сон', recovery: 'Восстановление',
-      sleepEff: (h, e) => `Сон · эфф. ${e}%`, connectWhoop: 'Подключите Whoop',
-      hours: 'ч', km: 'км', min: 'мин', perKm: '/км',
     },
     en: {
       greetMorning: 'Good morning', greetDay: 'Good afternoon', greetEvening: 'Good evening', greetNight: 'Good night',
@@ -95,12 +74,8 @@ export default function Home() {
       days: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
       months: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
       today: 'today', tomorrow: 'tomorrow',
-      nextEvent: 'Next event', noEvents: 'No events', soon: 'for the near future',
+      scheduleTitle: 'Schedule', noEvents: 'No events', soon: 'for the near future',
       connectCalendar: 'Connect Google Calendar',
-      lastWorkout: 'Last workout', connectGarmin: 'Connect Garmin',
-      recoverySleep: 'Recovery and sleep', recovery: 'Recovery',
-      sleepEff: (h, e) => `Sleep · eff. ${e}%`, connectWhoop: 'Connect Whoop',
-      hours: 'h', km: 'km', min: 'min', perKm: '/km',
     },
   })
   const scheduleRef = useRef(null)
@@ -109,32 +84,27 @@ export default function Home() {
   // Английский вариант текста демо-данных, если он есть; иначе исходный (русский)
   const pick = (o, f) => (lang === 'en' && o && o[f + 'En']) ? o[f + 'En'] : (o ? o[f] : '')
   const quote = getQuoteOfDay()
-  const { events } = useEvents()
+  const { events, setFocusSignal } = useEvents()
 
   // Карточки только из реальных данных (иначе — «Подключите …», без выдумок)
-  const whoop = readWhoopLive()
-  const garmin = readGarminLive()
-  const lastW = garmin?.lastWorkout
   const nextEv = nextEvent(events)
+  // Иконки парных карточек «Расписание» и «Здоровье» держим в едином нейтральном
+  // цвете (var(--muted)) — без скачков по палитре. Семантику загруженности дня
+  // не теряем: она остаётся в самом тексте/разделе «Расписание».
+  const iconColor = 'var(--muted)'
+  const nowK = mskNow(); const pad = n => String(n).padStart(2, '0')
+  const todayKey = `${nowK.getFullYear()}-${pad(nowK.getMonth() + 1)}-${pad(nowK.getDate())}`
+  // Клик по карточке расписания → /schedule и фокус календаря на дату/время события.
+  const goToEvent = () => {
+    if (nextEv) setFocusSignal({ date: nextEv.date, time: nextEv.start, n: Date.now() })
+    navigate('/schedule')
+  }
   const cards = [
     nextEv
-      ? { label: t.nextEvent, value: pick(nextEv, 'title'), sub: `${humanDate(nextEv.date, t)} · ${nextEv.start}`, color: 'var(--accent)', scrollTo: true, icon: ICON_CAL }
-      : { label: t.nextEvent, value: t.noEvents, sub: events.length ? t.soon : t.connectCalendar, color: 'var(--accent)', link: events.length ? undefined : '/connections', scrollTo: !!events.length, icon: ICON_CAL },
-    lastW
-      ? { label: t.lastWorkout, value: pick(lastW, 'label'), sub: [lastW.distanceKm ? `${lastW.distanceKm} ${t.km}` : null, lastW.durationMin ? `${lastW.durationMin} ${t.min}` : null, lastW.pace ? `${lastW.pace}${t.perKm}` : null].filter(Boolean).join(' · ') || humanDate(lastW.date, t), color: 'var(--orange)', link: '/sport', icon: ICON_RUN }
-      : { label: t.lastWorkout, value: '—', sub: t.connectGarmin, color: 'var(--orange)', link: '/connections', icon: ICON_RUN },
-    whoop
-      ? { label: t.recoverySleep, combined: true, recovery: whoop.recovery, sleepH: whoop.sleep.hoursSlept, eff: whoop.sleep.efficiency, color: 'var(--green)', link: '/health', icon: ICON_WHOOP }
-      : { label: t.recoverySleep, value: '—', sub: t.connectWhoop, color: 'var(--green)', link: '/connections', icon: ICON_WHOOP }
+      ? { label: t.scheduleTitle, value: pick(nextEv, 'title'), sub: `${humanDate(nextEv.date, t)} · ${nextEv.start}`, color: iconColor, onClick: goToEvent, icon: ICON_CAL }
+      : { label: t.scheduleTitle, value: t.noEvents, sub: events.length ? t.soon : t.connectCalendar, color: iconColor, onClick: () => navigate(events.length ? '/schedule' : '/connections'), icon: ICON_CAL }
   ]
 
-  const scrollToSchedule = () => {
-    const el = scheduleRef.current
-    const container = el?.closest('.page-content')
-    if (!el || !container) return
-    const target = container.scrollTop + (el.getBoundingClientRect().top - container.getBoundingClientRect().top) - 16
-    container.scrollTo({ top: target, behavior: 'smooth' })
-  }
 
   const dateStr = formatDate(t)
   const greetStr = `${getGreeting(t)}${t.greetName}`
@@ -154,61 +124,42 @@ export default function Home() {
         </div>
       </div>
 
+      <TodaySignal />
+
       <div className="quick-cards">
-        {cards.map((c, i) => (
+        {cards.map((c) => (
           <motion.div
             key={c.label}
-            className={`card quick-card ${c.scrollTo || c.link ? 'clickable' : ''}`}
+            className={`card quick-card ${c.onClick ? 'clickable' : ''}`}
             whileHover={{ y: -4 }}
-            onClick={c.scrollTo ? scrollToSchedule : c.link ? () => navigate(c.link) : undefined}
+            onClick={c.onClick}
           >
             <div className="quick-card-top">
+              <span className="quick-card-icon" style={{ color: c.color }}>{c.icon}</span>
               <span className="quick-card-label">{c.label}</span>
-              <span className="quick-card-icon" style={{ color: c.color, background: `color-mix(in srgb, ${c.color} 14%, transparent)` }}>
-                {c.icon}
-              </span>
             </div>
-            {c.combined ? (
-              <div className="qc-combined">
-                <div className="qc-half">
-                  <span className="qc-half-value" style={{ color: 'var(--green)' }}>{c.recovery}%</span>
-                  <span className="qc-half-label">{t.recovery}</span>
-                </div>
-                <div className="qc-half-divider" />
-                <div className="qc-half">
-                  <span className="qc-half-value" style={{ color: 'var(--accent)' }}>{c.sleepH} {t.hours}</span>
-                  <span className="qc-half-label">{t.sleepEff(c.sleepH, c.eff)}</span>
-                </div>
-              </div>
-            ) : (
-              <>
-                <span className="quick-card-value">{c.value}</span>
-                <span className="quick-card-sub">{c.sub}</span>
-                {c.progress != null && (
-                  <div className="quick-progress">
-                    <motion.div
-                      className="quick-progress-fill"
-                      style={{ background: c.color }}
-                      initial={{ width: 0 }}
-                      animate={{ width: `${c.progress}%` }}
-                      transition={{ duration: 0.8, delay: 0.2 + 0.05 * i, ease: 'easeOut' }}
-                    />
-                  </div>
-                )}
-              </>
-            )}
+            <span className="quick-card-value">{c.value}</span>
+            <span className="quick-card-sub">{c.sub}</span>
           </motion.div>
         ))}
+        <HealthSignal />
       </div>
 
-      <HealthBrief />
+      <DayStatusStrip />
 
       <AIWorkZone />
 
-      <div className="home-grid" ref={scheduleRef} style={{ scrollMarginTop: 16 }}>
-        <DaySchedule />
-        <DaySummary />
-      </div>
+      {/*
+        Временно убрано с Главной (по просьбе). ФУНКЦИОНАЛ СОХРАНЁН: компоненты,
+        импорты и страницы на месте — можно вернуть сюда или перенести в другое место,
+        просто раскомментировав. Сетку (.home-grid / .quick-cards) пока не трогаем.
+
+        <HealthBrief />            — «Коротко о здоровье»
+        <div className="home-grid" ref={scheduleRef} style={{ scrollMarginTop: 16 }}>
+          <DaySchedule />          — календарь дня
+          <DaySummary />           — «Сводка дня»
+        </div>
+      */}
 
       <style>{`
         .home-page {
@@ -228,28 +179,29 @@ export default function Home() {
         .quote-of-day {
           max-width: 420px;
           text-align: right;
-          padding-top: 8px;
+          /* Фиксированный бейдж «Демо-режим» (position:fixed; top:14px; right:16px; высота ~34px)
+             перекрывает правый верхний угол — отступаем цитату ПОД него, чтобы не пересекались. */
+          padding-top: 48px;
           display: flex;
           flex-direction: column;
           gap: 8px;
         }
         .quote-text {
-          font-size: 15px;
+          /* Inter, без засечного курсива: тихая подпись, не конкурирует с заголовком */
+          font-size: 13px;
           line-height: 1.55;
-          color: var(--foreground);
-          font-style: italic;
-          font-family: var(--font-serif), Georgia, serif;
+          color: var(--text-muted);
+          font-style: normal;
         }
         .quote-author {
-          font-size: 13px;
-          color: var(--muted-foreground);
+          font-size: 12px;
+          color: var(--text-muted);
           font-weight: 500;
         }
 
         .home-date {
           font-size: 13px;
           color: var(--muted);
-          text-transform: capitalize;
           font-weight: 500;
         }
         .greeting {
@@ -261,14 +213,9 @@ export default function Home() {
         }
         .quick-cards {
           display: grid;
-          grid-template-columns: repeat(3, 1fr);
+          grid-template-columns: repeat(2, 1fr);
           gap: 16px;
         }
-        .qc-combined { display: flex; align-items: center; gap: 4px; }
-        .qc-half { display: flex; flex-direction: column; gap: 2px; flex: 1; }
-        .qc-half-value { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
-        .qc-half-label { font-size: 11.5px; color: var(--muted); }
-        .qc-half-divider { width: 1px; align-self: stretch; background: var(--border); margin: 2px 8px; }
         .quick-card {
           display: flex;
           flex-direction: column;
@@ -284,23 +231,19 @@ export default function Home() {
         .quick-card-top {
           display: flex;
           align-items: center;
-          justify-content: space-between;
+          gap: 9px;
           margin-bottom: 6px;
         }
         .quick-card-label {
-          font-size: 11px;
-          color: var(--muted);
+          font-size: 15px;
+          color: var(--muted-foreground);
           font-weight: 600;
-          text-transform: uppercase;
-          letter-spacing: 0.07em;
         }
         .quick-card-icon {
-          width: 34px;
-          height: 34px;
-          border-radius: 10px;
-          display: flex;
+          display: inline-flex;
           align-items: center;
           justify-content: center;
+          /* цвет приходит инлайном и зависит от состояния */
         }
         .quick-card-value {
           font-size: 22px;
@@ -312,15 +255,6 @@ export default function Home() {
           font-size: 12.5px;
           color: var(--muted);
         }
-        .quick-progress {
-          margin-top: 8px;
-          height: 5px;
-          background: var(--bg-secondary);
-          border-radius: 3px;
-          overflow: hidden;
-        }
-        .quick-progress-fill { height: 100%; border-radius: 3px; }
-
         .home-grid {
           display: grid;
           grid-template-columns: 1.8fr 1fr;

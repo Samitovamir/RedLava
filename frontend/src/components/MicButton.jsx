@@ -65,12 +65,12 @@ export default function MicButton({ onText, title = 'Надиктовать го
         }
         .mic-btn.primary:hover { filter: brightness(1.07); color: var(--accent-foreground); }
         .mic-btn.listening {
-          color: #fff; background: var(--red); border-color: var(--red);
+          color: var(--on-accent); background: var(--red); border-color: var(--red);
           animation: mic-pulse 1.3s ease-in-out infinite;
         }
         @keyframes mic-pulse {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(168, 90, 74,0.5); }
-          50% { box-shadow: 0 0 0 7px rgba(168, 90, 74,0); }
+          0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--red) 50%, transparent); }
+          50% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--red) 0%, transparent); }
         }
       `}</style>
     </button>

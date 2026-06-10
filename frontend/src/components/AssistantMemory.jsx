@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Brain, X, Sparkles } from 'lucide-react'
 import { useMemoryFacts } from '../context/MemoryContext.jsx'
 import { useT } from '../context/LanguageContext.jsx'
 
@@ -35,7 +36,9 @@ export default function AssistantMemory() {
   return (
     <div className="card mem-card">
       <div className="mem-head">
-        <span className="mem-icon" aria-hidden>🧠</span>
+        <span className="mem-icon" aria-hidden>
+          <Brain size={20} strokeWidth={1.5} />
+        </span>
         <div>
           <div className="mem-title">{t.title}</div>
           <div className="mem-sub muted">{t.sub}</div>
@@ -43,13 +46,21 @@ export default function AssistantMemory() {
       </div>
 
       <div className="mem-facts">
-        {facts.length === 0 && <span className="muted mem-empty">{t.empty}</span>}
-        {facts.map(f => (
-          <span key={f.id} className="mem-fact">
-            {f.text}
-            <button className="mem-x" onClick={() => removeFact(f.id)} title={t.forget}>×</button>
-          </span>
-        ))}
+        {facts.length === 0 ? (
+          <div className="mem-empty">
+            <Sparkles size={20} strokeWidth={1.5} className="mem-empty-icon" />
+            <span className="mem-empty-text">{t.empty}</span>
+          </div>
+        ) : (
+          facts.map(f => (
+            <span key={f.id} className="mem-fact">
+              {f.text}
+              <button className="mem-x" onClick={() => removeFact(f.id)} title={t.forget} aria-label={t.forget}>
+                <X size={12} strokeWidth={2} />
+              </button>
+            </span>
+          ))
+        )}
       </div>
 
       <div className="mem-add">
@@ -66,39 +77,59 @@ export default function AssistantMemory() {
       <style>{`
         .mem-card { display: flex; flex-direction: column; gap: 14px; }
         .mem-head { display: flex; align-items: flex-start; gap: 12px; }
-        .mem-icon { font-size: 22px; line-height: 1; }
+        .mem-icon {
+          display: flex; align-items: center; justify-content: center;
+          color: var(--accent); margin-top: 1px;
+        }
         .mem-title { font-size: 16px; font-weight: 700; color: var(--foreground); }
         .mem-sub { font-size: 12.5px; margin-top: 2px; }
         .mem-facts { display: flex; flex-wrap: wrap; gap: 8px; }
-        .mem-empty { font-size: 13px; }
+
+        /* Аккуратный empty-state: line-иконка + текст */
+        .mem-empty {
+          display: flex; align-items: center; gap: 10px;
+          width: 100%; padding: 14px 16px;
+          background: var(--bg-tile); border: 1px solid var(--border-med);
+          border-radius: var(--radius-md);
+        }
+        .mem-empty-icon { color: var(--text-muted); flex-shrink: 0; }
+        .mem-empty-text { font-size: 13px; color: var(--text-muted); line-height: 1.45; }
+
         .mem-fact {
           display: inline-flex; align-items: center; gap: 8px;
-          background: rgba(176, 123, 82,0.12); color: var(--foreground);
-          border: 1px solid var(--border); border-radius: 20px;
+          background: var(--bg-tile); color: var(--text-body);
+          border: 1px solid var(--border-med); border-radius: 20px;
           padding: 6px 8px 6px 14px; font-size: 13px;
         }
         .mem-x {
           width: 18px; height: 18px; border-radius: 50%; border: none;
-          background: var(--bg-secondary); color: var(--muted-foreground);
-          cursor: pointer; font-size: 14px; line-height: 1;
+          background: var(--bg-secondary); color: var(--text-muted);
+          cursor: pointer; padding: 0;
           display: flex; align-items: center; justify-content: center; transition: all 0.15s;
         }
-        .mem-x:hover { background: var(--red); color: #fff; }
+        .mem-x:hover { background: var(--status-crit); color: var(--on-accent); }
         .mem-add { display: flex; gap: 8px; }
         .mem-input {
-          flex: 1; background: var(--bg-secondary); border: 1px solid var(--border);
-          border-radius: 10px; padding: 9px 12px; font-family: inherit; font-size: 13.5px;
+          flex: 1; background: var(--bg-tile); border: 1px solid var(--border-med);
+          border-radius: var(--radius-sm); padding: 9px 12px; font-family: inherit; font-size: 13.5px;
           color: var(--foreground); outline: none; transition: border-color 0.2s;
         }
-        .mem-input:focus { border-color: var(--primary); }
-        .mem-input::placeholder { color: var(--muted-foreground); }
+        .mem-input:focus { border-color: var(--accent); }
+        .mem-input::placeholder { color: var(--text-faint); }
+        /* Кнопка не из глобального CTA-списка — применяем тот же приём токенами вручную */
         .mem-add-btn {
-          flex-shrink: 0; padding: 9px 16px; border-radius: 10px;
-          border: 1px solid var(--primary); background: transparent; color: var(--primary);
+          flex-shrink: 0; padding: 9px 16px; border-radius: var(--radius-sm);
+          border: none; background: linear-gradient(180deg, var(--accent-btn-top), var(--accent-btn-bot));
+          color: var(--on-accent);
           font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s;
         }
-        .mem-add-btn:hover:not(:disabled) { background: rgba(176, 123, 82,0.12); }
-        .mem-add-btn:disabled { opacity: 0.4; cursor: default; }
+        .mem-add-btn:hover:not(:disabled) { filter: brightness(1.06); }
+        /* Честное disabled: нейтральная плашка + приглушённый текст */
+        .mem-add-btn:disabled {
+          background: var(--bg-tile); color: var(--text-faint);
+          border: 1px solid var(--border-med); box-shadow: none;
+          opacity: 0.6; cursor: not-allowed;
+        }
       `}</style>
     </div>
   )

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Check } from 'lucide-react'
 import { useT, useLang } from '../context/LanguageContext.jsx'
 
 // Переключатель тем оформления (THEMES_1.md). Самодостаточный — позже легко
@@ -10,9 +11,9 @@ const DEFAULT_THEME = 'black-leather'
 
 // id + образцы цветов для превью (фон / поверхность / акцент)
 const THEMES = [
-  { id: 'black-leather', ru: 'Чёрная кожа',    en: 'Black leather', bg: '#0F0F0E', surface: '#201F1C', accent: '#7BA3C9' },
-  { id: 'brown-leather', ru: 'Коричневая кожа', en: 'Brown leather', bg: '#14100D', surface: '#2A211B', accent: '#C89B6A' },
-  { id: 'cream',         ru: 'Кремовая',        en: 'Cream',         bg: '#F4F0E8', surface: '#FBF8F2', accent: '#C97B4A' },
+  { id: 'black-leather', ru: 'Чёрная кожа',    en: 'Black leather', bg: '#121211', surface: '#1E1E1C', accent: '#8FB2D4' },
+  { id: 'brown-leather', ru: 'Коричневая кожа', en: 'Brown leather', bg: '#120E0B', surface: '#271F19', accent: '#C89B6A' },
+  { id: 'cream',         ru: 'Кремовая',        en: 'Cream',         bg: '#EFE9DD', surface: '#FDFBF6', accent: '#C97B4A' },
   { id: 'original',      ru: 'Оригинальная',    en: 'Original',      bg: '#1E1B18', surface: '#2C2825', accent: '#818CF8' },
 ]
 
@@ -48,12 +49,18 @@ export default function ThemeSwitcher() {
             className={`ts-opt ${theme === it.id ? 'on' : ''}`}
             onClick={() => setTheme(it.id)}
             type="button"
+            aria-pressed={theme === it.id}
           >
             <span className="ts-swatch" style={{ background: it.bg }}>
               <span className="ts-swatch-card" style={{ background: it.surface }} />
               <span className="ts-swatch-dot" style={{ background: it.accent }} />
             </span>
             <span className="ts-label">{lang === 'en' ? it.en : it.ru}</span>
+            {theme === it.id && (
+              <span className="ts-check" aria-hidden="true">
+                <Check size={14} strokeWidth={2.5} />
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -65,24 +72,32 @@ export default function ThemeSwitcher() {
         .ts-hint { font-size: var(--text-label); color: var(--muted); }
         .ts-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-3); }
         .ts-opt {
+          position: relative;
           display: flex; align-items: center; gap: var(--space-3);
           padding: var(--space-3);
+          padding-right: calc(var(--space-3) + 22px);
           border-radius: var(--radius-md);
-          border: 1px solid var(--border);
-          background: var(--bg-secondary);
+          border: 1px solid var(--border-med);
+          background: var(--bg-tile);
           cursor: pointer;
           font-family: inherit;
           transition: border-color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
         }
-        .ts-opt:hover { transform: translateY(-1px); border-color: var(--border-hover); }
+        .ts-opt:hover { transform: translateY(-1px); border-color: var(--accent); }
         .ts-opt.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+        .ts-check {
+          position: absolute; top: var(--space-2); right: var(--space-2);
+          display: flex; align-items: center; justify-content: center;
+          width: 20px; height: 20px; border-radius: 50%;
+          background: var(--accent); color: var(--on-accent);
+        }
         .ts-swatch {
           position: relative; flex-shrink: 0;
           width: 44px; height: 32px; border-radius: var(--radius-sm);
-          border: 1px solid var(--border); overflow: hidden;
+          border: 1px solid rgba(0, 0, 0, 0.10); overflow: hidden;
         }
-        .ts-swatch-card { position: absolute; left: 6px; top: 7px; width: 22px; height: 18px; border-radius: 4px; }
-        .ts-swatch-dot { position: absolute; right: 6px; bottom: 6px; width: 10px; height: 10px; border-radius: 50%; }
+        .ts-swatch-card { position: absolute; left: 6px; top: 7px; width: 22px; height: 18px; border-radius: 4px; border: 1px solid rgba(0, 0, 0, 0.10); }
+        .ts-swatch-dot { position: absolute; right: 6px; bottom: 6px; width: 10px; height: 10px; border-radius: 50%; border: 1px solid rgba(0, 0, 0, 0.10); }
         .ts-label { font-size: 15px; color: var(--foreground); font-weight: 500; }
         @media (max-width: 520px) { .ts-grid { grid-template-columns: 1fr; } }
       `}</style>

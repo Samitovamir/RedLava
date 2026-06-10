@@ -39,8 +39,8 @@ export default function AIWorkZone() {
   const { lang } = useLang()
   const t = useT({
     ru: {
-      badge: 'ИИ', titleMain: 'Рабочая зона',
-      titleSub: 'Главный помощник — скажите или напишите задачу',
+      badge: 'ИИ', titleMain: 'Ваш помощник',
+      titleSub: 'Скажите или напишите задачу',
       tabText: 'Текстовая задача', tabFile: 'Файл',
       fileTitle: 'Загрузка и разбор файлов',
       fileSub: 'ИИ будет распределять файлы по папкам и делать разбор',
@@ -70,8 +70,8 @@ export default function AIWorkZone() {
       mailDoneDetail: (subject, to) => `Сообщение «${subject}» отправлено получателю «${to}».`
     },
     en: {
-      badge: 'AI', titleMain: 'Work zone',
-      titleSub: 'Your main assistant — say or type a task',
+      badge: 'AI', titleMain: 'Your assistant',
+      titleSub: 'Say or type a task',
       tabText: 'Text task', tabFile: 'File',
       fileTitle: 'Upload and analyze files',
       fileSub: 'The AI will sort files into folders and analyze them',
@@ -429,7 +429,7 @@ export default function AIWorkZone() {
                 className="awz-edit-body"
                 value={result.body}
                 onChange={(e) => updateMsg('body', e.target.value)}
-                rows={5}
+                rows={4}
               />
             </div>
             <div className="awz-actions">
@@ -455,7 +455,7 @@ export default function AIWorkZone() {
               <p className="awz-done-title">{t.done} · {doneInfo.title}</p>
               <span className="awz-done-detail">{doneInfo.detail}</span>
             </div>
-            <button className="awz-btn green" onClick={reset}>{t.newTask}</button>
+            <button className="awz-btn primary" onClick={reset}>{t.newTask}</button>
           </motion.div>
         )}
       </AnimatePresence>
@@ -473,8 +473,11 @@ export default function AIWorkZone() {
           width: 100%;
           display: flex;
           flex-direction: column;
-          gap: 18px;
-          min-height: 280px;
+          gap: 12px;
+          /* Вертикальные паддинги сокращены ~30% (20→14) — блок ИИ не «съедает»
+             пол-экрана при минимуме контента; горизонтальные оставлены. */
+          padding: 14px 20px;
+          min-height: 168px;
           border: 1px solid var(--border-soft);
           background: var(--bg-surface);
           transition: border-color 0.3s;
@@ -511,33 +514,31 @@ export default function AIWorkZone() {
           padding: 3px 8px;
           border-radius: 6px;
         }
+        /* Единый ghost-ряд: «Текстовая задача» и «Файл» оформлены одинаково —
+           иконка+текст, без постоянного фона; активный = акцент, прочий = muted. */
         .awz-switch {
           display: flex;
           gap: 4px;
-          background: var(--bg-secondary);
-          padding: 4px;
-          border-radius: 12px;
         }
         .awz-tab {
           display: flex;
           align-items: center;
           gap: 7px;
-          padding: 8px 14px;
+          padding: 8px 12px;
           border: none;
           background: transparent;
-          color: var(--muted-foreground);
+          color: var(--text-muted);
           font-family: inherit;
           font-size: 13px;
           font-weight: 500;
-          border-radius: 9px;
+          border-radius: var(--radius-sm);
           cursor: pointer;
-          transition: all 0.18s;
+          transition: color 0.18s, background 0.18s;
         }
-        .awz-tab:hover { color: var(--foreground); }
+        .awz-tab:hover { color: var(--accent); }
         .awz-tab.active {
-          background: var(--card);
-          color: var(--primary);
-          box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+          color: var(--accent);
+          background: color-mix(in srgb, var(--accent) 12%, transparent);
         }
 
         .awz-dropzone {
@@ -558,7 +559,7 @@ export default function AIWorkZone() {
         .awz-dropzone:hover { border-color: var(--border-hover); }
         .awz-dropzone.dragging {
           border-color: var(--primary);
-          background: rgba(176, 123, 82,0.07);
+          background: color-mix(in srgb, var(--accent) 7%, transparent);
         }
         /* «В разработке» — полупрозрачное окно + жёлтая лента */
         .awz-dropzone.awz-dev { position: relative; cursor: default; }
@@ -566,22 +567,22 @@ export default function AIWorkZone() {
         .awz-dev-overlay {
           position: absolute; inset: 0; border-radius: 14px;
           display: flex; align-items: center; justify-content: center;
-          background: rgba(30, 27, 24, 0.62);
+          background: color-mix(in srgb, var(--bg-app) 62%, transparent);
           backdrop-filter: blur(1.5px); -webkit-backdrop-filter: blur(1.5px);
         }
         .awz-dev-tape {
           transform: rotate(-5deg);
-          background: repeating-linear-gradient(45deg, #C98A5E 0 16px, #161310 16px 32px);
-          color: #fff; font-weight: 800; letter-spacing: 0.18em; font-size: 16px;
+          background: repeating-linear-gradient(45deg, var(--status-warn) 0 16px, var(--edge-dark) 16px 32px);
+          color: var(--on-accent); font-weight: 800; letter-spacing: 0.18em; font-size: 16px;
           padding: 12px 44px; border-radius: 4px;
-          border-top: 3px solid #C98A5E; border-bottom: 3px solid #C98A5E;
+          border-top: 3px solid var(--status-warn); border-bottom: 3px solid var(--status-warn);
           text-shadow: 0 1px 4px rgba(0,0,0,0.9);
           box-shadow: 0 8px 24px rgba(0,0,0,0.45);
         }
         .awz-drop-icon {
           width: 60px; height: 60px;
           border-radius: 18px;
-          background: rgba(176, 123, 82,0.12);
+          background: color-mix(in srgb, var(--accent) 12%, transparent);
           display: flex; align-items: center; justify-content: center;
         }
         .awz-dropzone p { font-size: 15px; font-weight: 600; color: var(--foreground); }
@@ -591,7 +592,7 @@ export default function AIWorkZone() {
         .awz-text-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
         .awz-textarea {
           flex: 1;
-          min-height: 150px;
+          min-height: 104px;
           resize: none;
           background: var(--bg-secondary);
           border: 1px solid var(--border);
@@ -652,7 +653,7 @@ export default function AIWorkZone() {
         .awz-folder-tag {
           font-size: 12px;
           color: var(--primary);
-          background: rgba(176, 123, 82,0.12);
+          background: color-mix(in srgb, var(--accent) 12%, transparent);
           padding: 4px 12px;
           border-radius: 20px;
           font-weight: 500;
@@ -741,12 +742,6 @@ export default function AIWorkZone() {
           color: var(--muted-foreground);
         }
         .awz-btn.ghost:hover { color: var(--foreground); border-color: var(--border-hover); }
-        .awz-btn.green {
-          background: var(--green);
-          color: #0c1f12;
-        }
-        .awz-btn.green:hover { opacity: 0.9; }
-
         /* Зелёный экран успеха */
         .awz-done {
           flex: 1;
@@ -762,7 +757,7 @@ export default function AIWorkZone() {
         .awz-done-icon {
           width: 56px; height: 56px;
           border-radius: 50%;
-          background: rgba(126, 155, 110,0.16);
+          background: color-mix(in srgb, var(--green) 16%, transparent);
           display: flex; align-items: center; justify-content: center;
         }
         .awz-done-text { display: flex; flex-direction: column; gap: 6px; }

@@ -288,12 +288,12 @@ export default function HealthBrief() {
         .hb-head-actions { display: flex; align-items: center; gap: 8px; }
         .hb-chev { transition: transform 0.2s; }
         .hb-chev.open { transform: rotate(180deg); }
-        .health-brief::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--green); }
+        .health-brief::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--accent); }
         .hb-head { display: flex; align-items: center; justify-content: space-between; }
         .hb-title { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 700; color: var(--foreground); }
         .hb-badge { font-size: 11px; font-weight: 700; color: var(--accent-foreground); background: var(--accent); padding: 2px 8px; border-radius: 8px; }
         .hb-refresh { width: 32px; height: 32px; border-radius: 9px; background: var(--bg-secondary); border: 1px solid var(--border); color: var(--muted); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
-        .hb-refresh:hover:not(:disabled) { color: var(--green); border-color: var(--border-hover); }
+        .hb-refresh:hover:not(:disabled) { color: var(--accent); border-color: var(--border-hover); }
         .hb-refresh:disabled { opacity: 0.5; cursor: default; }
         .hb-loading { font-size: 15px; color: var(--muted); }
         .hb-run {

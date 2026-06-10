@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useT } from '../context/LanguageContext.jsx'
+import Icon from '../ui/Icon.jsx'
 
 /*
   Окно «Что нового» — показывается ОДИН раз при первом заходе и больше не появляется.
@@ -13,7 +14,7 @@ const STORAGE_KEY = `albert-whatsnew-${VERSION}`
 const SECTIONS_BY_LANG = {
   ru: [
     {
-      emoji: '🏃',
+      iconKey: 'sport-run',
       title: 'Спорт и тренировки',
       items: [
         'Подробное окно тренировки, как в Garmin: графики пульса и темпа, карта маршрута, отрезки.',
@@ -21,7 +22,7 @@ const SECTIONS_BY_LANG = {
       ]
     },
     {
-      emoji: '❤️',
+      iconKey: 'health',
       title: 'Здоровье',
       items: [
         'Кольца Сон / Восстановление / Нагрузка, а также Заряд тела и Стресс.',
@@ -30,7 +31,7 @@ const SECTIONS_BY_LANG = {
       ]
     },
     {
-      emoji: '🤖',
+      iconKey: 'bot',
       title: 'Помощник',
       items: [
         'Голосовой ввод по-русски во всех полях — просто говорите.',
@@ -38,7 +39,7 @@ const SECTIONS_BY_LANG = {
       ]
     },
     {
-      emoji: '🍽️',
+      iconKey: 'nutrition',
       title: 'Питание (новый раздел)',
       items: [
         'Цель по калориям, которая меняется под тренировки и восстановление.',
@@ -49,7 +50,7 @@ const SECTIONS_BY_LANG = {
   ],
   en: [
     {
-      emoji: '🏃',
+      iconKey: 'sport-run',
       title: 'Sport & training',
       items: [
         'A detailed workout view, like in Garmin: heart-rate and pace charts, route map, splits.',
@@ -57,7 +58,7 @@ const SECTIONS_BY_LANG = {
       ]
     },
     {
-      emoji: '❤️',
+      iconKey: 'health',
       title: 'Health',
       items: [
         'Sleep / Recovery / Strain rings, plus Body Battery and Stress.',
@@ -66,7 +67,7 @@ const SECTIONS_BY_LANG = {
       ]
     },
     {
-      emoji: '🤖',
+      iconKey: 'bot',
       title: 'Assistant',
       items: [
         'Voice input in Russian in every field — just speak.',
@@ -74,7 +75,7 @@ const SECTIONS_BY_LANG = {
       ]
     },
     {
-      emoji: '🍽️',
+      iconKey: 'nutrition',
       title: 'Nutrition (new section)',
       items: [
         'A calorie goal that adjusts to your training and recovery.',
@@ -91,14 +92,14 @@ export default function WhatsNew() {
     ru: {
       badge: 'Обновление',
       title: 'Что нового на сайте',
-      sub: 'Пока вы не заходили, здесь кое-что добавилось 👇',
+      sub: 'Пока вы не заходили, здесь кое-что добавилось',
       ok: 'Понятно, спасибо!',
       sections: SECTIONS_BY_LANG.ru,
     },
     en: {
       badge: 'Update',
       title: 'What’s new on the site',
-      sub: 'While you were away, a few things were added 👇',
+      sub: 'While you were away, a few things were added',
       ok: 'Got it, thanks!',
       sections: SECTIONS_BY_LANG.en,
     },
@@ -132,7 +133,7 @@ export default function WhatsNew() {
             <div className="wn-body">
               {t.sections.map(s => (
                 <div key={s.title} className="wn-section">
-                  <div className="wn-section-head"><span className="wn-emoji">{s.emoji}</span>{s.title}</div>
+                  <div className="wn-section-head"><Icon name={s.iconKey} size={18} color="var(--accent)" />{s.title}</div>
                   <ul className="wn-list">
                     {s.items.map((it, i) => <li key={i}>{it}</li>)}
                   </ul>
@@ -171,7 +172,6 @@ export default function WhatsNew() {
               display: flex; align-items: center; gap: 9px;
               font-size: 15.5px; font-weight: 700; color: var(--foreground); margin-bottom: 8px;
             }
-            .wn-emoji { font-size: 18px; }
             .wn-list { list-style: none; display: flex; flex-direction: column; gap: 7px; padding: 0; margin: 0; }
             .wn-list li {
               position: relative; padding-left: 18px;

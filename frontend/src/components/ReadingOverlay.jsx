@@ -130,7 +130,7 @@ export default function ReadingOverlay({ open, entries = [], loading, onClose, o
               position: fixed; inset: 0; z-index: 1000;
               display: flex; align-items: center; justify-content: center;
               padding: 4vh 20px;
-              background: rgba(15, 13, 11, 0.55);
+              background: var(--scrim);
               backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
             }
             .ro-panel {

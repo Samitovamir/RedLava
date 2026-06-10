@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import DaySchedule from '../components/DaySchedule.jsx'
 import DaySummary from '../components/DaySummary.jsx'
@@ -8,6 +9,8 @@ export default function Schedule() {
     ru: { title: 'Расписание', source: 'Google Calendar' },
     en: { title: 'Schedule', source: 'Google Calendar' }
   })
+  // Открытый в календаре день — чтобы сводка справа была про него же (синхрон день↔сводка).
+  const [viewDay, setViewDay] = useState(null)
   return (
     <div className="schedule-page">
       <div className="page-header">
@@ -21,7 +24,7 @@ export default function Schedule() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
         >
-          <DaySchedule extended />
+          <DaySchedule extended onViewDayChange={setViewDay} />
         </motion.div>
         <motion.div
           className="schedule-col"
@@ -29,7 +32,7 @@ export default function Schedule() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.1 }}
         >
-          <DaySummary />
+          <DaySummary dayKey={viewDay} />
         </motion.div>
       </div>
       <style>{`

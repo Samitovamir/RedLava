@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Sparkles } from 'lucide-react'
 import { useEvents, dateKey } from '../context/EventsContext.jsx'
 import { useMail } from '../context/MailContext.jsx'
 import { useMemoryFacts } from '../context/MemoryContext.jsx'
 import { useHistory } from '../context/HistoryContext.jsx'
-import { PRIORITY_MAP } from './AddEventModal.jsx'
 import { useAiSummary } from '../hooks/useAiSummary.js'
 import { useSiteSnapshot } from '../hooks/useSiteSnapshot.js'
 import AiRefreshButton from './AiRefreshButton.jsx'
@@ -33,30 +33,63 @@ function buildMetrics(whoop, garmin, todayKey, en) {
   return m
 }
 
-export default function DaySummary() {
+// Относительный день для eyebrow и промпта: сегодня/завтра/вчера/дата.
+function dayRelative(dayKey, todayKey, lang) {
+  const d0 = new Date(todayKey + 'T00:00:00'), d1 = new Date(dayKey + 'T00:00:00')
+  const diff = Math.round((d1 - d0) / 86400000)
+  const en = lang === 'en'
+  if (diff === 0) return en ? 'today' : 'сегодня'
+  if (diff === 1) return en ? 'tomorrow' : 'завтра'
+  if (diff === -1) return en ? 'yesterday' : 'вчера'
+  const [, m, dd] = dayKey.split('-').map(Number)
+  const MM = en
+    ? ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    : ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
+  return `${dd} ${MM[m - 1]}`
+}
+
+// Короткий чип готовности (только для сегодня и при данных Whoop).
+// Возвращает { label, tone }: tone = ok/warn/crit — цвет точки-индикатора.
+function readinessChip(whoop, lang) {
+  const r = whoop?.recovery
+  if (r == null) return null
+  const en = lang === 'en'
+  if (r >= 67) return { label: en ? 'Reserve available' : 'Запас есть', tone: 'ok' }
+  if (r >= 34) return { label: en ? 'In balance' : 'В балансе', tone: 'warn' }
+  return { label: en ? 'Take it easy' : 'Стоит поберечься', tone: 'crit' }
+}
+
+export default function DaySummary({ dayKey: dayKeyProp } = {}) {
   const { lang } = useLang()
   const { events } = useEvents()
   const { facts } = useMemoryFacts()
   const snapshot = useSiteSnapshot()
 
   const todayKey = dateKey(mskNow())
-  const todayEvents = events.filter(e => e.date === todayKey)
-  const metrics = buildMetrics(readWhoopLive(), readGarminLive(), todayKey, lang === 'en')
+  const dayKey = dayKeyProp || todayKey
+  const dayEvents = events.filter(e => e.date === dayKey)
+  const word = dayRelative(dayKey, todayKey, lang)
+  const eyebrow = `${lang === 'en' ? 'Summary' : 'Сводка'} ${word}`.toUpperCase()
+  // Чипы текущего состояния тела: нагрузка/восстановление (нейтральные) + готовность (зелёный).
+  const whoop = readWhoopLive()
+  const metrics = buildMetrics(whoop, readGarminLive(), dayKey, lang === 'en')
+  const chip = readinessChip(whoop, lang)
 
   // Пока долгосрочная память не наполнилась — не советуем по рабочим встречам/звонкам.
   const memThin = (facts?.length || 0) < 8
   const DAY_CONTEXT =
     `Ты помощник владельца по организации дня. Фокусируйся на расписании и планах, но ты ВИДИШЬ всю картину (спорт, здоровье, анализы) и учитываешь её в советах. ` +
     `Отвечай кратко и по делу на русском. Учитывай приоритеты событий и предпочтения из памяти.` +
+    ` ДЕНЬ СВОДКИ: ${dayKey} (${word}). Сделай сводку именно про ЭТОТ день — бери события ИМЕННО этого дня из расписания, учитывай подготовку к нему и состояние. Если день не сегодня — не описывай «сегодня».` +
     (memThin
       ? ` ВАЖНО: ты пока мало знаешь о рабочем ритме владельца — поэтому НЕ давай советов и рекомендаций про рабочие встречи и звонки (не пиши «нужны силы на завтрашние звонки», не советуй, как с ними быть). Сосредоточься на спорте, нагрузке, восстановлении и здоровье. Рабочие события можно лишь нейтрально упомянуть как факт расписания, без советов.`
       : '') +
     (lang === 'en' ? ' Always reply to the user in English.' : '')
 
-  return <DaySummaryInner dayContext={DAY_CONTEXT} snapshot={snapshot} eventCount={todayEvents.length} metrics={metrics} />
+  return <DaySummaryInner dayContext={DAY_CONTEXT} snapshot={snapshot} eyebrow={eyebrow} eventCount={dayEvents.length} metrics={metrics} chip={chip} />
 }
 
-function DaySummaryInner({ dayContext, snapshot, eventCount, metrics = [] }) {
+function DaySummaryInner({ dayContext, snapshot, eyebrow, eventCount, metrics = [], chip }) {
   const DAY_CONTEXT = dayContext
   const { lang } = useLang()
   const t = useT({
@@ -163,31 +196,49 @@ function DaySummaryInner({ dayContext, snapshot, eventCount, metrics = [] }) {
   return (
     <div className="card day-summary">
       <div className="summary-head">
-        <span className="summary-eyebrow">{t.summaryTitle}</span>
+        <span className="summary-eyebrow">{eyebrow}</span>
         <AiRefreshButton onClick={summary.refresh} loading={summary.loading} />
       </div>
 
-      {summary.loading ? (
-        <p className="summary-sub">{t.collecting}</p>
-      ) : (() => {
-        const lines = (summary.text || '').split('\n').map(s => s.trim()).filter(Boolean)
-        const headline = lines[0] || ''
-        const subtitle = lines.slice(1).join(' ')
-        return (
-          <>
-            {headline && <h2 className="summary-headline">{headline}</h2>}
-            {subtitle && <p className="summary-sub">{subtitle}</p>}
-          </>
-        )
-      })()}
+      <div className="summary-card">
+        {summary.loading ? (
+          <p className="summary-sub">{t.collecting}</p>
+        ) : (() => {
+          const lines = (summary.text || '').split('\n').map(s => s.trim()).filter(Boolean)
+          const headline = lines[0] || ''
+          const subtitle = lines.slice(1).join(' ')
+          return (
+            <>
+              {headline && <h2 className="summary-headline">{headline}</h2>}
+              {subtitle && <p className="summary-sub">{subtitle}</p>}
+              {(metrics.length > 0 || chip) && (
+                <div className="summary-tags">
+                  {metrics.map(m => <span key={m} className="summary-tag">{m}</span>)}
+                  {chip && (
+                    <span className="summary-tag readiness">
+                      <span className="summary-tag-dot" style={{ background: `var(--status-${chip.tone})` }} />
+                      {chip.label}
+                    </span>
+                  )}
+                </div>
+              )}
+            </>
+          )
+        })()}
+      </div>
 
-      {metrics.length > 0 && (
-        <div className="summary-tags">
-          {metrics.map(m => <span key={m} className="summary-tag">{m}</span>)}
+      {messages.length === 0 && (
+        <div className="ds-chat-suggests">
+          {t.suggests.map(s => (
+            <button key={s} className="ds-chat-suggest" onClick={() => setInput(s)}>
+              <Sparkles size={15} strokeWidth={1.5} className="ds-chat-suggest-ic" />
+              <span className="ds-chat-suggest-txt">{s}</span>
+            </button>
+          ))}
         </div>
       )}
 
-      {/* Мини-чат */}
+      {/* Мини-чат: история (если есть) + ввод, прижатый к низу */}
       <div className="ds-chat">
         {messages.length > 0 && (
           <div className="ds-chat-msgs" ref={msgsRef}>
@@ -198,13 +249,6 @@ function DaySummaryInner({ dayContext, snapshot, eventCount, metrics = [] }) {
               </div>
             ))}
             {loading && <div className="ds-chat-msg assistant thinking">{t.thinking}</div>}
-          </div>
-        )}
-        {messages.length === 0 && (
-          <div className="ds-chat-suggests">
-            {t.suggests.map(s => (
-              <button key={s} className="ds-chat-suggest" onClick={() => setInput(s)}>{s}</button>
-            ))}
           </div>
         )}
         <div className="ds-chat-input-row">
@@ -231,24 +275,37 @@ function DaySummaryInner({ dayContext, snapshot, eventCount, metrics = [] }) {
           font-size: 12px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase;
           color: var(--accent);
         }
+        .summary-card {
+          background: var(--bg-tile); border: 1px solid var(--border-med);
+          border-radius: var(--radius-md); padding: 16px 18px;
+          display: flex; flex-direction: column; gap: 10px;
+        }
         .summary-headline {
-          font-family: var(--font-serif), Georgia, serif;
-          font-size: 26px; font-weight: 700; line-height: 1.18;
-          color: var(--foreground); letter-spacing: -0.01em;
+          font-size: 25px; font-weight: 700; line-height: 1.18;
+          color: var(--text-primary); letter-spacing: -0.02em;
           margin-top: 2px;
         }
-        .summary-sub { font-size: 15.5px; line-height: 1.55; color: var(--muted-foreground); white-space: pre-wrap; }
+        .summary-sub { font-size: 15.5px; line-height: 1.55; color: var(--text-secondary); white-space: pre-wrap; }
         .ds-done-badge {
           display: inline-block; margin-top: 6px; font-size: 11px; font-weight: 600;
-          color: var(--green); background: rgba(126, 155, 110,0.14);
+          color: var(--green); background: color-mix(in srgb, var(--green) 14%, transparent);
           padding: 2px 8px; border-radius: 10px;
         }
-        .summary-tags { display: flex; gap: 8px; flex-wrap: wrap; }
+        .summary-tags { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
         .summary-tag {
-          font-size: 12px; padding: 5px 12px; border-radius: 20px;
-          background: var(--bg-secondary); color: var(--muted-foreground); font-weight: 500;
+          display: inline-flex; align-items: center; gap: 7px;
+          font-size: 12px; line-height: 1; font-weight: 500; white-space: nowrap;
+          padding: 7px 11px; border-radius: var(--radius-sm);
+          background: var(--bg-tile); border: 1px solid var(--border-med);
+          color: var(--text-secondary);
         }
-        .summary-tag.accent { background: rgba(126, 155, 110,0.14); color: var(--green); }
+        /* Готовность — нейтральная плашка с маленькой точкой-индикатором статуса (не холодное пятно).
+           Цвет точки задаётся inline от уровня восстановления: ok / warn / crit */
+        .summary-tag.readiness { color: var(--text-body); }
+        .summary-tag-dot {
+          width: 7px; height: 7px; border-radius: 50%;
+          flex-shrink: 0;
+        }
 
         .ds-chat {
           margin-top: auto;
@@ -277,38 +334,49 @@ function DaySummaryInner({ dayContext, snapshot, eventCount, metrics = [] }) {
           border-bottom-left-radius: 4px;
         }
         .ds-chat-msg.thinking { color: var(--muted-foreground); font-style: italic; }
-        .ds-chat-suggests { display: flex; flex-wrap: wrap; gap: 6px; }
+        .ds-chat-suggests { display: flex; flex-direction: column; gap: 8px; }
+        /* Кнопки-подсказки: явно «вопрос к ИИ», а не поле ввода — лёгкая плашка-чип
+           с искрой-акцентом, без рамки-как-у-инпута */
         .ds-chat-suggest {
-          font-size: 12px; padding: 6px 11px;
-          border: 1px solid var(--border); background: transparent;
-          color: var(--muted-foreground); border-radius: 16px;
+          display: flex; align-items: center; gap: 10px;
+          width: 100%; text-align: left;
+          font-size: 14px; padding: 11px 14px;
+          border: none; background: var(--bg-tile);
+          color: var(--text-secondary); border-radius: var(--radius-md);
           cursor: pointer; font-family: inherit;
-          transition: all 0.15s;
+          transition: background 0.15s, color 0.15s;
         }
-        .ds-chat-suggest:hover { color: var(--primary); border-color: var(--border-hover); }
+        .ds-chat-suggest-ic { color: var(--accent); flex-shrink: 0; }
+        .ds-chat-suggest-txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .ds-chat-suggest:hover { background: var(--bg-secondary); color: var(--text-body); }
         .ds-chat-input-row {
           display: flex; align-items: center; gap: 8px;
-          background: var(--bg-secondary);
-          border: 1px solid var(--border);
-          border-radius: 12px;
+          background: var(--bg-tile);
+          border: 1px solid var(--border-med);
+          border-radius: var(--radius-md);
           padding: 6px 6px 6px 14px;
           transition: border-color 0.2s;
         }
-        .ds-chat-input-row:focus-within { border-color: var(--border-hover); }
+        .ds-chat-input-row:focus-within { border-color: var(--accent); }
         .ds-chat-input {
           flex: 1; border: none; background: transparent; outline: none;
-          font-family: inherit; font-size: 14.5px; color: var(--foreground);
+          font-family: inherit; font-size: 14.5px; color: var(--text-primary);
         }
-        .ds-chat-input::placeholder { color: var(--muted-foreground); }
+        .ds-chat-input::placeholder { color: var(--text-faint); }
+        /* Кнопка отправки: честное состояние — акцент когда есть текст,
+           нейтральная и приглушённая когда поле пустое (disabled) */
         .ds-chat-send {
           width: 32px; height: 32px; flex-shrink: 0;
-          border: none; border-radius: 9px;
-          background: var(--primary); color: var(--primary-foreground);
+          border: none; border-radius: var(--radius-sm);
+          background: var(--accent); color: var(--on-accent);
           cursor: pointer; display: flex; align-items: center; justify-content: center;
-          transition: opacity 0.15s;
+          transition: opacity 0.15s, background 0.15s, color 0.15s;
         }
         .ds-chat-send:hover:not(:disabled) { opacity: 0.9; }
-        .ds-chat-send:disabled { opacity: 0.4; cursor: default; }
+        .ds-chat-send:disabled {
+          background: var(--bg-secondary); color: var(--text-faint);
+          opacity: 0.4; cursor: default;
+        }
       `}</style>
     </div>
   )

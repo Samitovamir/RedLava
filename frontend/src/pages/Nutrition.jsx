@@ -1,5 +1,10 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import {
+  Camera, Footprints, BedDouble, RotateCcw,
+  ThumbsUp, ThumbsDown, ShoppingCart, SlidersHorizontal
+} from 'lucide-react'
+import Icon from '../ui/Icon.jsx'
 import MicButton from '../components/MicButton.jsx'
 import {
   loadProfile, saveProfile, computeTarget, GOALS,
@@ -19,6 +24,12 @@ const FOODS = [
   ['seafood', 'Морепродукты'], ['dairy', 'Молочное'], ['eggs', 'Яйца'], ['mushrooms', 'Грибы']
 ]
 
+// Line-иконка приёма пищи: ключ иконки берём из MEALS (поле iconKey)
+const MEAL_ICON_KEYS = Object.fromEntries(MEALS.map(m => [m.key, m.iconKey]))
+function MealIcon({ mealKey, size = 16 }) {
+  return <Icon name={MEAL_ICON_KEYS[mealKey] || 'meal-lunch'} size={size} strokeWidth={1.5} />
+}
+
 const COMPONENTS = ['Суп', 'Салат', 'Основное', 'Гарнир', 'Напиток', 'Десерт']
 const COMPONENT_DEFAULTS = {
   'Завтрак': ['Основное'],
@@ -27,22 +38,13 @@ const COMPONENT_DEFAULTS = {
   'Ужин': ['Салат', 'Основное', 'Десерт']
 }
 
-function Macro({ value, unit, label, color }) {
-  return (
-    <div className="nu-macro">
-      <span className="nu-macro-val" style={{ color }}>{value}<span className="nu-macro-unit muted"> {unit}</span></span>
-      <span className="nu-macro-lbl muted">{label}</span>
-    </div>
-  )
-}
-
 export default function Nutrition() {
   const t = useT({
     ru: {
       // Заголовок страницы
       title: 'Питание',
       subtitle: 'Меню на неделю · подбор под цель · покупки',
-      prefsBtn: '⚙ Настроить предпочтения',
+      prefsBtn: 'Настроить предпочтения',
       // Карточка цели
       goalFor: 'Цель на',
       today: 'сегодня',
@@ -61,10 +63,10 @@ export default function Nutrition() {
       eaten: 'Съедено ~', remaining: 'осталось ~',
       fromCalai: ' · из CalAI', resetDay: 'сбросить', resetDayTitle: 'Сбросить учёт за день',
       // Учёт
-      calaiReading: 'Читаю скрин…', calaiBtn: '📷 Внести из CalAI',
+      calaiReading: 'Читаю скрин…', calaiBtn: 'Внести из CalAI',
       quickAddTitle: 'ккал',
-      // Подсказка цели
-      bmrHint: 'Обмен покоя ~', tdeeHint: ' ккал · быт без спорта ~', goalHint: ' ккал · цель: ',
+      // Подсказка цели — микрометрики
+      mBmr: 'Обмен покоя', mNeat: 'Быт без спорта', mGoal: 'Цель',
       // Профиль
       fWeight: 'Вес, кг', fHeight: 'Рост, см', fAge: 'Возраст', fSex: 'Пол',
       male: 'Мужской', female: 'Женский',
@@ -75,13 +77,15 @@ export default function Nutrition() {
       chosenOf: 'выбрано ~', ofTarget: ' из ', target: 'цель ',
       mealApprox: '≈',
       cancelChoice: 'Отменить выбор',
-      picking: 'Подбираю…', pickBtn: '＋ Подобрать',
-      liked: '👍 понравилось', disliked: '👎 не очень',
+      picking: 'Подбираю…', pickBtn: 'Подобрать',
+      liked: 'понравилось', disliked: 'не очень',
       bMacro: 'Б', fMacro: 'Ж', uMacro: 'У',
       // Список покупок
       shopTitle: 'Список покупок на неделю',
       clear: 'Очистить',
-      shopEmpty: 'Пусто. Выбирайте блюда кнопкой «На кухню» — продукты соберутся здесь на всю неделю.',
+      shopEmptyTitle: 'Список покупок пуст',
+      shopEmptyText: 'Подберите блюда в меню недели и добавьте их кнопкой «На кухню» — продукты соберутся здесь на всю неделю.',
+      shopEmptyCta: 'Перейти к меню недели',
       shopHint: 'Количества округлены до того, что реально покупать в магазине.',
       recentBought: 'недавно покупали', recentTitle: 'Покупали недавно — возможно, ещё есть дома',
       removeItem: 'Убрать',
@@ -92,17 +96,18 @@ export default function Nutrition() {
       inMeal: 'Что в приёме:',
       notePlaceholder: 'Изменить подбор: например «полегче», «без молочного», «другое»',
       pickAgain: 'Подобрать заново',
-      adding: 'Добавляю…', toKitchenCard: '🍳 На кухню',
+      adding: 'Добавляю…', toKitchenCard: 'На кухню',
       more: 'Подробнее →',
-      pickingMore: 'Подбираю ещё…', showMore: '＋ Показать ещё блюда',
+      pickingMore: 'Подбираю ещё…', showMore: 'Показать ещё блюда',
       // Детальная карточка / рецепт
       recipeBuilding: 'ИИ собирает рецепт…', recipeUnavailable: 'Рецепт недоступен',
       ingredients: 'Ингредиенты', steps: 'Приготовление',
-      toKitchen: '🍳 На кухню', recipeWillFinish: ' (рецепт дособерётся)',
+      toKitchen: 'На кухню', recipeWillFinish: ' (рецепт дособерётся)',
       photoBy: 'Фото: ',
       // Предпочтения
-      prefsTitle: 'Вкусовые предпочтения',
-      prefsSub: 'ИИ будет учитывать это при подборе — но со здравым смыслом.',
+      prefsTitle: 'Профиль и предпочтения',
+      prefsSub: 'Параметры тела и цель задают калории. Вкусы ИИ учитывает при подборе — но со здравым смыслом.',
+      profileSection: 'Профиль',
       spicy: 'Острота',
       spicyLow: 'почти не острое', spicyHigh: 'люблю острое', spicyMid: 'умеренно',
       sweet: 'Сладкое',
@@ -121,7 +126,7 @@ export default function Nutrition() {
       // Оценка
       rateHow: ' · как вам было?',
       ratePlaceholder: 'Пара слов (необязательно): что понравилось / что поменять',
-      rateUp: '👍 Понравилось', rateDown: '👎 Не очень', rateLater: 'Позже',
+      rateUp: 'Понравилось', rateDown: 'Не очень', rateLater: 'Позже',
       // Тосты / сообщения
       noServer: 'Нет связи с сервером. Запустите backend с ключом ИИ.',
       calaiAte: 'CalAI: съедено ~', calaiAteSuffix: ' ккал ✓',
@@ -146,7 +151,7 @@ export default function Nutrition() {
     en: {
       title: 'Nutrition',
       subtitle: 'Weekly menu · goal-based picks · groceries',
-      prefsBtn: '⚙ Set preferences',
+      prefsBtn: 'Set preferences',
       goalFor: 'Goal for',
       today: 'today',
       editProfile: 'Edit profile',
@@ -161,9 +166,9 @@ export default function Nutrition() {
       bdNoGarmin: 'Garmin not connected — goal without workouts',
       eaten: 'Eaten ~', remaining: 'left ~',
       fromCalai: ' · from CalAI', resetDay: 'reset', resetDayTitle: 'Reset the day’s tally',
-      calaiReading: 'Reading screenshot…', calaiBtn: '📷 Import from CalAI',
+      calaiReading: 'Reading screenshot…', calaiBtn: 'Import from CalAI',
       quickAddTitle: 'kcal',
-      bmrHint: 'Resting metabolism ~', tdeeHint: ' kcal · daily living ~', goalHint: ' kcal · goal: ',
+      mBmr: 'Resting metabolism', mNeat: 'Daily living', mGoal: 'Goal',
       fWeight: 'Weight, kg', fHeight: 'Height, cm', fAge: 'Age', fSex: 'Sex',
       male: 'Male', female: 'Female',
       activity: 'Activity', goal: 'Goal',
@@ -172,12 +177,14 @@ export default function Nutrition() {
       chosenOf: 'chosen ~', ofTarget: ' of ', target: 'goal ',
       mealApprox: '≈',
       cancelChoice: 'Undo choice',
-      picking: 'Picking…', pickBtn: '＋ Pick',
-      liked: '👍 liked', disliked: '👎 not great',
+      picking: 'Picking…', pickBtn: 'Pick',
+      liked: 'liked', disliked: 'not great',
       bMacro: 'P', fMacro: 'F', uMacro: 'C',
       shopTitle: 'Weekly grocery list',
       clear: 'Clear',
-      shopEmpty: 'Empty. Pick dishes with the “To kitchen” button — ingredients will collect here for the whole week.',
+      shopEmptyTitle: 'Your grocery list is empty',
+      shopEmptyText: 'Pick dishes in the weekly menu and add them with the “To kitchen” button — ingredients will collect here for the whole week.',
+      shopEmptyCta: 'Go to weekly menu',
       shopHint: 'Quantities are rounded to what you’d actually buy in a store.',
       recentBought: 'bought recently', recentTitle: 'Bought recently — you may still have it at home',
       removeItem: 'Remove',
@@ -187,15 +194,16 @@ export default function Nutrition() {
       inMeal: 'What’s in the meal:',
       notePlaceholder: 'Adjust the picks: e.g. “lighter”, “no dairy”, “something else”',
       pickAgain: 'Pick again',
-      adding: 'Adding…', toKitchenCard: '🍳 To kitchen',
+      adding: 'Adding…', toKitchenCard: 'To kitchen',
       more: 'Details →',
-      pickingMore: 'Picking more…', showMore: '＋ Show more dishes',
+      pickingMore: 'Picking more…', showMore: 'Show more dishes',
       recipeBuilding: 'AI is building the recipe…', recipeUnavailable: 'Recipe unavailable',
       ingredients: 'Ingredients', steps: 'Steps',
-      toKitchen: '🍳 To kitchen', recipeWillFinish: ' (recipe will finish in background)',
+      toKitchen: 'To kitchen', recipeWillFinish: ' (recipe will finish in background)',
       photoBy: 'Photo: ',
-      prefsTitle: 'Taste preferences',
-      prefsSub: 'AI will take this into account when picking — within reason.',
+      prefsTitle: 'Profile and preferences',
+      prefsSub: 'Body metrics and goal set your calories. AI takes tastes into account when picking — within reason.',
+      profileSection: 'Profile',
       spicy: 'Spiciness',
       spicyLow: 'barely spicy', spicyHigh: 'love it spicy', spicyMid: 'moderate',
       sweet: 'Sweetness',
@@ -213,7 +221,7 @@ export default function Nutrition() {
       save: 'Save', reset: 'Reset',
       rateHow: ' · how was it?',
       ratePlaceholder: 'A few words (optional): what you liked / what to change',
-      rateUp: '👍 Liked it', rateDown: '👎 Not great', rateLater: 'Later',
+      rateUp: 'Liked it', rateDown: 'Not great', rateLater: 'Later',
       noServer: 'No connection to the server. Start the backend with an AI key.',
       calaiAte: 'CalAI: eaten ~', calaiAteSuffix: ' kcal ✓',
       calaiFail: 'Couldn’t read the screenshot', calaiUploadErr: 'Screenshot upload error',
@@ -235,7 +243,6 @@ export default function Nutrition() {
     },
   })
   const [profile, setProfile] = useState(loadProfile)
-  const [editProfile, setEditProfile] = useState(false)
   const base = useMemo(() => computeTarget(profile), [profile])
 
   const week = useMemo(() => weekDays(), [])
@@ -275,6 +282,7 @@ export default function Nutrition() {
   const [components, setComponents] = useState(['Основное'])
   const [calaiBusy, setCalaiBusy] = useState(false)
   const calaiInput = useRef(null)
+  const weekRef = useRef(null)
   const [toast, setToast] = useState('')
 
   // Оценка съеденного блюда
@@ -567,31 +575,46 @@ export default function Nutrition() {
           <h2>{t.title}</h2>
           <span className="muted">{t.subtitle}</span>
         </div>
-        <button className="nu-prefs-btn" onClick={openPrefs}>{t.prefsBtn}</button>
+        <button className="nu-prefs-btn" onClick={openPrefs}>
+          <SlidersHorizontal size={16} strokeWidth={1.5} />{t.prefsBtn}
+        </button>
       </div>
 
       {/* Цель + профиль */}
       <motion.div className="card nu-target" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
         <div className="nu-head">
           <div className="card-title" style={{ margin: 0 }}>{t.goalFor} {isToday ? t.today : dayLabel}</div>
-          <button className="nu-edit" onClick={() => setEditProfile(e => !e)}>{editProfile ? t.done : t.editProfile}</button>
         </div>
-        <div className="nu-macros">
-          <Macro value={target.kcal} unit={t.kcal} label={t.mCalories} color="var(--orange)" />
-          <Macro value={target.protein} unit={t.g} label={t.mProtein} color="var(--green)" />
-          <Macro value={target.fat} unit={t.g} label={t.mFat} color="var(--yellow)" />
-          <Macro value={target.carb} unit={t.g} label={t.mCarbs} color="var(--accent)" />
+        <div className="nu-kpi">
+          <div className="nu-kpi-hero">
+            <span className="nu-kpi-num">{target.kcal}<span className="nu-kpi-unit"> {t.kcal}</span></span>
+            <span className="nu-kpi-lbl">{t.mCalories}</span>
+          </div>
+          <div className="nu-kpi-macros">
+            <div className="nu-kpi-macro">
+              <span className="nu-kpi-mval">{target.protein}<span className="nu-kpi-munit"> {t.g}</span></span>
+              <span className="nu-kpi-mlbl">{t.mProtein}</span>
+            </div>
+            <div className="nu-kpi-macro">
+              <span className="nu-kpi-mval">{target.fat}<span className="nu-kpi-munit"> {t.g}</span></span>
+              <span className="nu-kpi-mlbl">{t.mFat}</span>
+            </div>
+            <div className="nu-kpi-macro">
+              <span className="nu-kpi-mval">{target.carb}<span className="nu-kpi-munit"> {t.g}</span></span>
+              <span className="nu-kpi-mlbl">{t.mCarbs}</span>
+            </div>
+          </div>
         </div>
 
         {/* Из чего сложилась цель */}
         <div className="nu-breakdown">
           <span className="nu-bd-chip">{t.bdBase} {target.base}</span>
           {target.trainDelta > 0 && (
-            <span className="nu-bd-chip plus">🏃 {sgn(target.trainDelta)} · {t.bdTraining}</span>
+            <span className="nu-bd-chip plus"><Footprints size={14} strokeWidth={1.5} /> {sgn(target.trainDelta)} · {t.bdTraining}</span>
           )}
-          {garmin && target.trainDelta === 0 && <span className="nu-bd-chip">🏃 {t.bdRestDay}</span>}
-          {target.recDelta !== 0 && <span className="nu-bd-chip minus">💤 {sgn(target.recDelta)} {t.bdRecovery}</span>}
-          {target.carryDelta !== 0 && <span className={`nu-bd-chip ${target.carryDelta > 0 ? 'plus' : 'minus'}`}>↩ {sgn(target.carryDelta)} {t.bdCarry}</span>}
+          {garmin && target.trainDelta === 0 && <span className="nu-bd-chip"><Footprints size={14} strokeWidth={1.5} /> {t.bdRestDay}</span>}
+          {target.recDelta !== 0 && <span className="nu-bd-chip minus"><BedDouble size={14} strokeWidth={1.5} /> {sgn(target.recDelta)} {t.bdRecovery}</span>}
+          {target.carryDelta !== 0 && <span className={`nu-bd-chip ${target.carryDelta > 0 ? 'plus' : 'minus'}`}><RotateCcw size={14} strokeWidth={1.5} /> {sgn(target.carryDelta)} {t.bdCarry}</span>}
           {!garmin && <span className="nu-bd-chip muted-chip">{t.bdNoGarmin}</span>}
         </div>
 
@@ -611,7 +634,7 @@ export default function Nutrition() {
         <div className="nu-intake-row">
           <input ref={calaiInput} type="file" accept="image/*" onChange={onCalaiFile} style={{ display: 'none' }} />
           <button className="nu-calai" onClick={() => calaiInput.current?.click()} disabled={calaiBusy}>
-            {calaiBusy ? t.calaiReading : t.calaiBtn}
+            <Camera size={15} strokeWidth={1.5} />{calaiBusy ? t.calaiReading : t.calaiBtn}
           </button>
           {QUICK_ADD.filter(q => {
             if (q.key.startsWith('coffee')) return q.key === 'coffee_' + prefs.coffee
@@ -623,41 +646,24 @@ export default function Nutrition() {
           ))}
         </div>
 
-        <div className="nu-target-hint muted">
-          {t.bmrHint}{base.bmr}{t.tdeeHint}{base.neat}{t.goalHint}{(() => { const gl = GOALS.find(g => g.key === profile.goal)?.label; return (t.goals[gl] || gl || '').toLowerCase() })()}
-          {target.recNote ? ` · ${target.recNote}` : ''}
+        <div className="nu-meta">
+          <div className="nu-meta-metric">
+            <span className="nu-meta-lbl muted">{t.mBmr}</span>
+            <span className="nu-meta-val">≈{base.bmr}</span>
+          </div>
+          <div className="nu-meta-metric">
+            <span className="nu-meta-lbl muted">{t.mNeat}</span>
+            <span className="nu-meta-val">≈{base.neat}</span>
+          </div>
+          <div className="nu-meta-chips">
+            <span className="nu-meta-chip">{t.mGoal}: {(() => { const gl = GOALS.find(g => g.key === profile.goal)?.label; return (t.goals[gl] || gl || '').toLowerCase() })()}</span>
+            {target.recNote && <span className="nu-meta-chip">{target.recNote}</span>}
+          </div>
         </div>
-        <AnimatePresence>
-          {editProfile && (
-            <motion.div className="nu-profile" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
-              <div className="nu-fields">
-                <label className="nu-field"><span>{t.fWeight}</span>
-                  <input type="number" value={profile.weight} onChange={e => updateProfile('weight', +e.target.value || 0)} /></label>
-                <label className="nu-field"><span>{t.fHeight}</span>
-                  <input type="number" value={profile.height} onChange={e => updateProfile('height', +e.target.value || 0)} /></label>
-                <label className="nu-field"><span>{t.fAge}</span>
-                  <input type="number" value={profile.age} onChange={e => updateProfile('age', +e.target.value || 0)} /></label>
-                <label className="nu-field"><span>{t.fSex}</span>
-                  <select value={profile.sex} onChange={e => updateProfile('sex', e.target.value)}>
-                    <option value="male">{t.male}</option><option value="female">{t.female}</option>
-                  </select></label>
-              </div>
-              <div className="nu-seg-row">
-                <span className="nu-seg-lbl muted">{t.goal}</span>
-                <div className="nu-seg">
-                  {GOALS.map(g => (
-                    <button key={g.key} className={`nu-seg-btn ${profile.goal === g.key ? 'active' : ''}`}
-                      onClick={() => updateProfile('goal', g.key)}>{t.goals[g.label] || g.label}</button>
-                  ))}
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </motion.div>
 
       {/* Меню недели */}
-      <motion.div className="card" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+      <motion.div ref={weekRef} className="card" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
         <div className="card-title">{t.weekMenu}</div>
         <div className="nu-week">
           {week.map(d => {
@@ -685,7 +691,7 @@ export default function Nutrition() {
             return (
               <div key={m.key} className={`nu-slot ${dish ? 'filled' : ''} ${active ? 'sel' : ''}`}>
                 <div className="nu-slot-head">
-                  <span className="nu-slot-name">{m.emoji} {t.meals[m.key] || m.key}</span>
+                  <span className="nu-slot-name"><MealIcon mealKey={m.key} /> {t.meals[m.key] || m.key}</span>
                   <span className="nu-slot-target muted">{t.mealApprox}{pm.kcal} {t.kcal}</span>
                 </div>
                 {dish ? (
@@ -694,7 +700,7 @@ export default function Nutrition() {
                       {dish.imageUrl && <div className="nu-slot-img" style={{ backgroundImage: `url(${dish.imageUrl})` }} />}
                       <span className="nu-slot-dish-name">{dish.name}</span>
                       <span className="nu-slot-dish-macros muted">{dish.kcal} {t.kcal} · {t.bMacro}{dish.protein} {t.fMacro}{dish.fat} {t.uMacro}{dish.carb}</span>
-                      {dish.rated && <span className={`nu-slot-rated ${dish.rating}`}>{dish.rating === 'up' ? t.liked : t.disliked}</span>}
+                      {dish.rated && <span className={`nu-slot-rated ${dish.rating}`}>{dish.rating === 'up' ? <ThumbsUp size={13} strokeWidth={1.5} /> : <ThumbsDown size={13} strokeWidth={1.5} />} {dish.rating === 'up' ? t.liked : t.disliked}</span>}
                     </button>
                     <button className="nu-slot-cancel" onClick={() => removePlannedSlot(selectedDay, m.key)}>{t.cancelChoice}</button>
                   </>
@@ -723,7 +729,12 @@ export default function Nutrition() {
           {shopping.items.length > 0 && <button className="nu-edit" onClick={clearShopping}>{t.clear}</button>}
         </div>
         {shopping.items.length === 0 ? (
-          <div className="nu-empty muted">{t.shopEmpty}</div>
+          <div className="nu-shop-empty">
+            <span className="nu-shop-empty-icon"><ShoppingCart size={28} strokeWidth={1.5} /></span>
+            <div className="nu-shop-empty-title">{t.shopEmptyTitle}</div>
+            <div className="nu-shop-empty-text muted">{t.shopEmptyText}</div>
+            <button className="nu-shop-empty-cta" onClick={() => weekRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>{t.shopEmptyCta}</button>
+          </div>
         ) : (
           <>
             <div className="nu-shop-hint muted">{t.shopHint}</div>
@@ -788,13 +799,13 @@ export default function Nutrition() {
                         </div>
                       ) : (m.short && <div className="nu-meal-short muted">{m.short}</div>)}
                       <div className="nu-meal-macros">
-                        <span style={{ color: 'var(--orange)' }}>{m.kcal} {t.kcal}</span>
+                        <span className="nu-meal-kcal">{m.kcal} {t.kcal}</span>
                         <span>{t.bMacro} {m.protein}</span><span>{t.fMacro} {m.fat}</span><span>{t.uMacro} {m.carb}</span>
                       </div>
                       {m.tags?.length > 0 && <div className="nu-tags">{m.tags.map(tag => <span key={tag} className="nu-tag">{tag}</span>)}</div>}
                       <div className="nu-card-actions">
                         <button className="nu-kitchen-card" onClick={() => quickKitchen(m)} disabled={kitchenBusy === m.name}>
-                          {kitchenBusy === m.name ? t.adding : t.toKitchenCard}
+                          <ShoppingCart size={15} strokeWidth={1.5} />{kitchenBusy === m.name ? t.adding : t.toKitchenCard}
                         </button>
                         <button className="nu-recipe-btn" onClick={() => openSuggestDetail(m)}>{t.more}</button>
                       </div>
@@ -836,7 +847,7 @@ export default function Nutrition() {
                 )
               })()}
               <div className="nu-meal-macros nu-detail-total">
-                <span style={{ color: 'var(--orange)' }}>{detail.meal.kcal} {t.kcal}</span>
+                <span className="nu-meal-kcal">{detail.meal.kcal} {t.kcal}</span>
                 <span>{t.bMacro} {detail.meal.protein}</span><span>{t.fMacro} {detail.meal.fat}</span><span>{t.uMacro} {detail.meal.carb}</span>
               </div>
               {detailParts.map((p, pi) => (
@@ -865,7 +876,7 @@ export default function Nutrition() {
               ))}
               <div className="nu-modal-actions">
                 {detail.source === 'suggest' ? (
-                  <button className="nu-suggest nu-kitchen" onClick={toKitchen}>{t.toKitchen}{detailLoading ? t.recipeWillFinish : ''}</button>
+                  <button className="nu-suggest nu-kitchen" onClick={toKitchen}><ShoppingCart size={16} strokeWidth={1.5} />{t.toKitchen}{detailLoading ? t.recipeWillFinish : ''}</button>
                 ) : (
                   <button className="nu-remove" onClick={removePlanned}>{t.cancelChoice}</button>
                 )}
@@ -886,6 +897,29 @@ export default function Nutrition() {
                 <button className="nu-close" onClick={() => setPrefsOpen(false)} aria-label={t.close}>×</button>
               </div>
               <div className="nu-modal-sub muted">{t.prefsSub}</div>
+
+              <div className="nu-sec-title">{t.profileSection}</div>
+              <div className="nu-fields">
+                <label className="nu-field"><span>{t.fWeight}</span>
+                  <input type="number" value={profile.weight} onChange={e => updateProfile('weight', +e.target.value || 0)} /></label>
+                <label className="nu-field"><span>{t.fHeight}</span>
+                  <input type="number" value={profile.height} onChange={e => updateProfile('height', +e.target.value || 0)} /></label>
+                <label className="nu-field"><span>{t.fAge}</span>
+                  <input type="number" value={profile.age} onChange={e => updateProfile('age', +e.target.value || 0)} /></label>
+                <label className="nu-field"><span>{t.fSex}</span>
+                  <select value={profile.sex} onChange={e => updateProfile('sex', e.target.value)}>
+                    <option value="male">{t.male}</option><option value="female">{t.female}</option>
+                  </select></label>
+              </div>
+              <div className="nu-seg-row">
+                <span className="nu-seg-lbl muted">{t.goal}</span>
+                <div className="nu-seg">
+                  {GOALS.map(g => (
+                    <button key={g.key} className={`nu-seg-btn ${profile.goal === g.key ? 'active' : ''}`}
+                      onClick={() => updateProfile('goal', g.key)}>{t.goals[g.label] || g.label}</button>
+                  ))}
+                </div>
+              </div>
 
               <div className="nu-sec-title">{t.spicy}</div>
               <div className="nu-slider-row">
@@ -964,8 +998,8 @@ export default function Nutrition() {
               <textarea className="nu-note nu-rate-text" rows={2} placeholder={t.ratePlaceholder}
                 value={rateText} onChange={e => setRateText(e.target.value)} />
               <div className="nu-rate-btns">
-                <button className="nu-rate-up" onClick={() => submitRate(true)}>{t.rateUp}</button>
-                <button className="nu-rate-down" onClick={() => submitRate(false)}>{t.rateDown}</button>
+                <button className="nu-rate-up" onClick={() => submitRate(true)}><ThumbsUp size={16} strokeWidth={1.5} />{t.rateUp}</button>
+                <button className="nu-rate-down" onClick={() => submitRate(false)}><ThumbsDown size={16} strokeWidth={1.5} />{t.rateDown}</button>
               </div>
               <button className="nu-rate-later" onClick={laterRate}>{t.rateLater}</button>
             </motion.div>
@@ -987,127 +1021,152 @@ export default function Nutrition() {
         .page-header > div span { display: block; margin-top: 2px; }
         .muted { color: var(--muted); }
         .card-title { font-size: 16px; font-weight: 700; color: var(--foreground); margin-bottom: 12px; }
-        .nu-prefs-btn { padding: 10px 16px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg-card); color: var(--foreground); font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; transition: all .15s; white-space: nowrap; }
+        .nu-prefs-btn { display: inline-flex; align-items: center; gap: 7px; padding: 10px 16px; border-radius: var(--radius-md); border: 1px solid var(--border-med); background: var(--bg-surface); color: var(--text-primary); font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; transition: all .15s; white-space: nowrap; }
         .nu-prefs-btn:hover { border-color: var(--accent); color: var(--accent); }
+        /* Зазор ≥8px от фиксированной плашки «Демо-режим» (top:14px, bottom ≈46px от вьюпорта) */
+        .nu-prefs-btn { margin-top: 26px; }
+        .nu-prefs-btn svg { flex-shrink: 0; }
 
         .nu-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
-        .nu-edit { padding: 7px 13px; border-radius: 10px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s; }
-        .nu-edit:hover { color: var(--foreground); border-color: var(--accent); }
+        .nu-edit { padding: 7px 13px; border-radius: var(--radius-sm); border: 1px solid var(--border-med); background: transparent; color: var(--text-secondary); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s; }
+        .nu-edit:hover { color: var(--text-primary); border-color: var(--accent); }
 
-        .nu-macros { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-        .nu-macro { display: flex; flex-direction: column; gap: 4px; background: var(--bg-secondary); border-radius: 14px; padding: 16px 18px; }
-        .nu-macro-val { font-size: 26px; font-weight: 800; }
-        .nu-macro-unit { font-size: 13px; font-weight: 500; }
-        .nu-macro-lbl { font-size: 12px; }
-        .nu-target-hint { font-size: 13.5px; margin-top: 10px; }
-        .nu-breakdown { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
-        .nu-bd-chip { font-size: 12.5px; font-weight: 600; color: var(--foreground); background: var(--bg-secondary); border: 1px solid var(--border); padding: 6px 11px; border-radius: 20px; }
-        .nu-bd-chip.plus { color: var(--green); border-color: color-mix(in srgb, var(--green) 40%, transparent); }
-        .nu-bd-chip.minus { color: var(--orange); border-color: color-mix(in srgb, var(--orange) 40%, transparent); }
-        .nu-bd-chip.muted-chip { color: var(--muted); font-weight: 500; }
+        /* KPI: главная «ккал» крупно, макросы Б/Ж/У — подчинённая группа, числа в --foreground */
+        .nu-kpi { display: flex; align-items: stretch; gap: 16px; flex-wrap: wrap; }
+        .nu-kpi-hero { display: flex; flex-direction: column; gap: 4px; justify-content: center; background: var(--bg-tile); border: 1px solid var(--border-med); border-radius: var(--radius-md); padding: 18px 24px; min-width: 200px; flex: 1 1 220px; }
+        .nu-kpi-num { font-size: 42px; font-weight: 800; color: var(--foreground); line-height: 1; letter-spacing: -.02em; }
+        .nu-kpi-unit { font-size: 16px; font-weight: 600; color: var(--text-muted); }
+        .nu-kpi-lbl { font-size: 13px; color: var(--text-secondary); }
+        .nu-kpi-macros { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; flex: 2 1 320px; }
+        .nu-kpi-macro { display: flex; flex-direction: column; gap: 3px; justify-content: center; background: var(--bg-tile); border: 1px solid var(--border-soft); border-radius: var(--radius-md); padding: 14px 16px; }
+        .nu-kpi-mval { font-size: 22px; font-weight: 700; color: var(--foreground); line-height: 1; }
+        .nu-kpi-munit { font-size: 12px; font-weight: 500; color: var(--text-muted); }
+        .nu-kpi-mlbl { font-size: 12px; color: var(--text-muted); }
+        .nu-breakdown { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+        .nu-bd-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--text-body); background: var(--bg-tile); border: 1px solid var(--border-med); padding: 6px 11px; border-radius: 20px; }
+        .nu-bd-chip svg { color: var(--text-muted); }
+        .nu-bd-chip.plus, .nu-bd-chip.minus { color: var(--text-primary); border-color: var(--border-med); }
+        .nu-bd-chip.plus svg, .nu-bd-chip.minus svg { color: var(--text-muted); }
+        .nu-bd-chip.muted-chip { color: var(--text-muted); font-weight: 500; }
+
+        /* Метаболика: микрометрики лейбл/значение + вывод в чип */
+        .nu-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 22px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border-soft); }
+        .nu-meta-metric { display: flex; flex-direction: column; gap: 2px; }
+        .nu-meta-lbl { font-size: 11.5px; }
+        .nu-meta-val { font-size: 15px; font-weight: 700; color: var(--foreground); }
+        .nu-meta-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+        .nu-meta-chip { font-size: 12px; font-weight: 600; color: var(--text-secondary); background: var(--bg-tile); border: 1px solid var(--border-soft); padding: 5px 11px; border-radius: 20px; }
         .nu-progress { margin-top: 14px; display: flex; flex-direction: column; gap: 7px; }
-        .nu-prog-bar { height: 8px; border-radius: 6px; background: var(--bg-secondary); overflow: hidden; }
+        .nu-prog-bar { height: 8px; border-radius: 6px; background: var(--bg-tile); overflow: hidden; }
         .nu-prog-fill { height: 100%; background: var(--accent); border-radius: 6px; transition: width .4s; }
         .nu-prog-text { font-size: 13px; }
 
         .nu-profile { overflow: hidden; }
-        .nu-fields { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 16px; }
-        .nu-field { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--muted); }
-        .nu-field input, .nu-field select { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; font-family: inherit; font-size: 14px; color: var(--foreground); outline: none; }
+        .nu-fields { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 12px; }
+        .nu-field { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--text-muted); }
+        .nu-field input, .nu-field select { background: var(--bg-tile); border: 1px solid var(--border-med); border-radius: var(--radius-sm); padding: 10px 12px; font-family: inherit; font-size: 14px; color: var(--foreground); outline: none; }
         .nu-field input:focus, .nu-field select:focus { border-color: var(--accent); }
         .nu-seg-row { display: flex; align-items: center; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
         .nu-seg-lbl { font-size: 12px; min-width: 80px; }
-        .nu-seg { display: inline-flex; flex-wrap: wrap; gap: 4px; background: var(--bg-secondary); padding: 4px; border-radius: 12px; }
-        .nu-seg-btn { padding: 8px 13px; border: none; background: transparent; color: var(--muted); font-family: inherit; font-size: 13px; font-weight: 600; border-radius: 9px; cursor: pointer; transition: all .15s; }
-        .nu-seg-btn:hover { color: var(--foreground); }
-        .nu-seg-btn.active { background: var(--bg-card); color: var(--accent); box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+        .nu-seg { display: inline-flex; flex-wrap: wrap; gap: 4px; background: var(--bg-tile); padding: 4px; border-radius: var(--radius-md); }
+        .nu-seg-btn { padding: 8px 13px; border: none; background: transparent; color: var(--text-secondary); font-family: inherit; font-size: 13px; font-weight: 600; border-radius: 9px; cursor: pointer; transition: all .15s; }
+        .nu-seg-btn:hover { color: var(--text-primary); }
+        .nu-seg-btn.active { background: var(--bg-surface); color: var(--accent); box-shadow: var(--shadow-btn); }
 
         /* Учёт съеденного */
-        .nu-intake-tag { color: var(--green); font-weight: 600; }
-        .nu-intake-reset { margin-left: 8px; background: transparent; border: none; color: var(--muted); font-family: inherit; font-size: 12px; text-decoration: underline; cursor: pointer; }
-        .nu-intake-reset:hover { color: var(--foreground); }
-        .nu-intake-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; align-items: center; }
-        .nu-calai { padding: 9px 14px; border-radius: 11px; border: 1px solid var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); font-family: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer; transition: all .15s; }
+        .nu-intake-tag { color: var(--accent); font-weight: 600; }
+        .nu-intake-reset { margin-left: 8px; background: transparent; border: none; color: var(--text-muted); font-family: inherit; font-size: 12px; text-decoration: underline; cursor: pointer; }
+        .nu-intake-reset:hover { color: var(--text-primary); }
+        .nu-intake-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; align-items: center; }
+        .nu-calai { display: inline-flex; align-items: center; gap: 7px; padding: 9px 14px; border-radius: var(--radius-sm); border: 1px solid var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); font-family: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer; transition: all .15s; }
         .nu-calai:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 20%, transparent); }
         .nu-calai:disabled { opacity: .6; cursor: default; }
-        .nu-quick { padding: 8px 12px; border-radius: 11px; border: 1px solid var(--border); background: var(--bg-secondary); color: var(--foreground); font-family: inherit; font-size: 13px; cursor: pointer; transition: all .15s; }
+        .nu-quick { padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-med); background: var(--bg-tile); color: var(--text-body); font-family: inherit; font-size: 13px; cursor: pointer; transition: all .15s; }
         .nu-quick:hover { border-color: var(--accent); color: var(--accent); }
 
         /* Состав приёма (комбо) */
         .nu-comp-row { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
         .nu-comp-lbl { font-size: 13px; margin-right: 2px; }
-        .nu-comp { padding: 7px 12px; border-radius: 18px; border: 1px solid var(--border); background: var(--bg-secondary); color: var(--muted); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s; }
+        .nu-comp { padding: 7px 12px; border-radius: 18px; border: 1px solid var(--border-med); background: var(--bg-tile); color: var(--text-secondary); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s; }
         .nu-comp.on { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
         .nu-parts { display: flex; flex-direction: column; gap: 4px; }
-        .nu-part { font-size: 13.5px; color: var(--foreground); line-height: 1.4; }
+        .nu-part { font-size: 13.5px; color: var(--text-body); line-height: 1.4; }
         .nu-part-c { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; margin-right: 4px; }
-        .nu-part-sec { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--border); padding-top: 12px; margin-top: 4px; }
+        .nu-part-sec { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--border-soft); padding-top: 12px; margin-top: 4px; }
         .nu-part-sec:first-of-type { border-top: none; padding-top: 0; }
         .nu-part-head { font-size: 15px; font-weight: 700; color: var(--foreground); }
         .nu-detail-total { padding: 4px 0; }
-        .nu-recent { display: inline-block; margin-left: 8px; font-size: 11px; color: var(--orange); background: color-mix(in srgb, var(--orange) 14%, transparent); padding: 2px 8px; border-radius: 10px; vertical-align: middle; }
+        .nu-recent { display: inline-block; margin-left: 8px; font-size: 11px; color: var(--status-warn); background: color-mix(in srgb, var(--status-warn) 14%, transparent); padding: 2px 8px; border-radius: 10px; vertical-align: middle; }
 
-        /* Неделя */
+        /* Неделя — единственный «сильный» акцент: активный день */
         .nu-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
-        .nu-day { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 12px 4px 10px; border-radius: 14px; border: 1px solid var(--border); background: var(--bg-secondary); cursor: pointer; transition: all .15s; }
-        .nu-day:hover { border-color: var(--accent); }
-        .nu-day.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
-        .nu-day-wd { font-size: 12px; color: var(--muted); font-weight: 600; }
+        .nu-day { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 12px 4px 10px; border-radius: var(--radius-md); border: 1px solid var(--border-soft); background: var(--bg-tile); cursor: pointer; transition: all .15s; }
+        .nu-day:hover { border-color: var(--border-med); }
+        .nu-day.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); box-shadow: 0 0 0 1px var(--accent) inset; }
+        .nu-day-wd { font-size: 12px; color: var(--text-muted); font-weight: 600; }
         .nu-day.active .nu-day-wd { color: var(--accent); }
         .nu-day-num { font-size: 20px; font-weight: 800; color: var(--foreground); line-height: 1; }
         .nu-day.today .nu-day-num { color: var(--accent); }
         .nu-day-dots { display: flex; gap: 3px; margin-top: 2px; }
-        .nu-day-dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--border); }
-        .nu-day-dots i.on { background: var(--green); }
+        .nu-day-dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--text-muted); }
+        .nu-day-dots i.on { background: var(--accent); }
+        .nu-day.active .nu-day-dots i { background: color-mix(in srgb, var(--accent) 45%, var(--text-muted)); }
+        .nu-day.active .nu-day-dots i.on { background: var(--accent); }
 
         .nu-day-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 18px; margin-bottom: 12px; flex-wrap: wrap; }
         .nu-day-title { font-size: 15px; font-weight: 700; color: var(--foreground); }
         .nu-day-kcal { font-size: 13px; }
 
         .nu-slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-        .nu-slot { display: flex; flex-direction: column; gap: 10px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 14px; padding: 14px; min-height: 120px; }
-        .nu-slot.sel { border-color: var(--accent); }
+        /* Базовая рамка у всех слотов одинаковая; у выбранного меняем ТОЛЬКО цвет границы (мягкий акцент — день уже несёт сильный) */
+        .nu-slot { display: flex; flex-direction: column; gap: 10px; background: var(--bg-tile); border: 1px solid var(--border-soft); border-radius: var(--radius-md); padding: 14px; min-height: 120px; transition: border-color .15s; }
+        .nu-slot.sel { border-color: color-mix(in srgb, var(--accent) 55%, var(--border-med)); }
         .nu-slot-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-        .nu-slot-name { font-size: 14px; font-weight: 700; color: var(--foreground); }
+        .nu-slot-name { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; color: var(--foreground); }
+        .nu-slot-name svg { color: var(--text-muted); flex-shrink: 0; }
+        .nu-slot.sel .nu-slot-name svg { color: var(--accent); }
         .nu-slot-target { font-size: 12px; white-space: nowrap; }
         .nu-slot-dish { flex: 1; display: flex; flex-direction: column; gap: 5px; align-items: flex-start; text-align: left; background: transparent; border: none; cursor: pointer; padding: 0; }
-        .nu-slot-img { width: 100%; height: 76px; border-radius: 10px; background-size: cover; background-position: center; background-color: var(--bg-card); margin-bottom: 3px; }
+        .nu-slot-img { width: 100%; height: 76px; border-radius: var(--radius-sm); background-size: cover; background-position: center; background-color: var(--bg-surface); margin-bottom: 3px; }
         .nu-slot-dish-name { font-size: 14.5px; font-weight: 600; color: var(--foreground); }
         .nu-slot-dish:hover .nu-slot-dish-name { color: var(--accent); }
         .nu-slot-dish-macros { font-size: 12.5px; }
-        .nu-slot-rated { font-size: 12px; font-weight: 600; }
-        .nu-slot-rated.up { color: var(--green); }
-        .nu-slot-rated.down { color: var(--orange); }
-        .nu-slot-cancel { margin-top: 8px; align-self: stretch; background: transparent; border: 1px solid var(--border); border-radius: 10px; color: var(--muted); font-family: inherit; font-size: 12.5px; font-weight: 600; padding: 7px 10px; cursor: pointer; transition: all .15s; }
-        .nu-slot-cancel:hover { border-color: var(--red); color: var(--red); }
-        .nu-slot-empty { flex: 1; display: flex; align-items: center; justify-content: center; background: transparent; border: 1px dashed var(--border); border-radius: 10px; color: var(--muted); font-family: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; transition: all .15s; }
-        .nu-slot-empty:hover { border-color: var(--accent); color: var(--accent); }
+        .nu-slot-rated { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; }
+        .nu-slot-rated.up { color: var(--status-ok); }
+        .nu-slot-rated.down { color: var(--status-warn); }
+        .nu-slot-cancel { margin-top: 8px; align-self: stretch; background: transparent; border: 1px solid var(--border-soft); border-radius: var(--radius-sm); color: var(--text-muted); font-family: inherit; font-size: 12.5px; font-weight: 600; padding: 7px 10px; cursor: pointer; transition: all .15s; }
+        .nu-slot-cancel:hover { border-color: var(--status-crit); color: var(--status-crit); }
+        /* «Подобрать» — ghost: без рамки (не конфликтует со сплошной рамкой карточки), заливка-подложка */
+        .nu-slot-empty { flex: 1; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--accent) 7%, transparent); border: none; border-radius: var(--radius-sm); color: var(--accent); font-family: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; transition: all .15s; }
+        .nu-slot-empty:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+        .nu-slot-empty:disabled { opacity: .55; cursor: default; }
 
         .nu-meal-controls { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 12px; }
         .nu-permeal { font-size: 13px; }
         .nu-note-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
-        .nu-note { flex: 1; width: 100%; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; font-family: inherit; font-size: 14px; color: var(--foreground); outline: none; }
+        .nu-note { flex: 1; width: 100%; background: var(--bg-tile); border: 1px solid var(--border-med); border-radius: var(--radius-md); padding: 12px 14px; font-family: inherit; font-size: 14px; color: var(--foreground); outline: none; }
         .nu-note:focus { border-color: var(--accent); }
-        .nu-note::placeholder { color: var(--muted); }
-        .nu-suggest { flex-shrink: 0; padding: 12px 18px; border-radius: 12px; border: none; background: var(--accent); color: var(--accent-foreground); font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; transition: opacity .15s; }
-        .nu-suggest:hover:not(:disabled) { opacity: .9; }
+        .nu-note::placeholder { color: var(--text-faint); }
+        .nu-suggest { flex-shrink: 0; display: inline-flex; align-items: center; gap: 7px; padding: 12px 18px; border-radius: var(--radius-md); border: none; background: linear-gradient(var(--accent-btn-top), var(--accent-btn-bot)); color: var(--on-accent); font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; box-shadow: var(--shadow-btn); transition: opacity .15s; }
+        .nu-suggest:hover:not(:disabled) { opacity: .92; }
         .nu-suggest:disabled { opacity: .5; cursor: default; }
 
         .nu-meal-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
-        .nu-meal-card { display: flex; flex-direction: column; gap: 8px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
-        .nu-meal-img { height: 150px; margin: -16px -16px 4px; border-radius: 14px 14px 0 0; background-size: cover; background-position: center; background-color: var(--bg-card); }
+        .nu-meal-card { display: flex; flex-direction: column; gap: 8px; background: var(--bg-tile); border: 1px solid var(--border-soft); border-radius: var(--radius-md); padding: 16px; }
+        .nu-meal-img { height: 150px; margin: -16px -16px 4px; border-radius: var(--radius-md) var(--radius-md) 0 0; background-size: cover; background-position: center; background-color: var(--bg-surface); }
         .nu-meal-name { font-size: 15.5px; font-weight: 700; color: var(--foreground); }
-        .nu-meal-short { font-size: 14px; line-height: 1.55; color: var(--muted); }
-        .nu-meal-macros { display: flex; flex-wrap: wrap; gap: 12px; font-size: 14px; color: var(--muted); font-weight: 600; }
+        .nu-meal-short { font-size: 14px; line-height: 1.55; color: var(--text-secondary); }
+        .nu-meal-macros { display: flex; flex-wrap: wrap; gap: 12px; font-size: 14px; color: var(--text-secondary); font-weight: 600; }
+        .nu-meal-kcal { color: var(--foreground); }
         .nu-tags { display: flex; flex-wrap: wrap; gap: 6px; }
         .nu-tag { font-size: 11px; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); padding: 3px 9px; border-radius: 20px; }
         .nu-card-actions { display: flex; align-items: center; gap: 12px; margin-top: 6px; }
-        .nu-kitchen-card { padding: 9px 14px; border-radius: 10px; border: none; background: var(--accent); color: var(--accent-foreground); font-family: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer; transition: opacity .15s; }
+        .nu-kitchen-card { display: inline-flex; align-items: center; gap: 7px; padding: 9px 14px; border-radius: var(--radius-sm); border: none; background: linear-gradient(var(--accent-btn-top), var(--accent-btn-bot)); color: var(--on-accent); font-family: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer; box-shadow: var(--shadow-btn); transition: opacity .15s; }
         .nu-kitchen-card:hover:not(:disabled) { opacity: .9; }
         .nu-kitchen-card:disabled { opacity: .55; cursor: default; }
         .nu-recipe-btn { align-self: flex-start; background: transparent; border: none; color: var(--accent); font-family: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; padding: 0; }
         .nu-recipe-btn:hover { text-decoration: underline; }
-        .nu-more { margin-top: 16px; width: 100%; padding: 12px; border-radius: 12px; border: 1px dashed var(--border); background: transparent; color: var(--muted); font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; transition: all .15s; }
+        .nu-more { margin-top: 16px; width: 100%; padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border-med); background: var(--bg-tile); color: var(--text-secondary); font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; transition: all .15s; }
         .nu-more:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
         .nu-more:disabled { opacity: .5; cursor: default; }
         .nu-empty { font-size: 14px; padding: 6px 0; line-height: 1.5; }
@@ -1117,13 +1176,21 @@ export default function Nutrition() {
 
         .nu-shop-hint { font-size: 13px; margin-bottom: 10px; }
         .nu-shop-list { display: flex; flex-direction: column; }
-        .nu-shop-item { display: grid; grid-template-columns: 1fr auto 28px; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--border); }
+        .nu-shop-item { display: grid; grid-template-columns: 1fr auto 28px; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--border-soft); }
         .nu-shop-item:last-child { border-bottom: none; }
         .nu-shop-name { font-size: 14.5px; color: var(--foreground); }
         .nu-shop-qty { font-size: 13.5px; white-space: nowrap; font-weight: 600; }
-        .nu-shop-del { width: 26px; height: 26px; border-radius: 7px; border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; font-size: 16px; line-height: 1; transition: all .15s; }
-        .nu-shop-del:hover { color: var(--red); border-color: var(--red); }
-        .nu-send { margin-top: 14px; padding: 12px 18px; border-radius: 12px; border: 1px dashed var(--border); background: transparent; color: var(--muted); font-family: inherit; font-size: 14px; font-weight: 600; cursor: not-allowed; opacity: .65; }
+        .nu-shop-del { width: 26px; height: 26px; border-radius: var(--radius-sm); border: 1px solid var(--border-soft); background: transparent; color: var(--text-muted); cursor: pointer; font-size: 16px; line-height: 1; transition: all .15s; }
+        .nu-shop-del:hover { color: var(--status-crit); border-color: var(--status-crit); }
+        .nu-send { margin-top: 14px; padding: 12px 18px; border-radius: var(--radius-md); border: 1px dashed var(--border-med); background: transparent; color: var(--text-muted); font-family: inherit; font-size: 14px; font-weight: 600; cursor: not-allowed; opacity: .65; }
+
+        /* Пустой список покупок — центрированный empty-state */
+        .nu-shop-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 24px 16px 8px; }
+        .nu-shop-empty-icon { display: flex; align-items: center; justify-content: center; width: 56px; height: 56px; border-radius: 50%; background: var(--bg-tile); border: 1px solid var(--border-soft); color: var(--text-muted); margin-bottom: 4px; }
+        .nu-shop-empty-title { font-size: 15.5px; font-weight: 700; color: var(--foreground); }
+        .nu-shop-empty-text { font-size: 13.5px; line-height: 1.5; max-width: 420px; }
+        .nu-shop-empty-cta { margin-top: 8px; padding: 10px 18px; border-radius: var(--radius-md); border: none; background: linear-gradient(var(--accent-btn-top), var(--accent-btn-bot)); color: var(--on-accent); font-family: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer; box-shadow: var(--shadow-btn); transition: opacity .15s; }
+        .nu-shop-empty-cta:hover { opacity: .92; }
 
         .nu-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.55); backdrop-filter: blur(3px); z-index: 500; display: flex; align-items: center; justify-content: center; padding: 24px; }
         .nu-modal { width: 100%; max-width: 560px; max-height: 88vh; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
@@ -1131,35 +1198,35 @@ export default function Nutrition() {
         .nu-modal-head h3 { font-size: 19px; font-weight: 700; color: var(--foreground); }
         .nu-modal-sub { font-size: 13px; margin-top: -6px; }
         .nu-modal-img-wrap { display: flex; flex-direction: column; gap: 5px; }
-        .nu-modal-img { height: 200px; border-radius: 14px; background-size: cover; background-position: center; background-color: var(--bg-secondary); }
+        .nu-modal-img { height: 200px; border-radius: var(--radius-md); background-size: cover; background-position: center; background-color: var(--bg-tile); }
         .nu-credit { font-size: 11.5px; }
-        .nu-credit a { color: var(--muted); text-decoration: underline; }
+        .nu-credit a { color: var(--text-muted); text-decoration: underline; }
         .nu-credit a:hover { color: var(--foreground); }
-        .nu-close { width: 32px; height: 32px; border-radius: 9px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; flex-shrink: 0; }
+        .nu-close { width: 32px; height: 32px; border-radius: var(--radius-sm); border: 1px solid var(--border-med); background: transparent; color: var(--text-muted); font-size: 20px; line-height: 1; cursor: pointer; flex-shrink: 0; }
         .nu-close:hover { color: var(--foreground); }
         .nu-sec-title { font-size: 13px; font-weight: 700; color: var(--foreground); text-transform: uppercase; letter-spacing: .05em; margin-top: 6px; }
         .nu-ing-list { display: flex; flex-direction: column; }
-        .nu-ing { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 15px; color: var(--foreground); }
+        .nu-ing { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--border-soft); font-size: 15px; color: var(--foreground); }
         .nu-ing:last-child { border-bottom: none; }
-        .nu-ing .muted { color: var(--muted); }
-        .nu-steps { display: flex; flex-direction: column; gap: 9px; padding-left: 20px; font-size: 15.5px; line-height: 1.6; color: var(--foreground); }
+        .nu-ing .muted { color: var(--text-muted); }
+        .nu-steps { display: flex; flex-direction: column; gap: 9px; padding-left: 20px; font-size: 15.5px; line-height: 1.6; color: var(--text-body); }
         .nu-modal-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
         .nu-kitchen { font-size: 15px; }
-        .nu-remove { padding: 12px 18px; border-radius: 12px; border: 1px solid var(--red); background: transparent; color: var(--red); font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; transition: all .15s; }
-        .nu-remove:hover { background: color-mix(in srgb, var(--red) 14%, transparent); }
+        .nu-remove { padding: 12px 18px; border-radius: var(--radius-md); border: 1px solid var(--status-crit); background: transparent; color: var(--status-crit); font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; transition: all .15s; }
+        .nu-remove:hover { background: color-mix(in srgb, var(--status-crit) 14%, transparent); }
 
         /* Слайдеры предпочтений */
         .nu-slider-row { display: flex; align-items: center; gap: 14px; }
         .nu-slider-row input[type=range] { flex: 1; accent-color: var(--accent); height: 4px; }
-        .nu-slider-val { font-size: 13px; color: var(--muted); min-width: 130px; text-align: right; }
+        .nu-slider-val { font-size: 13px; color: var(--text-secondary); min-width: 130px; text-align: right; }
         .nu-foods { display: flex; flex-wrap: wrap; gap: 8px; }
-        .nu-food { padding: 9px 13px; border-radius: 11px; border: 1px solid var(--border); background: var(--bg-secondary); color: var(--foreground); font-family: inherit; font-size: 13.5px; cursor: pointer; transition: all .15s; }
+        .nu-food { padding: 9px 13px; border-radius: var(--radius-sm); border: 1px solid var(--border-med); background: var(--bg-tile); color: var(--text-body); font-family: inherit; font-size: 13.5px; cursor: pointer; transition: all .15s; }
         .nu-food b { font-weight: 700; margin-left: 4px; }
-        .nu-food.yes { border-color: color-mix(in srgb, var(--green) 50%, transparent); }
-        .nu-food.yes b { color: var(--green); }
+        .nu-food.yes { border-color: color-mix(in srgb, var(--status-ok) 50%, transparent); }
+        .nu-food.yes b { color: var(--status-ok); }
         .nu-food.no { opacity: .6; }
-        .nu-food.no b { color: var(--red); }
-        .nu-chip { padding: 8px 13px; border-radius: 20px; border: 1px solid var(--border); background: var(--bg-secondary); color: var(--muted); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s; }
+        .nu-food.no b { color: var(--status-crit); }
+        .nu-chip { padding: 8px 13px; border-radius: 20px; border: 1px solid var(--border-med); background: var(--bg-tile); color: var(--text-secondary); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s; }
         .nu-chip.on { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
 
         /* Оценка */
@@ -1168,16 +1235,17 @@ export default function Nutrition() {
         .nu-rate h3 { font-size: 20px; font-weight: 700; color: var(--foreground); }
         .nu-rate-text { width: 100%; resize: none; text-align: left; }
         .nu-rate-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .nu-rate-up, .nu-rate-down { padding: 13px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg-secondary); color: var(--foreground); font-family: inherit; font-size: 14.5px; font-weight: 700; cursor: pointer; transition: all .15s; }
-        .nu-rate-up:hover { border-color: var(--green); background: color-mix(in srgb, var(--green) 16%, transparent); }
-        .nu-rate-down:hover { border-color: var(--orange); background: color-mix(in srgb, var(--orange) 16%, transparent); }
-        .nu-rate-later { background: transparent; border: none; color: var(--muted); font-family: inherit; font-size: 13px; cursor: pointer; padding: 4px; }
+        .nu-rate-up, .nu-rate-down { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 13px; border-radius: var(--radius-md); border: 1px solid var(--border-med); background: var(--bg-tile); color: var(--text-body); font-family: inherit; font-size: 14.5px; font-weight: 700; cursor: pointer; transition: all .15s; }
+        .nu-rate-up:hover { border-color: var(--status-ok); color: var(--status-ok); background: color-mix(in srgb, var(--status-ok) 16%, transparent); }
+        .nu-rate-down:hover { border-color: var(--status-warn); color: var(--status-warn); background: color-mix(in srgb, var(--status-warn) 16%, transparent); }
+        .nu-rate-later { background: transparent; border: none; color: var(--text-muted); font-family: inherit; font-size: 13px; cursor: pointer; padding: 4px; }
         .nu-rate-later:hover { color: var(--foreground); }
 
-        .nu-toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); z-index: 600; background: var(--bg-card); border: 1px solid var(--accent); color: var(--foreground); padding: 13px 20px; border-radius: 12px; font-size: 14px; font-weight: 600; box-shadow: 0 8px 28px rgba(0,0,0,.4); }
+        .nu-toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); z-index: 600; background: var(--bg-surface); border: 1px solid var(--accent); color: var(--foreground); padding: 13px 20px; border-radius: var(--radius-md); font-size: 14px; font-weight: 600; box-shadow: var(--shadow-card); }
 
         @media (max-width: 900px) {
-          .nu-macros, .nu-fields { grid-template-columns: repeat(2, 1fr); }
+          .nu-fields { grid-template-columns: repeat(2, 1fr); }
+          .nu-kpi-macros { flex-basis: 100%; }
           .nu-slots { grid-template-columns: repeat(2, 1fr); }
           .nu-week { gap: 5px; }
           .nu-day { padding: 10px 2px 8px; }

@@ -248,7 +248,7 @@ export function EventsProvider({ children }) {
   }
 
   return (
-    <EventsContext.Provider value={{ events, setEvents, resetEvents, applyAiActions, removeEvent, upsertEvent, applyBulk, focusSignal, syncFromGoogle, googleConnected }}>
+    <EventsContext.Provider value={{ events, setEvents, resetEvents, applyAiActions, removeEvent, upsertEvent, applyBulk, focusSignal, setFocusSignal, syncFromGoogle, googleConnected }}>
       {children}
     </EventsContext.Provider>
   )

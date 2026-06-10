@@ -60,12 +60,12 @@ export default function History() {
     return [...map.entries()]
   }, [filtered])
 
-  // Статистика
+  // Статистика — числа нейтральные (--foreground), различие несёт подпись, не цвет
   const stats = [
-    { key: 'all', label: t.total, count: entries.length, color: 'var(--primary)' },
-    { key: 'email', label: t.emails, count: entries.filter(a => a.type === 'email').length, color: ACTION_TYPES.email.color },
-    { key: 'event', label: t.events, count: entries.filter(a => a.type === 'event').length, color: ACTION_TYPES.event.color },
-    { key: 'search', label: t.searches, count: entries.filter(a => a.type === 'search').length, color: ACTION_TYPES.search.color }
+    { key: 'all', label: t.total, count: entries.length },
+    { key: 'email', label: t.emails, count: entries.filter(a => a.type === 'email').length },
+    { key: 'event', label: t.events, count: entries.filter(a => a.type === 'event').length },
+    { key: 'search', label: t.searches, count: entries.filter(a => a.type === 'search').length }
   ]
 
   const filterChips = [{ key: 'all', label: t.all }, ...Object.entries(ACTION_TYPES).map(([k, v]) => ({ key: k, label: pickLabel(v, lang) }))]
@@ -74,7 +74,7 @@ export default function History() {
     <div className="history-page">
       <div className="page-header">
         <h2>{t.heading}</h2>
-        <span className="muted">{t.sub}</span>
+        <span className="hist-page-sub">{t.sub}</span>
       </div>
 
       {/* Долгая память помощника */}
@@ -84,7 +84,7 @@ export default function History() {
       <div className="hist-stats">
         {stats.map(s => (
           <div key={s.key} className="card hist-stat">
-            <span className="hist-stat-val" style={{ color: s.color }}>{s.count}</span>
+            <span className="hist-stat-val">{s.count}</span>
             <span className="hist-stat-lbl">{s.label}</span>
           </div>
         ))}
@@ -129,7 +129,7 @@ export default function History() {
                     initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.3, delay: 0.03 * i }}>
                     <div className="hist-rail">
-                      <span className="hist-dot" style={{ background: ti.color }}>
+                      <span className="hist-dot" style={{ color: ti.color, background: `color-mix(in srgb, ${ti.color} 16%, transparent)` }}>
                         <ActionIcon name={ti.icon} />
                       </span>
                     </div>
@@ -140,8 +140,7 @@ export default function History() {
                       </div>
                       <p className="hist-detail muted">{(lang === 'en' && a.detailEn) || a.detail}</p>
                       <div className="hist-tags">
-                        <span className={`hist-actor ${a.actor}`}>{pickLabel(ACTOR_INFO[a.actor], lang)}</span>
-                        <span className="hist-type" style={{ color: ti.color, borderColor: ti.color }}>{pickLabel(ti, lang)}</span>
+                        <span className="hist-meta">{pickLabel(ACTOR_INFO[a.actor], lang)} · {pickLabel(ti, lang)}</span>
                         <span className="hist-status" style={{ color: st.color }}>● {pickLabel(st, lang)}</span>
                       </div>
                     </div>
@@ -154,14 +153,16 @@ export default function History() {
       </div>
 
       <style>{`
-        .history-page { display: flex; flex-direction: column; gap: 24px; max-width: 1000px; padding-bottom: 20px; }
+        /* Постоянный воздух снизу: лента действий никогда не упирается в нижний край окна (любая тема/высота) */
+        .history-page { display: flex; flex-direction: column; gap: 24px; max-width: 1000px; padding-bottom: 40px; }
         .page-header { display: flex; align-items: baseline; gap: 12px; }
         .page-header h2 { font-size: 24px; font-weight: 700; }
         .muted { color: var(--muted-foreground); }
+        .hist-page-sub { font-size: 13.5px; color: var(--text-muted); }
 
         .hist-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
         .hist-stat { display: flex; flex-direction: column; gap: 4px; padding: 18px; }
-        .hist-stat-val { font-size: 30px; font-weight: 800; line-height: 1; }
+        .hist-stat-val { font-size: 30px; font-weight: 800; line-height: 1; color: var(--foreground); }
         .hist-stat-lbl { font-size: 13px; color: var(--muted-foreground); }
 
         .hist-filter-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
@@ -172,9 +173,6 @@ export default function History() {
           background: transparent; color: var(--muted-foreground); cursor: pointer; font-family: inherit; transition: all 0.15s;
         }
         .hist-actor-btn.active { background: var(--primary); color: var(--primary-foreground); }
-        .hist-actor { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 20px; }
-        .hist-actor.ai { background: rgba(176, 123, 82,0.16); color: var(--primary); }
-        .hist-actor.user { background: var(--bg-secondary); color: var(--muted-foreground); }
         .hist-chip {
           font-size: 13px; padding: 7px 14px; border-radius: 20px;
           border: 1px solid var(--border); background: transparent;
@@ -183,7 +181,7 @@ export default function History() {
         .hist-chip:hover { color: var(--foreground); border-color: var(--border-hover); }
         .hist-chip.active { background: var(--primary); color: var(--primary-foreground); border-color: var(--primary); }
 
-        .hist-timeline { display: flex; flex-direction: column; gap: 24px; }
+        .hist-timeline { display: flex; flex-direction: column; gap: 24px; padding-bottom: 40px; }
         .hist-empty { text-align: center; padding: 40px 0; font-size: 14px; }
         .hist-group { display: flex; flex-direction: column; gap: 14px; }
         .hist-day {
@@ -193,10 +191,10 @@ export default function History() {
         .hist-items { display: flex; flex-direction: column; }
         .hist-item { display: flex; gap: 14px; }
         .hist-rail { display: flex; flex-direction: column; align-items: center; }
+        /* Контурная иконка в тинт-кружке: фон = цвет с alpha, иконка = тот же цвет */
         .hist-dot {
           width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
           display: flex; align-items: center; justify-content: center;
-          color: #fff;
         }
         .hist-item:not(:last-child) .hist-rail::after {
           content: ''; flex: 1; width: 2px; background: var(--border); margin: 4px 0;
@@ -206,8 +204,13 @@ export default function History() {
         .hist-title { font-size: 15px; font-weight: 600; color: var(--foreground); }
         .hist-time { font-size: 12px; flex-shrink: 0; }
         .hist-detail { font-size: 13.5px; line-height: 1.5; }
-        .hist-tags { display: flex; align-items: center; gap: 12px; margin-top: 3px; }
-        .hist-type { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 20px; border: 1px solid; }
+        .hist-tags { display: flex; align-items: center; gap: 10px; margin-top: 3px; }
+        /* Метаданные — один тихий регистр (actor · тип) */
+        .hist-meta {
+          font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 20px;
+          background: var(--bg-tile); color: var(--text-muted);
+        }
+        /* Цветным остаётся только статус — реальная семантика */
         .hist-status { font-size: 12px; font-weight: 500; }
 
         @media (max-width: 700px) {

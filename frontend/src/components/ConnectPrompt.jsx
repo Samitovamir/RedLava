@@ -35,7 +35,7 @@ export default function ConnectPrompt({ heading, sub, title, text, children }) {
         .cp-header h2 { font-size: 24px; font-weight: 700; color: var(--foreground); }
         .cp-sub { font-size: 14px; }
         .cp-card { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px; padding: 48px 28px; }
-        .cp-ic { width: 64px; height: 64px; border-radius: 18px; background: rgba(176, 123, 82,0.14); color: var(--accent); display: flex; align-items: center; justify-content: center; }
+        .cp-ic { width: 64px; height: 64px; border-radius: 18px; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); display: flex; align-items: center; justify-content: center; }
         .cp-title { font-size: 20px; font-weight: 700; color: var(--foreground); }
         .cp-text { font-size: 15px; color: var(--muted-foreground); max-width: 440px; line-height: 1.6; }
         .cp-btn { margin-top: 6px; padding: 12px 24px; border: none; border-radius: 12px; background: var(--accent); color: var(--accent-foreground); font-family: inherit; font-size: 15px; font-weight: 600; cursor: pointer; transition: opacity 0.15s; }

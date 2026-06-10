@@ -1,9 +1,10 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { Globe } from 'lucide-react'
 import { useLang } from '../context/LanguageContext.jsx'
 
 const NAV_EN = {
-  '/': 'Home', '/schedule': 'Schedule', '/sport': 'Sport', '/health': 'Health',
+  '/': 'Home', '/schedule': 'Schedule', '/health': 'Health',
   '/nutrition': 'Nutrition', '/mail': 'Mail', '/history': 'History', '/connections': 'Connections'
 }
 
@@ -27,21 +28,6 @@ const NAV_ITEMS = [
         <line x1="16" y1="2" x2="16" y2="6"/>
         <line x1="8" y1="2" x2="8" y2="6"/>
         <line x1="3" y1="10" x2="21" y2="10"/>
-      </svg>
-    )
-  },
-  {
-    path: '/sport',
-    label: 'Спорт',
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="m6.5 6.5 11 11"/>
-        <path d="m21 21-1-1"/>
-        <path d="m3 3 1 1"/>
-        <path d="m18 22 4-4"/>
-        <path d="m2 6 4-4"/>
-        <path d="m3 10 7-7"/>
-        <path d="m14 21 7-7"/>
       </svg>
     )
   },
@@ -139,9 +125,18 @@ export default function FluidMenu() {
         })}
       </div>
 
-      <button className="lang-toggle" onClick={toggle} title={lang === 'en' ? 'Переключить на русский' : 'Switch to English'}>
-        {lang === 'en' ? 'RU' : 'EN'}
-      </button>
+      <motion.button
+        className="lang-toggle"
+        onClick={toggle}
+        title={lang === 'en' ? 'Переключить на русский' : 'Switch to English'}
+        aria-label={lang === 'en' ? 'Переключить на русский' : 'Switch to English'}
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.95 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      >
+        <Globe size={16} strokeWidth={1.5} />
+        <span className="lang-toggle-code">{lang === 'en' ? 'RU' : 'EN'}</span>
+      </motion.button>
 
       <style>{`
         .fluid-menu {
@@ -182,15 +177,27 @@ export default function FluidMenu() {
         }
         .lang-toggle {
           flex-shrink: 0;
-          width: 40px; height: 32px;
-          border-radius: 10px;
-          border: 1px solid var(--border);
-          background: var(--bg-secondary);
-          color: var(--muted-foreground);
-          font-family: inherit; font-size: 12px; font-weight: 700;
-          cursor: pointer; transition: all 0.15s;
+          width: 44px; height: 44px;
+          border-radius: var(--radius-md);
+          border: none;
+          background: transparent;
+          color: var(--text-muted);
+          font-family: inherit;
+          cursor: pointer;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 2px;
+          transition: background 0.2s, color 0.2s;
         }
-        .lang-toggle:hover { color: var(--accent); border-color: var(--accent); }
+        .lang-toggle-code {
+          font-size: 9px;
+          font-weight: 700;
+          letter-spacing: 0.04em;
+          line-height: 1;
+        }
+        .lang-toggle:hover { background: var(--bg-tile); color: var(--accent); }
         .nav-item {
           position: relative;
           width: 44px;
@@ -208,7 +215,7 @@ export default function FluidMenu() {
           background: var(--bg-secondary);
         }
         .nav-item.active {
-          background: rgba(176, 123, 82, 0.12);
+          background: var(--bg-tile);
         }
         .nav-icon {
           display: flex;

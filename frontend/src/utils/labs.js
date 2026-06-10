@@ -11,7 +11,7 @@ import { mskNow } from './time.js'
 // Справочник показателей с нормами, сгруппированный по панелям.
 export const PANELS = [
   {
-    name: 'Общий анализ крови', icon: '🩸',
+    name: 'Общий анализ крови', iconKey: 'lab-blood',
     markers: [
       { name: 'Гемоглобин',  unit: 'г/л',     min: 130, max: 170 },
       { name: 'Эритроциты',  unit: '×10¹²/л', min: 4.0, max: 5.5 },
@@ -22,7 +22,7 @@ export const PANELS = [
     ]
   },
   {
-    name: 'Биохимия крови', icon: '🧪',
+    name: 'Биохимия крови', iconKey: 'lab-liver',
     markers: [
       { name: 'Глюкоза',          unit: 'ммоль/л',  min: 3.9,  max: 5.6 },
       { name: 'Холестерин общий', unit: 'ммоль/л',  min: 3.0,  max: 5.2 },
@@ -34,7 +34,7 @@ export const PANELS = [
     ]
   },
   {
-    name: 'Гормоны', icon: '⚗️',
+    name: 'Гормоны', iconKey: 'lab-hormones',
     markers: [
       { name: 'ТТГ',         unit: 'мЕд/л',   min: 0.4, max: 4.0 },
       { name: 'Тестостерон', unit: 'нмоль/л', min: 8.6, max: 29 },
@@ -117,20 +117,20 @@ export function extraMarkers(history) {
 // ────────────────────────────────────────────────────────────────────────────
 
 export const MARKER_GROUPS = [
-  { key: 'blood',        name: 'Общий анализ крови',     icon: '🩸' },
-  { key: 'lipids',       name: 'Липиды и сердце',         icon: '🫀' },
-  { key: 'metabolic',    name: 'Сахар и обмен',           icon: '🍬' },
-  { key: 'liver',        name: 'Печень',                  icon: '🧪' },
-  { key: 'kidney',       name: 'Почки',                   icon: '🧫' },
-  { key: 'iron',         name: 'Обмен железа',            icon: '🧲' },
-  { key: 'vitamins',     name: 'Витамины',                icon: '💊' },
-  { key: 'electrolytes', name: 'Электролиты и минералы',  icon: '🧂' },
-  { key: 'thyroid',      name: 'Щитовидная железа',       icon: '🦋' },
-  { key: 'hormones',     name: 'Гормоны',                 icon: '⚗️' },
-  { key: 'inflammation', name: 'Воспаление и иммунитет',  icon: '🔥' },
-  { key: 'coagulation',  name: 'Свёртываемость',          icon: '🩹' },
-  { key: 'infections',   name: 'Инфекции и антитела',     icon: '🦠' },
-  { key: 'other',        name: 'Другие показатели',       icon: '🔬' }
+  { key: 'blood',        name: 'Общий анализ крови',     iconKey: 'lab-blood' },
+  { key: 'lipids',       name: 'Липиды и сердце',         iconKey: 'lab-lipids' },
+  { key: 'metabolic',    name: 'Сахар и обмен',           iconKey: 'lab-metabolic' },
+  { key: 'liver',        name: 'Печень',                  iconKey: 'lab-liver' },
+  { key: 'kidney',       name: 'Почки',                   iconKey: 'lab-kidney' },
+  { key: 'iron',         name: 'Обмен железа',            iconKey: 'lab-iron' },
+  { key: 'vitamins',     name: 'Витамины',                iconKey: 'lab-vitamins' },
+  { key: 'electrolytes', name: 'Электролиты и минералы',  iconKey: 'lab-electrolytes' },
+  { key: 'thyroid',      name: 'Щитовидная железа',       iconKey: 'lab-thyroid' },
+  { key: 'hormones',     name: 'Гормоны',                 iconKey: 'lab-hormones' },
+  { key: 'inflammation', name: 'Воспаление и иммунитет',  iconKey: 'lab-inflammation' },
+  { key: 'coagulation',  name: 'Свёртываемость',          iconKey: 'lab-coagulation' },
+  { key: 'infections',   name: 'Инфекции и антитела',     iconKey: 'lab-infections' },
+  { key: 'other',        name: 'Другие показатели',       iconKey: 'lab-other' }
 ]
 
 // def: [name, group, unit, min, max, priority, ...aliases]

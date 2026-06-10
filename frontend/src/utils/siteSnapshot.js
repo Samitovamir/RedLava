@@ -5,9 +5,12 @@
 import { WORKOUTS, WORKOUT_TYPES, WEEK_STATS, GARMIN } from './workouts.js'
 import { WHOOP, WHOOP_DAYS, recoveryLabel } from './whoop.js'
 import { INITIAL_REPORTS, buildHistory, markerStatus, STATUS_INFO, rangeText, resolveMarker } from './labs.js'
+import { dueRetests } from './healthSignal.js'
 import { loadProfile, computeTarget, GOALS } from './nutrition.js'
 import { mskNow } from './time.js'
 
+// Текстовые подписи приоритетов (соответствуют label из PRIORITIES в AddEventModal;
+// держим локально, чтобы util не тянул компонентный модуль)
 const PRIO = { 1: 'неотложный', 2: 'важный', 3: 'обычный' }
 const WD = ['воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота']
 
@@ -111,9 +114,17 @@ export function buildSiteSnapshot({ events = [], history = [], facts = [] } = {}
     : 'Whoop не подключён. Данных о восстановлении, сне, HRV и пульсе НЕТ. Не придумывай их — если спросят, скажи, что нужно подключить Whoop.'
 
   const { flagged, hasData } = labsFlagged()
-  const labs = !hasData
+  // Пора пересдать: показатели вне нормы, по которым прошёл срок контроля (тот же
+  // расчёт, что и у сигнала «Здоровье» на Главной — чтобы ИИ не противоречил карточке).
+  let retestReports = INITIAL_REPORTS
+  try { const s = localStorage.getItem('albert-labs'); if (s) retestReports = JSON.parse(s) } catch { /* ignore */ }
+  const due = dueRetests(retestReports)
+  const retestNote = due.length
+    ? ` Пора пересдать (прошёл срок контроля по отклонению): ${due.map(d => `${d.name} (последний раз ${d.daysAgo} дн. назад)`).join('; ')}. Можешь мягко напомнить об этом, если к слову — без нагнетания.`
+    : ''
+  const labs = (!hasData
     ? 'Анализы крови пока не загружены (подключите Яндекс.Диск с файлами). Не придумывай показатели.'
-    : flagged.length ? `Вне нормы: ${flagged.join('; ')}. Остальные показатели в норме.` : 'все показатели в норме.'
+    : flagged.length ? `Вне нормы: ${flagged.join('; ')}. Остальные показатели в норме.` : 'все показатели в норме.') + retestNote
 
   // Питание — цель КБЖУ из профиля + наличие меню недели
   let nutrition

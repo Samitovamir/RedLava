@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
+import { Check } from 'lucide-react'
 import MailForm from '../components/MailForm.jsx'
 import { useT } from '../context/LanguageContext.jsx'
 
@@ -15,7 +16,7 @@ export default function Mail() {
       sent: 'Письмо отправлено',
       recipient: 'Получатель:',
       again: 'Написать ещё',
-      hint: 'Можно написать письмо здесь, а можно просто попросить помощника: «напиши контакту, что заберу абонемент завтра» — он подготовит текст, а вы проверите и отправите.',
+      hint: 'Напишите письмо сами или попросите помощника подготовить текст.',
       sendLabel: 'Отправить письмо',
     },
     en: {
@@ -24,7 +25,7 @@ export default function Mail() {
       sent: 'Email sent',
       recipient: 'Recipient:',
       again: 'Write another',
-      hint: 'You can write an email here, or simply ask the assistant: “tell Igor I’ll pick up the membership tomorrow” — it will draft the text, and you review and send it.',
+      hint: 'Write the email yourself or ask the assistant to draft it.',
       sendLabel: 'Send email',
     },
   })
@@ -40,7 +41,7 @@ export default function Mail() {
         initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
         {sentTo ? (
           <div className="mail-done">
-            <div className="mail-done-icon">✓</div>
+            <div className="mail-done-icon"><Check size={26} strokeWidth={2} /></div>
             <div className="mail-done-title">{t.sent}</div>
             <div className="mail-done-sub muted">{t.recipient} {sentTo}</div>
             <button className="mail-done-btn" onClick={() => { setSentTo(null); setFormKey(k => k + 1) }}>{t.again}</button>
@@ -54,18 +55,17 @@ export default function Mail() {
       </motion.div>
 
       <style>{`
-        .mail-page { display: flex; flex-direction: column; gap: 24px; max-width: 720px; padding-bottom: 20px; }
+        .mail-page { display: flex; flex-direction: column; gap: 24px; max-width: 720px; margin-inline: auto; padding-bottom: 20px; }
         .page-header { display: flex; align-items: baseline; gap: 12px; }
         .page-header h2 { font-size: 24px; font-weight: 700; }
         .muted { color: var(--muted); }
-        .mail-card { display: flex; flex-direction: column; gap: 16px; }
-        .mail-hint { font-size: 14px; line-height: 1.6; }
+        .mail-hint { font-size: 13.5px; line-height: 1.55; color: var(--text-faint); margin-bottom: 18px; }
         .mail-done { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 30px 0; text-align: center; }
-        .mail-done-icon { width: 56px; height: 56px; border-radius: 50%; background: rgba(126, 155, 110,0.15); color: var(--green); font-size: 28px; display: flex; align-items: center; justify-content: center; }
+        .mail-done-icon { width: 56px; height: 56px; border-radius: 50%; background: color-mix(in srgb, var(--status-ok) 15%, transparent); color: var(--status-ok); display: flex; align-items: center; justify-content: center; }
         .mail-done-title { font-size: 19px; font-weight: 700; color: var(--foreground); }
         .mail-done-sub { font-size: 14px; }
-        .mail-done-btn { margin-top: 10px; padding: 11px 20px; border-radius: 12px; border: none; background: var(--accent); color: var(--accent-foreground); font-family: inherit; font-size: 14.5px; font-weight: 700; cursor: pointer; }
-        .mail-done-btn:hover { opacity: .9; }
+        .mail-done-btn { margin-top: 10px; padding: 11px 20px; border-radius: 12px; border: none; font-family: inherit; font-size: 14.5px; font-weight: 700; cursor: pointer; }
+        .mail-done-btn:hover { opacity: .92; }
       `}</style>
     </div>
   )

@@ -346,7 +346,7 @@ export default function Connections() {
                     {svcName(svc)}
                     {connected
                       ? <span className="conn-badge on">{t.connected}</span>
-                      : <span className="conn-badge">{t.notConnected}</span>}
+                      : <span className="conn-badge off"><span className="conn-dot" />{t.notConnected}</span>}
                     {!svc.live && <span className="conn-soon">{t.demo}</span>}
                   </div>
                   <div className="conn-desc muted">{svcDesc(svc)}</div>
@@ -427,7 +427,7 @@ export default function Connections() {
         transition={{ duration: 0.35, delay: 0.1 }}
       >
         <div className="conn-row">
-          <span className="conn-icon" style={{ background: 'rgba(176, 123, 82,0.13)', color: 'var(--accent)' }}>
+          <span className="conn-icon" style={{ background: 'color-mix(in srgb, var(--accent) 13%, transparent)', color: 'var(--accent)' }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
             </svg>
@@ -476,66 +476,69 @@ export default function Connections() {
       </div>
 
       <style>{`
-        .conn-page { display: flex; flex-direction: column; gap: 18px; max-width: 760px; padding-bottom: 24px; }
+        .conn-page { display: flex; flex-direction: column; gap: 18px; max-width: 760px; margin-inline: auto; width: 100%; padding-bottom: 24px; }
         .page-header { display: flex; align-items: baseline; gap: 12px; }
         .conn-intro { font-size: 15px; line-height: 1.6; max-width: 620px; margin: -4px 0 2px; }
         .conn-notice {
-          background: rgba(176, 123, 82,0.12); border: 1px solid var(--accent);
+          background: color-mix(in srgb, var(--accent) 12%, transparent); border: 1px solid var(--accent);
           color: var(--foreground); border-radius: 12px; padding: 12px 16px; font-size: 14px;
         }
         .conn-list { display: flex; flex-direction: column; gap: 14px; }
         .conn-card { padding: 18px 20px; transition: border-color 0.2s, box-shadow 0.2s; }
-        .conn-card.on { border-color: rgba(126, 155, 110,0.4); box-shadow: 0 0 0 1px rgba(126, 155, 110,0.15); }
+        .conn-card.on { border-color: color-mix(in srgb, var(--status-ok) 40%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--status-ok) 15%, transparent); }
         .conn-row { display: flex; align-items: center; gap: 16px; }
         .conn-icon { width: 48px; height: 48px; border-radius: 14px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
         .conn-info { flex: 1; min-width: 0; }
         .conn-name { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 700; color: var(--foreground); }
-        .conn-badge { font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: 20px; background: var(--bg-secondary); color: var(--muted-foreground); }
-        .conn-badge.on { background: rgba(126, 155, 110,0.16); color: var(--green); }
-        .conn-soon { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--yellow); background: rgba(201, 138, 94,0.14); padding: 2px 7px; border-radius: 20px; }
+        .conn-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: 20px; background: var(--bg-tile); border: 1px solid var(--border-med); color: var(--text-secondary); }
+        /* «Не подключено» в светлой теме читалось мелко — крупнее и контрастнее (≥4.5:1), вид «Подключено» не трогаем */
+        .conn-badge.off { font-size: 12.5px; color: var(--text-secondary); }
+        .conn-badge.off .conn-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); flex-shrink: 0; }
+        .conn-badge.on { background: color-mix(in srgb, var(--status-ok) 16%, transparent); border-color: color-mix(in srgb, var(--status-ok) 32%, transparent); color: var(--status-ok); }
+        .conn-soon { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--status-warn); background: color-mix(in srgb, var(--status-warn) 14%, transparent); padding: 2px 7px; border-radius: 20px; }
         .conn-desc { font-size: 13.5px; line-height: 1.5; margin-top: 3px; }
-        .conn-account { font-size: 13px; color: var(--green); margin-top: 5px; font-weight: 500; }
+        .conn-account { font-size: 13px; color: var(--text-secondary); margin-top: 5px; font-weight: 500; }
         .conn-action { flex-shrink: 0; }
         .conn-btn { padding: 10px 18px; border-radius: 11px; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; border: 1px solid transparent; transition: all 0.15s; }
-        .conn-btn.primary { background: var(--accent); color: var(--accent-foreground); }
-        .conn-btn.primary:hover:not(:disabled) { opacity: 0.9; }
-        .conn-btn.primary:disabled { opacity: 0.5; cursor: default; }
-        .conn-btn.ghost { background: transparent; border-color: var(--border); color: var(--muted-foreground); }
+        .conn-btn.primary { background: linear-gradient(180deg, var(--accent-btn-top), var(--accent-btn-bot)); color: var(--on-accent); box-shadow: var(--shadow-btn); }
+        .conn-btn.primary:hover:not(:disabled) { filter: brightness(1.04); }
+        .conn-btn.primary:disabled { opacity: 0.5; cursor: default; box-shadow: none; }
+        .conn-btn.ghost { background: transparent; border-color: var(--border-med); color: var(--text-secondary); }
         .conn-btn.ghost:hover { color: var(--foreground); border-color: var(--accent); }
-        .conn-form { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
+        .conn-form { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-soft); display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
         .conn-field { display: flex; flex-direction: column; gap: 6px; }
-        .conn-field label { font-size: 13px; color: var(--muted-foreground); font-weight: 500; }
-        .conn-field input { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; font-family: inherit; font-size: 15px; color: var(--foreground); outline: none; transition: border-color 0.15s; }
+        .conn-field label { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
+        .conn-field input { background: var(--bg-tile); border: 1px solid var(--border-med); border-radius: 10px; padding: 12px 14px; font-family: inherit; font-size: 15px; color: var(--foreground); outline: none; transition: border-color 0.15s; }
         .conn-field input:focus { border-color: var(--accent); }
-        .conn-field input::placeholder { color: var(--muted-foreground); }
+        .conn-field input::placeholder { color: var(--text-faint); }
         .conn-form-foot { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
         .conn-note { font-size: 12.5px; line-height: 1.4; flex: 1; min-width: 200px; }
         .conn-foot { font-size: 13px; margin-top: 4px; }
         .conn-account-card { padding: 18px 20px; }
-        .conn-reset { margin-top: 8px; padding-top: 18px; border-top: 1px solid var(--border); }
+        .conn-reset { margin-top: 8px; padding-top: 18px; border-top: 1px solid var(--border-soft); }
         .conn-reset-btn {
-          background: transparent; border: 1px solid var(--border); color: var(--muted-foreground);
+          background: transparent; border: 1px solid var(--border-med); color: var(--text-secondary);
           border-radius: 11px; padding: 9px 16px; font-family: inherit; font-size: 13.5px; font-weight: 600;
           cursor: pointer; transition: all 0.15s;
         }
-        .conn-reset-btn:hover { color: var(--red); border-color: var(--red); }
+        .conn-reset-btn:hover { color: var(--status-crit); border-color: var(--status-crit); }
         .conn-reset-form { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
         .conn-reset-input {
-          background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px;
+          background: var(--bg-tile); border: 1px solid var(--border-med); border-radius: 10px;
           padding: 9px 14px; font-family: inherit; font-size: 14px; color: var(--foreground); outline: none; width: 140px;
         }
-        .conn-reset-input:focus { border-color: var(--red); }
+        .conn-reset-input:focus { border-color: var(--status-crit); }
         .conn-reset-go {
-          background: var(--red); color: #fff; border: none; border-radius: 10px;
+          background: var(--status-crit); color: var(--on-accent); border: none; border-radius: 10px;
           padding: 9px 16px; font-family: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; transition: opacity 0.15s;
         }
         .conn-reset-go:hover:not(:disabled) { opacity: 0.9; }
         .conn-reset-go:disabled { opacity: 0.5; cursor: default; }
         .conn-reset-cancel {
-          background: transparent; border: 1px solid var(--border); color: var(--muted-foreground);
+          background: transparent; border: 1px solid var(--border-med); color: var(--text-secondary);
           border-radius: 10px; padding: 9px 16px; font-family: inherit; font-size: 13.5px; cursor: pointer;
         }
-        .conn-reset-err { font-size: 13px; color: var(--red); }
+        .conn-reset-err { font-size: 13px; color: var(--status-crit); }
         @media (max-width: 560px) { .conn-row { flex-wrap: wrap; } .conn-action { width: 100%; } .conn-btn { width: 100%; } }
       `}</style>
     </div>

@@ -56,10 +56,10 @@ export function computeTarget(profile) {
 
 // Приёмы пищи: доля от дневной цели + ориентир по времени (для напоминания «оцени блюдо»)
 export const MEALS = [
-  { key: 'Завтрак', share: 0.3, hour: 9, emoji: '🌅' },
-  { key: 'Обед', share: 0.35, hour: 14, emoji: '🍲' },
-  { key: 'Перекус', share: 0.1, hour: 17, emoji: '🍎' },
-  { key: 'Ужин', share: 0.25, hour: 20, emoji: '🌙' }
+  { key: 'Завтрак', share: 0.3, hour: 9, iconKey: 'meal-breakfast' },
+  { key: 'Обед', share: 0.35, hour: 14, iconKey: 'meal-lunch' },
+  { key: 'Перекус', share: 0.1, hour: 17, iconKey: 'meal-snack' },
+  { key: 'Ужин', share: 0.25, hour: 20, iconKey: 'meal-dinner' }
 ]
 export const MEAL_KEYS = MEALS.map(m => m.key)
 

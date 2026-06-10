@@ -24,7 +24,6 @@
   --font-sans: 'Plus Jakarta Sans', sans-serif;
   --secondary: #d6d3d1;
   --background: #e7e5e4;
-  --font-serif: 'Lora', serif;
   --foreground: #1e293b;
   --destructive: #ef4444;
   --shadow-blur: 10px;
@@ -156,12 +155,34 @@ button:not(:disabled):active { transform: translateY(1px) scale(0.97); }
    БЕЗ цветных свечений. !important — чтобы перекрыть старые glow в компонентах. */
 .ds-fab, .cp-btn, .hb-send, .hc-send,
 .mail-btn.primary, .conn-btn.primary, .detail-btn.primary, .mail-done-btn,
-.nu-suggest, .nu-kitchen-card, .aem-btn.primary, .ds-pv-btn.primary, .awz-submit {
+.nu-suggest, .nu-kitchen-card, .aem-btn.primary, .ds-pv-btn.primary, .awz-submit, .vi-submit {
   box-shadow:
     inset 0 1.5px 0.5px rgba(255,255,255,0.22),
     inset 0 -2px 3px rgba(0,0,0,0.22),
-    0 3px 6px rgba(0,0,0,0.30) !important;
+    var(--shadow-btn, 0 3px 6px rgba(0,0,0,0.30)) !important;
 }
+
+/* CTA: единый акцентный градиент темы + читаемый текст (фикс «выглядит выключенной») */
+.awz-submit, .mail-btn.primary, .mail-done-btn, .conn-btn.primary,
+.hb-send, .hc-send, .aem-btn.primary, .ds-pv-btn.primary {
+  background: linear-gradient(180deg, var(--accent-btn-top), var(--accent-btn-bot)) !important;
+  color: var(--on-accent) !important;
+  border: none !important;
+}
+/* Честное disabled: нейтральная плашка + приглушённый текст — явно не активна */
+.awz-submit:disabled, .mail-btn.primary:disabled, .mail-done-btn:disabled,
+.conn-btn.primary:disabled, .hb-send:disabled, .hc-send:disabled,
+.aem-btn.primary:disabled, .ds-pv-btn.primary:disabled, .cp-btn:disabled {
+  background: var(--bg-tile) !important;
+  color: var(--text-faint) !important;
+  box-shadow: none !important;
+  border: 1px solid var(--border-med) !important;
+  opacity: 0.6; cursor: not-allowed;
+  filter: none !important;
+}
+/* Видимый фокус с клавиатуры (a11y) — во всех формах и кнопках */
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+:focus:not(:focus-visible) { outline: none; }
 
 html, body, #root {
   height: 100%;
@@ -173,8 +194,13 @@ body {
   background-color: var(--background);
   color: var(--foreground);
   -webkit-font-smoothing: antialiased;
+  /* Цифры одной ширины — метрики и KPI не «пляшут» */
+  font-variant-numeric: tabular-nums;
   overflow: hidden;
 }
+
+/* Премиальная плотность заголовков (один sans во всём продукте) */
+h1, h2, h3 { letter-spacing: -0.015em; }
 
 #root {
   display: flex;
@@ -200,10 +226,12 @@ body {
 }
 
 .card {
-  /* Плоская поверхность; объём — за счёт кромки света сверху, тени снизу и прошивки. */
-  background: var(--bg-surface);
+  /* Панель с объёмом: градиент сверху-вниз (свет падает сверху),
+     кромка света по верхней грани, тёмная — по нижней, двухслойная тень. */
+  background: linear-gradient(180deg, var(--bg-card-top, var(--bg-surface)), var(--bg-card-bot, var(--bg-surface)));
   border: 1px solid var(--border-soft);
   border-top-color: var(--edge-light);
+  border-bottom-color: var(--edge-dark, var(--border-soft));
   border-radius: var(--radius);
   padding: 20px;
   box-shadow: var(--shadow-card);
@@ -217,15 +245,16 @@ body {
   inset: 7px;
   border: 1px dashed var(--stitch);
   border-radius: calc(var(--radius) - 6px);
-  opacity: 0.8;
+  opacity: 0.9;
   pointer-events: none;
 }
 
 /* Панель-якорь (крупный вывод дня) — больше объёма + та же прошивка */
 .anchor-card {
-  background: var(--bg-surface);
+  background: linear-gradient(180deg, var(--bg-anchor-top, var(--bg-surface)), var(--bg-anchor-bot, var(--bg-surface)));
   border: 1px solid var(--border-soft);
   border-top-color: var(--edge-light);
+  border-bottom-color: var(--edge-dark, var(--border-soft));
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-anchor);
   position: relative;
@@ -235,7 +264,7 @@ body {
   position: absolute; inset: 7px;
   border: 1px dashed var(--stitch);
   border-radius: 11px;
-  opacity: 0.55; pointer-events: none;
+  opacity: 0.7; pointer-events: none;
 }
 
 .card-title {
@@ -292,46 +321,64 @@ body {
 /* Плавная смена темы */
 body { transition: background-color var(--dur-base) var(--ease), color var(--dur-base) var(--ease); }
 
-/* ТЕМА 1: ЧЁРНАЯ КОЖА (по умолчанию) */
+/* ТЕМА 1: ЧЁРНАЯ КОЖА — тёплый уголь, полированная сталь, коньячная строчка.
+   Porsche-логика: металл = управление (один интерактивный акцент),
+   коньяк = материальные детали (прошивка, отметка «сегодня/сейчас»). */
 [data-theme="black-leather"] {
-  --bg-app: #0F0F0E; --bg-surface: #191816;
-  --bg-anchor-top: #201F1C; --bg-anchor-bot: #1A1917;
-  --bg-card-top: #1B1A18; --bg-card-bot: #171614;
-  --edge-light: #34322D; --edge-dark: #100F0E; --border-soft: #2A2825;
-  --text-primary: #F2EEE6; --text-body: #DCD6CC; --text-secondary: #ABA59B; --text-muted: #807A72; --text-faint: #5E594F;
-  --accent: #7BA3C9; --accent-btn-top: #4A7BA6; --accent-btn-bot: #356087; --on-accent: #F2EEE6;
+  --bg-app: #121211; --bg-surface: #1A1A18;
+  --bg-anchor-top: #232320; --bg-anchor-bot: #1B1B19;
+  --bg-card-top: #1E1E1C; --bg-card-bot: #171716;
+  --edge-light: #35342E; --edge-dark: #0C0C0B; --border-soft: #2A2925;
+  --text-primary: #EFEEEA; --text-body: #D6D4CF; --text-secondary: #A4A29B; --text-muted: #7B7972; --text-faint: #5B5953;
+  --accent: #8FB2D4; --accent-btn-top: #5C84A8; --accent-btn-bot: #41648B; --on-accent: #F4F8FC;
+  --accent-today: #DCA26B; /* светлее --c-warm, чтобы «сейчас» не сливался с категорийной точкой */
+  --bg-tile: #232322; --border-med: #3A3933; --shadow-btn: 0 3px 8px rgba(0,0,0,0.40);
   --status-ok: #7E9B6E; --status-warn: #C98A5E; --status-crit: #A85A4A;
-  --stitch: #3E3C36;
-  --shadow-anchor: 0 18px 40px -16px rgba(0,0,0,0.7);
-  --shadow-card: 0 10px 24px -14px rgba(0,0,0,0.6);
+  --stitch: #54422F;
+  --shadow-anchor: 0 2px 4px rgba(0,0,0,0.40), 0 24px 48px -18px rgba(0,0,0,0.75);
+  --shadow-card: 0 1px 2px rgba(0,0,0,0.45), 0 14px 34px -16px rgba(0,0,0,0.65);
+  --inset-tile: inset 0 1.5px 3px rgba(0,0,0,0.35), inset 0 -1px 0 rgba(255,255,255,0.03);
+  --grain: 0.30; --vignette-top: rgba(255,255,255,0.07); --vignette-edge: rgba(0,0,0,0.32);
+  --scrim: rgba(10,10,9,0.70);
 }
 
-/* ТЕМА 2: КОРИЧНЕВАЯ КОЖА */
+/* ТЕМА 2: КОРИЧНЕВАЯ КОЖА — седло/коньяк, светлая строчка */
 [data-theme="brown-leather"] {
-  --bg-app: #14100D; --bg-surface: #241D18;
-  --bg-anchor-top: #2A211B; --bg-anchor-bot: #221A15;
-  --bg-card-top: #241D18; --bg-card-bot: #1E1611;
-  --edge-light: #463729; --edge-dark: #14100D; --border-soft: #3A2E24;
+  --bg-app: #120E0B; --bg-surface: #241D18;
+  --bg-anchor-top: #2D231C; --bg-anchor-bot: #221A15;
+  --bg-card-top: #271F19; --bg-card-bot: #1E1712;
+  --edge-light: #4A3A2B; --edge-dark: #0E0B08; --border-soft: #3A2E24;
   --text-primary: #F2E9DC; --text-body: #E6DAC8; --text-secondary: #C2B19B; --text-muted: #9C8B76; --text-faint: #6E5E4C;
   --accent: #C89B6A; --accent-btn-top: #B87844; --accent-btn-bot: #9A6035; --on-accent: #F2E9DC;
+  --accent-today: #C89B6A;
+  --bg-tile: #30261E; --border-med: #463829; --shadow-btn: 0 3px 8px rgba(0,0,0,0.40);
   --status-ok: #8A9B6B; --status-warn: #C2703F; --status-crit: #A85A4A;
-  --stitch: #5C4836;
-  --shadow-anchor: 0 18px 40px -16px rgba(0,0,0,0.7);
-  --shadow-card: 0 10px 24px -14px rgba(0,0,0,0.6);
+  --stitch: #6B543E;
+  --shadow-anchor: 0 2px 4px rgba(0,0,0,0.40), 0 24px 48px -18px rgba(0,0,0,0.75);
+  --shadow-card: 0 1px 2px rgba(0,0,0,0.45), 0 14px 34px -16px rgba(0,0,0,0.62);
+  --inset-tile: inset 0 1.5px 3px rgba(0,0,0,0.35), inset 0 -1px 0 rgba(255,255,255,0.035);
+  --grain: 0.30; --vignette-top: rgba(255,236,205,0.07); --vignette-edge: rgba(0,0,0,0.34);
+  --scrim: rgba(12,9,7,0.70);
 }
 
-/* ТЕМА 3: КРЕМОВАЯ (светлая) */
+/* ТЕМА 3: КРЕМОВАЯ (светлая) — бумага/светлая кожа, контраст поверхностей поднят */
 [data-theme="cream"] {
-  --bg-app: #F4F0E8; --bg-surface: #FBF8F2;
-  --bg-anchor-top: #EAE1D0; --bg-anchor-bot: #E8DFCE;
-  --bg-card-top: #FBF8F2; --bg-card-bot: #F7F2E9;
-  --edge-light: #FFFFFF; --edge-dark: #E2D9C8; --border-soft: #E2D9C8;
-  --text-primary: #3D3528; --text-body: #4A4234; --text-secondary: #6B6355; --text-muted: #9A8F7D; --text-faint: #B0A48E;
-  --accent: #C97B4A; --accent-btn-top: #C97B4A; --accent-btn-bot: #B0683B; --on-accent: #FBF8F2;
-  --status-ok: #7E9B6E; --status-warn: #C97B4A; --status-crit: #C0563E;
-  --stitch: #D8CDB8;
-  --shadow-anchor: 0 16px 36px -18px rgba(120,100,70,0.35);
-  --shadow-card: 0 8px 20px -14px rgba(120,100,70,0.25);
+  --bg-app: #EFE9DD; --bg-surface: #FDFBF6;
+  --bg-anchor-top: #EBE2D0; --bg-anchor-bot: #E7DDC9;
+  --bg-card-top: #FEFCF8; --bg-card-bot: #F6F0E4;
+  --edge-light: #FFFFFF; --edge-dark: #DCD2BD; --border-soft: #DFD5C0;
+  --text-primary: #3D3528; --text-body: #4A4234; --text-secondary: #5A5142; --text-muted: #6E6353; --text-faint: #8C8170;
+  --accent: #C97B4A; --accent-btn-top: #BE6E3A; --accent-btn-bot: #A55F33; --on-accent: #FBF8F2;
+  --accent-today: #B0683B;
+  --bg-tile: #EFE7D6; --border-med: #D3C5AA; --shadow-btn: 0 2px 6px rgba(120,100,70,0.18);
+  --status-ok: #7E9B6E; --status-warn: #C28A2C; --status-crit: #C0563E;
+  --stitch: #D2C3A6;
+  --shadow-anchor: 0 2px 4px rgba(120,100,70,0.10), 0 18px 40px -16px rgba(120,100,70,0.38);
+  --shadow-card: 0 1px 2px rgba(120,100,70,0.10), 0 12px 30px -14px rgba(120,100,70,0.30);
+  --inset-tile: inset 0 1.5px 3px rgba(120,100,70,0.12), inset 0 -1px 0 rgba(255,255,255,0.65);
+  --grain: 0.055; --grain-blend: multiply;
+  --vignette-top: rgba(255,255,255,0.45); --vignette-edge: rgba(120,100,70,0.10);
+  --scrim: rgba(61,53,40,0.45);
   --weave-hi: rgba(255,255,255,0.5);
   --weave-lo: rgba(120,100,70,0.05);
 }
@@ -341,13 +388,18 @@ body { transition: background-color var(--dur-base) var(--ease), color var(--dur
   --bg-app: #1E1B18; --bg-surface: #2C2825;
   --bg-anchor-top: #2C2825; --bg-anchor-bot: #29251F;
   --bg-card-top: #2C2825; --bg-card-bot: #29251F;
-  --edge-light: #3A3633; --edge-dark: #3A3633; --border-soft: #3A3633;
+  --edge-light: #46413B; --edge-dark: #1C1916; --border-soft: #3A3633;
   --text-primary: #E2E8F0; --text-body: #D1D5DB; --text-secondary: #9CA3AF; --text-muted: #9CA3AF; --text-faint: #6B7280;
   --accent: #818CF8; --accent-btn-top: #818CF8; --accent-btn-bot: #6366F1; --on-accent: #1E1B18;
-  --status-ok: #22C55E; --status-warn: #F59E0B; --status-crit: #EF4444;
+  --accent-today: #C68B52; /* чистый коньяк, НЕ равен --status-warn */
+  --bg-tile: #3E372D; --border-med: #4A4236; --shadow-btn: 0 3px 8px rgba(0,0,0,0.28);
+  --status-ok: #4FA86C; --status-warn: #DD9A3E; --status-crit: #E05C4A;
   --stitch: transparent;
   --shadow-anchor: 0 8px 28px rgba(0,0,0,0.35);
   --shadow-card: 0 1px 2px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.2);
+  --inset-tile: inset 0 1.5px 3px rgba(0,0,0,0.28);
+  --grain: 0.24; --vignette-top: rgba(255,255,255,0.04); --vignette-edge: rgba(0,0,0,0.24);
+  --scrim: rgba(15,13,11,0.70);
 }
 
 /* МОСТ: новые токены тем → «старые» имена, на которые завязаны компоненты.
@@ -358,8 +410,8 @@ body { transition: background-color var(--dur-base) var(--ease), color var(--dur
   --card: var(--bg-surface);
   --bg-card: var(--bg-surface);
   --popover: var(--bg-surface);
-  --secondary: var(--bg-surface);
-  --bg-secondary: var(--bg-surface);
+  --secondary: var(--bg-tile);
+  --bg-secondary: var(--bg-tile);
   --foreground: var(--text-primary);
   --card-foreground: var(--text-primary);
   --popover-foreground: var(--text-primary);
@@ -371,7 +423,7 @@ body { transition: background-color var(--dur-base) var(--ease), color var(--dur
   --primary-foreground: var(--on-accent);
   --ring: var(--accent);
   --border: var(--border-soft);
-  --input: var(--border-soft);
+  --input: var(--border-med);
   --border-hover: var(--accent);
   --green: var(--status-ok);
   --yellow: var(--status-warn);
@@ -380,3 +432,114 @@ body { transition: background-color var(--dur-base) var(--ease), color var(--dur
   --destructive: var(--status-crit);
   --destructive-foreground: var(--on-accent);
 }
+
+/* ============================================================
+   МАТЕРИАЛ: зерно кожи + световая виньетка.
+   Два фиксированных слоя поверх всего (pointer-events:none):
+   зерно даёт фактуру, виньетка — один источник света сверху
+   и мягкое сгущение к краям. Интенсивность — токенами темы.
+   ============================================================ */
+body::before {
+  content: "";
+  position: fixed; inset: 0;
+  z-index: 9999; pointer-events: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/><feComponentTransfer><feFuncR type='linear' slope='4' intercept='-1.5'/><feFuncG type='linear' slope='4' intercept='-1.5'/><feFuncB type='linear' slope='4' intercept='-1.5'/></feComponentTransfer></filter><rect width='140' height='140' filter='url(%23n)'/></svg>");
+  background-size: 140px 140px;
+  /* fractalNoise сам по себе низкоконтрастен (sd≈0.07), а overlay на тёмной базе
+     ещё и гасит амплитуду (result = 2·base·blend) — поэтому контраст шума поднят
+     feComponentTransfer (slope 4, симметрично вокруг 0.5 → без сдвига яркости),
+     а opacity на тёмных темах ~0.2. Приёмка: stddev 1.5–3.0 на плоском фоне.
+     cream использует multiply (см. --grain-blend). */
+  opacity: var(--grain, 0.2);
+  mix-blend-mode: var(--grain-blend, overlay);
+}
+body::after {
+  content: "";
+  position: fixed; inset: 0;
+  z-index: 9998; pointer-events: none;
+  background:
+    radial-gradient(120% 70% at 50% -10%, var(--vignette-top, rgba(255,255,255,0.04)), transparent 72%),
+    radial-gradient(100% 90% at 50% 40%, transparent 55%, var(--vignette-edge, rgba(0,0,0,0.2)) 105%);
+}
+
+/* ============================================================
+   КАТЕГОРИЙНЫЕ ЦВЕТА (по темам) + ПРИМИТИВЫ ДИЗАЙН-СИСТЕМЫ
+   Пересборка «Замок» (Porsche×CarPlay). Чисто аддитивно —
+   существующие правила не меняются. Палитра категорий = 6 хюэ
+   на тему, на которые маппятся все категории (общий блок ниже),
+   поэтому цвета переключаются вместе с темой.
+   ============================================================ */
+[data-theme="black-leather"]{ --c-warm:#C08A5E; --c-steel:#7BA3C9; --c-sage:#8AA978; --c-amber:#D2A24A; --c-rose:#C77F86; --c-neutral:#9AA0A8; }
+[data-theme="brown-leather"]{ --c-warm:#C89B6A; --c-steel:#8FA8B6; --c-sage:#9DAE72; --c-amber:#D6A24A; --c-rose:#C98E7E; --c-neutral:#A89684; }
+[data-theme="cream"]{ --c-warm:#B0683B; --c-steel:#4E7A9E; --c-sage:#5E8A55; --c-amber:#B0822A; --c-rose:#AE5E66; --c-neutral:#7A6F5C; }
+[data-theme="original"]{ --c-warm:#C98A5E; --c-steel:#6E8CA8; --c-sage:#6FA06B; --c-amber:#D6973E; --c-rose:#C77F86; --c-neutral:#9CA3AF; }
+
+[data-theme]{
+  --sidebar-width-expanded: 248px;
+  /* спорт */
+  --cat-sport-run: var(--c-warm); --cat-sport-bike: var(--c-steel); --cat-sport-swim: var(--c-sage); --cat-sport-gym: var(--c-rose); --cat-sport-walk: var(--c-amber);
+  /* события */
+  --cat-event-call: var(--c-steel); --cat-event-calendar: var(--c-warm); --cat-event-email: var(--c-sage); --cat-event-meeting: var(--c-neutral);
+  /* приоритеты */
+  --cat-pri-1: var(--status-crit); --cat-pri-2: var(--status-warn); --cat-pri-3: var(--text-secondary);
+  /* анализы (14 групп) */
+  --cat-lab-blood: var(--c-rose); --cat-lab-lipids: var(--c-warm); --cat-lab-metabolic: var(--c-amber); --cat-lab-liver: var(--c-sage); --cat-lab-kidney: var(--c-steel);
+  --cat-lab-iron: var(--c-neutral); --cat-lab-vitamins: var(--c-amber); --cat-lab-electrolytes: var(--c-steel); --cat-lab-thyroid: var(--c-rose); --cat-lab-hormones: var(--c-sage);
+  --cat-lab-inflammation: var(--status-warn); --cat-lab-coagulation: var(--c-rose); --cat-lab-infections: var(--status-crit); --cat-lab-other: var(--c-neutral);
+  /* приёмы пищи */
+  --cat-meal-breakfast: var(--c-amber); --cat-meal-lunch: var(--c-sage); --cat-meal-snack: var(--c-rose); --cat-meal-dinner: var(--c-steel);
+}
+
+/* ===== ПРИМИТИВЫ (.ds-*) — единый источник правды для атомов ===== */
+.ds-btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  font-family:inherit; font-weight:600; line-height:1; white-space:nowrap;
+  border:1px solid transparent; border-radius:var(--radius-md); cursor:pointer;
+  padding:11px 18px; font-size:14px; color:var(--text-body); background:var(--bg-tile);
+  transition:background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), filter var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+.ds-btn:active:not(:disabled){ transform:translateY(1px) scale(.985); }
+.ds-btn--sm{ padding:8px 13px; font-size:13px; border-radius:var(--radius-sm); }
+.ds-btn--lg{ padding:13px 22px; font-size:15px; }
+.ds-btn--primary{
+  background:linear-gradient(180deg, var(--accent-btn-top), var(--accent-btn-bot)); color:var(--on-accent); border-color:transparent;
+  box-shadow: inset 0 1.5px 0.5px rgba(255,255,255,0.18), var(--shadow-btn);
+}
+.ds-btn--primary:hover:not(:disabled){ filter:brightness(1.06); }
+.ds-btn--ghost{ background:transparent; color:var(--text-secondary); }
+.ds-btn--ghost:hover:not(:disabled){ color:var(--accent); background:var(--bg-tile); }
+.ds-btn--subtle{ background:var(--bg-tile); border-color:var(--border-med); color:var(--text-body); }
+.ds-btn--subtle:hover:not(:disabled){ border-color:var(--accent); }
+.ds-btn--danger{ background:var(--status-crit); color:var(--on-accent); }
+.ds-btn--success{ background:var(--status-ok); color:var(--on-accent); }
+.ds-btn:disabled{ background:var(--bg-tile); color:var(--text-faint); border-color:var(--border-med); box-shadow:none; opacity:.6; cursor:not-allowed; filter:none; }
+.ds-btn--icon{ padding:0; width:38px; height:38px; }
+.ds-btn--icon.ds-btn--sm{ width:32px; height:32px; }
+.ds-btn--icon.ds-btn--lg{ width:44px; height:44px; }
+
+.ds-field{ display:flex; flex-direction:column; gap:6px; }
+.ds-field + .ds-field{ margin-top:16px; }
+.ds-field__label{ font-size:12.5px; font-weight:500; letter-spacing:.01em; color:var(--text-secondary); }
+.ds-input{
+  width:100%; box-sizing:border-box; background:var(--bg-tile); border:1px solid var(--border-med); border-radius:var(--radius-md);
+  box-shadow:var(--inset-tile, none);  /* поле «утоплено» в кожу */
+  padding:12px 14px; font-family:inherit; font-size:15px; color:var(--foreground); outline:none; transition:border-color var(--dur-fast) var(--ease);
+}
+.ds-input:focus{ border-color:var(--accent); }
+.ds-input::placeholder{ color:var(--text-faint); }
+
+.ds-chip{
+  display:inline-flex; align-items:center; gap:6px; padding:6px 11px; border-radius:999px; font-size:12.5px; font-weight:500;
+  background:var(--bg-tile); border:1px solid var(--border-soft); color:var(--text-secondary); cursor:default;
+  transition:border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+.ds-chip--button{ cursor:pointer; }
+.ds-chip--button:hover{ border-color:var(--border-med); }
+.ds-chip--active{ border-color:var(--accent); color:var(--foreground); box-shadow:inset 0 0 0 1px var(--accent); }
+.ds-chip__dot{ width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+
+.ds-pill{ display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:500; background:var(--bg-tile); color:var(--text-secondary); }
+.ds-pill__dot{ width:7px; height:7px; border-radius:50%; flex-shrink:0; background:currentColor; }
+.ds-pill--ok{ color:var(--status-ok); }
+.ds-pill--warn{ color:var(--status-warn); }
+.ds-pill--crit{ color:var(--status-crit); }
