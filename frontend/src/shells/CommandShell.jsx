@@ -1,0 +1,167 @@
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import Home from '../pages/Home.jsx'
+import Schedule from '../pages/Schedule.jsx'
+import Health from '../pages/Health.jsx'
+import Nutrition from '../pages/Nutrition.jsx'
+import MailPage from '../pages/Mail.jsx'
+import History from '../pages/History.jsx'
+import Connections from '../pages/Connections.jsx'
+import Settings from '../pages/Settings.jsx'
+import StatusStrip from '../components/StatusStrip.jsx'
+import TodayTimelineStrip from '../components/TodayTimelineStrip.jsx'
+import DayStatusStrip from '../components/DayStatusStrip.jsx'
+import RecentActions from '../components/RecentActions.jsx'
+import AIWorkZone from '../components/AIWorkZone.jsx'
+import { useT, useLang } from '../context/LanguageContext.jsx'
+import { mskNow } from '../utils/time.js'
+
+/*
+  Оболочка «Командный центр» — рабочий стол: НИЧЕГО не «переходит».
+  Сверху статус-строка и вкладки; слева постоянная панель «Сегодня»,
+  справа постоянный «Помощник»; центр переключается вкладками мгновенно
+  (без анимаций страниц — как панели терминала).
+*/
+
+const TABS = [
+  { path: '/', ru: 'Обзор', en: 'Overview' },
+  { path: '/schedule', ru: 'Расписание', en: 'Schedule' },
+  { path: '/health', ru: 'Здоровье', en: 'Health' },
+  { path: '/nutrition', ru: 'Питание', en: 'Nutrition' },
+  { path: '/mail', ru: 'Письма', en: 'Mail' },
+  { path: '/history', ru: 'История', en: 'History' },
+  { path: '/connections', ru: 'Связь', en: 'Services' },
+  { path: '/settings', ru: 'Настройки', en: 'Settings' },
+]
+
+const MONTHS_RU = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
+
+export default function CommandShell() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const { lang } = useLang()
+  const t = useT({
+    ru: { today: 'Сегодня', assistant: 'Помощник' },
+    en: { today: 'Today', assistant: 'Assistant' },
+  })
+  const d = mskNow()
+  const dateStr = lang === 'en' ? `${d.getDate()}.${String(d.getMonth() + 1).padStart(2, '0')}` : `${d.getDate()} ${MONTHS_RU[d.getMonth()]}`
+  const isActive = (p) => (p === '/' ? location.pathname === '/' : location.pathname.startsWith(p))
+
+  return (
+    <div className="command-shell">
+      <StatusStrip />
+
+      <nav className="cmd-tabs" role="navigation">
+        {TABS.map((tb) => (
+          <button
+            key={tb.path}
+            className={`cmd-tab ${isActive(tb.path) ? 'active' : ''}`}
+            onClick={() => navigate(tb.path)}
+          >
+            {lang === 'en' ? tb.en : tb.ru}
+          </button>
+        ))}
+      </nav>
+
+      <div className="cmd-body">
+        <aside className="cmd-pane cmd-left">
+          <div className="cmd-pane-label">{t.today} · {dateStr}</div>
+          <TodayTimelineStrip />
+          <DayStatusStrip />
+          <RecentActions limit={6} />
+        </aside>
+
+        <main className="cmd-pane cmd-center">
+          <Routes location={location}>
+            <Route path="/" element={<Home />} />
+            <Route path="/schedule" element={<Schedule />} />
+            <Route path="/sport" element={<Navigate to="/health" replace />} />
+            <Route path="/health" element={<Health />} />
+            <Route path="/nutrition" element={<Nutrition />} />
+            <Route path="/mail" element={<MailPage />} />
+            <Route path="/history" element={<History />} />
+            <Route path="/connections" element={<Connections />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </main>
+
+        <aside className="cmd-pane cmd-right">
+          <div className="cmd-pane-label">{t.assistant}</div>
+          <AIWorkZone />
+        </aside>
+      </div>
+
+      <style>{`
+        .command-shell { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        .command-shell .status-strip { left: 0; }
+
+        .cmd-tabs {
+          display: flex; gap: 4px; flex-shrink: 0;
+          margin-top: var(--status-strip-h, 42px);
+          padding: 8px 16px;
+          border-bottom: 1px solid var(--border);
+          background: var(--bg-app);
+          overflow-x: auto; scrollbar-width: none;
+        }
+        .cmd-tabs::-webkit-scrollbar { display: none; }
+        .cmd-tab {
+          padding: 7px 14px; border: 1px solid transparent; border-radius: 9px;
+          background: none; font-family: inherit; font-size: 13px; font-weight: 600;
+          color: var(--text-muted); cursor: pointer; white-space: nowrap;
+          transition: color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+        }
+        .cmd-tab:hover { color: var(--text-body); background: var(--bg-tile); }
+        .cmd-tab.active {
+          color: var(--text-primary);
+          background: var(--bg-tile);
+          border-color: var(--border-med);
+          box-shadow: inset 0 -2px 0 var(--accent);
+        }
+
+        .cmd-body {
+          flex: 1; min-height: 0;
+          display: grid;
+          grid-template-columns: 300px minmax(0, 1fr) 360px;
+          gap: 0;
+        }
+        .cmd-pane { overflow-y: auto; min-height: 0; padding: 16px; }
+        .cmd-left { border-right: 1px solid var(--border); display: flex; flex-direction: column; gap: 14px; }
+        .cmd-right { border-left: 1px solid var(--border); display: flex; flex-direction: column; gap: 14px; }
+        .cmd-center { padding: 20px 24px 64px; }
+        .cmd-pane-label {
+          font-size: 12px; font-weight: 700; color: var(--text-secondary);
+          text-transform: uppercase; letter-spacing: 0.07em;
+        }
+
+        /* Центр — рабочая область: страницы без внешних ограничений ширины */
+        .cmd-center .schedule-layout { height: calc(100vh - 240px); }
+
+        /* Помощник в узкой панели: шапка переносится, вкладки своей строкой */
+        .cmd-right .ai-work-zone { min-width: 0; }
+        .cmd-right .awz-head { flex-wrap: wrap; gap: 10px; }
+        .cmd-right .awz-switch { width: 100%; display: flex; }
+        .cmd-right .awz-switch .awz-tab { flex: 1; }
+
+        /* Каскад только при первом входе центра */
+        @media (prefers-reduced-motion: no-preference) {
+          .cmd-center > * > * { animation: block-rise 0.32s var(--ease) backwards; }
+          .cmd-center > * > :nth-child(2) { animation-delay: 0.04s; }
+          .cmd-center > * > :nth-child(3) { animation-delay: 0.08s; }
+          .cmd-center > * > :nth-child(n+4) { animation-delay: 0.12s; }
+        }
+
+        @media (max-width: 1100px) {
+          .command-shell { height: auto; overflow: visible; }
+          .cmd-body { grid-template-columns: 1fr; }
+          .cmd-pane { overflow-y: visible; }
+          .cmd-left { border-right: none; border-bottom: 1px solid var(--border); }
+          .cmd-right { border-left: none; border-top: 1px solid var(--border); }
+        }
+        @media (max-width: 640px) {
+          .cmd-tabs { margin-top: 0; }
+        }
+      `}</style>
+    </div>
+  )
+}

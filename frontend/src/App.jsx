@@ -6,7 +6,9 @@ import FluidMenu from './components/FluidMenu.jsx'
 import WhatsNew from './components/WhatsNew.jsx'
 import MailModal from './components/MailModal.jsx'
 import DemoBanner from './components/DemoBanner.jsx'
-import StatusStrip from './components/StatusStrip.jsx'
+import CockpitShell from './shells/CockpitShell.jsx'
+import JournalShell from './shells/JournalShell.jsx'
+import CommandShell from './shells/CommandShell.jsx'
 import { useLayout } from './layout.js'
 import { isGuest } from './api/authFetch.js'
 import { EventsProvider } from './context/EventsContext.jsx'
@@ -54,12 +56,21 @@ function AnimatedRoutes() {
   )
 }
 
-// Глобальный «хром» раскладок: статус-строка «Командного центра».
-// Отдельным компонентом — useNavigate/useEvents внутри StatusStrip требуют
-// Router/Events-контексты, а смена раскладки не должна перерисовывать всё App.
-function Chrome() {
+// Раскладка = ОБОЛОЧКА сайта: своя навигация, окна и структура при общих данных.
+// classic — разделы+сайдбар (как было); cockpit — весь сайт на одном экране,
+// разделы всплывают окнами; journal — главы с вкладками сверху; command —
+// рабочий стол из трёх постоянных панелей.
+function ShellRouter() {
   const layout = useLayout()
-  return layout === 'command' ? <StatusStrip /> : null
+  if (layout === 'cockpit') return <CockpitShell />
+  if (layout === 'journal') return <JournalShell />
+  if (layout === 'command') return <CommandShell />
+  return (
+    <>
+      <FluidMenu />
+      <AnimatedRoutes />
+    </>
+  )
 }
 
 export default function App() {
@@ -91,9 +102,7 @@ export default function App() {
         <WhatsNew />
         <DemoBanner />
         <MailModal />
-        <FluidMenu />
-        <Chrome />
-        <AnimatedRoutes />
+        <ShellRouter />
       </div>
     </BrowserRouter>
     </EventsProvider>

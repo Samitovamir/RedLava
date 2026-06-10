@@ -561,13 +561,11 @@ body::after {
    classic — без правил (текущая компоновка). Темы работают в каждой.
    ============================================================ */
 
-/* --- Командный центр: статус-строка сверху, контент ниже неё --- */
+/* --- Командный центр: глобальная статус-строка (оболочка CommandShell) --- */
 html[data-layout="command"] { --status-strip-h: 42px; }
-html[data-layout="command"] .page-content { padding-top: calc(32px + var(--status-strip-h)); }
 /* Демо-бейдж опускается под статус-строку, чтобы не перекрывались */
 html[data-layout="command"] .demo-banner { top: calc(var(--status-strip-h) + 10px); }
 @media (max-width: 640px) {
-  html[data-layout="command"] .page-content { padding-top: 16px; }
   html[data-layout="command"] .demo-banner { top: 14px; }
 }
 

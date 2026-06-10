@@ -6,7 +6,6 @@ import {
   Plug, Settings, MoreHorizontal,
 } from 'lucide-react'
 import { useLang } from '../context/LanguageContext.jsx'
-import { useLayout } from '../layout.js'
 
 /*
   Навигация (CarPlay-рельс):
@@ -37,14 +36,10 @@ export default function FluidMenu() {
   const location = useLocation()
   const navigate = useNavigate()
   const { lang } = useLang()
-  // userPin: явный выбор владельца (null — не выбирал). В «Командном центре»
-  // рельс по умолчанию закреплён, но явный клик по логотипу важнее раскладки.
-  const [userPin, setUserPin] = useState(() => {
-    try { const v = localStorage.getItem(PIN_KEY); return v === null ? null : v === '1' } catch { return null }
+  const [pinned, setPinnedState] = useState(() => {
+    try { return localStorage.getItem(PIN_KEY) === '1' } catch { return false }
   })
-  const layout = useLayout()
-  const pinned = userPin ?? (layout === 'command')
-  const setPinned = () => setUserPin(!pinned)
+  const setPinned = () => setPinnedState(v => !v)
   const [hovered, setHovered] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
   const tIn = useRef(null)
@@ -52,12 +47,14 @@ export default function FluidMenu() {
   const expanded = pinned || hovered
 
   useEffect(() => {
-    // запоминаем только явный выбор — дефолт раскладки не затирает предпочтение
-    try { if (userPin !== null) localStorage.setItem(PIN_KEY, userPin ? '1' : '0') } catch { /* ignore */ }
+    try { localStorage.setItem(PIN_KEY, pinned ? '1' : '0') } catch { /* ignore */ }
     // контент уезжает вправо только при закреплённом рельсе
     if (pinned) document.documentElement.setAttribute('data-nav-pinned', '')
     else document.documentElement.removeAttribute('data-nav-pinned')
-  }, [userPin, pinned])
+  }, [pinned])
+
+  // Рельс живёт только в «Классике»: при смене оболочки снимаем сдвиг контента
+  useEffect(() => () => document.documentElement.removeAttribute('data-nav-pinned'), [])
 
   // задержки раскрытия/закрытия — чтобы рельс не мерцал при проносе курсора
   const enter = () => { clearTimeout(tOut.current); tIn.current = setTimeout(() => setHovered(true), 150) }

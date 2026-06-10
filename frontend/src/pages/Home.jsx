@@ -8,8 +8,6 @@ import HealthBrief from '../components/HealthBrief.jsx'
 import HealthSignal from '../components/HealthSignal.jsx'
 import TodaySignal from '../components/TodaySignal.jsx'
 import DayStatusStrip from '../components/DayStatusStrip.jsx'
-import TodayTimelineStrip from '../components/TodayTimelineStrip.jsx'
-import RecentActions from '../components/RecentActions.jsx'
 import { useLayout } from '../layout.js'
 import { getQuoteOfDay } from '../utils/quotes.js'
 import { useEvents } from '../context/EventsContext.jsx'
@@ -114,8 +112,8 @@ export default function Home() {
   const quoteStr = quote.text
   const authorStr = `— ${quote.author}`
 
-  // Раскладка («Настройки → Раскладка»): classic/journal/cockpit различаются CSS,
-  // command пересобирает Главную в три колонки структурно.
+  // Раскладка: в «Командном центре» Главная — компактный обзор центра экрана
+  // (лента дня/статусы/помощник живут в постоянных панелях оболочки).
   const layout = useLayout()
   const scheduleCardEls = cards.map((c) => (
     <motion.div
@@ -149,19 +147,9 @@ export default function Home() {
       <TodaySignal />
 
       {layout === 'command' ? (
-        <div className="home-cmd">
-          <div className="cmd-col">
-            {scheduleCardEls}
-            <TodayTimelineStrip />
-          </div>
-          <div className="cmd-col">
-            <HealthSignal />
-            <DayStatusStrip />
-          </div>
-          <div className="cmd-col">
-            <AIWorkZone />
-            <RecentActions />
-          </div>
+        <div className="quick-cards">
+          {scheduleCardEls}
+          <HealthSignal />
         </div>
       ) : (
         <>
@@ -171,8 +159,6 @@ export default function Home() {
           </div>
 
           <DayStatusStrip />
-
-          {layout === 'cockpit' && <TodayTimelineStrip />}
 
           <AIWorkZone />
         </>
@@ -291,31 +277,7 @@ export default function Home() {
           align-items: stretch;
         }
 
-        /* ===== РАСКЛАДКА «КОКПИТ»: фиксированные зоны, минимум скролла ===== */
-        html[data-layout="cockpit"] .home-page {
-          display: grid;
-          grid-template-columns: 1fr 1fr 1fr;
-          gap: 16px;
-          align-items: stretch;
-        }
-        html[data-layout="cockpit"] .home-header { grid-column: 1 / -1; }
-        html[data-layout="cockpit"] .today-signal { grid-column: 1 / 3; grid-row: 2; }
-        /* Обёртка quick-cards растворяется: карточки сами становятся зонами сетки */
-        html[data-layout="cockpit"] .quick-cards { display: contents; }
-        html[data-layout="cockpit"] .quick-card:not(.signal-card) { grid-column: 3; grid-row: 2; }
-        html[data-layout="cockpit"] .signal-card { grid-column: 1; grid-row: 3; }
-        html[data-layout="cockpit"] .day-strip {
-          grid-column: 2 / -1; grid-row: 3;
-          align-content: center;
-        }
-        html[data-layout="cockpit"] .tl-strip { grid-column: 1 / -1; }
-        html[data-layout="cockpit"] .ai-work-zone { grid-column: 1 / -1; }
-        @media (max-width: 900px) {
-          html[data-layout="cockpit"] .home-page { display: flex; flex-direction: column; }
-          html[data-layout="cockpit"] .quick-cards { display: grid; }
-        }
-
-        /* ===== РАСКЛАДКА «ЖУРНАЛ»: одна колонка-брифинг ===== */
+        /* ===== РАСКЛАДКА «ЛЕНТА» (journal): глава-брифинг ===== */
         html[data-layout="journal"] .home-page {
           max-width: 760px;
           margin-inline: auto;
@@ -334,17 +296,11 @@ export default function Home() {
         html[data-layout="journal"] .ai-work-zone { order: 4; }
         html[data-layout="journal"] .quick-card:not(.signal-card) .quick-card-value { font-size: 30px; }
 
-        /* ===== РАСКЛАДКА «КОМАНДНЫЙ ЦЕНТР»: три плотные колонки ===== */
-        .home-cmd {
-          display: grid;
-          grid-template-columns: 1.05fr 0.95fr 1.25fr;
-          gap: 16px;
-          align-items: start;
-        }
-        .cmd-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-        html[data-layout="command"] .home-page { gap: 20px; }
-        @media (max-width: 1100px) { .home-cmd { grid-template-columns: 1fr 1fr; } }
-        @media (max-width: 760px) { .home-cmd { grid-template-columns: 1fr; } }
+        /* ===== «КОМАНДНЫЙ ЦЕНТР»: Главная = компактный обзор центральной панели ===== */
+        html[data-layout="command"] .home-page { gap: 18px; max-width: none; }
+        html[data-layout="command"] .greeting { font-size: 28px; }
+        html[data-layout="command"] .quote-of-day { display: none; }
+        html[data-layout="command"] .home-header { padding-right: 90px; }
       `}</style>
     </div>
   )

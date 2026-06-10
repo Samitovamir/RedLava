@@ -16,10 +16,10 @@ const STORAGE_KEY = 'albert-layout'
 export const DEFAULT_LAYOUT = 'classic'
 
 export const LAYOUTS = [
-  { id: 'classic', ru: 'Классика',         en: 'Classic',        ruHint: 'Как сейчас — спокойная лента блоков',          enHint: 'Current look — calm stack of blocks' },
-  { id: 'cockpit', ru: 'Кокпит',           en: 'Cockpit',        ruHint: 'Крупные зоны, всё важное на одном экране',     enHint: 'Big zones, everything at a glance' },
-  { id: 'journal', ru: 'Журнал',           en: 'Journal',        ruHint: 'Одна колонка: вывод → данные → действия',      enHint: 'Single column: verdict → data → actions' },
-  { id: 'command', ru: 'Командный центр',  en: 'Command center', ruHint: 'Плотные колонки и статус-строка сверху',       enHint: 'Dense columns with a global status bar' },
+  { id: 'classic', ru: 'Классика',         en: 'Classic',        ruHint: 'Разделы и сайдбар — сайт как сейчас',                    enHint: 'Sections and sidebar — the site as it is' },
+  { id: 'cockpit', ru: 'Один экран',       en: 'One screen',     ruHint: 'Весь сайт на одном экране, разделы всплывают окнами',    enHint: 'Whole site on one screen, sections pop up as windows' },
+  { id: 'journal', ru: 'Лента',            en: 'Feed',           ruHint: 'Весь сайт — одна прокручиваемая лента-брифинг',          enHint: 'The whole site as one scrollable brief' },
+  { id: 'command', ru: 'Командный центр',  en: 'Command center', ruHint: 'Рабочий стол: день и помощник всегда на экране',         enHint: 'Workspace: day and assistant always on screen' },
 ]
 
 export function getLayout() {

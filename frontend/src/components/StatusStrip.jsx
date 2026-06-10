@@ -71,7 +71,7 @@ export default function StatusStrip() {
 
       <style>{`
         .status-strip {
-          position: fixed; top: 0; right: 0; left: var(--sidebar-width);
+          position: fixed; top: 0; right: 0; left: 0;
           z-index: 90;
           display: flex; align-items: center; justify-content: space-between; gap: 16px;
           height: var(--status-strip-h, 42px);
@@ -80,9 +80,7 @@ export default function StatusStrip() {
           backdrop-filter: blur(10px);
           -webkit-backdrop-filter: blur(10px);
           border-bottom: 1px solid var(--border);
-          transition: left var(--dur-base) var(--ease);
         }
-        html[data-nav-pinned] .status-strip { left: var(--sidebar-width-expanded); }
         .ss-items { display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; }
         .ss-item {
           display: inline-flex; align-items: center; gap: 7px;
