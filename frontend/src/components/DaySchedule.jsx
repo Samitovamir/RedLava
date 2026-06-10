@@ -140,14 +140,22 @@ function layoutEvents(list) {
 const MIN_EV_H = 58
 const EV_GAP = 6
 
+// Событие «весь день» (00:00–23:59, так приходят из Google Calendar) — на шкалу
+// не кладём: рисовалось бы карточкой высотой в сутки поверх линии «сейчас» и
+// сталкивало бы обычные события во вторую колонку. Ему место в плашке над шкалой.
+function isAllDayEvent(e) {
+  return toMinutes(e.start) === 0 && toMinutes(e.end) >= 23 * 60 + 59
+}
+
 // Вертикальная упаковка: короткие/смежные события не накладываются.
 // Каждое событие получает _top и _height; внутри колонки блоки «расталкиваются» вниз.
+// Времена за пределами шкалы (раньше HOUR_MIN) прижимаются к её началу.
 function packTimeline(items) {
   const colBottom = {}
   const ordered = [...items].sort((a, b) => a._s - b._s || a._e - b._e)
   ordered.forEach(ev => {
-    const natTop = topFor(ev.start)
-    const dur = topFor(ev.end) - natTop
+    const natTop = Math.max(0, topFor(ev.start))
+    const dur = Math.max(0, topFor(ev.end)) - natTop
     const h = Math.max(dur, MIN_EV_H)
     const prevBottom = colBottom[ev._col] ?? -Infinity
     const top = Math.max(natTop, prevBottom + EV_GAP)
@@ -291,6 +299,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
       goToday: 'Перейти на сегодня', resetEvents: 'Сбросить события', addEvent: 'Добавить событие',
       emptyTimeline: 'На этот день событий нет. Нажмите «+», чтобы добавить.',
       emptyColumns: 'Нет событий на этот день',
+      allDay: 'Весь день',
       priorityTip: (n, label) => `Приоритет ${n} · ${label}`,
       edit: 'Редактировать', move: 'Перенести', remove: 'Удалить',
       addEventTitle: 'Добавить событие',
@@ -329,6 +338,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
       goToday: 'Go to today', resetEvents: 'Reset events', addEvent: 'Add event',
       emptyTimeline: 'No events for this day. Tap “+” to add one.',
       emptyColumns: 'No events for this day',
+      allDay: 'All day',
       priorityTip: (n, label) => `Priority ${n} · ${label}`,
       edit: 'Edit', move: 'Reschedule', remove: 'Delete',
       addEventTitle: 'Add event',
@@ -421,8 +431,12 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
     }))
   }, [viewKey, viewMode])
 
+  // События «весь день» — отдельной плашкой над шкалой, на таймлайн идут только обычные
+  const allDayEvents = dayEvents.filter(isAllDayEvent)
+  const timedEvents = dayEvents.filter(e => !isAllDayEvent(e))
+
   // Раскладка таймлайна с упаковкой (без наложений) + итоговая высота контейнера
-  const positionedEvents = packTimeline(layoutEvents(dayEvents))
+  const positionedEvents = packTimeline(layoutEvents(timedEvents))
   const timelineHeight = Math.max(
     (HOUR_MAX - HOUR_MIN) * PX_PER_HOUR + 40,
     ...positionedEvents.map(e => e._top + e._height),
@@ -797,6 +811,32 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
 
       {/* Backdrop для закрытия dropdown по клику вне */}
       {openMenu && <div className="ds-backdrop" onClick={() => setOpenMenu(null)} />}
+
+      {/* События «весь день» — компактные плашки над шкалой (как в Google Calendar) */}
+      {(viewMode === 'list' || viewMode === 'day') && allDayEvents.length > 0 && (
+        <div className="ds-allday">
+          {allDayEvents.map((ev, i) => (
+            <div key={`ad-${i}`} className="ds-allday-chip">
+              <span className="ds-allday-dot" style={{ background: COLORS[ev.type] || 'var(--accent)' }} />
+              <span className="ds-allday-title">{pick(ev, 'title')}</span>
+              <span className="ds-allday-meta">{t.allDay}</span>
+              <div className="ds-menu-wrap">
+                <button className="ds-event-menu" onClick={() => toggleMenu(`ad-${i}`)}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+                </button>
+                <AnimatePresence>
+                  {openMenu === `ad-${i}` && (
+                    <motion.div className="ds-dropdown ev-drop" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.15 }}>
+                      <button className="ds-dropdown-item" onClick={() => startEdit(ev)}>{t.edit}</button>
+                      <button className="ds-dropdown-item danger" onClick={() => deleteEvent(ev)}>{t.remove}</button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Режим "День/Список" — вертикальный таймлайн */}
       {(viewMode === 'list' || viewMode === 'day') && (
@@ -1356,6 +1396,22 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
           transition: all 0.15s;
         }
         .ds-icon-btn:hover { background: var(--bg-secondary); color: var(--foreground); }
+
+        /* Плашки «весь день» над шкалой */
+        .ds-allday { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 18px 0; flex-shrink: 0; }
+        .ds-allday-chip {
+          display: inline-flex; align-items: center; gap: 8px;
+          background: var(--bg-tile); border: 1px solid var(--border);
+          border-radius: 10px; padding: 5px 6px 5px 11px;
+          min-width: 0;
+        }
+        .ds-allday-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .ds-allday-title {
+          font-size: 13px; font-weight: 600; color: var(--text-body);
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 280px;
+        }
+        .ds-allday-meta { font-size: 12px; color: var(--text-muted); flex-shrink: 0; }
+        .ds-allday .ds-menu-wrap { position: relative; }
 
         .ds-scroll { flex: 1; overflow-y: auto; padding: 12px 18px 18px; }
         .ds-timeline { position: relative; }

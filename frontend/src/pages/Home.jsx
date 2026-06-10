@@ -7,7 +7,6 @@ import DaySummary from '../components/DaySummary.jsx'
 import HealthBrief from '../components/HealthBrief.jsx'
 import HealthSignal from '../components/HealthSignal.jsx'
 import TodaySignal from '../components/TodaySignal.jsx'
-import DayStatusStrip from '../components/DayStatusStrip.jsx'
 import { useLayout } from '../layout.js'
 import { getQuoteOfDay } from '../utils/quotes.js'
 import { useEvents } from '../context/EventsContext.jsx'
@@ -158,8 +157,6 @@ export default function Home() {
             <HealthSignal />
           </div>
 
-          <DayStatusStrip />
-
           <AIWorkZone />
         </>
       )}
@@ -292,7 +289,6 @@ export default function Home() {
         html[data-layout="journal"] .home-header { order: 0; }
         html[data-layout="journal"] .quick-cards { order: 1; grid-template-columns: 1fr; }
         html[data-layout="journal"] .today-signal { order: 2; }
-        html[data-layout="journal"] .day-strip { order: 3; }
         html[data-layout="journal"] .ai-work-zone { order: 4; }
         html[data-layout="journal"] .quick-card:not(.signal-card) .quick-card-value { font-size: 30px; }
 

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import Home from '../pages/Home.jsx'
 import Schedule from '../pages/Schedule.jsx'
@@ -8,7 +9,6 @@ import History from '../pages/History.jsx'
 import Settings from '../pages/Settings.jsx'
 import StatusStrip from '../components/StatusStrip.jsx'
 import TodayTimelineStrip from '../components/TodayTimelineStrip.jsx'
-import DayStatusStrip from '../components/DayStatusStrip.jsx'
 import RecentActions from '../components/RecentActions.jsx'
 import AIWorkZone from '../components/AIWorkZone.jsx'
 import { useT, useLang } from '../context/LanguageContext.jsx'
@@ -45,6 +45,42 @@ export default function CommandShell() {
   const dateStr = lang === 'en' ? `${d.getDate()}.${String(d.getMonth() + 1).padStart(2, '0')}` : `${d.getDate()} ${MONTHS_RU[d.getMonth()]}`
   const isActive = (p) => (p === '/' ? location.pathname === '/' : location.pathname.startsWith(p))
 
+  // Мост колёсика: боковые панели почти не скроллятся, и курсор над ними «глох».
+  // Прокрутка над «Сегодня»/«Помощником» листает центральную панель — листать сайт
+  // можно с любого места экрана. НО если под курсором есть свой живой скролл
+  // (чат ИИ, журнал, сама панель) и он ещё не упёрся в край — листается он,
+  // а мост молчит. Так и чат помощника крутится, и пустые места листают центр.
+  const bodyRef = useRef(null)
+  const centerRef = useRef(null)
+  useEffect(() => {
+    const body = bodyRef.current
+    if (!body) return
+    const consumes = (el, dy) => {
+      if (el.scrollHeight <= el.clientHeight + 1) return false
+      const oy = getComputedStyle(el).overflowY
+      if (oy !== 'auto' && oy !== 'scroll') return false
+      return dy > 0
+        ? el.scrollTop + el.clientHeight < el.scrollHeight - 1
+        : el.scrollTop > 0
+    }
+    const onWheel = (e) => {
+      const center = centerRef.current
+      if (!center) return
+      const pane = e.target.closest?.('.cmd-left, .cmd-right')
+      if (!pane) return
+      // Ищем между курсором и панелью элемент, который сам «съест» прокрутку
+      let n = e.target
+      while (n && n.nodeType === 1) {
+        if (consumes(n, e.deltaY)) return // родной скролл работает как обычно
+        if (n === pane) break
+        n = n.parentElement
+      }
+      center.scrollTop += e.deltaY
+    }
+    body.addEventListener('wheel', onWheel, { passive: true })
+    return () => body.removeEventListener('wheel', onWheel)
+  }, [])
+
   return (
     <div className="command-shell">
       <StatusStrip />
@@ -61,15 +97,14 @@ export default function CommandShell() {
         ))}
       </nav>
 
-      <div className="cmd-body">
+      <div className="cmd-body" ref={bodyRef}>
         <aside className="cmd-pane cmd-left">
           <div className="cmd-pane-label">{t.today} · {dateStr}</div>
           <TodayTimelineStrip />
-          <DayStatusStrip />
           <RecentActions limit={6} />
         </aside>
 
-        <main className="cmd-pane cmd-center">
+        <main className="cmd-pane cmd-center" ref={centerRef}>
           <Routes location={location}>
             <Route path="/" element={<Home />} />
             <Route path="/schedule" element={<Schedule />} />
@@ -137,7 +172,8 @@ export default function CommandShell() {
         }
 
         /* Расписание в центре: одна колонка — таймлайн на всю ширину панели,
-           сводка дня под ним (вбок не влезает и уезжала под помощника) */
+           сводка дня под ним целиком (вбок не влезает и уезжала под помощника).
+           Листать центр, когда курсор над боковыми панелями, помогает onWheel-мост. */
         .cmd-center .schedule-layout {
           grid-template-columns: 1fr;
           height: auto; min-height: 0;
@@ -155,6 +191,9 @@ export default function CommandShell() {
           width: 100%; min-width: 0; max-width: 100%;
           box-sizing: border-box; resize: none;
         }
+        /* В узкой панели плейсхолдер «Здесь появится распознанный текст…»
+           переносится на 4 строки — поле выше и кегль меньше, чтобы влезал целиком */
+        .cmd-right .vi-field { min-height: 136px; font-size: 15px; }
 
         /* Каскад только при первом входе центра */
         @media (prefers-reduced-motion: no-preference) {

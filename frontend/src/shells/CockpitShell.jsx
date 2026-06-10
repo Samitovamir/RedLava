@@ -58,7 +58,7 @@ export default function CockpitShell() {
       mail: 'Письма', mailSub: 'Написать или поручить ИИ',
       history: 'История', historySub: 'Полный журнал действий',
       settings: 'Настройки', settingsSub: 'Темы · раскладка · подключения',
-      recovery: 'Готовность', sleep: 'Сон', steps: 'Шаги', rhr: 'Пульс покоя',
+      recovery: 'Восстановление', sleep: 'Сон', steps: 'Шаги', rhr: 'Пульс покоя',
       hrv: 'HRV', vo2: 'VO₂max', week: 'За неделю', strain: 'Нагрузка',
       h: 'ч', bpm: 'уд/мин', ms: 'мс', km: 'км', wk: n => `${n} трен.`,
       stepsGoal: 'цель 10 000', ofMax: 'из 21',

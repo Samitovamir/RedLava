@@ -25,7 +25,7 @@ export default function StatusStrip() {
   const { lang } = useLang()
   const { events } = useEvents()
   const t = useT({
-    ru: { sleep: 'Сон', h: 'ч', rec: 'Готовность', menuOk: 'Меню готово', menuNo: 'Меню не готово', next: 'Далее', free: 'День свободен' },
+    ru: { sleep: 'Сон', h: 'ч', rec: 'Восстановление', menuOk: 'Меню готово', menuNo: 'Меню не готово', next: 'Далее', free: 'День свободен' },
     en: { sleep: 'Sleep', h: 'h', rec: 'Recovery', menuOk: 'Menu ready', menuNo: 'No menu yet', next: 'Next', free: 'Day is free' },
   })
 
