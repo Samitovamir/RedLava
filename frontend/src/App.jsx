@@ -6,6 +6,8 @@ import FluidMenu from './components/FluidMenu.jsx'
 import WhatsNew from './components/WhatsNew.jsx'
 import MailModal from './components/MailModal.jsx'
 import DemoBanner from './components/DemoBanner.jsx'
+import StatusStrip from './components/StatusStrip.jsx'
+import { useLayout } from './layout.js'
 import { isGuest } from './api/authFetch.js'
 import { EventsProvider } from './context/EventsContext.jsx'
 import { HistoryProvider } from './context/HistoryContext.jsx'
@@ -52,6 +54,14 @@ function AnimatedRoutes() {
   )
 }
 
+// Глобальный «хром» раскладок: статус-строка «Командного центра».
+// Отдельным компонентом — useNavigate/useEvents внутри StatusStrip требуют
+// Router/Events-контексты, а смена раскладки не должна перерисовывать всё App.
+function Chrome() {
+  const layout = useLayout()
+  return layout === 'command' ? <StatusStrip /> : null
+}
+
 export default function App() {
   // Подтягиваем живые данные Whoop и Garmin в localStorage (для страниц и для ИИ).
   // Гость работает на демо-данных — реальные не запрашиваем (и не затираем демо).
@@ -82,6 +92,7 @@ export default function App() {
         <DemoBanner />
         <MailModal />
         <FluidMenu />
+        <Chrome />
         <AnimatedRoutes />
       </div>
     </BrowserRouter>

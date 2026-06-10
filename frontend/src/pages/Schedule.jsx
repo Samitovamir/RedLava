@@ -49,6 +49,19 @@ export default function Schedule() {
           min-height: 560px;
         }
         .schedule-col { height: 100%; min-height: 0; }
+
+        /* Журнал: одна колонка — сводка дня как вступление, ниже таймлайн */
+        html[data-layout="journal"] .schedule-page { max-width: 820px; margin-inline: auto; }
+        html[data-layout="journal"] .schedule-layout {
+          grid-template-columns: 1fr;
+          height: auto;
+          min-height: 0;
+        }
+        html[data-layout="journal"] .schedule-col:first-child { order: 2; height: 72vh; min-height: 520px; }
+        html[data-layout="journal"] .schedule-col:last-child { order: 1; height: auto; }
+
+        /* Командный центр: чуть плотнее сетка */
+        html[data-layout="command"] .schedule-layout { grid-template-columns: 7.5fr 2.5fr; gap: 12px; }
       `}</style>
     </div>
   )

@@ -6,6 +6,7 @@ import {
   Plug, Settings, MoreHorizontal,
 } from 'lucide-react'
 import { useLang } from '../context/LanguageContext.jsx'
+import { useLayout } from '../layout.js'
 
 /*
   Навигация (CarPlay-рельс):
@@ -36,9 +37,14 @@ export default function FluidMenu() {
   const location = useLocation()
   const navigate = useNavigate()
   const { lang } = useLang()
-  const [pinned, setPinned] = useState(() => {
-    try { return localStorage.getItem(PIN_KEY) === '1' } catch { return false }
+  // userPin: явный выбор владельца (null — не выбирал). В «Командном центре»
+  // рельс по умолчанию закреплён, но явный клик по логотипу важнее раскладки.
+  const [userPin, setUserPin] = useState(() => {
+    try { const v = localStorage.getItem(PIN_KEY); return v === null ? null : v === '1' } catch { return null }
   })
+  const layout = useLayout()
+  const pinned = userPin ?? (layout === 'command')
+  const setPinned = () => setUserPin(!pinned)
   const [hovered, setHovered] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
   const tIn = useRef(null)
@@ -46,11 +52,12 @@ export default function FluidMenu() {
   const expanded = pinned || hovered
 
   useEffect(() => {
-    try { localStorage.setItem(PIN_KEY, pinned ? '1' : '0') } catch { /* ignore */ }
+    // запоминаем только явный выбор — дефолт раскладки не затирает предпочтение
+    try { if (userPin !== null) localStorage.setItem(PIN_KEY, userPin ? '1' : '0') } catch { /* ignore */ }
     // контент уезжает вправо только при закреплённом рельсе
     if (pinned) document.documentElement.setAttribute('data-nav-pinned', '')
     else document.documentElement.removeAttribute('data-nav-pinned')
-  }, [pinned])
+  }, [userPin, pinned])
 
   // задержки раскрытия/закрытия — чтобы рельс не мерцал при проносе курсора
   const enter = () => { clearTimeout(tOut.current); tIn.current = setTimeout(() => setHovered(true), 150) }
@@ -118,7 +125,7 @@ export default function FluidMenu() {
       >
         <button
           className="fluid-logo"
-          onClick={() => setPinned((v) => !v)}
+          onClick={setPinned}
           title={pinned
             ? (lang === 'en' ? 'Unpin menu' : 'Открепить меню')
             : (lang === 'en' ? 'Pin menu' : 'Закрепить меню')}

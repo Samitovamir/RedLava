@@ -8,6 +8,9 @@ import HealthBrief from '../components/HealthBrief.jsx'
 import HealthSignal from '../components/HealthSignal.jsx'
 import TodaySignal from '../components/TodaySignal.jsx'
 import DayStatusStrip from '../components/DayStatusStrip.jsx'
+import TodayTimelineStrip from '../components/TodayTimelineStrip.jsx'
+import RecentActions from '../components/RecentActions.jsx'
+import { useLayout } from '../layout.js'
 import { getQuoteOfDay } from '../utils/quotes.js'
 import { useEvents } from '../context/EventsContext.jsx'
 import { useT, useLang } from '../context/LanguageContext.jsx'
@@ -111,6 +114,25 @@ export default function Home() {
   const quoteStr = quote.text
   const authorStr = `— ${quote.author}`
 
+  // Раскладка («Настройки → Раскладка»): classic/journal/cockpit различаются CSS,
+  // command пересобирает Главную в три колонки структурно.
+  const layout = useLayout()
+  const scheduleCardEls = cards.map((c) => (
+    <motion.div
+      key={c.label}
+      className={`card quick-card ${c.onClick ? 'clickable' : ''}`}
+      whileHover={{ y: -4 }}
+      onClick={c.onClick}
+    >
+      <div className="quick-card-top">
+        <span className="quick-card-icon" style={{ color: c.color }}>{c.icon}</span>
+        <span className="quick-card-label">{c.label}</span>
+      </div>
+      <span className="quick-card-value">{c.value}</span>
+      <span className="quick-card-sub">{c.sub}</span>
+    </motion.div>
+  ))
+
   return (
     <div className="home-page">
       <div className="home-header">
@@ -126,28 +148,35 @@ export default function Home() {
 
       <TodaySignal />
 
-      <div className="quick-cards">
-        {cards.map((c) => (
-          <motion.div
-            key={c.label}
-            className={`card quick-card ${c.onClick ? 'clickable' : ''}`}
-            whileHover={{ y: -4 }}
-            onClick={c.onClick}
-          >
-            <div className="quick-card-top">
-              <span className="quick-card-icon" style={{ color: c.color }}>{c.icon}</span>
-              <span className="quick-card-label">{c.label}</span>
-            </div>
-            <span className="quick-card-value">{c.value}</span>
-            <span className="quick-card-sub">{c.sub}</span>
-          </motion.div>
-        ))}
-        <HealthSignal />
-      </div>
+      {layout === 'command' ? (
+        <div className="home-cmd">
+          <div className="cmd-col">
+            {scheduleCardEls}
+            <TodayTimelineStrip />
+          </div>
+          <div className="cmd-col">
+            <HealthSignal />
+            <DayStatusStrip />
+          </div>
+          <div className="cmd-col">
+            <AIWorkZone />
+            <RecentActions />
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="quick-cards">
+            {scheduleCardEls}
+            <HealthSignal />
+          </div>
 
-      <DayStatusStrip />
+          <DayStatusStrip />
 
-      <AIWorkZone />
+          {layout === 'cockpit' && <TodayTimelineStrip />}
+
+          <AIWorkZone />
+        </>
+      )}
 
       {/*
         Временно убрано с Главной (по просьбе). ФУНКЦИОНАЛ СОХРАНЁН: компоненты,
@@ -261,6 +290,61 @@ export default function Home() {
           gap: 16px;
           align-items: stretch;
         }
+
+        /* ===== РАСКЛАДКА «КОКПИТ»: фиксированные зоны, минимум скролла ===== */
+        html[data-layout="cockpit"] .home-page {
+          display: grid;
+          grid-template-columns: 1fr 1fr 1fr;
+          gap: 16px;
+          align-items: stretch;
+        }
+        html[data-layout="cockpit"] .home-header { grid-column: 1 / -1; }
+        html[data-layout="cockpit"] .today-signal { grid-column: 1 / 3; grid-row: 2; }
+        /* Обёртка quick-cards растворяется: карточки сами становятся зонами сетки */
+        html[data-layout="cockpit"] .quick-cards { display: contents; }
+        html[data-layout="cockpit"] .quick-card:not(.signal-card) { grid-column: 3; grid-row: 2; }
+        html[data-layout="cockpit"] .signal-card { grid-column: 1; grid-row: 3; }
+        html[data-layout="cockpit"] .day-strip {
+          grid-column: 2 / -1; grid-row: 3;
+          align-content: center;
+        }
+        html[data-layout="cockpit"] .tl-strip { grid-column: 1 / -1; }
+        html[data-layout="cockpit"] .ai-work-zone { grid-column: 1 / -1; }
+        @media (max-width: 900px) {
+          html[data-layout="cockpit"] .home-page { display: flex; flex-direction: column; }
+          html[data-layout="cockpit"] .quick-cards { display: grid; }
+        }
+
+        /* ===== РАСКЛАДКА «ЖУРНАЛ»: одна колонка-брифинг ===== */
+        html[data-layout="journal"] .home-page {
+          max-width: 760px;
+          margin-inline: auto;
+          gap: 22px;
+        }
+        html[data-layout="journal"] .home-header { flex-direction: column; gap: 10px; }
+        html[data-layout="journal"] .greeting { font-size: 40px; }
+        html[data-layout="journal"] .quote-of-day {
+          text-align: left; padding-top: 0; max-width: none;
+        }
+        /* Брифинг: сначала «главное сейчас» (события), затем вывод дня и тело */
+        html[data-layout="journal"] .home-header { order: 0; }
+        html[data-layout="journal"] .quick-cards { order: 1; grid-template-columns: 1fr; }
+        html[data-layout="journal"] .today-signal { order: 2; }
+        html[data-layout="journal"] .day-strip { order: 3; }
+        html[data-layout="journal"] .ai-work-zone { order: 4; }
+        html[data-layout="journal"] .quick-card:not(.signal-card) .quick-card-value { font-size: 30px; }
+
+        /* ===== РАСКЛАДКА «КОМАНДНЫЙ ЦЕНТР»: три плотные колонки ===== */
+        .home-cmd {
+          display: grid;
+          grid-template-columns: 1.05fr 0.95fr 1.25fr;
+          gap: 16px;
+          align-items: start;
+        }
+        .cmd-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+        html[data-layout="command"] .home-page { gap: 20px; }
+        @media (max-width: 1100px) { .home-cmd { grid-template-columns: 1fr 1fr; } }
+        @media (max-width: 760px) { .home-cmd { grid-template-columns: 1fr; } }
       `}</style>
     </div>
   )

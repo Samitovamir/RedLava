@@ -555,3 +555,32 @@ body::after {
 .ds-pill--ok{ color:var(--status-ok); }
 .ds-pill--warn{ color:var(--status-warn); }
 .ds-pill--crit{ color:var(--status-crit); }
+
+/* ============================================================
+   РАСКЛАДКИ (data-layout на <html>) — «что где находится».
+   classic — без правил (текущая компоновка). Темы работают в каждой.
+   ============================================================ */
+
+/* --- Командный центр: статус-строка сверху, контент ниже неё --- */
+html[data-layout="command"] { --status-strip-h: 42px; }
+html[data-layout="command"] .page-content { padding-top: calc(32px + var(--status-strip-h)); }
+/* Демо-бейдж опускается под статус-строку, чтобы не перекрывались */
+html[data-layout="command"] .demo-banner { top: calc(var(--status-strip-h) + 10px); }
+@media (max-width: 640px) {
+  html[data-layout="command"] .page-content { padding-top: 16px; }
+  html[data-layout="command"] .demo-banner { top: 14px; }
+}
+
+/* --- Журнал: все разделы — спокойная центрированная колонка --- */
+html[data-layout="journal"] .health-page,
+html[data-layout="journal"] .nu-page,
+html[data-layout="journal"] .history-page,
+html[data-layout="journal"] .conn-page,
+html[data-layout="journal"] .mail-page,
+html[data-layout="journal"] .settings-page {
+  max-width: 780px;
+  margin-inline: auto;
+}
+
+/* --- Кокпит: плотнее KPI-ряды Истории (4 зоны в строку как приборы) --- */
+html[data-layout="cockpit"] .hist-stats { gap: 12px; }
