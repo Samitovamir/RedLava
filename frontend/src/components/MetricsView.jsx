@@ -4,6 +4,7 @@ import CircularChart from './CircularChart.jsx'
 import WhoopRings from './WhoopRings.jsx'
 import SleepHypnogram from './SleepHypnogram.jsx'
 import LabResults from './LabResults.jsx'
+import Icon from '../ui/Icon.jsx'
 import { useLang, useT } from '../context/LanguageContext.jsx'
 import { WHOOP, WHOOP_DAYS, SLEEP_STAGES, recoveryColor, fmtHm } from '../utils/whoop.js'
 
@@ -23,6 +24,7 @@ const STR = {
     recTextLow: 'Низкое восстановление — день отдыха или лёгкая активность.',
     hrvShort: 'HRV, мс', rhrShort: 'пульс покоя', respShort: 'дыхание',
     sleep: 'Сон', sleepHoursOf: (need) => `из ${need} нужных`, sleepQuality: 'Качество сна',
+    napLabel: 'Дневной сон', napOf: (h) => `${h} ч`,
     collapse: 'Свернуть', sleepMore: 'Подробнее — сон по часам',
     weekRecovery: 'Восстановление за неделю',
     daySumHigh: 'Организм хорошо восстановился. Хороший день для интенсивной тренировки.',
@@ -47,6 +49,7 @@ const STR = {
     recTextLow: 'Low recovery — make it a rest day or light activity.',
     hrvShort: 'HRV, ms', rhrShort: 'resting HR', respShort: 'respiration',
     sleep: 'Sleep', sleepHoursOf: (need) => `of ${need} needed`, sleepQuality: 'Sleep quality',
+    napLabel: 'Daytime nap', napOf: (h) => `${h} h`,
     collapse: 'Collapse', sleepMore: 'Details — sleep by the hour',
     weekRecovery: 'Recovery this week',
     daySumHigh: 'Your body has recovered well. A good day for an intense workout.',
@@ -161,6 +164,16 @@ export default function MetricsView() {
             <div className="card-title" style={{ margin: 0 }}>{t.sleep}</div>
             <span className="sleep-hours">{w.sleep.hoursSlept} {lang === 'en' ? 'h' : 'ч'} <span className="muted">{t.sleepHoursOf(w.sleep.hoursNeeded)}</span></span>
           </div>
+          {w.nap && (
+            <div className="sleep-nap" title={t.napLabel}>
+              <Icon name="nap" size={16} color="var(--accent)" />
+              <span className="sleep-nap-lbl">{t.napLabel}</span>
+              <span className="sleep-nap-val">{t.napOf(w.nap.hoursSlept)}</span>
+              {w.nap.start && w.nap.end && (
+                <span className="sleep-nap-time muted">{w.nap.start}–{w.nap.end}</span>
+              )}
+            </div>
+          )}
           <div className="sleep-body">
             <CircularChart value={w.sleep.performance} label={t.sleepQuality} color="var(--accent)" size={130} />
             <div className="sleep-stages">
@@ -277,6 +290,10 @@ export default function MetricsView() {
         .sleep-card { display: flex; flex-direction: column; gap: 16px; }
         .sleep-head { display: flex; align-items: baseline; justify-content: space-between; }
         .sleep-hours { font-size: 16px; font-weight: 700; color: var(--foreground); }
+        .sleep-nap { display: flex; align-items: center; gap: 8px; align-self: flex-start; margin-top: -4px; padding: 7px 12px; border-radius: 999px; background: var(--bg-tile); box-shadow: var(--inset-tile); font-size: 13px; }
+        .sleep-nap-lbl { color: var(--muted-foreground); }
+        .sleep-nap-val { font-weight: 700; color: var(--foreground); font-variant-numeric: tabular-nums; }
+        .sleep-nap-time { font-variant-numeric: tabular-nums; }
         .sleep-body { display: flex; align-items: center; gap: 28px; }
         .sleep-stages { flex: 1; display: flex; flex-direction: column; gap: 14px; }
         .stage-bar { display: flex; height: 14px; border-radius: 7px; overflow: hidden; background: var(--bg-secondary); }

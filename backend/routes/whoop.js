@@ -100,7 +100,7 @@ router.get('/data', requireAuth, async (_req, res) => {
 
   const [rec, sleep, cycle] = await Promise.all([
     whoopGet('/v2/recovery?limit=7', access),
-    whoopGet('/v2/activity/sleep?limit=1', access),
+    whoopGet('/v2/activity/sleep?limit=10', access),
     whoopGet('/v2/cycle?limit=1', access)
   ])
   const r = rec?.records?.[0]?.score || {}
@@ -114,7 +114,10 @@ router.get('/data', requireAuth, async (_req, res) => {
       recovery: Math.round(x.score.recovery_score)
     }))
     .reverse()
-  const sleepRec = sleep?.records?.[0] || {}
+  // Берём последний НОЧНОЙ сон, а не дневной (nap): Whoop пишет дневной сон
+  // отдельной записью, и при limit=1 он может перекрыть основной ночной сон.
+  const sleepRecords = sleep?.records || []
+  const sleepRec = sleepRecords.find(x => x.nap !== true) || sleepRecords[0] || {}
   const sRec = sleepRec.score || {}
   const cRec = cycle?.records?.[0]?.score || {}
   const stage = sRec.stage_summary || {}
@@ -136,6 +139,17 @@ router.get('/data', requireAuth, async (_req, res) => {
     try { return new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Moscow', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(iso)) } catch { return null }
   }
 
+  // Дневной сон (nap) — отдельной плашкой. Показываем только если он свежее
+  // ночного сна (т.е. был сегодня после пробуждения), а не устаревший из истории.
+  const napRec = sleepRecords.find(x => x.nap === true && (!sleepRec.start || new Date(x.start) > new Date(sleepRec.start)))
+  const napStage = napRec?.score?.stage_summary || {}
+  const nap = napRec ? {
+    hoursSlept: ms2h((napStage.total_light_sleep_time_milli || 0) + (napStage.total_slow_wave_sleep_time_milli || 0) + (napStage.total_rem_sleep_time_milli || 0)),
+    start: mskHHMM(napRec.start),
+    end: mskHHMM(napRec.end),
+    performance: Math.round(napRec.score?.sleep_performance_percentage ?? 0)
+  } : null
+
   res.json({
     connected: true,
     whoop: {
@@ -156,6 +170,7 @@ router.get('/data', requireAuth, async (_req, res) => {
         cycles: sRec.sleep_cycle_count ?? null,
         disturbances: sRec.disturbance_count ?? null
       },
+      nap,
       week
     }
   })

@@ -8,7 +8,7 @@ import {
   // спорт
   Footprints, Bike, Waves, Dumbbell,
   // приёмы пищи
-  Sunrise, Salad, Apple, Moon,
+  Sunrise, Salad, Apple, Moon, Sun,
   // события
   Phone, CalendarDays, Mail, Users,
   // приоритеты / статусы
@@ -64,4 +64,5 @@ export const ICONS = {
   lock: Lock,
   nutrition: UtensilsCrossed,
   health: Heart,
+  nap: Sun,
 }
