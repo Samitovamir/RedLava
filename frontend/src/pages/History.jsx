@@ -1,25 +1,19 @@
 import { useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
+import { Mail, CalendarDays, Search, Check, Bell, Activity, Inbox } from 'lucide-react'
 import { useHistory } from '../context/HistoryContext.jsx'
 import AssistantMemory from '../components/AssistantMemory.jsx'
 import { useLang, useT } from '../context/LanguageContext.jsx'
+import { SectionHeader, Chip, EmptyState, Icon, StatusPill } from '../ui'
 import {
   ACTION_TYPES, STATUS_INFO, ACTOR_INFO, dayLabel, timeOf, dateOf, pickLabel
 } from '../utils/history.js'
 
-// Иконка по типу действия
-function ActionIcon({ name }) {
-  const p = { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' }
-  switch (name) {
-    case 'mail':     return <svg {...p}><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></svg>
-    case 'calendar': return <svg {...p}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-    case 'search':   return <svg {...p}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    case 'check':    return <svg {...p}><polyline points="20 6 9 17 4 12"/></svg>
-    case 'bell':     return <svg {...p}><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-    case 'activity': return <svg {...p}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-    default:         return null
-  }
-}
+// Иконка по типу действия — единый line-set (lucide) через примитив <Icon>
+const TYPE_ICONS = { mail: Mail, calendar: CalendarDays, search: Search, check: Check, bell: Bell, activity: Activity }
+
+// Статус журнала → тон StatusPill (единственный цветной элемент записи)
+const STATUS_TONE = { done: 'ok', pending: 'warn', failed: 'crit' }
 
 export default function History() {
   const { entries } = useHistory()
@@ -60,7 +54,7 @@ export default function History() {
     return [...map.entries()]
   }, [filtered])
 
-  // Статистика — числа нейтральные (--foreground), различие несёт подпись, не цвет
+  // Статистика — числа нейтральные (--text-primary), различие несёт подпись, не цвет
   const stats = [
     { key: 'all', label: t.total, count: entries.length },
     { key: 'email', label: t.emails, count: entries.filter(a => a.type === 'email').length },
@@ -68,14 +62,12 @@ export default function History() {
     { key: 'search', label: t.searches, count: entries.filter(a => a.type === 'search').length }
   ]
 
-  const filterChips = [{ key: 'all', label: t.all }, ...Object.entries(ACTION_TYPES).map(([k, v]) => ({ key: k, label: pickLabel(v, lang) }))]
+  const actorChips = [{ key: 'all', label: t.all }, { key: 'ai', label: t.ai }, { key: 'user', label: t.self }]
+  const typeChips = [{ key: 'all', label: t.all }, ...Object.entries(ACTION_TYPES).map(([k, v]) => ({ key: k, label: pickLabel(v, lang) }))]
 
   return (
     <div className="history-page">
-      <div className="page-header">
-        <h2>{t.heading}</h2>
-        <span className="hist-page-sub">{t.sub}</span>
-      </div>
+      <SectionHeader title={t.heading} subtitle={t.sub} />
 
       {/* Долгая память помощника */}
       <AssistantMemory />
@@ -90,32 +82,25 @@ export default function History() {
         ))}
       </div>
 
-      {/* Фильтры */}
-      <div className="hist-filter-row">
-        <div className="hist-filters">
-          {filterChips.map(c => (
-            <button key={c.key}
-              className={`hist-chip ${filter === c.key ? 'active' : ''}`}
-              onClick={() => setFilter(c.key)}>
-              {c.label}
-            </button>
-          ))}
-        </div>
-        <div className="hist-actor-toggle">
-          {[{ key: 'all', label: t.all }, { key: 'ai', label: t.ai }, { key: 'user', label: t.self }].map(a => (
-            <button key={a.key}
-              className={`hist-actor-btn ${actorFilter === a.key ? 'active' : ''}`}
-              onClick={() => setActorFilter(a.key)}>
-              {a.label}
-            </button>
-          ))}
-        </div>
+      {/* Фильтры — один горизонтальный ряд чипов: автор (Все/ИИ/Сам) + типы */}
+      <div className="hist-filters">
+        {actorChips.map(a => (
+          <Chip key={`actor-${a.key}`} active={actorFilter === a.key} onClick={() => setActorFilter(a.key)}>
+            {a.label}
+          </Chip>
+        ))}
+        <span className="hist-filter-sep" aria-hidden />
+        {typeChips.map(c => (
+          <Chip key={`type-${c.key}`} active={filter === c.key} onClick={() => setFilter(c.key)}>
+            {c.label}
+          </Chip>
+        ))}
       </div>
 
       {/* Таймлайн */}
       <div className="card hist-timeline">
         {groups.length === 0 && (
-          <div className="hist-empty muted">{t.empty}</div>
+          <EmptyState icon={Inbox} text={t.empty} />
         )}
         {groups.map(([date, items]) => (
           <div key={date} className="hist-group">
@@ -129,19 +114,19 @@ export default function History() {
                     initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.3, delay: 0.03 * i }}>
                     <div className="hist-rail">
-                      <span className="hist-dot" style={{ color: ti.color, background: `color-mix(in srgb, ${ti.color} 16%, transparent)` }}>
-                        <ActionIcon name={ti.icon} />
+                      <span className="hist-dot">
+                        <Icon icon={TYPE_ICONS[ti.icon]} size={16} />
                       </span>
                     </div>
                     <div className="hist-body">
                       <div className="hist-item-head">
                         <span className="hist-title">{(lang === 'en' && a.titleEn) || a.title}</span>
-                        <span className="hist-time muted">{timeOf(a.datetime)}</span>
+                        <span className="hist-time">{timeOf(a.datetime)}</span>
                       </div>
-                      <p className="hist-detail muted">{(lang === 'en' && a.detailEn) || a.detail}</p>
+                      <p className="hist-detail">{(lang === 'en' && a.detailEn) || a.detail}</p>
                       <div className="hist-tags">
                         <span className="hist-meta">{pickLabel(ACTOR_INFO[a.actor], lang)} · {pickLabel(ti, lang)}</span>
-                        <span className="hist-status" style={{ color: st.color }}>● {pickLabel(st, lang)}</span>
+                        <StatusPill status={STATUS_TONE[a.status] || 'ok'}>{pickLabel(st, lang)}</StatusPill>
                       </div>
                     </div>
                   </motion.div>
@@ -154,67 +139,49 @@ export default function History() {
 
       <style>{`
         /* Постоянный воздух снизу: лента действий никогда не упирается в нижний край окна (любая тема/высота) */
-        .history-page { display: flex; flex-direction: column; gap: 24px; max-width: 1000px; padding-bottom: 40px; }
-        .page-header { display: flex; align-items: baseline; gap: 12px; }
-        .page-header h2 { font-size: 24px; font-weight: 700; }
-        .muted { color: var(--muted-foreground); }
-        .hist-page-sub { font-size: 13.5px; color: var(--text-muted); }
+        .history-page { display: flex; flex-direction: column; gap: 24px; max-width: 1000px; padding-bottom: 72px; }
 
         .hist-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
         .hist-stat { display: flex; flex-direction: column; gap: 4px; padding: 18px; }
-        .hist-stat-val { font-size: 30px; font-weight: 800; line-height: 1; color: var(--foreground); }
-        .hist-stat-lbl { font-size: 13px; color: var(--muted-foreground); }
+        .hist-stat-val { font-size: 30px; font-weight: 800; line-height: 1; color: var(--text-primary); }
+        .hist-stat-lbl { font-size: 13px; color: var(--text-muted); }
 
-        .hist-filter-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-        .hist-filters { display: flex; flex-wrap: wrap; gap: 8px; }
-        .hist-actor-toggle { display: flex; gap: 3px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 20px; padding: 3px; }
-        .hist-actor-btn {
-          font-size: 12px; padding: 5px 12px; border-radius: 16px; border: none;
-          background: transparent; color: var(--muted-foreground); cursor: pointer; font-family: inherit; transition: all 0.15s;
-        }
-        .hist-actor-btn.active { background: var(--primary); color: var(--primary-foreground); }
-        .hist-chip {
-          font-size: 13px; padding: 7px 14px; border-radius: 20px;
-          border: 1px solid var(--border); background: transparent;
-          color: var(--muted-foreground); cursor: pointer; font-family: inherit; transition: all 0.15s;
-        }
-        .hist-chip:hover { color: var(--foreground); border-color: var(--border-hover); }
-        .hist-chip.active { background: var(--primary); color: var(--primary-foreground); border-color: var(--primary); }
+        /* Один ряд чипов; на узких экранах — горизонтальный скролл без переноса */
+        .hist-filters { display: flex; align-items: center; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+        .hist-filters::-webkit-scrollbar { display: none; }
+        .hist-filters .ds-chip { flex-shrink: 0; white-space: nowrap; }
+        .hist-filter-sep { width: 1px; height: 18px; background: var(--border-med); flex-shrink: 0; margin: 0 4px; }
 
-        .hist-timeline { display: flex; flex-direction: column; gap: 24px; padding-bottom: 40px; }
-        .hist-empty { text-align: center; padding: 40px 0; font-size: 14px; }
+        .hist-timeline { display: flex; flex-direction: column; gap: 24px; padding-bottom: 56px; }
         .hist-group { display: flex; flex-direction: column; gap: 14px; }
         .hist-day {
           font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
-          color: var(--muted-foreground);
+          color: var(--text-muted);
         }
         .hist-items { display: flex; flex-direction: column; }
         .hist-item { display: flex; gap: 14px; }
         .hist-rail { display: flex; flex-direction: column; align-items: center; }
-        /* Контурная иконка в тинт-кружке: фон = цвет с alpha, иконка = тот же цвет */
+        /* Нейтральный тип-маркер: line-иконка на тихой плашке; цвет несёт только статус */
         .hist-dot {
           width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
           display: flex; align-items: center; justify-content: center;
+          background: var(--bg-tile); border: 1px solid var(--border-soft); color: var(--text-muted);
         }
         .hist-item:not(:last-child) .hist-rail::after {
-          content: ''; flex: 1; width: 2px; background: var(--border); margin: 4px 0;
+          content: ''; flex: 1; width: 2px; background: var(--border-soft); margin: 4px 0;
         }
         .hist-body { flex: 1; padding-bottom: 20px; display: flex; flex-direction: column; gap: 5px; }
         .hist-item-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
         .hist-title { font-size: 15px; font-weight: 600; color: var(--foreground); }
-        .hist-time { font-size: 12px; flex-shrink: 0; }
-        .hist-detail { font-size: 13.5px; line-height: 1.5; }
+        .hist-time { font-size: 12px; flex-shrink: 0; color: var(--text-muted); }
+        .hist-detail { font-size: 13.5px; line-height: 1.5; color: var(--text-muted); }
         .hist-tags { display: flex; align-items: center; gap: 10px; margin-top: 3px; }
-        /* Метаданные — один тихий регистр (actor · тип) */
-        .hist-meta {
-          font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 20px;
-          background: var(--bg-tile); color: var(--text-muted);
-        }
-        /* Цветным остаётся только статус — реальная семантика */
-        .hist-status { font-size: 12px; font-weight: 500; }
+        /* Метаданные — тихий текст (actor · тип), без пилюль; цвет остаётся только у статуса */
+        .hist-meta { font-size: 12px; color: var(--text-muted); }
 
-        @media (max-width: 700px) {
+        @media (max-width: 640px) {
           .hist-stats { grid-template-columns: repeat(2, 1fr); }
+          .hist-filters .ds-chip { min-height: 44px; padding-inline: 14px; }
         }
       `}</style>
     </div>

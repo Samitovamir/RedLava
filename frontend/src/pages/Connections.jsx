@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { clearToken, isGuest } from '../api/authFetch'
 import { useT, useLang } from '../context/LanguageContext.jsx'
 import ThemeSwitcher from '../components/ThemeSwitcher.jsx'
+import { Button, Field, SectionHeader, StatusPill } from '../ui'
 
 /*
   Страница «Подключения».
@@ -313,10 +314,7 @@ export default function Connections() {
 
   return (
     <div className="conn-page">
-      <div className="page-header">
-        <h2>{t.heading}</h2>
-        <span className="muted">{t.sub}</span>
-      </div>
+      <SectionHeader title={t.heading} subtitle={t.sub} />
 
       <p className="conn-intro muted">
         {t.intro}
@@ -337,69 +335,69 @@ export default function Connections() {
               initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.35, delay: i * 0.06 }}
             >
-              <div className="conn-row">
+              <div className="conn-top">
                 <span className="conn-icon" style={{ background: `${svc.color}22`, color: svc.color }}>
                   {svc.icon}
                 </span>
-                <div className="conn-info">
-                  <div className="conn-name">
-                    {svcName(svc)}
-                    {connected
-                      ? <span className="conn-badge on">{t.connected}</span>
-                      : <span className="conn-badge off"><span className="conn-dot" />{t.notConnected}</span>}
-                    {!svc.live && <span className="conn-soon">{t.demo}</span>}
-                  </div>
-                  <div className="conn-desc muted">{svcDesc(svc)}</div>
-                  {connected && <div className="conn-account">{c.email || c.account || t.connectedFallback}</div>}
+                <div className="conn-status">
+                  {!svc.live && <span className="conn-soon">{t.demo}</span>}
+                  {connected
+                    ? <StatusPill status="ok">{t.connected}</StatusPill>
+                    : <StatusPill status="unknown">{t.notConnected}</StatusPill>}
                 </div>
-                <div className="conn-action">
-                  {connected ? (
-                    <button className="conn-btn ghost" onClick={() => disconnect(svc)}>{t.btnDisconnect}</button>
-                  ) : svc.kind === 'oauth' ? (
-                    <button className="conn-btn primary" disabled={isBusy} onClick={() => connect(svc)}>
-                      {isBusy ? t.btnConnecting : t.btnConnect}
-                    </button>
-                  ) : (
-                    <button className="conn-btn primary" disabled={isBusy} onClick={() => formOpen ? setOpenForm(null) : (svc.kind === 'url' ? startUrlForm(svc) : startLoginForm(svc))}>
-                      {formOpen ? t.btnCollapse : t.btnConnect}
-                    </button>
-                  )}
-                </div>
+              </div>
+
+              <div className="conn-name">{svcName(svc)}</div>
+              <div className="conn-desc muted">{svcDesc(svc)}</div>
+              {connected && <div className="conn-account">{c.email || c.account || t.connectedFallback}</div>}
+
+              <div className="conn-action">
+                {connected ? (
+                  <Button variant="subtle" onClick={() => disconnect(svc)}>{t.btnDisconnect}</Button>
+                ) : svc.kind === 'oauth' ? (
+                  <Button variant="primary" disabled={isBusy} onClick={() => connect(svc)}>
+                    {isBusy ? t.btnConnecting : t.btnConnect}
+                  </Button>
+                ) : (
+                  <Button
+                    variant={formOpen ? 'subtle' : 'primary'} disabled={isBusy}
+                    onClick={() => formOpen ? setOpenForm(null) : (svc.kind === 'url' ? startUrlForm(svc) : startLoginForm(svc))}
+                  >
+                    {formOpen ? t.btnCollapse : t.btnConnect}
+                  </Button>
+                )}
               </div>
 
               {svc.kind === 'url' && formOpen && !connected && (
                 <motion.div className="conn-form" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
-                  <div className="conn-field">
-                    <label>{t.yandexLabel}</label>
-                    <input type="text" placeholder="https://disk.yandex.ru/d/..." value={urlForm}
-                      onChange={e => setUrlForm(e.target.value)} />
-                  </div>
+                  <Field
+                    label={t.yandexLabel} type="text" placeholder="https://disk.yandex.ru/d/..."
+                    value={urlForm} onChange={e => setUrlForm(e.target.value)}
+                  />
                   <div className="conn-form-foot">
                     <span className="conn-note muted">{t.yandexNote}</span>
-                    <button className="conn-btn primary" disabled={isBusy || !urlForm.trim()} onClick={() => submitUrl(svc)}>
+                    <Button variant="primary" disabled={isBusy || !urlForm.trim()} onClick={() => submitUrl(svc)}>
                       {isBusy ? t.btnConnecting : t.btnConnectFolder}
-                    </button>
+                    </Button>
                   </div>
                 </motion.div>
               )}
 
               {svc.kind === 'login' && formOpen && !connected && (
                 <motion.div className="conn-form" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
-                  <div className="conn-field">
-                    <label>{t.garminEmailLabel}</label>
-                    <input type="email" placeholder={t.garminEmailPh} value={form.email}
-                      onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
-                  </div>
-                  <div className="conn-field">
-                    <label>{t.pwLabel}</label>
-                    <input type="password" placeholder={t.pwPh} value={form.password}
-                      onChange={e => setForm(f => ({ ...f, password: e.target.value }))} />
-                  </div>
+                  <Field
+                    label={t.garminEmailLabel} type="email" placeholder={t.garminEmailPh}
+                    value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                  />
+                  <Field
+                    label={t.pwLabel} type="password" placeholder={t.pwPh}
+                    value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+                  />
                   <div className="conn-form-foot">
                     <span className="conn-note muted">{t.garminNote}</span>
-                    <button className="conn-btn primary" disabled={isBusy || !form.email.trim() || !form.password.trim()} onClick={() => submitLogin(svc)}>
+                    <Button variant="primary" disabled={isBusy || !form.email.trim() || !form.password.trim()} onClick={() => submitLogin(svc)}>
                       {isBusy ? t.btnConnecting : t.btnLoginConnect}
-                    </button>
+                    </Button>
                   </div>
                 </motion.div>
               )}
@@ -437,39 +435,39 @@ export default function Connections() {
               {guest ? t.guestName : t.mainName}
               {guest
                 ? <span className="conn-soon">{t.demo}</span>
-                : <span className="conn-badge on">{t.mainBadge}</span>}
+                : <StatusPill status="ok">{t.mainBadge}</StatusPill>}
             </div>
             <div className="conn-desc muted">
               {guest ? t.guestDesc : t.mainDesc}
             </div>
           </div>
-          <div className="conn-action">
-            <button className={`conn-btn ${guest ? 'primary' : 'ghost'}`} onClick={switchAccount}>
+          <div className="conn-account-action">
+            <Button variant={guest ? 'primary' : 'subtle'} onClick={switchAccount}>
               {guest ? t.btnLoginMain : t.btnSwitch}
-            </button>
+            </Button>
           </div>
         </div>
       </motion.div>
 
       <div className="conn-reset">
         {!resetOpen ? (
-          <button className="conn-reset-btn" onClick={() => { setResetOpen(true); setResetErr('') }}>
+          <Button variant="ghost" size="sm" onClick={() => { setResetOpen(true); setResetErr('') }}>
             {t.resetBtn}
-          </button>
+          </Button>
         ) : (
           <form className="conn-reset-form" onSubmit={submitReset}>
             <span className="muted">{t.resetPwLabel}</span>
             <input
-              className="conn-reset-input" type="password" placeholder={t.resetPwPh}
+              className="ds-input conn-reset-input" type="password" placeholder={t.resetPwPh}
               value={resetPw} onChange={e => { setResetPw(e.target.value); setResetErr('') }}
               autoFocus inputMode="numeric"
             />
-            <button className="conn-reset-go" type="submit" disabled={resetBusy || !resetPw.trim()}>
+            <Button type="submit" variant="danger" size="sm" disabled={resetBusy || !resetPw.trim()}>
               {resetBusy ? t.resetBusy : t.resetGo}
-            </button>
-            <button type="button" className="conn-reset-cancel" onClick={() => { setResetOpen(false); setResetPw(''); setResetErr('') }}>
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={() => { setResetOpen(false); setResetPw(''); setResetErr('') }}>
               {t.resetCancel}
-            </button>
+            </Button>
             {resetErr && <span className="conn-reset-err">{resetErr}</span>}
           </form>
         )}
@@ -477,69 +475,42 @@ export default function Connections() {
 
       <style>{`
         .conn-page { display: flex; flex-direction: column; gap: 18px; max-width: 760px; margin-inline: auto; width: 100%; padding-bottom: 24px; }
-        .page-header { display: flex; align-items: baseline; gap: 12px; }
         .conn-intro { font-size: 15px; line-height: 1.6; max-width: 620px; margin: -4px 0 2px; }
         .conn-notice {
           background: color-mix(in srgb, var(--accent) 12%, transparent); border: 1px solid var(--accent);
           color: var(--foreground); border-radius: 12px; padding: 12px 16px; font-size: 14px;
         }
-        .conn-list { display: flex; flex-direction: column; gap: 14px; }
-        .conn-card { padding: 18px 20px; transition: border-color 0.2s, box-shadow 0.2s; }
+        .conn-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+        .conn-card { display: flex; flex-direction: column; gap: 10px; padding: 18px 20px; transition: border-color 0.2s, box-shadow 0.2s; }
         .conn-card.on { border-color: color-mix(in srgb, var(--status-ok) 40%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--status-ok) 15%, transparent); }
-        .conn-row { display: flex; align-items: center; gap: 16px; }
+        .conn-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+        .conn-status { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
         .conn-icon { width: 48px; height: 48px; border-radius: 14px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
-        .conn-info { flex: 1; min-width: 0; }
         .conn-name { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 700; color: var(--foreground); }
-        .conn-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: 20px; background: var(--bg-tile); border: 1px solid var(--border-med); color: var(--text-secondary); }
-        /* «Не подключено» в светлой теме читалось мелко — крупнее и контрастнее (≥4.5:1), вид «Подключено» не трогаем */
-        .conn-badge.off { font-size: 12.5px; color: var(--text-secondary); }
-        .conn-badge.off .conn-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); flex-shrink: 0; }
-        .conn-badge.on { background: color-mix(in srgb, var(--status-ok) 16%, transparent); border-color: color-mix(in srgb, var(--status-ok) 32%, transparent); color: var(--status-ok); }
         .conn-soon { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--status-warn); background: color-mix(in srgb, var(--status-warn) 14%, transparent); padding: 2px 7px; border-radius: 20px; }
-        .conn-desc { font-size: 13.5px; line-height: 1.5; margin-top: 3px; }
-        .conn-account { font-size: 13px; color: var(--text-secondary); margin-top: 5px; font-weight: 500; }
-        .conn-action { flex-shrink: 0; }
-        .conn-btn { padding: 10px 18px; border-radius: 11px; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; border: 1px solid transparent; transition: all 0.15s; }
-        .conn-btn.primary { background: linear-gradient(180deg, var(--accent-btn-top), var(--accent-btn-bot)); color: var(--on-accent); box-shadow: var(--shadow-btn); }
-        .conn-btn.primary:hover:not(:disabled) { filter: brightness(1.04); }
-        .conn-btn.primary:disabled { opacity: 0.5; cursor: default; box-shadow: none; }
-        .conn-btn.ghost { background: transparent; border-color: var(--border-med); color: var(--text-secondary); }
-        .conn-btn.ghost:hover { color: var(--foreground); border-color: var(--accent); }
-        .conn-form { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-soft); display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
-        .conn-field { display: flex; flex-direction: column; gap: 6px; }
-        .conn-field label { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
-        .conn-field input { background: var(--bg-tile); border: 1px solid var(--border-med); border-radius: 10px; padding: 12px 14px; font-family: inherit; font-size: 15px; color: var(--foreground); outline: none; transition: border-color 0.15s; }
-        .conn-field input:focus { border-color: var(--accent); }
-        .conn-field input::placeholder { color: var(--text-faint); }
+        .conn-desc { font-size: 13.5px; line-height: 1.5; }
+        .conn-account { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
+        .conn-action { margin-top: auto; padding-top: 6px; }
+        .conn-action .ds-btn { width: 100%; }
+        .conn-form { padding-top: 14px; border-top: 1px solid var(--border-soft); display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
         .conn-form-foot { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
         .conn-note { font-size: 12.5px; line-height: 1.4; flex: 1; min-width: 200px; }
         .conn-foot { font-size: 13px; margin-top: 4px; }
         .conn-account-card { padding: 18px 20px; }
+        .conn-row { display: flex; align-items: center; gap: 16px; }
+        .conn-info { flex: 1; min-width: 0; }
+        .conn-account-action { flex-shrink: 0; }
         .conn-reset { margin-top: 8px; padding-top: 18px; border-top: 1px solid var(--border-soft); }
-        .conn-reset-btn {
-          background: transparent; border: 1px solid var(--border-med); color: var(--text-secondary);
-          border-radius: 11px; padding: 9px 16px; font-family: inherit; font-size: 13.5px; font-weight: 600;
-          cursor: pointer; transition: all 0.15s;
-        }
-        .conn-reset-btn:hover { color: var(--status-crit); border-color: var(--status-crit); }
         .conn-reset-form { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-        .conn-reset-input {
-          background: var(--bg-tile); border: 1px solid var(--border-med); border-radius: 10px;
-          padding: 9px 14px; font-family: inherit; font-size: 14px; color: var(--foreground); outline: none; width: 140px;
-        }
-        .conn-reset-input:focus { border-color: var(--status-crit); }
-        .conn-reset-go {
-          background: var(--status-crit); color: var(--on-accent); border: none; border-radius: 10px;
-          padding: 9px 16px; font-family: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; transition: opacity 0.15s;
-        }
-        .conn-reset-go:hover:not(:disabled) { opacity: 0.9; }
-        .conn-reset-go:disabled { opacity: 0.5; cursor: default; }
-        .conn-reset-cancel {
-          background: transparent; border: 1px solid var(--border-med); color: var(--text-secondary);
-          border-radius: 10px; padding: 9px 16px; font-family: inherit; font-size: 13.5px; cursor: pointer;
-        }
+        .conn-reset-input { width: 140px; padding: 9px 14px; font-size: 14px; }
         .conn-reset-err { font-size: 13px; color: var(--status-crit); }
-        @media (max-width: 560px) { .conn-row { flex-wrap: wrap; } .conn-action { width: 100%; } .conn-btn { width: 100%; } }
+        @media (max-width: 640px) {
+          .conn-list { grid-template-columns: 1fr; }
+          .conn-row { flex-wrap: wrap; }
+          .conn-account-action { width: 100%; }
+          .conn-account-action .ds-btn { width: 100%; }
+          .conn-page .ds-btn { min-height: 44px; }
+        }
       `}</style>
     </div>
   )

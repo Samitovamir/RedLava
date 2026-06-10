@@ -14,8 +14,9 @@ import { categoryColor } from '../utils/categoryColor.js'
 
 import { mskNow } from '../utils/time.js'
 
-const HOUR_START = 6
-const HOUR_END = 23
+// Жёсткие границы таймлайна; реальное окно часов вычисляется от событий дня (activeHours)
+const HOUR_MIN = 5
+const HOUR_MAX = 23
 const PX_PER_HOUR = 72
 
 // Иконки по типу события
@@ -132,7 +133,7 @@ function toMinutes(t) {
 }
 
 function topFor(t) {
-  return ((toMinutes(t) - HOUR_START * 60) / 60) * PX_PER_HOUR
+  return ((toMinutes(t) - HOUR_MIN * 60) / 60) * PX_PER_HOUR
 }
 
 function formatRu(offset, lang = 'ru') {
@@ -394,7 +395,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
   })
   const hours = useMemo(() => {
     const arr = []
-    for (let h = HOUR_START; h <= HOUR_END; h++) arr.push(h)
+    for (let h = HOUR_MIN; h <= HOUR_MAX; h++) arr.push(h)
     return arr
   }, [])
 
@@ -429,7 +430,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
     setOpenMenu(null)
     // Доскролл таймлайна к времени события (после перерисовки дня).
     if (focusSignal.time) {
-      const top = ((toMinutes(focusSignal.time) - HOUR_START * 60) / 60) * PX_PER_HOUR
+      const top = ((toMinutes(focusSignal.time) - HOUR_MIN * 60) / 60) * PX_PER_HOUR
       requestAnimationFrame(() => requestAnimationFrame(() => {
         scrollRef.current?.scrollTo({ top: Math.max(0, top - 80), behavior: 'smooth' })
       }))
@@ -454,10 +455,10 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
     if (!el) return
     const n = mskNow()
     const nMin = n.getHours() * 60 + n.getMinutes()
-    const isToday = dayOffset === 0 && nMin >= HOUR_START * 60 && nMin <= HOUR_END * 60
+    const isToday = dayOffset === 0 && nMin >= HOUR_MIN * 60 && nMin <= HOUR_MAX * 60
     let target
     if (isToday) {
-      target = ((nMin - HOUR_START * 60) / 60) * PX_PER_HOUR - 120
+      target = ((nMin - HOUR_MIN * 60) / 60) * PX_PER_HOUR - 120
     } else if (dayEvents.length) {
       target = topFor(dayEvents[0].start) - 60
     } else {
@@ -471,7 +472,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
   // Раскладка таймлайна с упаковкой (без наложений) + итоговая высота контейнера
   const positionedEvents = packTimeline(layoutEvents(dayEvents))
   const timelineHeight = Math.max(
-    (HOUR_END - HOUR_START) * PX_PER_HOUR + 40,
+    (HOUR_MAX - HOUR_MIN) * PX_PER_HOUR + 40,
     ...positionedEvents.map(e => e._top + e._height),
     0
   ) + 20
@@ -669,8 +670,8 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
   // текущее время (линия только когда смотрим сегодня)
   const now = mskNow()
   const nowMin = now.getHours() * 60 + now.getMinutes()
-  const inRange = dayOffset === 0 && nowMin >= HOUR_START * 60 && nowMin <= HOUR_END * 60
-  const nowTop = ((nowMin - HOUR_START * 60) / 60) * PX_PER_HOUR
+  const inRange = dayOffset === 0 && nowMin >= HOUR_MIN * 60 && nowMin <= HOUR_MAX * 60
+  const nowTop = ((nowMin - HOUR_MIN * 60) / 60) * PX_PER_HOUR
   const nowLabel = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
 
   return (
@@ -856,7 +857,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
                   <span className="ds-hour-label">{String(h).padStart(2, '0')}:00</span>
                   <div className="ds-hour-line" />
                 </div>
-                {h < HOUR_END && (
+                {h < HOUR_MAX && (
                   <div className="ds-half-row" style={{ top: i * PX_PER_HOUR + PX_PER_HOUR / 2 }}>
                     <div className="ds-half-line" />
                   </div>

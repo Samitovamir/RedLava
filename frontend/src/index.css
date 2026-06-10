@@ -223,6 +223,18 @@ h1, h2, h3 { letter-spacing: -0.015em; }
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;   /* нативный эластичный overscroll */
   overscroll-behavior-y: auto;
+  transition: margin-left 0.22s var(--ease);
+}
+/* Закреплённый рельс навигации: контент уезжает под раскрытый сайдбар */
+html[data-nav-pinned] .page-content { margin-left: var(--sidebar-width-expanded); }
+
+/* Мобайл: сайдбара нет (нижняя таб-панель), плотность выше */
+@media (max-width: 640px) {
+  .page-content,
+  html[data-nav-pinned] .page-content {
+    margin-left: 0;
+    padding: 16px 16px calc(96px + env(safe-area-inset-bottom)) 16px;
+  }
 }
 
 .card {
