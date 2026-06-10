@@ -1,8 +1,9 @@
 import { SectionHeader } from '../ui'
 import ThemeSwitcher from '../components/ThemeSwitcher.jsx'
+import LayoutSwitcher from '../components/LayoutSwitcher.jsx'
 import { useLang, useT } from '../context/LanguageContext.jsx'
 
-// Настройки: язык интерфейса + оформление (темы).
+// Настройки: язык интерфейса + оформление (темы) + раскладка (компоновка).
 // Сюда переехали переключатели из сайдбара («EN») и «Подключений».
 export default function Settings() {
   const { lang, setLang } = useLang()
@@ -50,6 +51,10 @@ export default function Settings() {
 
       <div className="card settings-card">
         <ThemeSwitcher />
+      </div>
+
+      <div className="card settings-card">
+        <LayoutSwitcher />
       </div>
 
       <style>{`
