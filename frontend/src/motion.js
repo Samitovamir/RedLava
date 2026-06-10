@@ -38,12 +38,13 @@ export const variants = {
     animate: { opacity: 1, y: 0 },
     transition: { duration: DUR.base, ease: EASE },
   },
-  // переход между разделами (страницами)
+  // переход между разделами (страницами): ощутимый подъём с лёгким масштабом —
+  // раздел «подъезжает» как панель приборов, а не просто мигает прозрачностью
   pageEnter: {
-    initial: { opacity: 0, y: 10 },
-    animate: { opacity: 1, y: 0 },
-    exit: { opacity: 0, y: -8 },
-    transition: { duration: DUR.slow, ease: EASE },
+    initial: { opacity: 0, y: 22, scale: 0.988 },
+    animate: { opacity: 1, y: 0, scale: 1 },
+    exit: { opacity: 0, y: -14, scale: 0.992 },
+    transition: { duration: 0.36, ease: EASE },
   },
 }
 

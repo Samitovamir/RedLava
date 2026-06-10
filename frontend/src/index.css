@@ -584,3 +584,31 @@ html[data-layout="journal"] .settings-page {
 
 /* --- Кокпит: плотнее KPI-ряды Истории (4 зоны в строку как приборы) --- */
 html[data-layout="cockpit"] .hist-stats { gap: 12px; }
+
+/* ============================================================
+   ДВИЖЕНИЕ: каскадная «сборка» страницы и отклик кнопок.
+   Блоки раздела появляются друг за другом (stagger) при входе —
+   вместе с pageEnter из motion.js даёт ощутимый, но спокойный переход.
+   ============================================================ */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes block-rise {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  /* Прямые блоки страницы (внутри page-content > страница) */
+  .page-content > * > * { animation: block-rise 0.42s var(--ease) backwards; }
+  .page-content > * > :nth-child(1) { animation-delay: 0.02s; }
+  .page-content > * > :nth-child(2) { animation-delay: 0.06s; }
+  .page-content > * > :nth-child(3) { animation-delay: 0.10s; }
+  .page-content > * > :nth-child(4) { animation-delay: 0.14s; }
+  .page-content > * > :nth-child(5) { animation-delay: 0.18s; }
+  .page-content > * > :nth-child(6) { animation-delay: 0.22s; }
+  .page-content > * > :nth-child(n+7) { animation-delay: 0.26s; }
+}
+
+/* Кнопки дизайн-системы: живой подъём на hover (в пару к прессу на :active) */
+.ds-btn:hover:not(:disabled) { transform: translateY(-1px); }
+.ds-btn--primary:hover:not(:disabled) { box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 28%, transparent); }
+
+/* Карточки: плавность тени/рамки при любых hover-эффектах */
+.card { transition: box-shadow var(--dur-base) var(--ease), border-color var(--dur-base) var(--ease); }
