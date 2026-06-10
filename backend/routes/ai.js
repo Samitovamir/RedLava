@@ -141,8 +141,11 @@ const STYLE_RULE =
   '• НЕ используй смайлики и эмодзи.'
 
 router.post('/chat', async (req, res) => {
-  const { message, context, history, snapshot } = req.body
+  const { message, context, history, snapshot, maxTokens } = req.body
   if (!message) return res.status(400).json({ error: 'message required' })
+  // Обычный чат — короткие ответы (1024). Длинные форматы (расшифровка анализов и т.п.)
+  // могут запросить больший лимит, но не выше потолка, чтобы ответ не обрывался на полуслове.
+  const outTokens = Math.min(Math.max(Number(maxTokens) || 1024, 256), 8192)
   if (await guestOverDailyLimit(req)) return res.status(200).json(softBlock(GUEST_LIMIT_MSG))
   if (!process.env.ANTHROPIC_API_KEY) {
     return res.json({ reply: 'Добавьте ANTHROPIC_API_KEY в .env файл для работы ИИ.' })
@@ -160,7 +163,7 @@ router.post('/chat', async (req, res) => {
     const system = [{ type: 'text', text: full, cache_control: { type: 'ephemeral' } }]
     const response = await client.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 1024,
+      max_tokens: outTokens,
       system,
       messages: [...prior, { role: 'user', content: message }]
     })

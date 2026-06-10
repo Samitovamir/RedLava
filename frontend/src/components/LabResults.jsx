@@ -331,7 +331,9 @@ export default function LabResults() {
     try {
       const res = await fetch('/api/ai/chat', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: 'Расшифруй мои анализы крови с учётом динамики', context })
+        // Полная расшифровка — длинный многораздельный текст, поэтому просим больший
+        // лимит вывода, чтобы ответ не обрывался на полуслове.
+        body: JSON.stringify({ message: 'Расшифруй мои анализы крови с учётом динамики', context, maxTokens: 4096 })
       })
       const data = await res.json()
       setAiText(data.reply || t.decodeFail)
