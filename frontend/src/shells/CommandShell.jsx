@@ -136,14 +136,25 @@ export default function CommandShell() {
           text-transform: uppercase; letter-spacing: 0.07em;
         }
 
-        /* Центр — рабочая область: страницы без внешних ограничений ширины */
-        .cmd-center .schedule-layout { height: calc(100vh - 240px); }
+        /* Расписание в центре: одна колонка — таймлайн на всю ширину панели,
+           сводка дня под ним (вбок не влезает и уезжала под помощника) */
+        .cmd-center .schedule-layout {
+          grid-template-columns: 1fr;
+          height: auto; min-height: 0;
+        }
+        .cmd-center .schedule-col:first-child { height: calc(100vh - 280px); min-height: 480px; }
+        .cmd-center .schedule-col:last-child { height: auto; }
 
-        /* Помощник в узкой панели: шапка переносится, вкладки своей строкой */
-        .cmd-right .ai-work-zone { min-width: 0; }
+        /* Помощник в узкой панели: шапка переносится, вкладки своей строкой,
+           поле ввода не вылезает за карточку */
+        .cmd-right .ai-work-zone { min-width: 0; overflow: hidden; }
         .cmd-right .awz-head { flex-wrap: wrap; gap: 10px; }
         .cmd-right .awz-switch { width: 100%; display: flex; }
         .cmd-right .awz-switch .awz-tab { flex: 1; }
+        .cmd-right textarea, .cmd-right .vi-field {
+          width: 100%; min-width: 0; max-width: 100%;
+          box-sizing: border-box; resize: none;
+        }
 
         /* Каскад только при первом входе центра */
         @media (prefers-reduced-motion: no-preference) {

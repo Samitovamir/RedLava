@@ -59,9 +59,6 @@ export default function Schedule() {
         }
         html[data-layout="journal"] .schedule-col:first-child { order: 2; height: 72vh; min-height: 520px; }
         html[data-layout="journal"] .schedule-col:last-child { order: 1; height: auto; }
-
-        /* Командный центр: чуть плотнее сетка */
-        html[data-layout="command"] .schedule-layout { grid-template-columns: 7.5fr 2.5fr; gap: 12px; }
       `}</style>
     </div>
   )

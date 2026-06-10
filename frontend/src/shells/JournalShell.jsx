@@ -53,17 +53,18 @@ export default function JournalShell() {
     ? `${MONTHS_EN[d.getMonth()]} ${d.getDate()}`
     : `${d.getDate()} ${MONTHS_RU[d.getMonth()]}`
 
+  const scrollToChapter = (id) => {
+    const el = document.getElementById(`fd-${id}`)
+    if (!el) return
+    spyPaused.current = true
+    setActive(id)
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    setTimeout(() => { spyPaused.current = false }, 900)
+  }
+
   // Роут → плавная прокрутка к главе (включая navigate() из глубины компонентов)
   useEffect(() => {
-    const ch = chapterForPath(location.pathname)
-    setActive(ch.id)
-    const el = document.getElementById(`fd-${ch.id}`)
-    if (el) {
-      spyPaused.current = true
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      const t = setTimeout(() => { spyPaused.current = false }, 900)
-      return () => clearTimeout(t)
-    }
+    scrollToChapter(chapterForPath(location.pathname).id)
   }, [location.pathname])
 
   // Scrollspy: подсветка главы при ручной прокрутке
@@ -90,7 +91,9 @@ export default function JournalShell() {
               <button
                 key={c.id}
                 className={`fd-toc-item ${active === c.id ? 'active' : ''}`}
-                onClick={() => navigate(c.path)}
+                // Прокрутка напрямую: если URL уже совпадает (после ручного скролла),
+                // navigate() сам по себе ничего не сделал бы
+                onClick={() => { navigate(c.path); scrollToChapter(c.id) }}
               >
                 {lang === 'en' ? c.en : c.ru}
               </button>
@@ -129,7 +132,7 @@ export default function JournalShell() {
         }
         .fd-mast-inner {
           display: flex; align-items: center; gap: 18px;
-          max-width: 880px; margin-inline: auto;
+          max-width: 1160px; margin-inline: auto;
           padding: 10px 24px;
         }
         .fd-brand { font-size: 15px; font-weight: 800; color: var(--text-primary); flex-shrink: 0; }
@@ -149,9 +152,15 @@ export default function JournalShell() {
         .fd-toc-item.active { color: var(--accent); background: var(--bg-tile); }
 
         .fd-feed {
-          max-width: 860px; margin-inline: auto;
+          max-width: 1160px; margin-inline: auto;
           padding: 72px 24px 64px; /* верх — под фиксированное оглавление */
           display: flex; flex-direction: column; gap: 12px;
+        }
+        /* Широкая лента: журнальное центрирование разделов внутри ленты не нужно */
+        .fd-feed .health-page, .fd-feed .nu-page, .fd-feed .history-page,
+        .fd-feed .conn-page, .fd-feed .mail-page, .fd-feed .settings-page,
+        .fd-feed .home-page {
+          max-width: none;
         }
         .fd-chapter {
           scroll-margin-top: 64px;
