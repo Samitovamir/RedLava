@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { EVENT_TYPES } from '../utils/events.js'
 import { motion } from 'framer-motion'
 import { mskDateKey } from '../utils/time.js'
 import { useLang } from '../context/LanguageContext.jsx'
@@ -11,12 +12,8 @@ import { categoryColor, categoryTint } from '../utils/categoryColor.js'
   AI-парсинг текста ("завтра в 15:00 встреча") — заглушка на будущее.
 */
 
-const TYPES = [
-  { value: 'call', label: 'Звонок', labelEn: 'Call', color: 'var(--cat-event-call)' },
-  { value: 'calendar', label: 'Событие', labelEn: 'Event', color: 'var(--cat-event-calendar)' },
-  { value: 'email', label: 'Письмо', labelEn: 'Email', color: 'var(--cat-event-email)' },
-  { value: 'meeting', label: 'Встреча', labelEn: 'Meeting', color: 'var(--cat-event-meeting)' }
-]
+// Типы событий — общий словарь utils/events.js (один источник с DaySchedule)
+const TYPES = EVENT_TYPES.map((t) => ({ value: t.value, label: t.ru, labelEn: t.en, color: categoryColor(t.colorKey) }))
 
 // Варианты повторения (как в Google Calendar)
 const REPEATS = [

@@ -10,7 +10,7 @@ import {
   // приёмы пищи
   Sunrise, Salad, Apple, Moon, Sun,
   // события
-  Phone, CalendarDays, Mail, Users,
+  Phone, CalendarDays, Mail, Users, User,
   // приоритеты / статусы
   AlertTriangle, Circle,
   // интерфейс / ИИ
@@ -49,6 +49,7 @@ export const ICONS = {
   'event-calendar': CalendarDays,
   'event-email': Mail,
   'event-meeting': Users,
+  'event-personal': User,
   // приоритеты (как маркер; цвет — через StatusPill)
   'priority-urgent': AlertTriangle,
   'priority-important': Circle,

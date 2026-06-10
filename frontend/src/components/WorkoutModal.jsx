@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Heart } from 'lucide-react'
 import { categoryColor } from '../utils/categoryColor.js'
 
 /*
@@ -143,7 +144,7 @@ function SplitsChart({ splits, color }) {
               <div className="wm-split-bar" style={{ width: `${w}%`, background: color }} />
               <span className="wm-split-pace">{main}</span>
             </div>
-            {s.avgHr != null && <span className="wm-split-hr">♥ {s.avgHr}</span>}
+            {s.avgHr != null && <span className="wm-split-hr"><Heart size={11} strokeWidth={2} /> {s.avgHr}</span>}
             {s.elevationGain != null && <span className="wm-split-el muted">{s.elevationGain > 0 ? '+' : ''}{s.elevationGain} м</span>}
           </div>
         )

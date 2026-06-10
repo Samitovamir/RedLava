@@ -5,6 +5,8 @@ import MiniCalendar from './MiniCalendar.jsx'
 import { useEvents, dateKey } from '../context/EventsContext.jsx'
 import { useLang, useT } from '../context/LanguageContext.jsx'
 import { categoryColor } from '../utils/categoryColor.js'
+import { EVENT_TYPES, eventIconKey } from '../utils/events.js'
+import Icon from '../ui/Icon.jsx'
 
 /*
   Расписание дня — вертикальный таймлайн (референс скрин 1).
@@ -43,60 +45,10 @@ const ICONS = {
   )
 }
 
-const COLORS = {
-  call: 'var(--cat-event-call)',
-  calendar: 'var(--cat-event-calendar)',
-  email: 'var(--cat-event-email)',
-  meeting: 'var(--cat-event-meeting)'
-}
-
-// Осмысленная иконка по СМЫСЛУ события, а не по «техническому» типу:
-// тренировка / личное / письмо / звонок / встреча / дело. Тип события узковат
-// (call/calendar/email/meeting), поэтому тренировки и личное ловим по ключевым словам.
-const WORKOUT_RE = /трениров|бассейн|плаван|заплыв|пробежк|\bбег\b|\bзал\b|спорт|йог|велосипед|\bвелик\b|кросс|кардио|растяжк|gym|run|swim|workout|ride|\bbike\b|yoga/i
-const PERSONAL_RE = /личное|семья|\bдом\b|врач|family|personal|doctor/i
-function eventCategory(e) {
-  const txt = `${e.title || ''} ${e.who || ''}`
-  if (WORKOUT_RE.test(txt)) return 'workout'
-  if (e.type === 'email') return 'mail'
-  if (e.type === 'call') return 'call'
-  if (PERSONAL_RE.test(txt)) return 'personal'
-  if (e.type === 'meeting') return 'meeting'
-  return 'event'
-}
-const CAT_ICONS = {
-  workout: (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="m6.5 6.5 11 11"/><path d="m21 21-1-1"/><path d="m3 3 1 1"/><path d="m18 22 4-4"/><path d="m2 6 4-4"/><path d="m3 10 7-7"/><path d="m14 21 7-7"/>
-    </svg>
-  ),
-  personal: (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-    </svg>
-  ),
-  mail: (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/>
-    </svg>
-  ),
-  call: (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/>
-    </svg>
-  ),
-  meeting: (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-    </svg>
-  ),
-  event: (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-    </svg>
-  )
-}
-const eventIcon = (e) => CAT_ICONS[eventCategory(e)] || CAT_ICONS.event
+// Типы/категории/иконки событий — общий словарь utils/events.js (рендер через ui/Icon).
+// Локальные имена COLORS/eventIcon сохранены, чтобы не трогать места использования.
+const COLORS = Object.fromEntries(EVENT_TYPES.map((t) => [t.value, categoryColor(t.colorKey)]))
+const eventIcon = (e) => <Icon name={eventIconKey(e)} size={17} strokeWidth={2} color="var(--on-accent)" />
 
 // Происходит ли событие в указанный день (с учётом повторения)
 function eventOccursOn(ev, viewDate) {
