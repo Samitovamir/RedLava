@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Button } from '../ui'
 import { motion, AnimatePresence } from 'framer-motion'
 import CircularChart from './CircularChart.jsx'
 import WhoopRings from './WhoopRings.jsx'
@@ -193,10 +194,10 @@ export default function MetricsView() {
               </div>
             </div>
           </div>
-          <button className="sleep-more" onClick={() => setSleepOpen(o => !o)} aria-expanded={sleepOpen}>
+          <Button variant="ghost" size="sm" style={{ alignSelf: 'flex-start' }} onClick={() => setSleepOpen(o => !o)} aria-expanded={sleepOpen}>
             <span className={`sleep-chev ${sleepOpen ? 'open' : ''}`}>▸</span>
             {sleepOpen ? t.collapse : t.sleepMore}
-          </button>
+          </Button>
           <AnimatePresence initial={false}>
             {sleepOpen && (
               <motion.div className="sleep-detail"
@@ -303,8 +304,6 @@ export default function MetricsView() {
         .stage-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
         .stage-leg-lbl { color: var(--muted-foreground); }
         .stage-leg-val { margin-left: auto; color: var(--foreground); font-weight: 600; }
-        .sleep-more { align-self: flex-start; display: flex; align-items: center; gap: 8px; background: transparent; border: none; padding: 4px 0; cursor: pointer; font-family: inherit; font-size: 13.5px; font-weight: 600; color: var(--primary); transition: opacity .15s; }
-        .sleep-more:hover { opacity: 0.8; }
         .sleep-chev { display: inline-block; transition: transform .2s; font-size: 11px; }
         .sleep-chev.open { transform: rotate(90deg); }
         .sleep-detail { overflow: hidden; }

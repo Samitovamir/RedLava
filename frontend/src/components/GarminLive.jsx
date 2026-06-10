@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Button } from '../ui'
 import { motion } from 'framer-motion'
 import WorkoutModal from './WorkoutModal.jsx'
 import { useEvents } from '../context/EventsContext.jsx'
@@ -312,9 +313,9 @@ export default function GarminLive({ embedded = false }) {
                   </div>
                   {info
                     ? <span className="gl-added">{t.inCal}{info.start ? `, ${info.start}` : ''}</span>
-                    : <button className="gl-add-btn" onClick={() => scheduleWorkout(w)}>
+                    : <Button variant="primary" size="sm" onClick={() => scheduleWorkout(w)}>
                         {t.toCal}
-                      </button>}
+                      </Button>}
                 </div>
               )
             })}
@@ -418,12 +419,6 @@ export default function GarminLive({ embedded = false }) {
         .gl-prow { display: flex; align-items: center; gap: 14px; padding: 13px 0; border-bottom: 1px solid var(--border); }
         .gl-prow:last-child { border-bottom: none; }
         /* Единая ширина кнопки → ровный правый край списка (время вынесено в мету) */
-        .gl-add-btn {
-          flex-shrink: 0; min-width: 148px; padding: 8px 14px; border-radius: 10px; border: 1px solid var(--accent);
-          background: transparent; color: var(--accent); font-family: inherit; font-size: 13px; font-weight: 600;
-          cursor: pointer; transition: all 0.15s; white-space: nowrap; text-align: center;
-        }
-        .gl-add-btn:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }
         .gl-added { flex-shrink: 0; min-width: 148px; text-align: center; font-size: 13px; font-weight: 600; color: var(--green); white-space: nowrap; }
         .gl-planned-note { font-size: 12px; margin-top: 2px; }
         .gl-debug { font-size: 11px; opacity: 0.6; margin-top: 8px; word-break: break-all; }

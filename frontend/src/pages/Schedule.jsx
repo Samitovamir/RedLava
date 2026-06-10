@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import DaySchedule from '../components/DaySchedule.jsx'
 import DaySummary from '../components/DaySummary.jsx'
+import { SectionHeader } from '../ui'
 import { useT } from '../context/LanguageContext.jsx'
 
 export default function Schedule() {
@@ -13,10 +14,7 @@ export default function Schedule() {
   const [viewDay, setViewDay] = useState(null)
   return (
     <div className="schedule-page">
-      <div className="page-header">
-        <h2>{t.title}</h2>
-        <span className="muted">{t.source}</span>
-      </div>
+      <SectionHeader title={t.title} subtitle={t.source} />
       <div className="schedule-layout">
         <motion.div
           className="schedule-col"
@@ -37,9 +35,6 @@ export default function Schedule() {
       </div>
       <style>{`
         .schedule-page { display: flex; flex-direction: column; gap: 24px; }
-        .page-header { display: flex; align-items: baseline; gap: 12px; }
-        .page-header h2 { font-size: 24px; font-weight: 700; }
-        .muted { color: var(--muted-foreground); }
         .schedule-layout {
           display: grid;
           grid-template-columns: 7fr 3fr;

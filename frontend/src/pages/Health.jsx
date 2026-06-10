@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import GarminLive from '../components/GarminLive.jsx'
 import MetricsView from '../components/MetricsView.jsx'
 import HealthAssistant from '../components/HealthAssistant.jsx'
+import { Button, SectionHeader } from '../ui'
 import { useT } from '../context/LanguageContext.jsx'
 
 /*
@@ -48,16 +49,13 @@ export default function Health() {
         </div>
         <div className="hcn-title">{t.notConnTitle}</div>
         <div className="hcn-text">{t.notConnText}</div>
-        <button className="hcn-btn" onClick={() => navigate('/connections')}>{t.go}</button>
+        <Button variant="primary" style={{ marginTop: 6 }} onClick={() => navigate('/connections')}>{t.go}</Button>
       </div>
     )
 
   return (
     <div className="health-page">
-      <div className="page-header">
-        <h2>{t.heading}</h2>
-        <span className="muted">{tab === 'activity' ? t.srcGarmin : t.srcMetrics}</span>
-      </div>
+      <SectionHeader title={t.heading} subtitle={tab === 'activity' ? t.srcGarmin : t.srcMetrics} />
 
       <div className="health-tabs" role="tablist">
         <button className={`health-tab ${tab === 'activity' ? 'active' : ''}`} onClick={() => setTab('activity')}>{t.activity}</button>
@@ -70,8 +68,6 @@ export default function Health() {
 
       <style>{`
         .health-page { display: flex; flex-direction: column; gap: 20px; max-width: 1400px; padding-bottom: 40px; }
-        .page-header { display: flex; align-items: baseline; gap: 12px; }
-        .page-header h2 { font-size: 24px; font-weight: 700; color: var(--foreground); }
         .muted { color: var(--muted-foreground); }
 
         .health-tabs {
@@ -97,8 +93,6 @@ export default function Health() {
         .hcn-ic { width: 60px; height: 60px; border-radius: 16px; background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); display: flex; align-items: center; justify-content: center; }
         .hcn-title { font-size: 19px; font-weight: 700; color: var(--foreground); }
         .hcn-text { font-size: 15px; color: var(--muted-foreground); max-width: 420px; line-height: 1.6; }
-        .hcn-btn { margin-top: 6px; padding: 11px 22px; border: none; border-radius: 12px; background: var(--accent); color: var(--accent-foreground); font-family: inherit; font-size: 14.5px; font-weight: 600; cursor: pointer; transition: opacity 0.15s; }
-        .hcn-btn:hover { opacity: 0.9; }
       `}</style>
     </div>
   )

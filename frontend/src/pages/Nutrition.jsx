@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
+import { Button, SectionHeader } from '../ui'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Camera, Footprints, BedDouble, RotateCcw,
@@ -570,15 +571,13 @@ export default function Nutrition() {
 
   return (
     <div className="nu-page">
-      <div className="page-header">
-        <div>
-          <h2>{t.title}</h2>
-          <span className="muted">{t.subtitle}</span>
-        </div>
-        <button className="nu-prefs-btn" onClick={openPrefs}>
-          <SlidersHorizontal size={16} strokeWidth={1.5} />{t.prefsBtn}
-        </button>
-      </div>
+      <SectionHeader
+        title={t.title}
+        subtitle={t.subtitle}
+        actions={(
+          <Button variant="subtle" iconLeft={SlidersHorizontal} onClick={openPrefs}>{t.prefsBtn}</Button>
+        )}
+      />
 
       {/* Цель + профиль */}
       <motion.div className="card nu-target" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
@@ -1016,16 +1015,9 @@ export default function Nutrition() {
 
       <style>{`
         .nu-page { display: flex; flex-direction: column; gap: 18px; max-width: 1400px; padding-bottom: 24px; }
-        .page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-        .page-header h2 { font-size: 24px; font-weight: 700; color: var(--foreground); }
-        .page-header > div span { display: block; margin-top: 2px; }
         .muted { color: var(--muted); }
         .card-title { font-size: 16px; font-weight: 700; color: var(--foreground); margin-bottom: 12px; }
-        .nu-prefs-btn { display: inline-flex; align-items: center; gap: 7px; padding: 10px 16px; border-radius: var(--radius-md); border: 1px solid var(--border-med); background: var(--bg-surface); color: var(--text-primary); font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; transition: all .15s; white-space: nowrap; }
-        .nu-prefs-btn:hover { border-color: var(--accent); color: var(--accent); }
         /* Зазор ≥8px от фиксированной плашки «Демо-режим» (top:14px, bottom ≈46px от вьюпорта) */
-        .nu-prefs-btn { margin-top: 26px; }
-        .nu-prefs-btn svg { flex-shrink: 0; }
 
         .nu-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
         .nu-edit { padding: 7px 13px; border-radius: var(--radius-sm); border: 1px solid var(--border-med); background: transparent; color: var(--text-secondary); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s; }
