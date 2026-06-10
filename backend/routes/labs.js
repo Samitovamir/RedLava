@@ -17,6 +17,14 @@ const router = Router()
 const URL_KEY = 'labs:yandex_url'
 const YA = 'https://cloud-api.yandex.net/v1/disk/public/resources'
 
+// Постоянная папка анализов владельца на Яндекс.Диске. Вшита в код, чтобы раздел
+// работал всегда — без ручного «подключения» через интерфейс. Можно переопределить
+// переменной окружения LABS_YANDEX_URL, а через UI (/connect) — временно сменить
+// (значение ляжет в KV и будет иметь приоритет). /disconnect вернёт этот дефолт.
+const DEFAULT_URL = process.env.LABS_YANDEX_URL || 'https://disk.yandex.ru/d/EXAMPLE'
+// Действующая ссылка: ручное подключение из KV имеет приоритет, иначе — постоянный дефолт.
+async function getUrl() { return (await kvGet(URL_KEY)) || DEFAULT_URL }
+
 function getClient() { return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }) }
 
 // ВСЕ разобранные анализы лежат в ОДНОМ ключе: { [id]: { modified, report } }.
@@ -64,7 +72,7 @@ const EXTRACT_TOOL = [{
   input_schema: {
     type: 'object',
     properties: {
-      date: { type: 'string', description: 'Дата анализа в формате YYYY-MM-DD. Определи её по НАЗВАНИЮ ПАПКИ (может быть кривым: «28.04-5.05», «анализы март» и т.п.) или по дате внутри документа. Если диапазон — возьми конечную дату.' },
+      date: { type: 'string', description: 'Дата анализа в формате YYYY-MM-DD. ГЛАВНЫЙ источник — реальная дата ВЗЯТИЯ биоматериала из самого документа («Дата взятия биоматериала», «Дата взятия», иначе «Дата» / дата выполнения). Имя папки («28.04-5.05», «анализы март» и т.п.) — лишь ЗАПАСНОЙ ориентир, если в документе даты нет вообще; только тогда для диапазона бери конечную дату. НЕ подменяй реальную дату документа датой из имени папки — иначе один забор разъедется на разные даты.' },
       lab: { type: 'string', description: 'Название лаборатории/клиники, если видно (иначе пустая строка).' },
       kind: { type: 'string', description: 'Краткий тип исследования: общий анализ, биохимия, гормоны, витамины и т.п.' },
       values: {
@@ -116,7 +124,7 @@ async function parseBuffer(buf, { name = '', mime = '', folder = '' }) {
         { type: 'text', text:
           `Это файл анализа крови владельца.${folder ? ` Папка называется: «${folder}».` : ''} ` +
           `Имя файла: «${name}». ` +
-          `Извлеки числовые показатели и определи дату. ${MARKER_HINT} ` +
+          `Извлеки числовые показатели и определи дату. Дату бери из САМОГО документа (дата взятия биоматериала); имя папки — только запасной ориентир, если даты в документе нет. ${MARKER_HINT} ` +
           `Не выдумывай показатели, бери только те, что реально есть в документе. Вызови save_labs.` }
       ]
     }]
@@ -146,7 +154,7 @@ router.post('/connect', async (req, res) => {
 })
 
 router.get('/status', async (_req, res) => {
-  const url = await kvGet(URL_KEY)
+  const url = await getUrl()
   res.json({ connected: !!url, url: url || null })
 })
 
@@ -158,7 +166,7 @@ router.post('/disconnect', async (_req, res) => {
 // Список файлов + признак, разобран ли уже (для прогресса на фронте).
 // Одно чтение единого хранилища — никаких массовых параллельных запросов.
 router.get('/files', async (_req, res) => {
-  const url = await kvGet(URL_KEY)
+  const url = await getUrl()
   if (!url) return res.json({ connected: false, files: [] })
   try {
     const files = await listFiles(url)
@@ -173,7 +181,7 @@ router.get('/files', async (_req, res) => {
 // Разобрать ОДИН файл (фронт вызывает по очереди — не упираемся в таймаут).
 // Результат сохраняется в единое хранилище и больше не теряется при перезапуске.
 router.post('/parse', async (req, res) => {
-  const url = await kvGet(URL_KEY)
+  const url = await getUrl()
   if (!url) return res.json({ ok: false, connected: false })
   const { path, modified } = req.body || {}
   if (!path) return res.status(400).json({ ok: false, message: 'path required' })
@@ -228,7 +236,7 @@ router.post('/upload', async (req, res) => {
 // Все разобранные отчёты, объединённые по дате (формат фронта: {date, values}).
 // Берём из единого хранилища — и Яндекс.Диск, и ручные загрузки.
 router.get('/reports', async (_req, res) => {
-  const url = await kvGet(URL_KEY)
+  const url = await getUrl()
   try {
     const store = await loadStore()
     const entries = Object.values(store).map(e => e.report).filter(r => r && r.date && Object.keys(r.values || {}).length)
