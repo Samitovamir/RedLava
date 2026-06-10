@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Home, CalendarDays, HeartPulse, UtensilsCrossed, Mail, History as HistoryIcon,
-  Plug, Settings, MoreHorizontal,
+  Settings, MoreHorizontal,
 } from 'lucide-react'
 import { useLang } from '../context/LanguageContext.jsx'
 
@@ -24,7 +24,6 @@ const ITEMS = [
   { path: '/nutrition', ru: 'Питание', en: 'Nutrition', Ico: UtensilsCrossed },
   { path: '/mail', ru: 'Письма', en: 'Mail', Ico: Mail },
   { path: '/history', ru: 'История', en: 'History', Ico: HistoryIcon },
-  { path: '/connections', ru: 'Подключения', en: 'Connections', Ico: Plug },
 ]
 const SETTINGS_ITEM = { path: '/settings', ru: 'Настройки', en: 'Settings', Ico: Settings }
 const TAB_ITEMS = ITEMS.slice(0, 4)            // в нижней панели
@@ -57,8 +56,8 @@ export default function FluidMenu() {
   useEffect(() => () => document.documentElement.removeAttribute('data-nav-pinned'), [])
 
   // задержки раскрытия/закрытия — чтобы рельс не мерцал при проносе курсора
-  const enter = () => { clearTimeout(tOut.current); tIn.current = setTimeout(() => setHovered(true), 150) }
-  const leave = () => { clearTimeout(tIn.current); tOut.current = setTimeout(() => setHovered(false), 300) }
+  const enter = () => { clearTimeout(tOut.current); tIn.current = setTimeout(() => setHovered(true), 50) }
+  const leave = () => { clearTimeout(tIn.current); tOut.current = setTimeout(() => setHovered(false), 120) }
   useEffect(() => () => { clearTimeout(tIn.current); clearTimeout(tOut.current) }, [])
 
   const label = (it) => (lang === 'en' ? it.en : it.ru)

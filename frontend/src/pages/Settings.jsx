@@ -1,10 +1,12 @@
 import { SectionHeader } from '../ui'
 import ThemeSwitcher from '../components/ThemeSwitcher.jsx'
 import LayoutSwitcher from '../components/LayoutSwitcher.jsx'
+import Connections from './Connections.jsx'
 import { useLang, useT } from '../context/LanguageContext.jsx'
 
-// Настройки: язык интерфейса + оформление (темы) + раскладка (компоновка).
-// Сюда переехали переключатели из сайдбара («EN») и «Подключений».
+// Настройки: язык + оформление (темы) + раскладка + подключения сервисов.
+// Раздел «Подключения» влит сюда целиком (решение владельца) — отдельной
+// страницы больше нет, /connections перенаправляет сюда.
 export default function Settings() {
   const { lang, setLang } = useLang()
   const t = useT({
@@ -57,11 +59,18 @@ export default function Settings() {
         <LayoutSwitcher />
       </div>
 
+      <div className="settings-connections">
+        <Connections />
+      </div>
+
       <style>{`
         .settings-page {
           display: flex; flex-direction: column; gap: 20px;
           max-width: 720px;
         }
+        /* Влитые «Подключения»: убираем у вложенной страницы внешние отступы */
+        .settings-connections { margin-top: 12px; }
+        .settings-connections .conn-page { max-width: none; }
         .settings-card { display: flex; flex-direction: column; gap: 16px; }
         .settings-card-head { display: flex; flex-direction: column; gap: 4px; }
         .settings-card-title { font-size: 16px; font-weight: 700; color: var(--text-primary); }

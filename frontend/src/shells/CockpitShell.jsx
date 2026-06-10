@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, UtensilsCrossed, Mail, Plug, Settings as SettingsIcon, CalendarDays } from 'lucide-react'
+import { X, UtensilsCrossed, Mail, History as HistoryIcon, Settings as SettingsIcon } from 'lucide-react'
 import TodaySignal from '../components/TodaySignal.jsx'
 import HealthSignal from '../components/HealthSignal.jsx'
 import TodayTimelineStrip from '../components/TodayTimelineStrip.jsx'
@@ -13,7 +13,6 @@ import Health from '../pages/Health.jsx'
 import Nutrition from '../pages/Nutrition.jsx'
 import MailPage from '../pages/Mail.jsx'
 import History from '../pages/History.jsx'
-import Connections from '../pages/Connections.jsx'
 import Settings from '../pages/Settings.jsx'
 import { useT, useLang } from '../context/LanguageContext.jsx'
 import { mskNow } from '../utils/time.js'
@@ -33,7 +32,6 @@ const SECTIONS = [
   { path: '/nutrition', ru: 'Питание', en: 'Nutrition' },
   { path: '/mail', ru: 'Письма', en: 'Mail' },
   { path: '/history', ru: 'История', en: 'History' },
-  { path: '/connections', ru: 'Подключения', en: 'Connections' },
   { path: '/settings', ru: 'Настройки', en: 'Settings' },
 ]
 
@@ -51,18 +49,16 @@ export default function CockpitShell() {
       months: ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'],
       nutrition: 'Питание', menuOk: 'Меню на неделю готово', menuNo: 'Меню не собрано',
       mail: 'Письма', mailSub: 'Написать или поручить ИИ',
-      conn: 'Подключения', connSub: 'Google · Whoop · Garmin · Диск',
-      settings: 'Настройки', settingsSub: 'Темы · раскладка · язык',
-      schedule: 'Расписание',
+      history: 'История', historySub: 'Полный журнал действий',
+      settings: 'Настройки', settingsSub: 'Темы · раскладка · подключения',
     },
     en: {
       brand: 'Owner',
       months: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
       nutrition: 'Nutrition', menuOk: 'Week menu is ready', menuNo: 'No menu yet',
       mail: 'Mail', mailSub: 'Write or delegate to AI',
-      conn: 'Connections', connSub: 'Google · Whoop · Garmin · Disk',
-      settings: 'Settings', settingsSub: 'Themes · layout · language',
-      schedule: 'Schedule',
+      history: 'History', historySub: 'Full action log',
+      settings: 'Settings', settingsSub: 'Themes · layout · services',
     },
   })
 
@@ -96,7 +92,7 @@ export default function CockpitShell() {
         <div className="ck-tiles">
           <HubTile icon={UtensilsCrossed} title={t.nutrition} sub={hasMealPlan() ? t.menuOk : t.menuNo} onOpen={() => navigate('/nutrition')} />
           <HubTile icon={Mail} title={t.mail} sub={t.mailSub} onOpen={() => navigate('/mail')} />
-          <HubTile icon={Plug} title={t.conn} sub={t.connSub} onOpen={() => navigate('/connections')} />
+          <HubTile icon={HistoryIcon} title={t.history} sub={t.historySub} onOpen={() => navigate('/history')} />
           <HubTile icon={SettingsIcon} title={t.settings} sub={t.settingsSub} onOpen={() => navigate('/settings')} />
         </div>
         <AIWorkZone />
@@ -134,7 +130,7 @@ export default function CockpitShell() {
                   <Route path="/nutrition" element={<Nutrition />} />
                   <Route path="/mail" element={<MailPage />} />
                   <Route path="/history" element={<History />} />
-                  <Route path="/connections" element={<Connections />} />
+                  <Route path="/connections" element={<Navigate to="/settings" replace />} />
                   <Route path="/settings" element={<Settings />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
@@ -145,11 +141,18 @@ export default function CockpitShell() {
       </AnimatePresence>
 
       <style>{`
-        .cockpit-shell { min-height: 100vh; }
+        /* ОДИН ЭКРАН: всё помещается во вьюпорт, страница не листается —
+           длинные виджеты (журнал, помощник) скроллятся внутри себя */
+        .cockpit-shell {
+          flex: 1; min-width: 0;
+          height: 100vh; overflow: hidden;
+          display: flex; flex-direction: column;
+        }
         .ck-top {
+          flex-shrink: 0;
           display: flex; align-items: center; gap: 12px;
-          padding: 18px 28px 0;
-          max-width: 1280px; margin-inline: auto;
+          padding: 14px 28px 0;
+          width: 100%; max-width: 1280px; margin-inline: auto;
         }
         .ck-logo {
           width: 34px; height: 34px; border-radius: 10px;
@@ -161,22 +164,27 @@ export default function CockpitShell() {
         .ck-date { margin-left: auto; font-size: 13px; color: var(--muted); padding-right: 110px; }
 
         .ck-hub {
+          flex: 1; min-height: 0;
           display: grid;
           grid-template-columns: 1.2fr 1fr 1fr;
-          gap: 16px;
+          grid-template-rows: auto auto auto minmax(0, 1fr);
+          gap: 14px;
           align-items: stretch;
-          padding: 18px 28px 40px;
-          max-width: 1280px; margin-inline: auto;
+          padding: 14px 28px 20px;
+          width: 100%; max-width: 1280px; margin-inline: auto;
         }
-        .ck-hub > .today-signal { grid-column: 1 / 3; }
-        .ck-hub > .signal-card { grid-column: 3; }
-        .ck-hub > .tl-strip { grid-column: 1 / 3; }
-        .ck-hub > .recent-actions { grid-column: 3; }
+        .ck-hub > .today-signal { grid-column: 1 / 3; grid-row: 1; }
+        .ck-hub > .signal-card { grid-column: 3; grid-row: 1; }
+        .ck-hub > .tl-strip { grid-column: 1 / 3; grid-row: 2; }
+        /* Журнал занимает правый столбец на две строки и скроллится внутри */
+        .ck-hub > .recent-actions { grid-column: 3; grid-row: 2 / 4; min-height: 0; overflow: hidden; }
+        .ck-hub > .recent-actions .ra-list { overflow-y: auto; min-height: 0; }
         .ck-tiles {
-          grid-column: 1 / -1;
-          display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+          grid-column: 1 / 3; grid-row: 3;
+          display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;
         }
-        .ck-hub > .ai-work-zone { grid-column: 1 / -1; }
+        /* Помощник — нижняя зона на всю ширину, внутренний скролл при нехватке места */
+        .ck-hub > .ai-work-zone { grid-column: 1 / -1; grid-row: 4; min-height: 0; overflow-y: auto; }
 
         /* Каскадная сборка хаба */
         @media (prefers-reduced-motion: no-preference) {
@@ -202,9 +210,8 @@ export default function CockpitShell() {
           display: flex; flex-direction: column; min-height: 0;
           background: linear-gradient(180deg, var(--bg-card-top, var(--bg-surface)), var(--bg-card-bot, var(--bg-surface)));
           border: 1px solid var(--border-soft);
-          border-top-color: var(--edge-light);
           border-radius: var(--radius);
-          box-shadow: 0 32px 80px rgba(0,0,0,0.5);
+          box-shadow: inset 0 1px 0 var(--edge-light), 0 32px 80px rgba(0,0,0,0.5);
           overflow: hidden;
         }
         .ck-win-head {
@@ -225,10 +232,11 @@ export default function CockpitShell() {
         .ck-win-body { flex: 1; min-height: 0; overflow-y: auto; padding: 24px 24px 48px; }
 
         @media (max-width: 900px) {
-          .ck-hub { grid-template-columns: 1fr; }
-          .ck-hub > .today-signal, .ck-hub > .signal-card, .ck-hub > .tl-strip,
-          .ck-hub > .recent-actions, .ck-hub > .ai-work-zone { grid-column: 1; }
-          .ck-tiles { grid-column: 1; grid-template-columns: repeat(2, 1fr); }
+          /* На узком экране «один экран» невозможен — обычная прокрутка */
+          .cockpit-shell { height: auto; overflow: visible; display: block; }
+          .ck-hub { display: flex; flex-direction: column; }
+          .ck-hub > .recent-actions { overflow: visible; }
+          .ck-tiles { grid-template-columns: repeat(2, 1fr); }
           .ck-scrim { padding: 8px; }
           .ck-win-body { padding: 14px; }
           .ck-date { padding-right: 0; }

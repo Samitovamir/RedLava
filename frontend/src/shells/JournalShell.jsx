@@ -6,7 +6,6 @@ import Health from '../pages/Health.jsx'
 import Nutrition from '../pages/Nutrition.jsx'
 import MailPage from '../pages/Mail.jsx'
 import History from '../pages/History.jsx'
-import Connections from '../pages/Connections.jsx'
 import Settings from '../pages/Settings.jsx'
 import { useLang } from '../context/LanguageContext.jsx'
 import { mskNow } from '../utils/time.js'
@@ -20,14 +19,15 @@ import { mskNow } from '../utils/time.js'
   ленту к главе «Тело» — все внутренние ссылки сайта продолжают работать.
 */
 
+// Названия глав = названия разделов в Классике — никаких переименований,
+// чтобы пользователь не путался («Подключения» влиты в «Настройки»).
 const CHAPTERS = [
   { id: 'today', path: '/', ru: 'Сегодня', en: 'Today', El: Home },
   { id: 'schedule', path: '/schedule', ru: 'Расписание', en: 'Schedule', El: Schedule },
-  { id: 'health', path: '/health', ru: 'Тело', en: 'Body', El: Health },
-  { id: 'nutrition', path: '/nutrition', ru: 'Питание', en: 'Food', El: Nutrition },
+  { id: 'health', path: '/health', ru: 'Здоровье', en: 'Health', El: Health },
+  { id: 'nutrition', path: '/nutrition', ru: 'Питание', en: 'Nutrition', El: Nutrition },
   { id: 'mail', path: '/mail', ru: 'Письма', en: 'Mail', El: MailPage },
-  { id: 'history', path: '/history', ru: 'Журнал', en: 'Log', El: History },
-  { id: 'connections', path: '/connections', ru: 'Связь', en: 'Services', El: Connections },
+  { id: 'history', path: '/history', ru: 'История', en: 'History', El: History },
   { id: 'settings', path: '/settings', ru: 'Настройки', en: 'Settings', El: Settings },
 ]
 
@@ -37,6 +37,7 @@ const MONTHS_EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July
 function chapterForPath(pathname) {
   if (pathname === '/') return CHAPTERS[0]
   if (pathname.startsWith('/sport')) return CHAPTERS.find(c => c.id === 'health')
+  if (pathname.startsWith('/connections')) return CHAPTERS.find(c => c.id === 'settings')
   return CHAPTERS.find(c => c.path !== '/' && pathname.startsWith(c.path)) || CHAPTERS[0]
 }
 
@@ -112,7 +113,11 @@ export default function JournalShell() {
       </main>
 
       <style>{`
-        .feed-shell { min-height: 100vh; }
+        /* Свой скролл-контейнер: .main-layout режет прокрутку окна (overflow:hidden) */
+        .feed-shell {
+          flex: 1; min-width: 0;
+          height: 100vh; overflow-y: auto;
+        }
         .fd-mast {
           /* fixed, не sticky: прокрутка может жить во вложенном контейнере,
              а оглавление обязано быть на экране всегда */
@@ -144,13 +149,13 @@ export default function JournalShell() {
         .fd-toc-item.active { color: var(--accent); background: var(--bg-tile); }
 
         .fd-feed {
-          max-width: 820px; margin-inline: auto;
-          padding: 78px 24px 80px; /* верх — под фиксированное оглавление */
-          display: flex; flex-direction: column; gap: 22px;
+          max-width: 860px; margin-inline: auto;
+          padding: 72px 24px 64px; /* верх — под фиксированное оглавление */
+          display: flex; flex-direction: column; gap: 12px;
         }
         .fd-chapter {
-          scroll-margin-top: 70px;
-          padding-top: 26px;
+          scroll-margin-top: 64px;
+          padding-top: 14px;
         }
         .fd-chapter:first-child { padding-top: 0; }
         .fd-chapter + .fd-chapter { border-top: 1px solid var(--border); }

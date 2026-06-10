@@ -21,7 +21,6 @@ import Health from './pages/Health.jsx'
 import Nutrition from './pages/Nutrition.jsx'
 import Mail from './pages/Mail.jsx'
 import History from './pages/History.jsx'
-import Connections from './pages/Connections.jsx'
 import Settings from './pages/Settings.jsx'
 
 // Переходы между разделами: fade + лёгкий подъём (variants.pageEnter из motion.js).
@@ -47,7 +46,8 @@ function AnimatedRoutes() {
           <Route path="/nutrition" element={<Nutrition />} />
           <Route path="/mail" element={<Mail />} />
           <Route path="/history" element={<History />} />
-          <Route path="/connections" element={<Connections />} />
+          {/* «Подключения» влиты в Настройки — старые ссылки ведут туда */}
+          <Route path="/connections" element={<Navigate to="/settings" replace />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

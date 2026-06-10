@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { clearToken, isGuest } from '../api/authFetch'
 import { useT, useLang } from '../context/LanguageContext.jsx'
-import ThemeSwitcher from '../components/ThemeSwitcher.jsx'
 import { Button, Field, SectionHeader, StatusPill } from '../ui'
 
 /*
@@ -405,15 +404,6 @@ export default function Connections() {
           )
         })}
       </div>
-
-      <motion.div
-        className="card"
-        style={{ marginTop: 'var(--space-6)' }}
-        initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: 0.05 }}
-      >
-        <ThemeSwitcher />
-      </motion.div>
 
       <p className="conn-foot muted">
         {t.foot}

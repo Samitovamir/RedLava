@@ -5,7 +5,6 @@ import Health from '../pages/Health.jsx'
 import Nutrition from '../pages/Nutrition.jsx'
 import MailPage from '../pages/Mail.jsx'
 import History from '../pages/History.jsx'
-import Connections from '../pages/Connections.jsx'
 import Settings from '../pages/Settings.jsx'
 import StatusStrip from '../components/StatusStrip.jsx'
 import TodayTimelineStrip from '../components/TodayTimelineStrip.jsx'
@@ -29,7 +28,6 @@ const TABS = [
   { path: '/nutrition', ru: 'Питание', en: 'Nutrition' },
   { path: '/mail', ru: 'Письма', en: 'Mail' },
   { path: '/history', ru: 'История', en: 'History' },
-  { path: '/connections', ru: 'Связь', en: 'Services' },
   { path: '/settings', ru: 'Настройки', en: 'Settings' },
 ]
 
@@ -80,7 +78,7 @@ export default function CommandShell() {
             <Route path="/nutrition" element={<Nutrition />} />
             <Route path="/mail" element={<MailPage />} />
             <Route path="/history" element={<History />} />
-            <Route path="/connections" element={<Connections />} />
+            <Route path="/connections" element={<Navigate to="/settings" replace />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
@@ -93,7 +91,7 @@ export default function CommandShell() {
       </div>
 
       <style>{`
-        .command-shell { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        .command-shell { flex: 1; min-width: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         .command-shell .status-strip { left: 0; }
 
         .cmd-tabs {
@@ -122,10 +120,14 @@ export default function CommandShell() {
         .cmd-body {
           flex: 1; min-height: 0;
           display: grid;
-          grid-template-columns: 300px minmax(0, 1fr) 360px;
+          grid-template-columns: 256px minmax(0, 1fr) 340px;
           gap: 0;
         }
         .cmd-pane { overflow-y: auto; min-height: 0; padding: 16px; }
+        /* Контент центра не вылезает за панель: графики/таблицы ужимаются */
+        .cmd-center { overflow-x: hidden; }
+        .cmd-center svg, .cmd-center canvas, .cmd-center img { max-width: 100%; }
+        .cmd-center > * { max-width: 100%; }
         .cmd-left { border-right: 1px solid var(--border); display: flex; flex-direction: column; gap: 14px; }
         .cmd-right { border-left: 1px solid var(--border); display: flex; flex-direction: column; gap: 14px; }
         .cmd-center { padding: 20px 24px 64px; }
