@@ -263,7 +263,9 @@ html[data-nav-pinned] .page-content { margin-left: var(--sidebar-width-expanded)
     height: auto;
     min-height: 100dvh;
     overflow: visible;
-    padding: 16px 16px calc(114px + env(safe-area-inset-bottom)) 16px;
+    /* Сверху добавляем safe-area: в standalone контент уходит под статус-бар, и без
+       этого отступа заголовок налезает на часы/заряд. В обычной вкладке inset=0. */
+    padding: calc(14px + env(safe-area-inset-top)) 16px calc(114px + env(safe-area-inset-bottom)) 16px;
   }
   /* «С экрана Домой»: меню доковано к самому низу — резервируем ровно под него */
   html[data-standalone] .page-content {

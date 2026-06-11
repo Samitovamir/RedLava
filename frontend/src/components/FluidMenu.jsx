@@ -304,7 +304,8 @@ export default function FluidMenu() {
             border-radius: 20px 20px 0 0;
             border: none;
             border-top: 1px solid color-mix(in srgb, var(--border-soft) 85%, transparent);
-            padding: 9px 16px calc(9px + env(safe-area-inset-bottom));
+            /* иконки чуть ниже: меньше отступ снизу (но не залезаем под индикатор «домой») */
+            padding: 8px 16px calc(2px + env(safe-area-inset-bottom));
             /* Докнутая панель — СПЛОШНАЯ (как нативный таб-бар): иначе сквозь стекло
                в зоне индикатора просвечивает фон страницы и читается чужой полосой.
                На свету это особенно заметно (серый страничный фон под белым стеклом). */
