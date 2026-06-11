@@ -6,6 +6,7 @@ import { useEvents, dateKey } from '../context/EventsContext.jsx'
 import { useLang, useT } from '../context/LanguageContext.jsx'
 import { categoryColor } from '../utils/categoryColor.js'
 import { EVENT_TYPES, eventIconKey } from '../utils/events.js'
+import { useIsMobile } from '../layout.js'
 import Icon from '../ui/Icon.jsx'
 
 /*
@@ -362,6 +363,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
   }, [])
 
   // --- Состояние ---
+  const isMobile = useIsMobile()  // на телефоне день показываем списком (agenda), а не почасовой шкалой
   const { events, resetEvents, removeEvent, upsertEvent, applyBulk, focusSignal } = useEvents()  // общий источник для всех страниц
   // расширенный режим: 'day' | 'week' | 'month'; обычный: 'list' | 'columns'
   const [viewMode, setViewMode] = useState(extended ? 'day' : 'list')
@@ -838,8 +840,9 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
         </div>
       )}
 
-      {/* Режим "День/Список" — вертикальный таймлайн */}
-      {(viewMode === 'list' || viewMode === 'day') && (
+      {/* Режим "День/Список" — вертикальный таймлайн (десктоп).
+          На телефоне почасовая шкала неудобна (пустые часы, узко) → ниже список-agenda. */}
+      {(viewMode === 'list' || viewMode === 'day') && !isMobile && (
         <div className="ds-scroll" ref={scrollRef}>
           <div className="ds-timeline" style={{ height: timelineHeight }}>
             {/* Часовые линии + слабые получасовые отметки (к ним привязаны карточки) */}
@@ -926,6 +929,56 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
               )
             })}
           </div>
+        </div>
+      )}
+
+      {/* Режим "День/Список" на телефоне — agenda-список (без почасовой сетки) */}
+      {(viewMode === 'list' || viewMode === 'day') && isMobile && (
+        <div className="ds-agenda">
+          {dayEvents.length === 0 && <p className="ds-empty-list">{t.emptyTimeline}</p>}
+          {timedEvents.map((e, i) => (
+            <motion.div
+              key={`ag-${e.title}-${i}`}
+              className={`ds-ag-item ${openMenu === `ev-${i}` ? 'menu-open' : ''}`}
+              style={{ '--ev-color': COLORS[e.type] }}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.22, delay: Math.min(i * 0.03, 0.18) }}
+            >
+              <div className="ds-ag-time">
+                <span className="ds-ag-start">{e.start}</span>
+                <span className="ds-ag-end">{e.end}</span>
+              </div>
+              <span className="ds-ag-rail" />
+              <span className="ds-event-icon" style={{ background: COLORS[e.type] }}>{eventIcon(e)}</span>
+              <div className="ds-ag-body">
+                <span className="ds-event-title">
+                  {e.priority && e.priority <= 2 && (
+                    <span className="ds-pri-dot" style={{ background: categoryColor(PRIORITY_MAP[e.priority]?.colorKey) }} />
+                  )}
+                  {pick(e, 'title')}
+                  {e.repeat && e.repeat !== 'none' && (
+                    <svg className="ds-repeat-ic" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                  )}
+                </span>
+                {pick(e, 'who') && <span className="ds-event-meta">{pick(e, 'who')}</span>}
+              </div>
+              <div className="ds-menu-wrap">
+                <button className="ds-event-menu" onClick={() => toggleMenu(`ev-${i}`)}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
+                </button>
+                <AnimatePresence>
+                  {openMenu === `ev-${i}` && (
+                    <motion.div className="ds-dropdown ev-drop" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.15 }}>
+                      <button className="ds-dropdown-item" onClick={() => startEdit(e)}>{t.edit}</button>
+                      <button className="ds-dropdown-item" onClick={() => startEdit(e)}>{t.move}</button>
+                      <button className="ds-dropdown-item danger" onClick={() => deleteEvent(e)}>{t.remove}</button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </motion.div>
+          ))}
         </div>
       )}
 
@@ -1447,6 +1500,41 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
 
         .ds-scroll { flex: 1; overflow-y: auto; padding: 12px 18px 18px; }
         .ds-timeline { position: relative; }
+
+        /* Agenda-список (телефон): события дня строками, без почасовой шкалы */
+        .ds-agenda {
+          flex: 1; min-height: 0; overflow-y: auto;
+          -webkit-overflow-scrolling: touch;
+          display: flex; flex-direction: column; gap: 8px;
+          padding: 12px 14px 16px;
+          border-radius: 0 0 var(--radius) var(--radius);
+        }
+        .ds-ag-item {
+          position: relative;
+          display: flex; align-items: center; gap: 11px;
+          min-width: 0;
+          padding: 11px 8px 11px 11px;
+          border-radius: 14px;
+          background: var(--bg-tile);
+          box-shadow: var(--inset-tile, none);
+          border: 1px solid var(--border-soft);
+        }
+        .ds-ag-item.menu-open { z-index: 50; overflow: visible; }
+        .ds-ag-time {
+          flex-shrink: 0; width: 44px;
+          display: flex; flex-direction: column; gap: 1px; align-items: flex-start;
+        }
+        .ds-ag-start { font-size: 14px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+        .ds-ag-end { font-size: 11.5px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+        .ds-ag-rail { flex-shrink: 0; width: 3px; align-self: stretch; min-height: 30px; border-radius: 2px; background: var(--ev-color, var(--accent)); }
+        .ds-ag-item .ds-event-icon { width: 32px; height: 32px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.24); }
+        .ds-ag-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+        .ds-ag-item .ds-event-title {
+          display: flex; align-items: center; flex-wrap: wrap; gap: 0;
+          white-space: normal; overflow: visible; text-overflow: clip;
+          overflow-wrap: anywhere; line-height: 1.25;
+        }
+        .ds-ag-item .ds-event-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
         .ds-hour-row { position: absolute; left: 0; right: 0; display: flex; align-items: center; gap: 12px; }
         .ds-hour-label {

@@ -29,15 +29,19 @@ import Settings from './pages/Settings.jsx'
 // компонентом внутри BrowserRouter. FluidMenu и модалки живут вне <main> и не дёргаются.
 function AnimatedRoutes() {
   const location = useLocation()
+  const isMobile = useIsMobile()
+  // На мобильном — лёгкий fade (без transform всей страницы и с мгновенным
+  // выходом), чтобы переключение вкладок было плавным и без задержки нажатий.
+  const pv = isMobile ? variants.pageFade : variants.pageEnter
   return (
     <AnimatePresence mode="wait" initial={false}>
       <motion.main
         className="page-content"
         key={location.pathname}
-        initial={variants.pageEnter.initial}
-        animate={variants.pageEnter.animate}
-        exit={variants.pageEnter.exit}
-        transition={variants.pageEnter.transition}
+        initial={pv.initial}
+        animate={pv.animate}
+        exit={pv.exit}
+        transition={pv.transition}
       >
         <Routes location={location}>
           <Route path="/" element={<Home />} />

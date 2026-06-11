@@ -286,10 +286,25 @@ export default function FluidMenu() {
             padding: 7px 8px;
             border-radius: 26px;
             background: color-mix(in srgb, var(--bg-surface) 58%, transparent);
-            -webkit-backdrop-filter: blur(30px) saturate(1.9);
-            backdrop-filter: blur(30px) saturate(1.9);
+            /* blur 22px (не 30): радиус размытия — главная стоимость кадра, а оно
+               пересчитывается на каждый скролл/переход. 22px остаётся «стеклом»,
+               но заметно дешевле — убирает подвисания. */
+            -webkit-backdrop-filter: blur(22px) saturate(1.8);
+            backdrop-filter: blur(22px) saturate(1.8);
             border: 1px solid color-mix(in srgb, var(--border-soft) 70%, transparent);
             box-shadow: 0 10px 34px -10px rgba(0,0,0,0.5), inset 0 1px 0 var(--edge-light, transparent);
+            transition: transform 0.28s var(--ease), opacity 0.24s var(--ease);
+          }
+          /* В открытых модалках прячем таб-панель: иначе она перекрывает кнопки окна
+             (например «Сохранить») — модалка рендерится внутри страницы и из-за
+             stacking-context не может перекрыть плавающее меню. */
+          body:has(.ds-modal-backdrop) .mobile-tabbar,
+          body:has(.nu-backdrop) .mobile-tabbar,
+          body:has(.ro-backdrop) .mobile-tabbar,
+          body:has(.ds-conflict-backdrop) .mobile-tabbar {
+            transform: translateY(180%);
+            opacity: 0;
+            pointer-events: none;
           }
           .tab-item {
             position: relative;

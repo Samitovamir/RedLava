@@ -46,6 +46,16 @@ export const variants = {
     exit: { opacity: 0, y: -14, scale: 0.992 },
     transition: { duration: 0.36, ease: EASE },
   },
+  // Мобильный переход разделов: ТОЛЬКО прозрачность — никакого transform всей
+  // страницы (он заставляет браузер перерисовывать длинный раздел под размытой
+  // таб-панелью каждый кадр → подвисания). Выход почти мгновенный, чтобы при
+  // частом переключении вкладок новый раздел появлялся сразу, без «залипания».
+  pageFade: {
+    initial: { opacity: 0 },
+    animate: { opacity: 1 },
+    exit: { opacity: 0, transition: { duration: 0.1, ease: EASE } },
+    transition: { duration: 0.22, ease: EASE },
+  },
 }
 
 // Микроинтеракции (передавать как пропсы в motion.*)

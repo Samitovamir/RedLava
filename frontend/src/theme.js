@@ -44,8 +44,27 @@ export function resolveTheme() {
   return getDesktopTheme()
 }
 
+// В Safari (вкладка) верхняя полоса со статус-баром тонируется в <meta theme-color>.
+// Красим её в фон приложения (--bg-app) — тогда «чёлка/граница» сливается с сайтом,
+// а не выглядит чужой полосой. На домашнем экране (standalone) контент и так уходит
+// под Dynamic Island (apple-mobile-web-app-status-bar-style=black-translucent).
+function syncThemeColor() {
+  try {
+    const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg-app').trim()
+    if (!bg) return
+    let meta = document.querySelector('meta[name="theme-color"]')
+    if (!meta) {
+      meta = document.createElement('meta')
+      meta.setAttribute('name', 'theme-color')
+      document.head.appendChild(meta)
+    }
+    meta.setAttribute('content', bg)
+  } catch { /* ignore */ }
+}
+
 export function applyTheme() {
   try { document.documentElement.setAttribute('data-theme', resolveTheme()) } catch { /* ignore */ }
+  syncThemeColor()
 }
 
 function emit() { try { window.dispatchEvent(new CustomEvent(EVT)) } catch { /* ignore */ } }

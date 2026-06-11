@@ -151,9 +151,9 @@ function DaySummaryInner({ dayContext, snapshot, eyebrow, eventCount, metrics = 
     if (msgsRef.current) msgsRef.current.scrollTop = msgsRef.current.scrollHeight
   }, [messages, loading])
 
-  async function send() {
-    if (!input.trim() || loading) return
-    const q = input.trim()
+  async function send(override) {
+    const q = (typeof override === 'string' ? override : input).trim()
+    if (!q || loading) return
     const priorHistory = messages
     setInput('')
     setMessages(m => [...m, { role: 'user', text: q }])
@@ -251,8 +251,9 @@ function DaySummaryInner({ dayContext, snapshot, eyebrow, eventCount, metrics = 
             {loading && <div className="ds-chat-msg assistant thinking">{t.thinking}</div>}
           </div>
         )}
+        {/* Голос — основной способ обращения к ИИ: микрофон надиктовывает и сразу отправляет */}
         <div className="ds-chat-input-row">
-          <MicButton primary onText={t => setInput(prev => (prev ? prev.trim() + ' ' : '') + t)} />
+          <MicButton primary onText={txt => send((input ? input.trim() + ' ' : '') + txt)} />
           <input
             className="ds-chat-input"
             placeholder={t.placeholder}
@@ -260,7 +261,7 @@ function DaySummaryInner({ dayContext, snapshot, eyebrow, eventCount, metrics = 
             onChange={e => setInput(e.target.value)}
             onKeyDown={onKey}
           />
-          <button className="ds-chat-send" onClick={send} disabled={loading || !input.trim()}>
+          <button className="ds-chat-send" onClick={() => send()} disabled={loading || !input.trim()}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
             </svg>
@@ -322,6 +323,7 @@ function DaySummaryInner({ dayContext, snapshot, eyebrow, eventCount, metrics = 
           font-size: 16.5px; line-height: 1.6;
           padding: 11px 14px; border-radius: 12px;
           max-width: 92%; white-space: pre-wrap;
+          min-width: 0; overflow-wrap: anywhere;
         }
         .ds-chat-msg.user {
           align-self: flex-end;
@@ -359,24 +361,23 @@ function DaySummaryInner({ dayContext, snapshot, eyebrow, eventCount, metrics = 
         }
         .ds-chat-input-row:focus-within { border-color: var(--accent); }
         .ds-chat-input {
-          flex: 1; border: none; background: transparent; outline: none;
+          flex: 1; min-width: 0; border: none; background: transparent; outline: none;
           font-family: inherit; font-size: 14.5px; color: var(--text-primary);
         }
         .ds-chat-input::placeholder { color: var(--text-faint); }
-        /* Кнопка отправки: честное состояние — акцент когда есть текст,
-           нейтральная и приглушённая когда поле пустое (disabled) */
+        /* Микрофон — главный круглый «запись»: голос основной способ обращения к ИИ */
+        .ds-chat-input-row .mic-btn { width: 40px; height: 40px; border-radius: 50%; }
+        /* Отправка — тихая (призрак), не спорит акцентом с микрофоном */
         .ds-chat-send {
-          width: 32px; height: 32px; flex-shrink: 0;
-          border: none; border-radius: var(--radius-sm);
-          background: var(--accent); color: var(--on-accent);
+          width: 36px; height: 36px; flex-shrink: 0;
+          border: none; border-radius: 50%;
+          background: transparent; color: var(--accent);
           cursor: pointer; display: flex; align-items: center; justify-content: center;
-          transition: opacity 0.15s, background 0.15s, color 0.15s;
+          transition: background 0.15s, color 0.15s;
         }
-        .ds-chat-send:hover:not(:disabled) { opacity: 0.9; }
-        .ds-chat-send:disabled {
-          background: var(--bg-secondary); color: var(--text-faint);
-          opacity: 0.4; cursor: default;
-        }
+        .ds-chat-send:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+        .ds-chat-send:disabled { color: var(--text-faint); cursor: default; }
+        @media (max-width: 640px) { .ds-chat-input-row .mic-btn { width: 44px; height: 44px; } .ds-chat-send { width: 40px; height: 40px; } }
       `}</style>
     </div>
   )

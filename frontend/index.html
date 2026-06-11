@@ -15,6 +15,13 @@
           t = localStorage.getItem('albert-theme') || 'black-leather';
         }
         document.documentElement.setAttribute('data-theme', t);
+        /* Тонируем верхнюю полосу Safari под фон темы, чтобы «чёлка» сливалась с сайтом */
+        var BG = { 'ios-dark': '#000000', 'ios-light': '#F2F2F7', 'black-leather': '#121211',
+                   'brown-leather': '#120E0B', 'cream': '#EFE9DD', 'original': '#1E1B18' };
+        var m = document.createElement('meta');
+        m.setAttribute('name', 'theme-color');
+        m.setAttribute('content', BG[t] || '#000000');
+        document.head.appendChild(m);
       } catch (e) {}
       try { document.documentElement.setAttribute('data-layout', localStorage.getItem('albert-layout') || 'classic') } catch (e) {}
     </script>

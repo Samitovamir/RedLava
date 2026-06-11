@@ -262,6 +262,8 @@ export default function Home() {
           font-weight: 700;
           color: var(--foreground);
           letter-spacing: -0.01em;
+          min-width: 0;
+          overflow-wrap: anywhere;   /* длинные слова («восстановились») переносятся, не вылезают за край */
         }
         .quick-card-sub {
           font-size: 12.5px;
@@ -272,6 +274,13 @@ export default function Home() {
           grid-template-columns: 1.8fr 1fr;
           gap: 16px;
           align-items: stretch;
+        }
+
+        /* Мобайл: карточки-сводки в один столбец на всю ширину — длинные значения
+           («Хорошо восстановились») помещаются в строку, без обрезки и сжатия. */
+        @media (max-width: 640px) {
+          .quick-cards { grid-template-columns: 1fr; gap: 12px; }
+          .greeting { font-size: 30px; }
         }
 
         /* ===== РАСКЛАДКА «ЛЕНТА» (journal): глава-брифинг ===== */
