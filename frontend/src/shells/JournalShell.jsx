@@ -7,20 +7,22 @@ import Nutrition from '../pages/Nutrition.jsx'
 import MailPage from '../pages/Mail.jsx'
 import History from '../pages/History.jsx'
 import Settings from '../pages/Settings.jsx'
+import JournalGlance from '../components/journal/JournalGlance.jsx'
 import { useLang } from '../context/LanguageContext.jsx'
 import { mskNow } from '../utils/time.js'
 
 /*
-  Оболочка «Лента» — ВЕСЬ сайт одной непрерывной прокручиваемой лентой-брифингом.
-  Никаких «страниц» и переходов: главы идут друг за другом (сегодня → расписание →
-  тело → питание → письма → история → связь → настройки), оглавление сверху плавно
-  прокручивает к главе и подсвечивается при скролле (scrollspy).
-  Роуты сохранены: navigate('/health') из любого компонента просто прокручивает
-  ленту к главе «Тело» — все внутренние ссылки сайта продолжают работать.
+  Оболочка «Лента» — ВЕСЬ сайт одной журнальной полосой-брифингом.
+  Раскладка как разворот журнала: слева липкое оглавление-таймлайн (где я в
+  выпуске), по центру широкая лента глав, справа липкая колонка «На виду»
+  (ключевые числа дня). Боковые поля заняты делом — пустоты по краям нет.
+
+  Порядок глав = утренний брифинг: сегодня → расписание → здоровье → питание,
+  затем «рабочее» (письма, история) и «служебное» (настройки). Никаких
+  «страниц» и переходов: navigate('/health') из любого места просто прокручивает
+  ленту к нужной главе — все внутренние ссылки сайта продолжают работать.
 */
 
-// Названия глав = названия разделов в Классике — никаких переименований,
-// чтобы пользователь не путался («Подключения» влиты в «Настройки»).
 const CHAPTERS = [
   { id: 'today', path: '/', ru: 'Сегодня', en: 'Today', El: Home },
   { id: 'schedule', path: '/schedule', ru: 'Расписание', en: 'Schedule', El: Schedule },
@@ -33,6 +35,8 @@ const CHAPTERS = [
 
 const MONTHS_RU = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
 const MONTHS_EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+const WD_RU = ['воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота']
+const WD_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
 function chapterForPath(pathname) {
   if (pathname === '/') return CHAPTERS[0]
@@ -52,6 +56,7 @@ export default function JournalShell() {
   const dateStr = lang === 'en'
     ? `${MONTHS_EN[d.getMonth()]} ${d.getDate()}`
     : `${d.getDate()} ${MONTHS_RU[d.getMonth()]}`
+  const weekday = lang === 'en' ? WD_EN[d.getDay()] : WD_RU[d.getDay()]
 
   const scrollToChapter = (id) => {
     const el = document.getElementById(`fd-${id}`)
@@ -61,11 +66,12 @@ export default function JournalShell() {
     el.scrollIntoView({ behavior: 'smooth', block: 'start' })
     setTimeout(() => { spyPaused.current = false }, 900)
   }
+  const go = (c) => { navigate(c.path); scrollToChapter(c.id) }
 
   // Роут → плавная прокрутка к главе (включая navigate() из глубины компонентов)
   useEffect(() => {
     scrollToChapter(chapterForPath(location.pathname).id)
-  }, [location.pathname])
+  }, [location.pathname]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Scrollspy: подсветка главы при ручной прокрутке
   useEffect(() => {
@@ -81,20 +87,17 @@ export default function JournalShell() {
     return () => obs.disconnect()
   }, [])
 
+  const activeIdx = Math.max(0, CHAPTERS.findIndex(c => c.id === active))
+
   return (
     <div className="feed-shell">
       <header className="fd-mast">
         <div className="fd-mast-inner">
           <span className="fd-brand">{lang === 'en' ? 'Owner' : 'владелец'}</span>
-          <nav className="fd-toc" role="navigation">
+          {/* Горизонтальное оглавление — только на узком экране (на широком его роль играет левый рейл) */}
+          <nav className="fd-bar" role="navigation" aria-label={lang === 'en' ? 'Sections' : 'Разделы'}>
             {CHAPTERS.map((c) => (
-              <button
-                key={c.id}
-                className={`fd-toc-item ${active === c.id ? 'active' : ''}`}
-                // Прокрутка напрямую: если URL уже совпадает (после ручного скролла),
-                // navigate() сам по себе ничего не сделал бы
-                onClick={() => { navigate(c.path); scrollToChapter(c.id) }}
-              >
+              <button key={c.id} className={`fd-bar-item ${active === c.id ? 'active' : ''}`} onClick={() => go(c)}>
                 {lang === 'en' ? c.en : c.ru}
               </button>
             ))}
@@ -103,26 +106,60 @@ export default function JournalShell() {
         </div>
       </header>
 
-      <main className="fd-feed">
-        {CHAPTERS.map((c) => {
-          const El = c.El
-          return (
-            <section key={c.id} id={`fd-${c.id}`} data-chapter={c.id} className="fd-chapter">
-              <El />
-            </section>
-          )
-        })}
-        <div className="fd-end">— {lang === 'en' ? 'that’s all for today' : 'на сегодня всё'} —</div>
-      </main>
+      <div className="fd-grid">
+        {/* Левый рейл — оглавление-таймлайн: где я в выпуске */}
+        <div className="fd-rail">
+          <div className="fd-rail-day">
+            <span className="fd-rail-wd">{weekday}</span>
+            <span className="fd-rail-date">{dateStr}</span>
+          </div>
+          <nav className="fd-railnav" role="navigation" aria-label={lang === 'en' ? 'Sections' : 'Разделы'}>
+            {CHAPTERS.map((c, i) => (
+              <button
+                key={c.id}
+                className={`fd-rail-item ${active === c.id ? 'active' : ''} ${i < activeIdx ? 'visited' : ''}`}
+                onClick={() => go(c)}
+              >
+                <span className="fd-rail-dot" />
+                <span className="fd-rail-num">{String(i + 1).padStart(2, '0')}</span>
+                <span className="fd-rail-name">{lang === 'en' ? c.en : c.ru}</span>
+              </button>
+            ))}
+          </nav>
+        </div>
+
+        {/* Центр — лента глав */}
+        <main className="fd-feed">
+          {CHAPTERS.map((c, i) => {
+            const El = c.El
+            return (
+              <section key={c.id} id={`fd-${c.id}`} data-chapter={c.id} className="fd-chapter">
+                <div className="fd-chapter-eyebrow">
+                  <span className="fd-chapter-num">{String(i + 1).padStart(2, '0')}</span>
+                  <span className="fd-chapter-name">{lang === 'en' ? c.en : c.ru}</span>
+                </div>
+                <El />
+              </section>
+            )
+          })}
+          <div className="fd-end">— {lang === 'en' ? 'that’s all for today' : 'на сегодня всё'} —</div>
+        </main>
+
+        {/* Правый рейл — «На виду» */}
+        <div className="fd-aside">
+          <JournalGlance />
+        </div>
+      </div>
 
       <style>{`
         /* Свой скролл-контейнер: .main-layout режет прокрутку окна (overflow:hidden) */
         .feed-shell {
+          --fd-max: 1800px;
           flex: 1; min-width: 0;
           height: 100vh; overflow-y: auto;
         }
         .fd-mast {
-          /* fixed, не sticky: прокрутка может жить во вложенном контейнере,
+          /* fixed, не sticky: прокрутка живёт во вложенном контейнере,
              а оглавление обязано быть на экране всегда */
           position: fixed; top: 0; left: 0; right: 0; z-index: 100;
           background: color-mix(in srgb, var(--bg-app) 86%, transparent);
@@ -132,44 +169,98 @@ export default function JournalShell() {
         }
         .fd-mast-inner {
           display: flex; align-items: center; gap: 18px;
-          max-width: 1160px; margin-inline: auto;
-          padding: 10px 24px;
+          max-width: var(--fd-max); margin-inline: auto;
+          padding: 11px 32px;
         }
-        .fd-brand { font-size: 15px; font-weight: 800; color: var(--text-primary); flex-shrink: 0; }
-        .fd-date { font-size: 12px; color: var(--muted); flex-shrink: 0; }
-        .fd-toc {
-          display: flex; gap: 2px; flex: 1; justify-content: center;
-          overflow-x: auto; scrollbar-width: none;
-        }
-        .fd-toc::-webkit-scrollbar { display: none; }
-        .fd-toc-item {
-          padding: 7px 11px; border: none; border-radius: 8px;
-          background: none; font-family: inherit; font-size: 13px; font-weight: 600;
-          color: var(--text-muted); cursor: pointer; white-space: nowrap;
-          transition: color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
-        }
-        .fd-toc-item:hover { color: var(--text-body); background: var(--bg-tile); }
-        .fd-toc-item.active { color: var(--accent); background: var(--bg-tile); }
+        .fd-brand { font-size: 15px; font-weight: 800; color: var(--text-primary); flex-shrink: 0; letter-spacing: -0.01em; }
+        /* На широком экране дату показывает левый рейл; в шапке прячем (и чтобы
+           не наезжала на плавающий «Демо»-бейдж). Появляется лишь в средней
+           полосе, где рейла нет. */
+        .fd-date { display: none; font-size: 12.5px; color: var(--text-muted); flex-shrink: 0; margin-left: auto; font-variant-numeric: tabular-nums; }
 
-        .fd-feed {
-          max-width: 1160px; margin-inline: auto;
-          padding: 72px 24px 64px; /* верх — под фиксированное оглавление */
-          display: flex; flex-direction: column; gap: 12px;
+        /* Горизонтальное оглавление в шапке — прячем на широком экране */
+        .fd-bar { display: none; }
+
+        /* Журнальный разворот: рейл | лента | «На виду» */
+        .fd-grid {
+          display: grid;
+          grid-template-columns: 232px minmax(0, 1fr) 312px;
+          gap: 36px;
+          max-width: var(--fd-max); margin-inline: auto;
+          padding: 78px 32px 64px; /* верх — под фиксированную шапку */
         }
-        /* Широкая лента: журнальное центрирование разделов внутри ленты не нужно */
+
+        /* ── Левый рейл: оглавление-таймлайн ── */
+        .fd-rail {
+          position: sticky; top: 70px; align-self: start;
+          max-height: calc(100vh - 92px); overflow-y: auto; scrollbar-width: none;
+          display: flex; flex-direction: column; gap: 16px;
+        }
+        .fd-rail::-webkit-scrollbar { display: none; }
+        .fd-rail-day { display: flex; flex-direction: column; gap: 2px; padding-left: 4px; }
+        .fd-rail-wd { font-size: 12px; color: var(--text-muted); text-transform: capitalize; }
+        .fd-rail-date { font-size: 17px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.01em; }
+        .fd-railnav { display: flex; flex-direction: column; position: relative; }
+        /* вертикальная нить таймлайна */
+        .fd-railnav::before {
+          content: ''; position: absolute; left: 10px; top: 16px; bottom: 16px;
+          width: 2px; background: var(--border); border-radius: 1px;
+        }
+        .fd-rail-item {
+          display: flex; align-items: center; gap: 11px; position: relative;
+          padding: 8px 8px 8px 2px; border: none; border-radius: 9px;
+          background: none; cursor: pointer; font-family: inherit; text-align: left;
+          transition: background var(--dur-fast) var(--ease);
+        }
+        .fd-rail-item:hover { background: var(--bg-tile); }
+        .fd-rail-dot {
+          width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; z-index: 1;
+          background: var(--bg-app); border: 2px solid var(--border-med);
+          transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+        }
+        .fd-rail-item.visited .fd-rail-dot { background: var(--accent); border-color: var(--accent); opacity: 0.45; }
+        .fd-rail-item.active .fd-rail-dot {
+          background: var(--accent); border-color: var(--accent);
+          box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent);
+        }
+        .fd-rail-num {
+          font-size: 11px; font-weight: 700; color: var(--text-faint);
+          font-variant-numeric: tabular-nums; flex-shrink: 0; width: 16px;
+        }
+        .fd-rail-name {
+          font-size: 13.5px; font-weight: 600; color: var(--text-muted);
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+          transition: color var(--dur-fast) var(--ease);
+        }
+        .fd-rail-item.active .fd-rail-name { color: var(--text-primary); }
+        .fd-rail-item.active .fd-rail-num { color: var(--accent); }
+
+        /* ── Центр: лента ── */
+        .fd-feed { min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+        /* Внутренние страницы в ленте идут во всю ширину колонки */
         .fd-feed .health-page, .fd-feed .nu-page, .fd-feed .history-page,
         .fd-feed .conn-page, .fd-feed .mail-page, .fd-feed .settings-page,
         .fd-feed .home-page {
           max-width: none;
         }
-        .fd-chapter {
-          scroll-margin-top: 64px;
-          padding-top: 14px;
+        .fd-chapter { scroll-margin-top: 86px; padding-top: 4px; }
+        .fd-chapter + .fd-chapter { border-top: 1px solid var(--border); padding-top: 18px; }
+        /* Эпиграф главы — номер + название: порядок выпуска читается явно */
+        .fd-chapter-eyebrow {
+          display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
         }
-        .fd-chapter:first-child { padding-top: 0; }
-        .fd-chapter + .fd-chapter { border-top: 1px solid var(--border); }
+        .fd-chapter-num {
+          font-size: 12px; font-weight: 800; color: var(--on-accent);
+          font-variant-numeric: tabular-nums; letter-spacing: 0.02em;
+          background: linear-gradient(180deg, var(--accent-btn-top), var(--accent-btn-bot));
+          border-radius: 7px; padding: 3px 8px; flex-shrink: 0;
+        }
+        .fd-chapter-name {
+          font-size: 12px; font-weight: 700; color: var(--text-secondary);
+          text-transform: uppercase; letter-spacing: 0.09em;
+        }
 
-        /* Главы — спокойная колонка; высотные страницы укрощаем */
+        /* Высотные страницы укрощаем под спокойную колонку */
         .fd-chapter .schedule-layout {
           grid-template-columns: 1fr;
           height: auto; min-height: 0;
@@ -179,17 +270,47 @@ export default function JournalShell() {
 
         .fd-end {
           text-align: center; font-size: 12.5px; color: var(--text-faint);
-          padding-top: 8px;
+          padding-top: 10px;
         }
 
+        /* ── Правый рейл: «На виду» ── */
+        .fd-aside {
+          position: sticky; top: 70px; align-self: start;
+          max-height: calc(100vh - 92px); overflow-y: auto; scrollbar-width: none;
+        }
+        .fd-aside::-webkit-scrollbar { display: none; }
+
+        /* Планшет: убираем правую колонку, оставляем рейл + ленту */
+        @media (max-width: 1320px) {
+          .fd-grid { grid-template-columns: 210px minmax(0, 1fr); gap: 28px; }
+          .fd-aside { display: none; }
+        }
+
+        /* Мобайл/узкий: одна колонка-лента, оглавление возвращается в шапку */
+        @media (max-width: 1000px) {
+          .fd-grid { display: block; max-width: 760px; padding: 64px 18px 72px; }
+          .fd-rail { display: none; }
+          .fd-date { display: block; }
+          .fd-mast-inner { padding: 9px 16px; gap: 12px; }
+          .fd-bar {
+            display: flex; gap: 2px; flex: 1; min-width: 0; justify-content: flex-start;
+            overflow-x: auto; scrollbar-width: none;
+            -webkit-mask-image: linear-gradient(90deg, #000 90%, transparent);
+            mask-image: linear-gradient(90deg, #000 90%, transparent);
+          }
+          .fd-bar::-webkit-scrollbar { display: none; }
+          .fd-bar-item {
+            padding: 7px 11px; min-height: 40px; border: none; border-radius: 8px;
+            background: none; font-family: inherit; font-size: 13px; font-weight: 600;
+            color: var(--text-muted); cursor: pointer; white-space: nowrap; flex-shrink: 0;
+            transition: color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+          }
+          .fd-bar-item:hover { color: var(--text-body); background: var(--bg-tile); }
+          .fd-bar-item.active { color: var(--accent); background: var(--bg-tile); }
+        }
         @media (max-width: 640px) {
-          .fd-mast-inner { padding: 8px 12px; gap: 10px; }
           .fd-date { display: none; }
-          /* оглавление прокручивается от первого пункта (не из центра — иначе
-             первые главы прячутся за левым краем), отступ сверху клирит мачт */
-          .fd-toc { justify-content: flex-start; }
-          .fd-toc-item { min-height: 40px; }
-          .fd-feed { padding: 62px 14px 80px; }
+          .fd-grid { padding: 60px 14px 80px; }
         }
       `}</style>
     </div>
