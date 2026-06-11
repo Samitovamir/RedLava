@@ -694,7 +694,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
             <div className="ds-menu-wrap">
               <button className={`ds-findtime ${openMenu === 'findtime' ? 'active' : ''}`} onClick={() => toggleMenu('findtime')}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>
-                {t.findTime}
+                <span className="ds-findtime-label">{t.findTime}</span>
               </button>
               <AnimatePresence>
                 {openMenu === 'findtime' && (
@@ -1340,6 +1340,18 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
         }
         .ds-actions { display: flex; gap: 4px; }
         .ds-menu-wrap { position: relative; }
+
+        /* ── Мобайл: шапка не влезает в одну строку — дату выносим отдельной
+           строкой по центру, «Найди время» сворачиваем до иконки ── */
+        @media (max-width: 640px) {
+          .ds-head { flex-wrap: wrap; gap: 8px 10px; padding: 12px 12px; }
+          .ds-nav { order: 3; flex-basis: 100%; justify-content: center; gap: 6px; }
+          .ds-date { min-width: 0; font-size: 14px; }
+          .ds-findtime-label { display: none; }
+          .ds-findtime { padding: 8px 10px; }
+          .ds-view-txt { padding: 7px 11px; }
+          .ft-pop { min-width: 0; width: min(300px, calc(100vw - 32px)); }
+        }
         .ds-icon-btn.active { background: var(--bg-secondary); color: var(--foreground); }
         .ds-bell-dot {
           position: absolute; top: 6px; right: 7px;

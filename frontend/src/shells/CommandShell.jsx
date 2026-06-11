@@ -138,7 +138,7 @@ export default function CommandShell() {
         .cmd-tab {
           padding: 7px 14px; border: 1px solid transparent; border-radius: 9px;
           background: none; font-family: inherit; font-size: 13px; font-weight: 600;
-          color: var(--text-muted); cursor: pointer; white-space: nowrap;
+          color: var(--text-muted); cursor: pointer; white-space: nowrap; flex-shrink: 0;
           transition: color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
         }
         .cmd-tab:hover { color: var(--text-body); background: var(--bg-tile); }

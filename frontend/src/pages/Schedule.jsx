@@ -54,6 +54,18 @@ export default function Schedule() {
         }
         html[data-layout="journal"] .schedule-col:first-child { order: 2; height: 72vh; min-height: 520px; }
         html[data-layout="journal"] .schedule-col:last-child { order: 1; height: auto; }
+
+        /* ── Мобайл: две колонки (таймлайн + сводка) не помещаются рядом —
+           ставим в стопку: сначала таймлайн на всю ширину, ниже сводка дня ── */
+        @media (max-width: 760px) {
+          .schedule-page { gap: 16px; }
+          .schedule-layout {
+            grid-template-columns: 1fr;
+            height: auto; min-height: 0;
+          }
+          .schedule-col:first-child { height: 68vh; min-height: 460px; }
+          .schedule-col:last-child { height: auto; }
+        }
       `}</style>
     </div>
   )
