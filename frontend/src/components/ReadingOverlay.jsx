@@ -218,10 +218,17 @@ export default function ReadingOverlay({ open, entries = [], loading, onClose, o
             .ro-ask-send:hover:not(:disabled) { opacity: 0.9; }
             .ro-ask-send:disabled { opacity: 0.4; cursor: default; }
 
-            @media (max-width: 560px) {
+            /* Телефон: режим чтения — bottom-sheet (как остальные модалки на мобильном) */
+            @media (max-width: 640px) {
+              .ro-backdrop { padding: 0; align-items: flex-end; }
+              .ro-panel {
+                width: 100%; max-height: 94dvh;
+                border-radius: 20px 20px 0 0; border-bottom: none;
+              }
               .ro-scroll { padding: 18px 18px 4px; }
               .ro-title { font-size: 22px; }
               .ro-para { font-size: 17px; }
+              .ro-ask { padding-bottom: max(14px, env(safe-area-inset-bottom)); }
             }
           `}</style>
         </motion.div>
