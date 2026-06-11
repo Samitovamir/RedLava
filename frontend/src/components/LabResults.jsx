@@ -598,13 +598,14 @@ export default function LabResults() {
         .lab-minor-caret { margin-left: auto; transition: transform 0.15s; }
         .lab-minor-caret.open { transform: rotate(180deg); }
         .lab-minor-list { display: flex; flex-direction: column; margin-top: 6px; }
-        .lab-mini { display: grid; grid-template-columns: 1fr auto auto 10px; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--bg-primary); font-size: 12.5px; }
+        .lab-mini { display: grid; grid-template-columns: minmax(0, 1fr) auto auto 10px; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--bg-primary); font-size: 12.5px; min-width: 0; }
         .lab-mini:last-child { border-bottom: none; }
         .lab-mini-name { color: var(--foreground); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .lab-mini-val { font-weight: 700; white-space: nowrap; }
         .lab-mini-norm { font-size: 11px; white-space: nowrap; }
         .lab-mini-dot { width: 9px; height: 9px; border-radius: 50%; }
-        .lab-panel { background: var(--bg-secondary); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+        .lab-panel { background: var(--bg-secondary); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+        .lab-markers, .lab-minor, .lab-minor-list { min-width: 0; }
         .lab-panel-title { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; color: var(--foreground); }
         .lab-panel-icon { display: inline-flex; align-items: center; }
         .lab-panel-wait { font-size: 11px; font-weight: 400; margin-left: auto; }
@@ -626,7 +627,7 @@ export default function LabResults() {
         .lm-spark { flex-shrink: 0; }
         .lm-trend-txt { font-size: 11px; }
 
-        @media (max-width: 1100px) { .lab-panels { grid-template-columns: 1fr; } }
+        @media (max-width: 1100px) { .lab-panels { grid-template-columns: minmax(0, 1fr); } }
       `}</style>
     </div>
   )
