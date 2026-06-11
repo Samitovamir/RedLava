@@ -1,50 +1,48 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, UtensilsCrossed, Mail, History as HistoryIcon, Settings as SettingsIcon } from 'lucide-react'
-import TodaySignal from '../components/TodaySignal.jsx'
-import HealthSignal from '../components/HealthSignal.jsx'
-import TodayTimelineStrip from '../components/TodayTimelineStrip.jsx'
-import RecentActions from '../components/RecentActions.jsx'
-import AIWorkZone from '../components/AIWorkZone.jsx'
-import HubTile from '../components/HubTile.jsx'
-import StatTile from '../components/StatTile.jsx'
+import { X, Mail, History as HistoryIcon, Settings as SettingsIcon } from 'lucide-react'
+import CkToday from '../components/cockpit/CkToday.jsx'
+import CkDock from '../components/cockpit/CkDock.jsx'
+import { CkRecovery, CkSleep, CkLoad, CkSteps, CkNutrition, CkLabs, CkVitals } from '../components/cockpit/CkWidgets.jsx'
+import { CkSleepPanel, CkRecoveryPanel } from '../components/cockpit/CkPanels.jsx'
+import GarminLive from '../components/GarminLive.jsx'
+import MetricsView from '../components/MetricsView.jsx'
+import LabResults from '../components/LabResults.jsx'
 import Schedule from '../pages/Schedule.jsx'
-import Health from '../pages/Health.jsx'
 import Nutrition from '../pages/Nutrition.jsx'
 import MailPage from '../pages/Mail.jsx'
 import History from '../pages/History.jsx'
 import Settings from '../pages/Settings.jsx'
+import { useEvents } from '../context/EventsContext.jsx'
+import { useMemoryFacts } from '../context/MemoryContext.jsx'
+import { useAiSummary } from '../hooks/useAiSummary.js'
+import { buildSignalData, SIGNAL_CONTEXT, parseSignal, fallbackSignal } from '../utils/daySignal.js'
 import { useT, useLang } from '../context/LanguageContext.jsx'
 import { mskNow } from '../utils/time.js'
 import { variants, Z } from '../motion.js'
 
 /*
-  Оболочка «Кокпит» — ВЕСЬ сайт на одном экране (hub-and-spoke).
-  Нет сайдбара и «страниц»: главная = сетка окон-виджетов со всеми данными,
-  любой раздел разворачивается ПОВЕРХ хаба полноценным окном (роут остаётся
-  обычным /schedule, /health, … — поэтому все navigate() в компонентах работают,
-  а закрытие окна = возврат на «/». Esc тоже закрывает.)
+  Оболочка «Один экран» (кокпит) — ВЕСЬ сайт как приборная панель дня:
+  - шапка-вывод: ИИ-заголовок дня (типографика, без карточки) + часы + редкое
+    (письма/история/настройки) иконками;
+  - слева колонка «Сегодня» (события, + событие), правее — графические виджеты:
+    восстановление (кольцо+тренд), сон (полоса стадий), нагрузка+тренировка,
+    шаги, питание, анализы, строка виталов;
+  - внизу тонкий ИИ-док (командная строка).
+  Клик по виджету открывает SCOPED-панель ровно его темы (сон → только сон),
+  а не раздел с вкладками. Маршруты продолжают работать: /nutrition и т.п.
+  открываются такими же панелями поверх (deep-link, Esc/клик-вне закрывают).
 */
 
-const SECTIONS = [
-  { path: '/schedule', ru: 'Расписание', en: 'Schedule' },
-  { path: '/health', ru: 'Здоровье', en: 'Health' },
-  { path: '/nutrition', ru: 'Питание', en: 'Nutrition' },
-  { path: '/mail', ru: 'Письма', en: 'Mail' },
-  { path: '/history', ru: 'История', en: 'History' },
-  { path: '/settings', ru: 'Настройки', en: 'Settings' },
-]
-
-function hasMealPlan() {
-  try { const s = localStorage.getItem('albert-meal-plan'); const o = s ? JSON.parse(s) : null; return !!(o && Object.keys(o).length) } catch { return false }
-}
 function readWhoop() {
   try { const s = localStorage.getItem('albert-whoop-live'); return s ? JSON.parse(s) : null } catch { return null }
 }
 function readGarmin() {
   try { const s = localStorage.getItem('albert-garmin-live'); return s ? JSON.parse(s) : null } catch { return null }
 }
+
+const MONTHS_RU = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
 
 export default function CockpitShell() {
   const location = useLocation()
@@ -53,82 +51,99 @@ export default function CockpitShell() {
   const t = useT({
     ru: {
       brand: 'владелец',
-      months: ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'],
-      nutrition: 'Питание', menuOk: 'Меню готово', menuNo: 'Нет меню', menuSub: 'неделя · покупки',
-      mail: 'Письма', mailSub: 'Написать или поручить ИИ',
-      history: 'История', historySub: 'Полный журнал действий',
-      settings: 'Настройки', settingsSub: 'Темы · раскладка · подключения',
-      recovery: 'Восстановление', sleep: 'Сон', steps: 'Шаги', rhr: 'Пульс покоя',
-      hrv: 'HRV', vo2: 'VO₂max', week: 'За неделю', strain: 'Нагрузка',
-      h: 'ч', bpm: 'уд/мин', ms: 'мс', km: 'км', wk: n => `${n} трен.`,
-      stepsGoal: 'цель 10 000', ofMax: 'из 21',
+      mail: 'Письма', history: 'История', settings: 'Настройки',
+      titles: {
+        sleep: 'Сон', recovery: 'Восстановление', sport: 'Тренировки и активность', labs: 'Анализы крови',
+        '/schedule': 'Расписание', '/health': 'Показатели тела', '/nutrition': 'Питание',
+        '/mail': 'Письма', '/history': 'История', '/settings': 'Настройки',
+      },
     },
     en: {
       brand: 'Owner',
-      months: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
-      nutrition: 'Nutrition', menuOk: 'Menu ready', menuNo: 'No menu', menuSub: 'week · groceries',
-      mail: 'Mail', mailSub: 'Write or delegate to AI',
-      history: 'History', historySub: 'Full action log',
-      settings: 'Settings', settingsSub: 'Themes · layout · services',
-      recovery: 'Recovery', sleep: 'Sleep', steps: 'Steps', rhr: 'Resting HR',
-      hrv: 'HRV', vo2: 'VO₂max', week: 'This week', strain: 'Strain',
-      h: 'h', bpm: 'bpm', ms: 'ms', km: 'km', wk: n => `${n} workouts`,
-      stepsGoal: 'goal 10,000', ofMax: 'of 21',
+      mail: 'Mail', history: 'History', settings: 'Settings',
+      titles: {
+        sleep: 'Sleep', recovery: 'Recovery', sport: 'Workouts & activity', labs: 'Blood tests',
+        '/schedule': 'Schedule', '/health': 'Body metrics', '/nutrition': 'Nutrition',
+        '/mail': 'Mail', '/history': 'History', '/settings': 'Settings',
+      },
     },
   })
 
-  const open = location.pathname !== '/'
-  const section = SECTIONS.find(s => location.pathname.startsWith(s.path))
-  const title = section ? (lang === 'en' ? section.en : section.ru) : ''
+  // Локальные scoped-панели (не-маршрутные): сон / восстановление / спорт / анализы
+  const [panel, setPanel] = useState(null)
+  const routeOpen = location.pathname !== '/'
+  const open = routeOpen || !!panel
+  const closeTop = () => { if (panel) setPanel(null); else if (routeOpen) navigate('/') }
 
-  // Esc закрывает развёрнутое окно
+  // Esc закрывает верхний слой (панель → окно маршрута)
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') navigate('/') }
+    const onKey = (e) => { if (e.key === 'Escape') closeTop() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [navigate])
+  }, [panel, routeOpen]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const d = mskNow()
-  const dateStr = `${d.getDate()} ${t.months[d.getMonth()]}`
+  // Открыли маршрут поверх — локальная панель уступает (один слой за раз)
+  useEffect(() => { if (routeOpen && panel) setPanel(null) }, [routeOpen]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Живые часы в шапке
+  const [now, setNow] = useState(mskNow)
+  useEffect(() => {
+    const id = setInterval(() => setNow(mskNow()), 30000)
+    return () => clearInterval(id)
+  }, [])
+  const pad = (n) => String(n).padStart(2, '0')
+  const clock = `${pad(now.getHours())}:${pad(now.getMinutes())}`
+  const dateStr = lang === 'en'
+    ? `${now.getDate()}.${pad(now.getMonth() + 1)}`
+    : `${now.getDate()} ${MONTHS_RU[now.getMonth()]}`
+
+  // ИИ-вывод дня — та же сводка, что на Главной (общий кэш по id)
+  const { events } = useEvents()
+  const { facts } = useMemoryFacts()
+  const fb = fallbackSignal(lang)
+  const summary = useAiSummary({
+    id: 'today-signal',
+    context: SIGNAL_CONTEXT + (lang === 'en' ? '\nReply in English.' : ''),
+    snapshot: buildSignalData({ events, facts }),
+    message: 'Сформируй сегодняшний баннер «СЕГОДНЯ»: заголовок-вывод и неброскую строку с ключевым данным. Ровно две строки.',
+    fallback: `${fb.headline}\n${fb.note}`
+  })
+  const parsed = summary.text ? parseSignal(summary.text) : null
+  const headline = parsed?.headline || fb.headline
+  const note = parsed?.note || fb.note
+
   const whoop = readWhoop()
   const garmin = readGarmin()
+
+  const title = panel ? t.titles[panel] : (t.titles[Object.keys(t.titles).find(k => k.startsWith('/') && location.pathname.startsWith(k))] || '')
+  const narrow = panel === 'sleep' || panel === 'recovery'
 
   return (
     <div className="cockpit-shell">
       <header className="ck-top">
         <span className="ck-logo">А</span>
-        <span className="ck-brand">{t.brand}</span>
-        <span className="ck-date">{dateStr}</span>
+        <div className="ck-signal" role="button" tabIndex={0} onClick={() => navigate('/schedule')} onKeyDown={(e) => e.key === 'Enter' && navigate('/schedule')}>
+          <span className="ck-headline">{headline}</span>
+          <span className="ck-note">{note}</span>
+        </div>
+        <div className="ck-top-right">
+          <span className="ck-clock">{dateStr} · {clock}</span>
+          <button className="ck-icon-btn" title={t.mail} aria-label={t.mail} onClick={() => navigate('/mail')}><Mail size={17} /></button>
+          <button className="ck-icon-btn" title={t.history} aria-label={t.history} onClick={() => navigate('/history')}><HistoryIcon size={17} /></button>
+          <button className="ck-icon-btn" title={t.settings} aria-label={t.settings} onClick={() => navigate('/settings')}><SettingsIcon size={17} /></button>
+        </div>
       </header>
 
       <main className="ck-hub">
-        <TodaySignal />
-        <HealthSignal />
-
-        {/* Приборная панель: все ключевые цифры видны сразу, клик → раздел */}
-        <div className="ck-stats">
-          <StatTile label={t.recovery} value={whoop?.recovery} unit="%" onClick={() => navigate('/health')} />
-          <StatTile label={t.sleep} value={whoop?.sleep?.hoursSlept} unit={t.h} onClick={() => navigate('/health')} />
-          <StatTile label={t.steps} value={garmin?.steps != null ? garmin.steps.toLocaleString('ru-RU') : null} sub={garmin?.steps != null ? t.stepsGoal : ''} onClick={() => navigate('/health')} />
-          <StatTile label={t.rhr} value={whoop?.rhr ?? garmin?.restingHr} unit={t.bpm} onClick={() => navigate('/health')} />
-          <StatTile label={t.hrv} value={whoop?.hrv} unit={t.ms} onClick={() => navigate('/health')} />
-          <StatTile label={t.vo2} value={garmin?.vo2Max} onClick={() => navigate('/health')} />
-          <StatTile label={t.week} value={garmin?.weekKm} unit={t.km} sub={garmin?.weekWorkouts != null ? t.wk(garmin.weekWorkouts) : ''} onClick={() => navigate('/health')} />
-          <StatTile label={t.strain} value={whoop?.strain} sub={whoop?.strain != null ? t.ofMax : ''} onClick={() => navigate('/health')} />
-          <StatTile label={t.nutrition} value={hasMealPlan() ? t.menuOk : t.menuNo} sub={t.menuSub} onClick={() => navigate('/nutrition')} />
-        </div>
-
-        <TodayTimelineStrip />
-        <RecentActions limit={4} />
-
-        <div className="ck-tiles">
-          <HubTile icon={UtensilsCrossed} title={t.nutrition} sub={hasMealPlan() ? t.menuOk : t.menuNo} onOpen={() => navigate('/nutrition')} />
-          <HubTile icon={Mail} title={t.mail} sub={t.mailSub} onOpen={() => navigate('/mail')} />
-          <HubTile icon={HistoryIcon} title={t.history} sub={t.historySub} onOpen={() => navigate('/history')} />
-          <HubTile icon={SettingsIcon} title={t.settings} sub={t.settingsSub} onOpen={() => navigate('/settings')} />
-        </div>
-
-        <AIWorkZone />
+        <div className="ck-cell" style={{ gridArea: 't' }}><CkToday /></div>
+        <div className="ck-cell" style={{ gridArea: 'r' }}><CkRecovery whoop={whoop} onOpen={() => setPanel('recovery')} /></div>
+        <div className="ck-cell" style={{ gridArea: 's' }}><CkSleep whoop={whoop} onOpen={() => setPanel('sleep')} /></div>
+        <div className="ck-cell" style={{ gridArea: 'l' }}><CkLoad whoop={whoop} garmin={garmin} onOpen={() => setPanel('sport')} /></div>
+        <div className="ck-cell" style={{ gridArea: 'p' }}><CkSteps garmin={garmin} onOpen={() => setPanel('sport')} /></div>
+        <div className="ck-cell" style={{ gridArea: 'n' }}><CkNutrition onOpen={() => navigate('/nutrition')} /></div>
+        <div className="ck-cell" style={{ gridArea: 'a' }}><CkLabs onOpen={() => setPanel('labs')} /></div>
+        <div className="ck-cell" style={{ gridArea: 'v' }}><CkVitals whoop={whoop} garmin={garmin} onOpen={() => navigate('/health')} /></div>
+        <div className="ck-cell" style={{ gridArea: 'd' }}><CkDock /></div>
       </main>
 
       <AnimatePresence>
@@ -139,10 +154,10 @@ export default function CockpitShell() {
             animate={variants.modalBackdrop.animate}
             exit={variants.modalBackdrop.exit}
             transition={variants.modalBackdrop.transition}
-            onClick={() => navigate('/')}
+            onClick={closeTop}
           >
             <motion.section
-              className="ck-window"
+              className={`ck-window ${narrow ? 'narrow' : ''}`}
               initial={{ opacity: 0, y: 30, scale: 0.97 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 24, scale: 0.98 }}
@@ -151,22 +166,28 @@ export default function CockpitShell() {
             >
               <div className="ck-win-head">
                 <h2 className="ck-win-title">{title}</h2>
-                <button className="ck-win-close" onClick={() => navigate('/')} aria-label="Закрыть">
+                <button className="ck-win-close" onClick={closeTop} aria-label="Закрыть">
                   <X size={18} strokeWidth={2} />
                 </button>
               </div>
               <div className="ck-win-body">
-                <Routes location={location}>
-                  <Route path="/schedule" element={<Schedule />} />
-                  <Route path="/sport" element={<Navigate to="/health" replace />} />
-                  <Route path="/health" element={<Health />} />
-                  <Route path="/nutrition" element={<Nutrition />} />
-                  <Route path="/mail" element={<MailPage />} />
-                  <Route path="/history" element={<History />} />
-                  <Route path="/connections" element={<Navigate to="/settings" replace />} />
-                  <Route path="/settings" element={<Settings />} />
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
+                {panel === 'sleep' && <CkSleepPanel whoop={whoop} />}
+                {panel === 'recovery' && <CkRecoveryPanel whoop={whoop} />}
+                {panel === 'sport' && <GarminLive />}
+                {panel === 'labs' && <LabResults />}
+                {!panel && (
+                  <Routes location={location}>
+                    <Route path="/schedule" element={<Schedule />} />
+                    <Route path="/sport" element={<GarminLive />} />
+                    <Route path="/health" element={<MetricsView />} />
+                    <Route path="/nutrition" element={<Nutrition />} />
+                    <Route path="/mail" element={<MailPage />} />
+                    <Route path="/history" element={<History />} />
+                    <Route path="/connections" element={<Navigate to="/settings" replace />} />
+                    <Route path="/settings" element={<Settings />} />
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                  </Routes>
+                )}
               </div>
             </motion.section>
           </motion.div>
@@ -174,8 +195,9 @@ export default function CockpitShell() {
       </AnimatePresence>
 
       <style>{`
-        /* ОДИН ЭКРАН: всё помещается во вьюпорт, страница не листается —
-           длинные виджеты (журнал, помощник) скроллятся внутри себя */
+        /* ОДИН ЭКРАН: всё во вьюпорте, страница не листается; длинные списки
+           скроллятся ВНУТРИ виджетов (сама карточка скролл-контейнером не бывает —
+           иначе пунктирная прошивка card::after уезжает в середину контента) */
         .cockpit-shell {
           flex: 1; min-width: 0;
           height: 100vh; overflow: hidden;
@@ -183,56 +205,62 @@ export default function CockpitShell() {
         }
         .ck-top {
           flex-shrink: 0;
-          display: flex; align-items: center; gap: 12px;
-          padding: 14px 28px 0;
-          width: 100%; max-width: 1280px; margin-inline: auto;
+          display: flex; align-items: center; gap: 16px;
+          padding: 12px 26px 0;
+          width: 100%; max-width: 1680px; margin-inline: auto;
         }
         .ck-logo {
-          width: 34px; height: 34px; border-radius: 10px;
+          width: 36px; height: 36px; border-radius: 11px; flex-shrink: 0;
           display: flex; align-items: center; justify-content: center;
-          background: var(--accent); color: var(--on-accent);
+          background: linear-gradient(180deg, var(--accent-btn-top), var(--accent-btn-bot));
+          color: var(--on-accent);
           font-weight: 800; font-size: 17px;
         }
-        .ck-brand { font-size: 16px; font-weight: 700; color: var(--text-primary); }
-        .ck-date { margin-left: auto; font-size: 13px; color: var(--muted); padding-right: 110px; }
+        .ck-signal { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; cursor: pointer; }
+        .ck-headline {
+          font-size: 17px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.01em;
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+          transition: color var(--dur-fast) var(--ease);
+        }
+        .ck-signal:hover .ck-headline { color: var(--accent); }
+        .ck-note { font-size: 12.5px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .ck-top-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+        .ck-clock { font-size: 13px; color: var(--text-muted); font-variant-numeric: tabular-nums; margin-right: 6px; }
+        .ck-icon-btn {
+          width: 34px; height: 34px; border-radius: 10px;
+          display: flex; align-items: center; justify-content: center;
+          background: var(--bg-tile); border: 1px solid var(--border-med);
+          color: var(--text-secondary); cursor: pointer;
+          transition: color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+        }
+        .ck-icon-btn:hover { color: var(--accent); border-color: var(--accent); }
 
         .ck-hub {
           flex: 1; min-height: 0;
           display: grid;
-          grid-template-columns: repeat(6, 1fr);
-          grid-template-rows: auto auto auto auto minmax(0, 1fr);
+          grid-template-columns: repeat(12, 1fr);
+          grid-template-rows: minmax(0, 1.45fr) minmax(0, 1fr) auto auto;
+          grid-template-areas:
+            "t t t r r r s s s l l l"
+            "t t t p p p n n n a a a"
+            "t t t v v v v v v v v v"
+            "d d d d d d d d d d d d";
           gap: 12px;
-          align-items: stretch;
-          padding: 12px 28px 18px;
-          width: 100%; max-width: 1360px; margin-inline: auto;
+          padding: 12px 26px 16px;
+          width: 100%; max-width: 1680px; margin-inline: auto;
         }
-        .ck-hub > .today-signal { grid-column: 1 / 5; grid-row: 1; }
-        .ck-hub > .signal-card { grid-column: 5 / 7; grid-row: 1; }
-        /* Приборная строка: 9 показателей в ряд */
-        .ck-stats {
-          grid-column: 1 / 7; grid-row: 2;
-          display: grid; grid-template-columns: repeat(9, 1fr); gap: 10px;
-        }
-        .ck-hub > .tl-strip { grid-column: 1 / 5; grid-row: 3; }
-        .ck-hub > .recent-actions { grid-column: 5 / 7; grid-row: 3; min-height: 0; overflow: hidden; }
-        .ck-hub > .recent-actions .ra-list { overflow-y: auto; min-height: 0; }
-        .ck-tiles {
-          grid-column: 1 / 7; grid-row: 4;
-          display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
-        }
-        /* Помощник — нижняя зона на всю ширину, внутренний скролл при нехватке места */
-        .ck-hub > .ai-work-zone { grid-column: 1 / -1; grid-row: 5; min-height: 0; overflow-y: auto; }
-        @media (max-width: 1200px) { .ck-stats { grid-template-columns: repeat(5, 1fr); } }
+        .ck-cell { min-width: 0; min-height: 0; display: flex; }
+        .ck-cell > * { flex: 1; min-width: 0; min-height: 0; }
 
-        /* Каскадная сборка хаба */
+        /* Каскадная сборка приборной панели */
         @media (prefers-reduced-motion: no-preference) {
-          .ck-hub > * { animation: block-rise 0.42s var(--ease) backwards; }
-          .ck-hub > :nth-child(1) { animation-delay: 0.02s; }
-          .ck-hub > :nth-child(2) { animation-delay: 0.06s; }
-          .ck-hub > :nth-child(3) { animation-delay: 0.10s; }
-          .ck-hub > :nth-child(4) { animation-delay: 0.14s; }
-          .ck-hub > :nth-child(5) { animation-delay: 0.18s; }
-          .ck-hub > :nth-child(n+6) { animation-delay: 0.22s; }
+          .ck-hub > .ck-cell { animation: block-rise 0.42s var(--ease) backwards; }
+          .ck-hub > .ck-cell:nth-child(1) { animation-delay: 0.02s; }
+          .ck-hub > .ck-cell:nth-child(2) { animation-delay: 0.06s; }
+          .ck-hub > .ck-cell:nth-child(3) { animation-delay: 0.10s; }
+          .ck-hub > .ck-cell:nth-child(4) { animation-delay: 0.14s; }
+          .ck-hub > .ck-cell:nth-child(5) { animation-delay: 0.18s; }
+          .ck-hub > .ck-cell:nth-child(n+6) { animation-delay: 0.22s; }
         }
 
         .ck-scrim {
@@ -251,7 +279,10 @@ export default function CockpitShell() {
           border-radius: var(--radius);
           box-shadow: inset 0 1px 0 var(--edge-light), 0 32px 80px rgba(0,0,0,0.5);
           overflow: hidden;
+          margin-block: auto;
+          max-height: 100%;
         }
+        .ck-window.narrow { width: min(880px, 100%); }
         .ck-win-head {
           display: flex; align-items: center; justify-content: space-between;
           padding: 16px 24px;
@@ -269,16 +300,13 @@ export default function CockpitShell() {
         .ck-win-close:hover { color: var(--foreground); border-color: var(--accent); }
         .ck-win-body { flex: 1; min-height: 0; overflow-y: auto; padding: 24px 24px 48px; }
 
-        @media (max-width: 900px) {
-          /* На узком экране «один экран» невозможен — обычная прокрутка */
+        @media (max-width: 1100px) {
+          /* На узком экране «один экран» невозможен — обычная вертикальная лента */
           .cockpit-shell { height: auto; overflow: visible; display: block; }
           .ck-hub { display: flex; flex-direction: column; }
-          .ck-hub > .recent-actions { overflow: visible; }
-          .ck-stats { grid-template-columns: repeat(3, 1fr); }
-          .ck-tiles { grid-template-columns: repeat(2, 1fr); }
+          .ck-today .ckt-list { max-height: 300px; }
           .ck-scrim { padding: 8px; }
           .ck-win-body { padding: 14px; }
-          .ck-date { padding-right: 0; }
         }
       `}</style>
     </div>

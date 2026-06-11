@@ -48,30 +48,27 @@ export default function CommandShell() {
   // Мост колёсика: боковые панели почти не скроллятся, и курсор над ними «глох».
   // Прокрутка над «Сегодня»/«Помощником» листает центральную панель — листать сайт
   // можно с любого места экрана. НО если под курсором есть свой живой скролл
-  // (чат ИИ, журнал, сама панель) и он ещё не упёрся в край — листается он,
-  // а мост молчит. Так и чат помощника крутится, и пустые места листают центр.
+  // (чат ИИ, журнал, сама панель) — мост молчит ВСЕГДА, даже когда тот упёрся
+  // в край: докрутил чат до конца — сайт не дёргается (как overscroll-contain).
   const bodyRef = useRef(null)
   const centerRef = useRef(null)
   useEffect(() => {
     const body = bodyRef.current
     if (!body) return
-    const consumes = (el, dy) => {
+    const scrollable = (el) => {
       if (el.scrollHeight <= el.clientHeight + 1) return false
       const oy = getComputedStyle(el).overflowY
-      if (oy !== 'auto' && oy !== 'scroll') return false
-      return dy > 0
-        ? el.scrollTop + el.clientHeight < el.scrollHeight - 1
-        : el.scrollTop > 0
+      return oy === 'auto' || oy === 'scroll'
     }
     const onWheel = (e) => {
       const center = centerRef.current
       if (!center) return
       const pane = e.target.closest?.('.cmd-left, .cmd-right')
       if (!pane) return
-      // Ищем между курсором и панелью элемент, который сам «съест» прокрутку
+      // Есть скроллящийся элемент между курсором и панелью? Тогда это его зона.
       let n = e.target
       while (n && n.nodeType === 1) {
-        if (consumes(n, e.deltaY)) return // родной скролл работает как обычно
+        if (scrollable(n)) return
         if (n === pane) break
         n = n.parentElement
       }
