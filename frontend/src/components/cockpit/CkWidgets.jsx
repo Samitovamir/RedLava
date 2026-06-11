@@ -63,13 +63,14 @@ export function CkRecovery({ whoop, onOpen }) {
       {r == null ? <div className="ckw-empty">{t.empty}</div> : (
         <div className="ckr-body">
           <div className="ckr-ring">
-            <CircularChart value={r} size={118} color={recoveryColor(r)} sublabel={t[recLevel(r)]} />
+            <CircularChart value={r} size={132} color={recoveryColor(r)} sublabel={t[recLevel(r)]} />
           </div>
           {week.length > 0 && (
             <div className="ckr-week" aria-label={t.week}>
               {week.map((d, i) => (
                 <div key={i} className="ckr-col">
                   <div className="ckr-bar-track">
+                    <span className="ckr-bar-val">{d.recovery}</span>
                     <div
                       className={`ckr-bar ${i === week.length - 1 ? 'today' : ''}`}
                       style={{ height: `${Math.max(8, d.recovery)}%`, background: recoveryColor(d.recovery) }}
@@ -83,17 +84,28 @@ export function CkRecovery({ whoop, onOpen }) {
         </div>
       )}
       <style>{`
-        /* Восстановление — герой: крупное кольцо (главный KPI дня) + тренд недели под ним */
-        .ckr-body { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; }
-        .ckr-ring { flex-shrink: 0; }
-        .ckr-week { width: 100%; min-width: 0; display: flex; gap: 6px; align-items: stretch; flex: 1; min-height: 64px; }
-        .ckr-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-        .ckr-bar-track { flex: 1; display: flex; align-items: flex-end; background: var(--bg-tile); border: 1px solid var(--border); border-radius: 5px; overflow: hidden; }
-        .ckr-bar { width: 100%; border-radius: 4px 4px 0 0; opacity: 0.6; transition: height 0.6s var(--ease); }
+        /* Восстановление — герой-разворот: крупное кольцо (главный KPI дня) слева,
+           бойкий тренд недели заполняет всю ширину и высоту справа */
+        .ckr-body { flex: 1; min-height: 0; display: flex; flex-direction: row; align-items: stretch; gap: 22px; }
+        .ckr-ring { flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+        .ckr-week { flex: 1; min-width: 0; min-height: 72px; display: flex; gap: 8px; align-items: stretch; }
+        .ckr-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+        .ckr-bar-track {
+          flex: 1; position: relative; display: flex; align-items: flex-end;
+          background: var(--bg-tile); border: 1px solid var(--border); border-radius: 6px; overflow: hidden;
+        }
+        .ckr-bar { width: 100%; border-radius: 5px 5px 0 0; opacity: 0.55; transition: height 0.6s var(--ease); }
         .ckr-bar.today { opacity: 1; }
-        .ckr-day { font-size: 10px; color: var(--text-muted); text-align: center; }
-        /* В тесной колонке (кокпит на узком экране) тренд складывается под кольцо горизонтально */
-        @media (max-width: 1100px) { .ckr-body { flex-direction: row; gap: 18px; } .ckr-week { min-height: 70px; max-height: 96px; } }
+        /* Значение проступает у верхушки столбца — тренд читается числом, не только высотой */
+        .ckr-bar-val {
+          position: absolute; top: 5px; left: 0; right: 0; text-align: center;
+          font-size: 10.5px; font-weight: 700; color: var(--text-muted);
+          font-variant-numeric: tabular-nums; pointer-events: none;
+        }
+        .ckr-day { font-size: 10.5px; color: var(--text-muted); text-align: center; }
+        /* Узкий экран: кольцо чуть меньше, столбцы не ниже комфортного */
+        @media (max-width: 1100px) { .ckr-body { gap: 16px; } .ckr-week { min-height: 84px; } }
+        @media (max-width: 480px) { .ckr-bar-val { display: none; } }
       `}</style>
     </WidgetShell>
   )
@@ -117,13 +129,15 @@ export function CkSleep({ whoop, onOpen }) {
   const total = stages ? Object.values(stages).reduce((a, b) => a + b, 0) : 0
   const hrs = (min) => `${Math.round(min / 60 * 10) / 10}${t.h}`
   return (
-    <WidgetShell label={t.label} onOpen={onOpen}>
+    <WidgetShell label={t.label} onOpen={onOpen} className="ckw-sleep">
       {!s ? <div className="ckw-empty">{t.empty}</div> : (
         <div className="cks-body">
-          <div className="ckw-big">{s.hoursSlept} <small>{t.h} · {s.performance}%</small></div>
-          <span className="ckw-sub">{t.of(s.hoursNeeded)}{s.start && s.end ? ` · ${s.start} – ${s.end}` : ''}</span>
+          <div className="cks-top">
+            <div className="ckw-big">{s.hoursSlept} <small>{t.h} · {s.performance}%</small></div>
+            <span className="ckw-sub">{t.of(s.hoursNeeded)}{s.start && s.end ? ` · ${s.start} – ${s.end}` : ''}</span>
+          </div>
           {total > 0 && (
-            <>
+            <div className="cks-bottom">
               <div className="cks-bar">
                 {SLEEP_STAGES.map(st => (
                   <div
@@ -140,14 +154,17 @@ export function CkSleep({ whoop, onOpen }) {
                   </span>
                 ))}
               </div>
-            </>
+            </div>
           )}
         </div>
       )}
       <style>{`
-        .cks-body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 9px; justify-content: center; }
-        .cks-bar { display: flex; height: 14px; border-radius: 7px; overflow: hidden; background: var(--bg-tile); border: 1px solid var(--border); }
-        .cks-legend { display: flex; gap: 10px 14px; flex-wrap: wrap; }
+        /* KPI и полоса стадий — единым блоком по центру невысокой карточки */
+        .cks-body { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; gap: 14px; }
+        .cks-top { display: flex; flex-direction: column; gap: 4px; }
+        .cks-bottom { display: flex; flex-direction: column; gap: 10px; }
+        .cks-bar { display: flex; height: 18px; border-radius: 9px; overflow: hidden; background: var(--bg-tile); border: 1px solid var(--border); }
+        .cks-legend { display: flex; gap: 8px 14px; flex-wrap: wrap; }
         .cks-leg-item { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
         .cks-leg-item i { width: 8px; height: 8px; border-radius: 3px; }
       `}</style>
@@ -169,25 +186,27 @@ export function CkLoad({ whoop, garmin, onOpen }) {
   const sportKey = SPORT_ICON[w?.type] || 'sport-gym'
   const pick = (o, f) => (lang === 'en' && o?.[f + 'En']) ? o[f + 'En'] : o?.[f]
   return (
-    <WidgetShell label={t.label} onOpen={onOpen}>
+    <WidgetShell label={t.label} onOpen={onOpen} className="ckw-load">
       {(strain == null && !w) ? <div className="ckw-empty">{t.empty}</div> : (
         <div className="ckl-body">
           {strain != null && (
             <div className="ckl-strain">
-              <CircularChart value={(strain / 21) * 100} size={76} color="var(--accent)" centerText={`${strain}`} />
+              <CircularChart value={(strain / 21) * 100} size={88} color="var(--accent)" centerText={`${strain}`} />
               <span className="ckw-sub">{t.of}</span>
             </div>
           )}
           {w && (
             <div className="ckl-ticket">
               <span className="ckl-ic" style={{ background: categoryTint(sportKey), color: categoryColor(sportKey) }}>
-                <Icon name={sportKey} size={17} />
+                <Icon name={sportKey} size={18} />
               </span>
               <div className="ckl-tx">
-                <span className="ckl-title">{pick(w, 'title') || pick(w, 'label')}</span>
-                <span className="ckw-sub">
-                  {[w.distanceKm && `${w.distanceKm} ${t.km}`, w.durationMin && `${w.durationMin} ${t.min}`, w.avgHr && `${t.hr} ${w.avgHr}`].filter(Boolean).join(' · ')}
-                </span>
+                <div className="ckl-tx-top">
+                  <span className="ckl-title">{pick(w, 'title') || pick(w, 'label')}</span>
+                  <span className="ckw-sub">
+                    {[w.distanceKm && `${w.distanceKm} ${t.km}`, w.durationMin && `${w.durationMin} ${t.min}`, w.avgHr && `${t.hr} ${w.avgHr}`].filter(Boolean).join(' · ')}
+                  </span>
+                </div>
                 {effect != null && (
                   <span className="ckl-dots" title={`${t.effect}: ${w.trainingEffect}`}>
                     {[1, 2, 3, 4, 5].map(n => <i key={n} className={n <= effect ? 'on' : ''} />)}
@@ -199,16 +218,17 @@ export function CkLoad({ whoop, garmin, onOpen }) {
         </div>
       )}
       <style>{`
-        .ckl-body { flex: 1; min-height: 0; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-        .ckl-strain { display: flex; flex-direction: column; align-items: center; gap: 2px; flex-shrink: 0; }
-        .ckl-ticket { flex: 1; min-width: 130px; display: flex; gap: 10px; align-items: flex-start; }
+        .ckl-body { flex: 1; min-height: 0; display: flex; align-items: center; gap: 16px; }
+        .ckl-strain { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; flex-shrink: 0; }
+        .ckl-ticket { flex: 1; min-width: 130px; display: flex; gap: 11px; align-items: center; }
         .ckl-ic {
-          width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0;
+          width: 38px; height: 38px; border-radius: 11px; flex-shrink: 0;
           display: flex; align-items: center; justify-content: center;
         }
-        .ckl-tx { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-        .ckl-title { font-size: 14px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .ckl-dots { display: flex; gap: 4px; margin-top: 2px; }
+        .ckl-tx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+        .ckl-tx-top { display: flex; flex-direction: column; gap: 3px; }
+        .ckl-title { font-size: 15px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .ckl-dots { display: flex; gap: 5px; }
         .ckl-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--bg-tile); border: 1px solid var(--border-med); }
         .ckl-dots i.on { background: var(--accent); border-color: var(--accent); }
       `}</style>

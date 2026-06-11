@@ -245,7 +245,14 @@ export default function CockpitShell() {
            (auto, по контенту → без мёртвых зон), внизу полоса виталов и ИИ-док.
            Колонка «Сегодня» слева во всю высоту приборной зоны. */
         .ck-hub {
-          flex: 1; min-height: 0;
+          /* Высоту капим и центрируем по вертикали: на большом мониторе карточки
+             остаются нормального размера (без растянутых пустот внутри), а лишняя
+             высота уходит в аккуратные поля сверху/снизу — не в дыры в «окнах».
+             На обычных экранах хаб заполняет высоту почти целиком. */
+          flex: none;
+          height: min(880px, calc(100vh - 58px));
+          margin-block: auto;
+          min-height: 0;
           display: grid;
           grid-template-columns: repeat(12, 1fr);
           grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) auto auto auto;
@@ -313,7 +320,8 @@ export default function CockpitShell() {
         @media (max-width: 1100px) {
           /* На узком экране «один экран» невозможен — обычная вертикальная лента */
           .cockpit-shell { height: auto; overflow: visible; display: block; }
-          .ck-hub { display: flex; flex-direction: column; padding: 12px 16px 20px; }
+          /* На узком экране лента вертикальная — снимаем кап высоты и центрирование */
+          .ck-hub { display: flex; flex-direction: column; height: auto; margin-block: 0; padding: 12px 16px 20px; }
           .ck-today .ckt-list { max-height: 300px; }
           /* Шапка в стопку: лого+часы+иконки в ряд, вывод дня — отдельной строкой во всю ширину */
           .ck-top { padding: 12px 16px 0; flex-wrap: wrap; }

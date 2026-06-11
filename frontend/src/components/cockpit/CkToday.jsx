@@ -26,12 +26,12 @@ export default function CkToday() {
   const t = useT({
     ru: {
       title: 'Сегодня', empty: 'Событий нет — день свободен', add: 'Событие',
-      calendar: 'Календарь', allDay: 'весь день', now: 'сейчас',
+      calendar: 'Календарь', allDay: 'весь день', now: 'сейчас', free: 'дальше свободно',
       count: (n) => `${n} соб.`,
     },
     en: {
       title: 'Today', empty: 'No events — the day is free', add: 'Event',
-      calendar: 'Calendar', allDay: 'all day', now: 'now',
+      calendar: 'Calendar', allDay: 'all day', now: 'now', free: 'free ahead',
       count: (n) => `${n} ev.`,
     },
   })
@@ -79,6 +79,7 @@ export default function CkToday() {
 
       <div className="ckt-list" ref={listRef}>
         {timed.length === 0 && allDay.length === 0 && <div className="ckt-empty">{t.empty}</div>}
+        {timed.length > 0 && <span className="ckt-axis" aria-hidden="true" />}
         {timed.map((ev, i) => {
           const past = toMin(ev.end || ev.start) < nowMin
           const current = !past && toMin(ev.start) <= nowMin
@@ -96,6 +97,9 @@ export default function CkToday() {
             </button>
           )
         })}
+        {timed.length > 0 && (
+          <div className="ckt-open"><i className="ckt-open-dot" /><span>{t.free}</span></div>
+        )}
       </div>
 
       <div className="ckt-foot">
@@ -127,11 +131,18 @@ export default function CkToday() {
         .ckt-ad-chip i { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
         .ckt-ad-title { font-size: 12.5px; font-weight: 600; color: var(--text-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .ckt-ad-meta { font-size: 11px; color: var(--text-faint); margin-left: auto; flex-shrink: 0; }
-        .ckt-list { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+        /* Лента дня: события — узлы на единой вертикальной нити; «дальше свободно»
+           закрывает нить внизу, поэтому высокая колонка заполнена, а не пустует */
+        .ckt-list { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; position: relative; }
+        .ckt-axis {
+          position: absolute; left: 62px; top: 16px; bottom: 14px; width: 2px; border-radius: 1px; z-index: 0;
+          background: linear-gradient(180deg, var(--border), var(--border) 52%, transparent);
+        }
         .ckt-empty { font-size: 13px; color: var(--text-muted); padding: 6px 2px; }
         .ckt-item {
+          position: relative; z-index: 1;
           display: flex; align-items: center; gap: 9px; min-width: 0; flex-shrink: 0;
-          padding: 8px 9px; border: 1px solid transparent; border-radius: 10px;
+          padding: 9px 9px; border: 1px solid transparent; border-radius: 10px;
           background: none; cursor: pointer; font-family: inherit; text-align: left;
           transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
         }
@@ -139,9 +150,15 @@ export default function CkToday() {
         .ckt-item.past { opacity: 0.5; }
         .ckt-item.now { background: var(--bg-tile); border-color: var(--accent-today); }
         .ckt-time { font-size: 12.5px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; flex-shrink: 0; width: 40px; }
-        .ckt-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+        .ckt-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 0 3px var(--bg-card-bot, var(--bg-surface)); }
         .ckt-name { flex: 1; min-width: 0; font-size: 13px; color: var(--text-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .ckt-now { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent-today); flex-shrink: 0; }
+        .ckt-open {
+          position: relative; z-index: 1; margin-top: auto;
+          display: flex; align-items: center; gap: 9px; padding: 10px 9px 2px 57px;
+        }
+        .ckt-open-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; border: 2px solid var(--border-med); background: var(--bg-card-bot, var(--bg-surface)); }
+        .ckt-open span { font-size: 11.5px; color: var(--text-faint); }
         .ckt-foot { display: flex; gap: 8px; flex-shrink: 0; }
       `}</style>
     </div>
