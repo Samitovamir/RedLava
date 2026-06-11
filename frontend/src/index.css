@@ -389,20 +389,22 @@ body { transition: background-color var(--dur-base) var(--ease), color var(--dur
 
 /* ТЕМА 2: КОРИЧНЕВАЯ КОЖА — седло/коньяк, светлая строчка */
 [data-theme="brown-leather"] {
-  --bg-app: #120E0B; --bg-surface: #241D18;
-  --bg-anchor-top: #2D231C; --bg-anchor-bot: #221A15;
-  --bg-card-top: #271F19; --bg-card-bot: #1E1712;
-  --edge-light: #4A3A2B; --edge-dark: #0E0B08; --border-soft: #3A2E24;
+  /* кофейно-коричневый, а не терракотовый: красный канал сближен с зелёным,
+     чтобы поверхности читались как «коричневая кожа», а не отдавали красным */
+  --bg-app: #110F0C; --bg-surface: #221D19;
+  --bg-anchor-top: #292420; --bg-anchor-bot: #201A16;
+  --bg-card-top: #241F1B; --bg-card-bot: #1C1814;
+  --edge-light: #463A2E; --edge-dark: #0E0B09; --border-soft: #382E26;
   --text-primary: #F2E9DC; --text-body: #E6DAC8; --text-secondary: #C2B19B; --text-muted: #9C8B76; --text-faint: #6E5E4C;
   --accent: #C89B6A; --accent-btn-top: #B87844; --accent-btn-bot: #9A6035; --on-accent: #F2E9DC;
   --accent-today: #C89B6A;
-  --bg-tile: #30261E; --border-med: #463829; --shadow-btn: 0 3px 8px rgba(0,0,0,0.40);
+  --bg-tile: #2C2620; --border-med: #443829; --shadow-btn: 0 3px 8px rgba(0,0,0,0.40);
   --status-ok: #8A9B6B; --status-warn: #C2703F; --status-crit: #A85A4A;
-  --stitch: #6B543E;
+  --stitch: #685440;
   --shadow-anchor: 0 2px 4px rgba(0,0,0,0.40), 0 24px 48px -18px rgba(0,0,0,0.75);
   --shadow-card: 0 1px 2px rgba(0,0,0,0.45), 0 14px 34px -16px rgba(0,0,0,0.62);
   --inset-tile: inset 0 1.5px 3px rgba(0,0,0,0.35), inset 0 -1px 0 rgba(255,255,255,0.035);
-  --grain: 0.14; --vignette-top: rgba(255,236,205,0.07); --vignette-edge: rgba(0,0,0,0.34);
+  --grain: 0.14; --vignette-top: rgba(247,242,234,0.05); --vignette-edge: rgba(0,0,0,0.34);
   --scrim: rgba(12,9,7,0.70);
 }
 
