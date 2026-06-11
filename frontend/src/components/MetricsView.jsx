@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '../ui'
 import { motion, AnimatePresence } from 'framer-motion'
 import CircularChart from './CircularChart.jsx'
@@ -39,7 +40,10 @@ const STR = {
       skin: { lbl: 'Температура кожи' }, eff: { lbl: 'Эффективность сна', sub: 'времени в постели спал' }
     },
     skinSub: (d) => `${d > 0 ? '+' : ''}${d}° от нормы`,
-    garmin: 'Показатели Garmin', whoopOff: 'Whoop не подключён — подключите, чтобы видеть восстановление, сон, HRV и пульс.',
+    garmin: 'Показатели Garmin',
+    whoopOffTitle: 'Whoop не подключён',
+    whoopOff: 'Подключите часы — и здесь появятся восстановление, сон, HRV и пульс покоя.',
+    whoopOffBtn: 'Подключить Whoop',
     gm: { vo2: 'VO₂max', vo2sub: 'мл/кг/мин', age: 'Фитнес-возраст', ageSub: 'лет', rhr: 'Пульс покоя · Garmin', rhrSub: 'уд/мин', bb: 'Body Battery', stress: 'Стресс', status: 'Статус тренировок', load: 'Нагрузка (load)' }
   },
   en: {
@@ -64,7 +68,10 @@ const STR = {
       skin: { lbl: 'Skin temperature' }, eff: { lbl: 'Sleep efficiency', sub: 'of time in bed asleep' }
     },
     skinSub: (d) => `${d > 0 ? '+' : ''}${d}° from normal`,
-    garmin: 'Garmin metrics', whoopOff: 'Whoop is not connected — connect it to see recovery, sleep, HRV and heart rate.',
+    garmin: 'Garmin metrics',
+    whoopOffTitle: 'Whoop is not connected',
+    whoopOff: 'Connect your band to see recovery, sleep, HRV and resting heart rate here.',
+    whoopOffBtn: 'Connect Whoop',
     gm: { vo2: 'VO₂max', vo2sub: 'ml/kg/min', age: 'Fitness age', ageSub: 'yrs', rhr: 'Resting HR · Garmin', rhrSub: 'bpm', bb: 'Body Battery', stress: 'Stress', status: 'Training status', load: 'Training load' }
   }
 }
@@ -78,6 +85,7 @@ function recoveryLevel(r) {
 export default function MetricsView() {
   const { lang } = useLang()
   const t = useT(STR)
+  const navigate = useNavigate()
   const recLabel = { high: t.recHigh, mid: t.recMid, low: t.recLow }
 
   // Живые данные Whoop / Garmin (как на старой странице Здоровье)
@@ -252,7 +260,14 @@ export default function MetricsView() {
           ))}
         </div>
       </>) : (
-        <div className="card metrics-whoop-off">{t.whoopOff}</div>
+        <div className="card metrics-whoop-off">
+          <span className="mwo-icon"><Icon name="health" size={26} color="var(--accent)" /></span>
+          <div className="mwo-text">
+            <div className="mwo-title">{t.whoopOffTitle}</div>
+            <p className="mwo-sub">{t.whoopOff}</p>
+          </div>
+          <Button variant="primary" onClick={() => navigate('/connections')}>{t.whoopOffBtn}</Button>
+        </div>
       )}
 
       {/* Метрики Garmin (VO2max и т.д.) — если подключён */}
@@ -277,7 +292,13 @@ export default function MetricsView() {
       <style>{`
         .metrics-view { display: flex; flex-direction: column; gap: 24px; }
         .metrics-section { display: flex; flex-direction: column; gap: 12px; }
-        .metrics-whoop-off { font-size: 15px; line-height: 1.6; color: var(--muted-foreground); }
+        .metrics-whoop-off { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+        .mwo-icon { width: 52px; height: 52px; border-radius: 14px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: var(--bg-tile, var(--bg-secondary)); box-shadow: var(--inset-tile); }
+        .mwo-text { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 4px; }
+        .mwo-title { font-size: 16px; font-weight: 700; color: var(--foreground); }
+        .mwo-sub { font-size: 14px; line-height: 1.55; color: var(--muted-foreground); }
+        .metrics-whoop-off .ds-btn { flex-shrink: 0; }
+        @media (max-width: 520px) { .metrics-whoop-off .ds-btn { width: 100%; } }
         .muted { color: var(--muted-foreground); }
         .card-title { font-size: 17px; font-weight: 700; color: var(--foreground); }
 
