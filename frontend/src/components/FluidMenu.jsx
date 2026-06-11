@@ -301,11 +301,16 @@ export default function FluidMenu() {
              панель в нативном приложении (Тинькофф и т.п.). Чёрного прямоугольника нет. */
           html[data-standalone] .mobile-tabbar {
             left: 0; right: 0; bottom: 0;
-            border-radius: 22px 22px 0 0;
-            border-left: none; border-right: none; border-bottom: none;
+            border-radius: 20px 20px 0 0;
+            border: none;
+            border-top: 1px solid color-mix(in srgb, var(--border-soft) 85%, transparent);
             padding: 9px 16px calc(9px + env(safe-area-inset-bottom));
-            background: color-mix(in srgb, var(--bg-surface) 72%, transparent);
-            box-shadow: 0 -10px 30px -14px rgba(0,0,0,0.55), inset 0 1px 0 var(--edge-light, transparent);
+            /* Докнутая панель — СПЛОШНАЯ (как нативный таб-бар): иначе сквозь стекло
+               в зоне индикатора просвечивает фон страницы и читается чужой полосой.
+               На свету это особенно заметно (серый страничный фон под белым стеклом). */
+            background: var(--bg-surface);
+            -webkit-backdrop-filter: none; backdrop-filter: none;
+            box-shadow: 0 -12px 30px -18px rgba(0,0,0,0.45), inset 0 1px 0 var(--edge-light, transparent);
           }
           /* В открытых модалках прячем таб-панель: иначе она перекрывает кнопки окна
              (например «Сохранить») — модалка рендерится внутри страницы и из-за
