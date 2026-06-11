@@ -237,6 +237,10 @@ html[data-nav-pinned] .page-content { margin-left: var(--sidebar-width-expanded)
     margin-left: 0;
     padding: 16px 16px calc(114px + env(safe-area-inset-bottom)) 16px;
   }
+  /* «С экрана Домой»: меню доковано к самому низу — резервируем ровно под него */
+  html[data-standalone] .page-content {
+    padding-bottom: calc(88px + env(safe-area-inset-bottom));
+  }
 }
 
 .card {

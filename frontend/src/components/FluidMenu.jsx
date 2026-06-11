@@ -295,6 +295,18 @@ export default function FluidMenu() {
             box-shadow: 0 10px 34px -10px rgba(0,0,0,0.5), inset 0 1px 0 var(--edge-light, transparent);
             transition: transform 0.28s var(--ease), opacity 0.24s var(--ease);
           }
+          /* «С экрана Домой» (standalone): панели Safari снизу нет, и плавающая пилюля
+             висела бы над пустой чёрной зоной жеста «домой». Доковаем панель к нижнему
+             краю — стекло доходит до самого низа и закрывает зону индикатора, как нижняя
+             панель в нативном приложении (Тинькофф и т.п.). Чёрного прямоугольника нет. */
+          html[data-standalone] .mobile-tabbar {
+            left: 0; right: 0; bottom: 0;
+            border-radius: 22px 22px 0 0;
+            border-left: none; border-right: none; border-bottom: none;
+            padding: 9px 16px calc(9px + env(safe-area-inset-bottom));
+            background: color-mix(in srgb, var(--bg-surface) 72%, transparent);
+            box-shadow: 0 -10px 30px -14px rgba(0,0,0,0.55), inset 0 1px 0 var(--edge-light, transparent);
+          }
           /* В открытых модалках прячем таб-панель: иначе она перекрывает кнопки окна
              (например «Сохранить») — модалка рендерится внутри страницы и из-за
              stacking-context не может перекрыть плавающее меню. */
