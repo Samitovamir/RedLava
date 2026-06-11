@@ -63,7 +63,9 @@ export default function Schedule() {
             grid-template-columns: 1fr;
             height: auto; min-height: 0;
           }
-          .schedule-col:first-child { height: 68vh; min-height: 460px; }
+          /* На телефоне расписание течёт в общем скролле страницы (без фикс. высоты и
+             вложенного скролла) — иначе меню действий события обрезается контейнером. */
+          .schedule-col:first-child { height: auto; min-height: 0; }
           .schedule-col:last-child { height: auto; }
         }
       `}</style>

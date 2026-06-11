@@ -1412,6 +1412,11 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
           .ds-event-menu { width: 40px; height: 40px; }
           .ds-chat-send { width: 40px; height: 40px; }
           .ft-pop { min-width: 0; width: min(300px, calc(100vw - 32px)); }
+          /* Расписание течёт в общем скролле страницы (без вложенного скролла) —
+             чтобы меню действий события (Редактировать/Удалить) не обрезалось
+             контейнером агенды и было доступно для нажатия. */
+          .day-schedule.extended { height: auto; }
+          .ds-agenda { overflow: visible; flex: none; }
           /* Неделя на телефоне: вертикальная лента-агенда вместо 7 узких колонок
              (в колонках текст ломался по буквам). День — строка: слева дата, справа события. */
           .ds-week { grid-template-columns: 1fr; gap: 8px; padding: 10px; }
