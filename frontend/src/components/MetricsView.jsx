@@ -353,6 +353,14 @@ export default function MetricsView() {
         @media (max-width: 1100px) {
           .health-metrics { grid-template-columns: repeat(2, 1fr); }
         }
+        /* Телефон: «Показатели» не должны листаться по горизонтали — сон в стопку
+           (кольцо качества над фазами), сетки сжимаемы (minmax). */
+        @media (max-width: 640px) {
+          .sleep-body { flex-direction: column; align-items: stretch; gap: 18px; }
+          .sleep-stages { min-width: 0; }
+          .rc-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+          .stage-legend { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; }
+        }
       `}</style>
     </div>
   )

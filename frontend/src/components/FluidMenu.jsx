@@ -285,10 +285,10 @@ export default function FluidMenu() {
             display: flex; align-items: stretch; gap: 2px;
             padding: 7px 8px;
             border-radius: 26px;
-            background: color-mix(in srgb, var(--bg-surface) 80%, transparent);
-            -webkit-backdrop-filter: blur(22px) saturate(1.8);
-            backdrop-filter: blur(22px) saturate(1.8);
-            border: 1px solid var(--border-soft);
+            background: color-mix(in srgb, var(--bg-surface) 58%, transparent);
+            -webkit-backdrop-filter: blur(30px) saturate(1.9);
+            backdrop-filter: blur(30px) saturate(1.9);
+            border: 1px solid color-mix(in srgb, var(--border-soft) 70%, transparent);
             box-shadow: 0 10px 34px -10px rgba(0,0,0,0.5), inset 0 1px 0 var(--edge-light, transparent);
           }
           .tab-item {
@@ -323,10 +323,10 @@ export default function FluidMenu() {
             z-index: 295;
             padding: 10px;
             border-radius: 22px;
-            background: color-mix(in srgb, var(--bg-surface) 88%, transparent);
-            -webkit-backdrop-filter: blur(22px) saturate(1.8);
-            backdrop-filter: blur(22px) saturate(1.8);
-            border: 1px solid var(--border-soft);
+            background: color-mix(in srgb, var(--bg-surface) 72%, transparent);
+            -webkit-backdrop-filter: blur(30px) saturate(1.9);
+            backdrop-filter: blur(30px) saturate(1.9);
+            border: 1px solid color-mix(in srgb, var(--border-soft) 70%, transparent);
             box-shadow: 0 16px 40px -12px rgba(0,0,0,0.55);
           }
           .tab-more::after { display: none; }  /* без кожаной прошивки на стекле */

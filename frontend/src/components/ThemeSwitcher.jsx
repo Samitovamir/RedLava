@@ -2,31 +2,26 @@ import { useState, useEffect } from 'react'
 import { Check } from 'lucide-react'
 import { useT, useLang } from '../context/LanguageContext.jsx'
 import { useIsMobile } from '../layout.js'
+import { getDesktopTheme, setDesktopTheme, getMobilePref, setMobilePref } from '../theme.js'
 
-// Переключатель тем оформления (THEMES_1.md). Самодостаточный — позже легко
-// перенести из «Подключений» в «Настройки». Тема хранится в localStorage и
-// применяется к <html data-theme="…">; все цвета сайта завязаны на CSS-переменные.
+// Переключатель тем. На десктопе — кожаные темы (выбор пользователя). На телефоне —
+// только минималистичные iOS-темы + «Авто» (подстраивается под оформление телефона).
+// Тема хранится раздельно (albert-theme / albert-theme-mobile) и применяется к
+// <html data-theme>; все цвета сайта завязаны на CSS-переменные.
 
-const STORAGE_KEY = 'albert-theme'
-const DEFAULT_THEME = 'black-leather'
-
-// id + образцы цветов для превью (фон / поверхность / акцент)
-const THEMES = [
+// Десктоп: образцы фон / поверхность / акцент для превью
+const DESKTOP_THEMES = [
   { id: 'black-leather', ru: 'Чёрная кожа',    en: 'Black leather', bg: '#121211', surface: '#1E1E1C', accent: '#8FB2D4' },
   { id: 'brown-leather', ru: 'Коричневая кожа', en: 'Brown leather', bg: '#120E0B', surface: '#271F19', accent: '#C89B6A' },
   { id: 'cream',         ru: 'Кремовая',        en: 'Cream',         bg: '#EFE9DD', surface: '#FDFBF6', accent: '#C97B4A' },
   { id: 'original',      ru: 'Оригинальная',    en: 'Original',      bg: '#1E1B18', surface: '#2C2825', accent: '#818CF8' },
 ]
-// Минималистичные темы под мобильную (iOS-26): показываются на телефоне
-// (или если такая тема уже выбрана), на десктопе скрыты.
-const MOBILE_THEMES = [
+// Телефон: «Авто» + две iOS-темы
+const MOBILE_OPTIONS = [
+  { id: 'auto',      ru: 'Авто',        en: 'Auto',      sub: { ru: 'Как на телефоне', en: 'Matches your phone' }, auto: true },
   { id: 'ios-dark',  ru: 'iOS Тёмная',  en: 'iOS Dark',  bg: '#000000', surface: '#1C1C1E', accent: '#0A84FF' },
   { id: 'ios-light', ru: 'iOS Светлая', en: 'iOS Light', bg: '#F2F2F7', surface: '#FFFFFF', accent: '#007AFF' },
 ]
-
-export function applyTheme(id) {
-  document.documentElement.setAttribute('data-theme', id)
-}
 
 export default function ThemeSwitcher() {
   const t = useT({
@@ -35,18 +30,21 @@ export default function ThemeSwitcher() {
   })
   const { lang } = useLang()
   const isMobile = useIsMobile()
-  const [theme, setTheme] = useState(() => {
-    try { return localStorage.getItem(STORAGE_KEY) || DEFAULT_THEME } catch { return DEFAULT_THEME }
-  })
+  const [sel, setSel] = useState(() => (isMobile ? getMobilePref() : getDesktopTheme()))
 
+  // Пересинхронизируем выделение при смене устройства / внешней смене темы
   useEffect(() => {
-    applyTheme(theme)
-    try { localStorage.setItem(STORAGE_KEY, theme) } catch { /* ignore */ }
-  }, [theme])
+    const sync = () => setSel(isMobile ? getMobilePref() : getDesktopTheme())
+    sync()
+    window.addEventListener('albert-theme-change', sync)
+    return () => window.removeEventListener('albert-theme-change', sync)
+  }, [isMobile])
 
-  // iOS-темы — только на мобильном (или если такая тема уже выбрана, чтобы выбор было видно).
-  const showMobile = isMobile || theme.startsWith('ios-')
-  const list = showMobile ? [...THEMES, ...MOBILE_THEMES] : THEMES
+  const list = isMobile ? MOBILE_OPTIONS : DESKTOP_THEMES
+  const pick = (id) => {
+    if (isMobile) setMobilePref(id); else setDesktopTheme(id)
+    setSel(id)
+  }
 
   return (
     <div className="theme-switcher">
@@ -58,17 +56,26 @@ export default function ThemeSwitcher() {
         {list.map((it) => (
           <button
             key={it.id}
-            className={`ts-opt ${theme === it.id ? 'on' : ''}`}
-            onClick={() => setTheme(it.id)}
+            className={`ts-opt ${sel === it.id ? 'on' : ''}`}
+            onClick={() => pick(it.id)}
             type="button"
-            aria-pressed={theme === it.id}
+            aria-pressed={sel === it.id}
           >
-            <span className="ts-swatch" style={{ background: it.bg }}>
-              <span className="ts-swatch-card" style={{ background: it.surface }} />
-              <span className="ts-swatch-dot" style={{ background: it.accent }} />
+            {it.auto ? (
+              <span className="ts-swatch ts-swatch--auto" aria-hidden="true">
+                <span className="ts-swatch-dot" style={{ background: '#0A84FF' }} />
+              </span>
+            ) : (
+              <span className="ts-swatch" style={{ background: it.bg }}>
+                <span className="ts-swatch-card" style={{ background: it.surface }} />
+                <span className="ts-swatch-dot" style={{ background: it.accent }} />
+              </span>
+            )}
+            <span className="ts-text">
+              <span className="ts-label">{lang === 'en' ? it.en : it.ru}</span>
+              {it.sub && <span className="ts-sub">{lang === 'en' ? it.sub.en : it.sub.ru}</span>}
             </span>
-            <span className="ts-label">{lang === 'en' ? it.en : it.ru}</span>
-            {theme === it.id && (
+            {sel === it.id && (
               <span className="ts-check" aria-hidden="true">
                 <Check size={14} strokeWidth={2.5} />
               </span>
@@ -93,6 +100,7 @@ export default function ThemeSwitcher() {
           background: var(--bg-tile);
           cursor: pointer;
           font-family: inherit;
+          text-align: left;
           transition: border-color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
         }
         .ts-opt:hover { transform: translateY(-1px); border-color: var(--accent); }
@@ -108,9 +116,13 @@ export default function ThemeSwitcher() {
           width: 44px; height: 32px; border-radius: var(--radius-sm);
           border: 1px solid rgba(0, 0, 0, 0.10); overflow: hidden;
         }
+        /* «Авто»: диагональ тёмная/светлая — намёк, что тема следует за телефоном */
+        .ts-swatch--auto { background: linear-gradient(125deg, #000 0 50%, #F2F2F7 50% 100%); }
         .ts-swatch-card { position: absolute; left: 6px; top: 7px; width: 22px; height: 18px; border-radius: 4px; border: 1px solid rgba(0, 0, 0, 0.10); }
         .ts-swatch-dot { position: absolute; right: 6px; bottom: 6px; width: 10px; height: 10px; border-radius: 50%; border: 1px solid rgba(0, 0, 0, 0.10); }
+        .ts-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
         .ts-label { font-size: 15px; color: var(--foreground); font-weight: 500; }
+        .ts-sub { font-size: 11.5px; color: var(--muted); }
         @media (max-width: 520px) { .ts-grid { grid-template-columns: 1fr; } }
       `}</style>
     </div>

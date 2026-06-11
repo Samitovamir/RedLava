@@ -10,6 +10,7 @@ import CockpitShell from './shells/CockpitShell.jsx'
 import JournalShell from './shells/JournalShell.jsx'
 import CommandShell from './shells/CommandShell.jsx'
 import { useLayout, useIsMobile } from './layout.js'
+import { useThemeSync } from './theme.js'
 import { isGuest } from './api/authFetch.js'
 import { EventsProvider } from './context/EventsContext.jsx'
 import { HistoryProvider } from './context/HistoryContext.jsx'
@@ -83,6 +84,9 @@ function ShellRouter() {
 }
 
 export default function App() {
+  // Держим тему в согласии с устройством и оформлением телефона (тёмная/светлая) вживую.
+  useThemeSync()
+
   // Подтягиваем живые данные Whoop и Garmin в localStorage (для страниц и для ИИ).
   // Гость работает на демо-данных — реальные не запрашиваем (и не затираем демо).
   useEffect(() => {
