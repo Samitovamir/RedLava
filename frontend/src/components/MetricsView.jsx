@@ -316,15 +316,17 @@ export default function MetricsView() {
         .sleep-nap-lbl { color: var(--muted-foreground); }
         .sleep-nap-val { font-weight: 700; color: var(--foreground); font-variant-numeric: tabular-nums; }
         .sleep-nap-time { font-variant-numeric: tabular-nums; }
-        .sleep-body { display: flex; align-items: center; gap: 28px; }
-        .sleep-stages { flex: 1; display: flex; flex-direction: column; gap: 14px; }
+        /* flex-wrap + min-width:0 + minmax(0,1fr): кольцо и фазы сна никогда не вылезают
+           за карточку — на узком фазы переносятся под кольцо, колонки легенды сжимаемы. */
+        .sleep-body { display: flex; align-items: center; gap: 28px; flex-wrap: wrap; }
+        .sleep-stages { flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
         .stage-bar { display: flex; height: 14px; border-radius: 7px; overflow: hidden; background: var(--bg-secondary); }
         .stage-seg { height: 100%; transition: width 0.4s; }
-        .stage-legend { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 20px; }
-        .stage-leg { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+        .stage-legend { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 16px; }
+        .stage-leg { display: flex; align-items: center; gap: 8px; font-size: 13px; min-width: 0; }
         .stage-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
-        .stage-leg-lbl { color: var(--muted-foreground); }
-        .stage-leg-val { margin-left: auto; color: var(--foreground); font-weight: 600; }
+        .stage-leg-lbl { color: var(--muted-foreground); min-width: 0; overflow-wrap: anywhere; }
+        .stage-leg-val { margin-left: auto; padding-left: 6px; color: var(--foreground); font-weight: 600; white-space: nowrap; }
         .sleep-chev { display: inline-block; transition: transform .2s; font-size: 11px; }
         .sleep-chev.open { transform: rotate(90deg); }
         .sleep-detail { overflow: hidden; }
