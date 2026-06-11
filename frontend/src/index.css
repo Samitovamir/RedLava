@@ -240,9 +240,29 @@ html[data-nav-pinned] .page-content { margin-left: var(--sidebar-width-expanded)
    Нижний отступ = высота плавающей панели (≈64) + её отступ снизу (10) + воздух —
    чтобы последний контент гарантированно прокручивался выше стекла, а не под ним. */
 @media (max-width: 640px) {
+  /* На телефоне прокручивается САМ ДОКУМЕНТ, а не внутренний контейнер.
+     iOS корректно держит position:fixed (нижнее меню) и safe-area только при
+     скролле документа. Внутренний скролл-контейнер (height:100dvh; overflow:auto)
+     ломает позицию фиксированной панели в standalone — она не достаёт до
+     физического низа экрана, и снизу вылезает фон страницы (серая полоса). */
+  html, body, #root {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+  #root { display: block; }
+  .main-layout {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+    display: block;
+  }
   .page-content,
   html[data-nav-pinned] .page-content {
     margin-left: 0;
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
     padding: 16px 16px calc(114px + env(safe-area-inset-bottom)) 16px;
   }
   /* «С экрана Домой»: меню доковано к самому низу — резервируем ровно под него */
