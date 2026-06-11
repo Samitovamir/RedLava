@@ -185,7 +185,11 @@ export default function JournalShell() {
         @media (max-width: 640px) {
           .fd-mast-inner { padding: 8px 12px; gap: 10px; }
           .fd-date { display: none; }
-          .fd-feed { padding: 18px 14px 80px; }
+          /* оглавление прокручивается от первого пункта (не из центра — иначе
+             первые главы прячутся за левым краем), отступ сверху клирит мачт */
+          .fd-toc { justify-content: flex-start; }
+          .fd-toc-item { min-height: 40px; }
+          .fd-feed { padding: 62px 14px 80px; }
         }
       `}</style>
     </div>

@@ -72,6 +72,8 @@ export default function MicButton({ onText, title = 'Надиктовать го
           0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--red) 50%, transparent); }
           50% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--red) 0%, transparent); }
         }
+        /* Под палец на телефоне */
+        @media (max-width: 640px) { .mic-btn { width: 44px; height: 44px; } }
       `}</style>
     </button>
   )

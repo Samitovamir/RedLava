@@ -208,7 +208,9 @@ export default function CommandShell() {
           .cmd-right { border-left: none; border-top: 1px solid var(--border); }
         }
         @media (max-width: 640px) {
-          .cmd-tabs { margin-top: 0; }
+          /* затухание правого края — намёк, что ряд вкладок листается вбок */
+          .cmd-tabs { margin-top: 0; -webkit-mask-image: linear-gradient(90deg, #000 86%, transparent); mask-image: linear-gradient(90deg, #000 86%, transparent); scroll-snap-type: x proximity; }
+          .cmd-tab { min-height: 40px; scroll-snap-align: start; }
         }
       `}</style>
     </div>

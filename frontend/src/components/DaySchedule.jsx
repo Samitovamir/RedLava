@@ -1342,14 +1342,18 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
         .ds-menu-wrap { position: relative; }
 
         /* ── Мобайл: шапка не влезает в одну строку — дату выносим отдельной
-           строкой по центру, «Найди время» сворачиваем до иконки ── */
+           строкой по центру, «Найди время» сворачиваем до иконки; интерактивы
+           под палец ≥40px (стрелки, меню события, иконки, табы вида) ── */
         @media (max-width: 640px) {
           .ds-head { flex-wrap: wrap; gap: 8px 10px; padding: 12px 12px; }
           .ds-nav { order: 3; flex-basis: 100%; justify-content: center; gap: 6px; }
-          .ds-date { min-width: 0; font-size: 14px; }
+          .ds-date { min-width: 0; font-size: 14px; min-height: 40px; }
           .ds-findtime-label { display: none; }
-          .ds-findtime { padding: 8px 10px; }
-          .ds-view-txt { padding: 7px 11px; }
+          .ds-findtime { padding: 8px 12px; min-height: 40px; }
+          .ds-view-txt { padding: 9px 13px; min-height: 40px; }
+          .ds-arrow { width: 40px; height: 40px; }
+          .ds-event-menu { width: 40px; height: 40px; }
+          .ds-chat-send { width: 40px; height: 40px; }
           .ft-pop { min-width: 0; width: min(300px, calc(100vw - 32px)); }
         }
         .ds-icon-btn.active { background: var(--bg-secondary); color: var(--foreground); }
@@ -1408,6 +1412,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
           transition: all 0.15s;
         }
         .ds-icon-btn:hover { background: var(--bg-secondary); color: var(--foreground); }
+        @media (max-width: 640px) { .ds-icon-btn { width: 40px; height: 40px; } }
 
         /* Плашки «весь день» над шкалой */
         .ds-allday { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 18px 0; flex-shrink: 0; }

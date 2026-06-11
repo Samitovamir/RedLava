@@ -17,6 +17,7 @@ export default function AiRefreshButton({ onClick, loading }) {
         .ai-refresh:hover:not(:disabled) { color: var(--primary); border-color: var(--primary); }
         .ai-refresh:disabled { opacity: 0.5; cursor: default; }
         @keyframes ai-spin { to { transform: rotate(360deg); } }
+        @media (max-width: 640px) { .ai-refresh { width: 40px; height: 40px; } }
       `}</style>
     </button>
   )

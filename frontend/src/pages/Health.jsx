@@ -82,6 +82,7 @@ export default function Health() {
         }
         .health-tab:hover { color: var(--foreground); }
         .health-tab.active { background: var(--accent); color: var(--on-accent); border-color: transparent; }
+        @media (max-width: 640px) { .health-tab { min-height: 40px; padding: 9px 18px; } }
 
         /* Ряд метрик тренировки (GarminLive embedded): подпись в одну строку,
            плитки ряда одной высоты — «Эффект · аэробный» больше не растягивает плитку */

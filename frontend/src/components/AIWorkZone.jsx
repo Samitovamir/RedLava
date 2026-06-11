@@ -540,6 +540,7 @@ export default function AIWorkZone() {
           color: var(--accent);
           background: color-mix(in srgb, var(--accent) 12%, transparent);
         }
+        @media (max-width: 640px) { .awz-tab { min-height: 40px; padding: 10px 14px; } }
 
         .awz-dropzone {
           flex: 1;

@@ -413,6 +413,7 @@ export default function GarminLive({ embedded = false }) {
           cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s;
         }
         .gl-collapse:hover { color: var(--foreground); border-color: var(--border-hover); }
+        @media (max-width: 640px) { .gl-collapse { width: 40px; height: 40px; } }
         .gl-chev { transition: transform 0.2s; }
         .gl-chev.open { transform: rotate(180deg); }
         .gl-planned { display: flex; flex-direction: column; }

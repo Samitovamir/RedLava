@@ -130,6 +130,7 @@ export default function Nutrition() {
       rateUp: 'Понравилось', rateDown: 'Не очень', rateLater: 'Позже',
       // Тосты / сообщения
       noServer: 'Нет связи с сервером. Запустите backend с ключом ИИ.',
+      tookTooLong: 'Подбор занял слишком долго. Попробуйте ещё раз.',
       calaiAte: 'CalAI: съедено ~', calaiAteSuffix: ' ккал ✓',
       calaiFail: 'Не удалось прочитать скриншот', calaiUploadErr: 'Ошибка загрузки скриншота',
       choiceCancelled: 'Выбор отменён',
@@ -224,6 +225,7 @@ export default function Nutrition() {
       ratePlaceholder: 'A few words (optional): what you liked / what to change',
       rateUp: 'Liked it', rateDown: 'Not great', rateLater: 'Later',
       noServer: 'No connection to the server. Start the backend with an AI key.',
+      tookTooLong: 'This took too long. Please try again.',
       calaiAte: 'CalAI: eaten ~', calaiAteSuffix: ' kcal ✓',
       calaiFail: 'Couldn’t read the screenshot', calaiUploadErr: 'Screenshot upload error',
       choiceCancelled: 'Choice undone',
@@ -350,18 +352,27 @@ export default function Nutrition() {
   async function suggestMeals(mt = mealType, comps = components) {
     const pm = perMealTarget(mt)
     setLoadingMeals(true); setMeals([]); setMealsMsg('')
+    // Таймаут: подбор идёт через LLM и может зависнуть — не оставляем «Подбираю…» навсегда
+    const ctrl = new AbortController()
+    const timer = setTimeout(() => ctrl.abort(), 35000)
     try {
       const res = await fetch('/api/nutrition/meals', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target: pm, mealType: mt, prefs, count: 5, note, components: comps })
+        body: JSON.stringify({ target: pm, mealType: mt, prefs, count: 5, note, components: comps }),
+        signal: ctrl.signal
       })
       const data = await res.json()
       setMeals(data.meals || [])
       if ((!data.meals || !data.meals.length) && data.message) setMealsMsg(data.message)
       if (data.meals?.length) setResultsOpen(true)
       fetchImages(data.meals || [])
-    } catch { setMeals([]); setMealsMsg(t.noServer) }
-    setLoadingMeals(false)
+    } catch (e) {
+      setMeals([])
+      setMealsMsg(e.name === 'AbortError' ? t.tookTooLong : t.noServer)
+    } finally {
+      clearTimeout(timer)
+      setLoadingMeals(false)
+    }
   }
 
   // Фото блюд (Unsplash, кэшируются на сервере по блюду)
@@ -380,17 +391,22 @@ export default function Nutrition() {
   // Показать ещё блюда — дополняем список, не теряя текущие
   async function moreMeals() {
     setLoadingMore(true)
+    const ctrl = new AbortController()
+    const timer = setTimeout(() => ctrl.abort(), 35000)
     try {
       const res = await fetch('/api/nutrition/meals', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target: perMeal, mealType, prefs, count: 5, note, components, exclude: meals.map(m => m.name) })
+        body: JSON.stringify({ target: perMeal, mealType, prefs, count: 5, note, components, exclude: meals.map(m => m.name) }),
+        signal: ctrl.signal
       })
       const data = await res.json()
       const have = new Set(meals.map(m => m.name.toLowerCase()))
       const fresh = (data.meals || []).filter(m => !have.has(String(m.name).toLowerCase()))
       if (fresh.length) { setMeals(prev => [...prev, ...fresh]); fetchImages(fresh) }
-    } catch { /* ignore */ }
-    setLoadingMore(false)
+    } catch { /* ignore */ } finally {
+      clearTimeout(timer)
+      setLoadingMore(false)
+    }
   }
 
   async function fetchRecipe(name) {
@@ -1196,6 +1212,19 @@ export default function Nutrition() {
         .nu-credit a:hover { color: var(--foreground); }
         .nu-close { width: 32px; height: 32px; border-radius: var(--radius-sm); border: 1px solid var(--border-med); background: transparent; color: var(--text-muted); font-size: 20px; line-height: 1; cursor: pointer; flex-shrink: 0; }
         .nu-close:hover { color: var(--foreground); }
+
+        /* ── Мобайл: окна Питания (подбор блюда / деталь / предпочтения) —
+           bottom-sheet, как окна тренировки и события (дизайн-система) ── */
+        @media (max-width: 640px) {
+          .nu-backdrop { align-items: flex-end; padding: 0; }
+          .nu-results, .nu-modal, .nu-rate {
+            width: 100%; max-width: 100%; max-height: 94dvh;
+            border-radius: var(--radius) var(--radius) 0 0; border-bottom: none;
+            padding-bottom: max(20px, env(safe-area-inset-bottom));
+          }
+          .nu-results::after, .nu-modal::after, .nu-rate::after { border-radius: calc(var(--radius) - 6px) calc(var(--radius) - 6px) 0 0; }
+          .nu-close { width: 40px; height: 40px; }
+        }
         .nu-sec-title { font-size: 13px; font-weight: 700; color: var(--foreground); text-transform: uppercase; letter-spacing: .05em; margin-top: 6px; }
         .nu-ing-list { display: flex; flex-direction: column; }
         .nu-ing { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--border-soft); font-size: 15px; color: var(--foreground); }

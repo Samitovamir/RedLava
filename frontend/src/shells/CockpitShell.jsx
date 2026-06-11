@@ -321,6 +321,9 @@ export default function CockpitShell() {
           .ck-top.has-demo .ck-top-right { margin-right: 84px; }
           .ck-signal { order: 3; flex-basis: 100%; }
           .ck-headline { white-space: normal; }
+          /* Под палец */
+          .ck-icon-btn { width: 40px; height: 40px; }
+          .ck-win-close { width: 40px; height: 40px; }
           .ck-scrim { padding: 8px; }
           .ck-win-body { padding: 14px; }
         }
