@@ -312,6 +312,17 @@ export default function FluidMenu() {
             -webkit-backdrop-filter: none; backdrop-filter: none;
             box-shadow: 0 -12px 30px -18px rgba(0,0,0,0.45), inset 0 1px 0 var(--edge-light, transparent);
           }
+          /* Страховка: если iOS всё же опустит панель выше физического низа, заливаем
+             всё ПОД ней тем же цветом поверхности — серый фон страницы снизу не покажется.
+             Когда панель и так у самого низа, эта заливка просто уходит за экран. */
+          html[data-standalone] .mobile-tabbar::before {
+            content: "";
+            position: absolute;
+            left: 0; right: 0; top: 100%;
+            height: 240px;
+            background: var(--bg-surface);
+            pointer-events: none;
+          }
           /* В открытых модалках прячем таб-панель: иначе она перекрывает кнопки окна
              (например «Сохранить») — модалка рендерится внутри страницы и из-за
              stacking-context не может перекрыть плавающее меню. */
