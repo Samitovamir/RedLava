@@ -102,8 +102,12 @@ export default function FluidMenu() {
     const active = isActive(it.path)
     return (
       <button key={it.path} className={`tab-item ${active ? 'active' : ''}`} onClick={() => go(it.path)}>
-        <it.Ico size={22} strokeWidth={active ? 2 : 1.7} />
-        <span>{label(it)}</span>
+        {active && (
+          <motion.span className="tab-pill" layoutId="mobileTabPill"
+            transition={{ type: 'spring', stiffness: 480, damping: 40 }} />
+        )}
+        <span className="tab-ico"><it.Ico size={23} strokeWidth={active ? 2.2 : 1.8} /></span>
+        <span className="tab-lbl">{label(it)}</span>
       </button>
     )
   }
@@ -151,12 +155,16 @@ export default function FluidMenu() {
         </div>
       </nav>
 
-      {/* ── Мобайл: нижняя таб-панель ────────────────────────────────── */}
+      {/* ── Мобайл: плавающая «жидкое стекло» таб-панель (iOS-26) ──────── */}
       <nav className="mobile-tabbar">
         {TAB_ITEMS.map(tabItem)}
         <button className={`tab-item ${moreOpen || moreActive ? 'active' : ''}`} onClick={() => setMoreOpen((v) => !v)}>
-          <MoreHorizontal size={22} strokeWidth={1.7} />
-          <span>{lang === 'en' ? 'More' : 'Ещё'}</span>
+          {moreActive && (
+            <motion.span className="tab-pill" layoutId="mobileTabPill"
+              transition={{ type: 'spring', stiffness: 480, damping: 40 }} />
+          )}
+          <span className="tab-ico"><MoreHorizontal size={23} strokeWidth={moreOpen || moreActive ? 2.2 : 1.8} /></span>
+          <span className="tab-lbl">{lang === 'en' ? 'More' : 'Ещё'}</span>
         </button>
       </nav>
       <AnimatePresence>
@@ -268,45 +276,70 @@ export default function FluidMenu() {
 
         @media (max-width: 640px) {
           .fluid-menu { display: none; }
+          /* Плавающая панель «жидкое стекло»: отделена от краёв, скруглена,
+             полупрозрачная с размытием подложки — минимализм iOS-26. */
           .mobile-tabbar {
-            position: fixed; left: 0; right: 0; bottom: 0;
+            position: fixed; left: 14px; right: 14px;
+            bottom: calc(10px + env(safe-area-inset-bottom));
             z-index: 300;
-            display: flex;
-            justify-content: space-around;
-            align-items: stretch;
-            background: linear-gradient(180deg, var(--bg-card-top, var(--bg-surface)), var(--bg-card-bot, var(--bg-surface)));
-            border-top: 1px solid var(--border-soft);
-            padding: 6px 4px max(6px, env(safe-area-inset-bottom)) 4px;
+            display: flex; align-items: stretch; gap: 2px;
+            padding: 7px 8px;
+            border-radius: 26px;
+            background: color-mix(in srgb, var(--bg-surface) 80%, transparent);
+            -webkit-backdrop-filter: blur(22px) saturate(1.8);
+            backdrop-filter: blur(22px) saturate(1.8);
+            border: 1px solid var(--border-soft);
+            box-shadow: 0 10px 34px -10px rgba(0,0,0,0.5), inset 0 1px 0 var(--edge-light, transparent);
           }
           .tab-item {
+            position: relative;
             display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
-            flex: 1; min-height: 50px;
+            flex: 1; min-height: 50px; padding: 5px 2px;
             border: none; background: transparent;
             color: var(--text-muted);
-            font-family: inherit; font-size: 10.5px; font-weight: 600;
-            cursor: pointer; border-radius: 10px;
+            font-family: inherit; font-size: 10px; font-weight: 600; letter-spacing: 0.01em;
+            cursor: pointer; border-radius: 16px;
+            -webkit-tap-highlight-color: transparent;
+            transition: color 0.2s var(--ease);
           }
           .tab-item.active { color: var(--accent); }
+          .tab-pill {
+            position: absolute; inset: 3px 5px;
+            background: color-mix(in srgb, var(--accent) 16%, transparent);
+            border-radius: 14px; z-index: 0;
+          }
+          .tab-ico, .tab-lbl { position: relative; z-index: 1; }
+          .tab-ico { display: flex; align-items: center; justify-content: center; }
           .tab-more-scrim {
             display: block; position: fixed; inset: 0; z-index: 290;
             background: var(--scrim, rgba(0,0,0,0.5));
+            -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
           }
+          /* Лист «Ещё» — то же стекло, что и панель, заметно над ней */
           .tab-more {
             display: flex; flex-direction: column; gap: 2px;
-            position: fixed; left: 12px; right: 12px;
-            bottom: calc(70px + env(safe-area-inset-bottom));
+            position: fixed; left: 14px; right: 14px;
+            bottom: calc(78px + env(safe-area-inset-bottom));
             z-index: 295;
             padding: 10px;
+            border-radius: 22px;
+            background: color-mix(in srgb, var(--bg-surface) 88%, transparent);
+            -webkit-backdrop-filter: blur(22px) saturate(1.8);
+            backdrop-filter: blur(22px) saturate(1.8);
+            border: 1px solid var(--border-soft);
+            box-shadow: 0 16px 40px -12px rgba(0,0,0,0.55);
           }
+          .tab-more::after { display: none; }  /* без кожаной прошивки на стекле */
           .tab-more-item {
             display: flex; align-items: center; gap: 12px;
-            min-height: 48px; padding: 0 12px;
-            border: none; border-radius: 10px; background: transparent;
+            min-height: 48px; padding: 0 14px;
+            border: none; border-radius: 14px; background: transparent;
             color: var(--text-body);
-            font-family: inherit; font-size: 14.5px; font-weight: 600;
+            font-family: inherit; font-size: 15px; font-weight: 600;
             cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
           }
-          .tab-more-item.active { background: var(--bg-tile); color: var(--accent); }
+          .tab-more-item.active { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
         }
       `}</style>
     </>

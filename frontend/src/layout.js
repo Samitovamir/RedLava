@@ -15,6 +15,26 @@ import { useState, useEffect } from 'react'
 const STORAGE_KEY = 'albert-layout'
 export const DEFAULT_LAYOUT = 'classic'
 
+// Брейкпоинт мобильной версии (синхронизирован с @media в index.css).
+export const MOBILE_QUERY = '(max-width: 640px)'
+
+// Реактивный флаг «мобильный экран». На мобильном сайт всегда работает в
+// «Классике» (остальные раскладки выглядят плохо на узком экране).
+export function useIsMobile() {
+  const [m, setM] = useState(() => {
+    try { return window.matchMedia(MOBILE_QUERY).matches } catch { return false }
+  })
+  useEffect(() => {
+    let mq
+    try { mq = window.matchMedia(MOBILE_QUERY) } catch { return }
+    const onChange = () => setM(mq.matches)
+    onChange()
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+  return m
+}
+
 export const LAYOUTS = [
   { id: 'classic', ru: 'Классика',         en: 'Classic',        ruHint: 'Разделы и сайдбар — сайт как сейчас',                    enHint: 'Sections and sidebar — the site as it is' },
   { id: 'cockpit', ru: 'Один экран',       en: 'One screen',     ruHint: 'Весь сайт на одном экране, разделы всплывают окнами',    enHint: 'Whole site on one screen, sections pop up as windows' },

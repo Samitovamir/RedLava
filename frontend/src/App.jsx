@@ -9,7 +9,7 @@ import DemoBanner from './components/DemoBanner.jsx'
 import CockpitShell from './shells/CockpitShell.jsx'
 import JournalShell from './shells/JournalShell.jsx'
 import CommandShell from './shells/CommandShell.jsx'
-import { useLayout } from './layout.js'
+import { useLayout, useIsMobile } from './layout.js'
 import { isGuest } from './api/authFetch.js'
 import { EventsProvider } from './context/EventsContext.jsx'
 import { HistoryProvider } from './context/HistoryContext.jsx'
@@ -62,9 +62,18 @@ function AnimatedRoutes() {
 // рабочий стол из трёх постоянных панелей.
 function ShellRouter() {
   const layout = useLayout()
-  if (layout === 'cockpit') return <CockpitShell />
-  if (layout === 'journal') return <JournalShell />
-  if (layout === 'command') return <CommandShell />
+  const isMobile = useIsMobile()
+  // На мобильном — всегда «Классика»: остальные оболочки плохо смотрятся на узком
+  // экране (решение владельца). Предпочтение пользователя сохраняется для десктопа.
+  const effective = isMobile ? 'classic' : layout
+  // Держим html[data-layout] в согласии с эффективной раскладкой, чтобы CSS-правила
+  // journal/cockpit/command не применялись к классике на мобильном.
+  useEffect(() => {
+    document.documentElement.setAttribute('data-layout', effective)
+  }, [effective])
+  if (effective === 'cockpit') return <CockpitShell />
+  if (effective === 'journal') return <JournalShell />
+  if (effective === 'command') return <CommandShell />
   return (
     <>
       <FluidMenu />

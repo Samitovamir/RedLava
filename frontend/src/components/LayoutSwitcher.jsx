@@ -1,6 +1,6 @@
 import { Check } from 'lucide-react'
 import { useT, useLang } from '../context/LanguageContext.jsx'
-import { LAYOUTS, applyLayout, useLayout } from '../layout.js'
+import { LAYOUTS, applyLayout, useLayout, useIsMobile } from '../layout.js'
 
 /*
   Переключатель раскладок («что где находится») — сосед ThemeSwitcher в Настройках.
@@ -48,11 +48,14 @@ function LayoutSketch({ id }) {
 
 export default function LayoutSwitcher() {
   const t = useT({
-    ru: { title: 'Раскладка', hint: 'Что где находится — применяется сразу и запоминается' },
-    en: { title: 'Layout', hint: 'What goes where — applies instantly and is remembered' },
+    ru: { title: 'Раскладка', hint: 'Что где находится — применяется сразу и запоминается',
+      mobileNote: 'На телефоне сайт всегда в «Классике» — остальные раскладки сделаны под большой экран. Выбор раскладки доступен на компьютере.' },
+    en: { title: 'Layout', hint: 'What goes where — applies instantly and is remembered',
+      mobileNote: 'On phones the site always uses “Classic” — the other layouts are designed for a large screen. Layout choice is available on a computer.' },
   })
   const { lang } = useLang()
   const layout = useLayout()
+  const isMobile = useIsMobile()
 
   return (
     <div className="layout-switcher">
@@ -60,6 +63,9 @@ export default function LayoutSwitcher() {
         <span className="ls-title">{t.title}</span>
         <span className="ls-hint">{t.hint}</span>
       </div>
+      {isMobile ? (
+        <div className="ls-mobile-note">{t.mobileNote}</div>
+      ) : (
       <div className="ls-grid">
         {LAYOUTS.map((it) => (
           <button
@@ -82,10 +88,16 @@ export default function LayoutSwitcher() {
           </button>
         ))}
       </div>
+      )}
 
       <style>{`
         .layout-switcher { display: flex; flex-direction: column; gap: var(--space-3); }
         .ls-head { display: flex; flex-direction: column; gap: 2px; }
+        .ls-mobile-note {
+          font-size: 13.5px; line-height: 1.55; color: var(--text-secondary);
+          background: var(--bg-tile); box-shadow: var(--inset-tile, none);
+          border-radius: var(--radius-md); padding: 14px 16px;
+        }
         .ls-title { font-size: var(--text-title); font-weight: 700; color: var(--foreground); }
         .ls-hint { font-size: var(--text-label); color: var(--muted); }
         .ls-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-3); }

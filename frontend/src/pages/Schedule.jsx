@@ -43,7 +43,7 @@ export default function Schedule() {
           height: calc(100vh - 190px);
           min-height: 560px;
         }
-        .schedule-col { height: 100%; min-height: 0; }
+        .schedule-col { height: 100%; min-height: 0; min-width: 0; }
 
         /* Журнал: одна колонка — сводка дня как вступление, ниже таймлайн */
         html[data-layout="journal"] .schedule-page { max-width: 820px; margin-inline: auto; }

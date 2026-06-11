@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Check } from 'lucide-react'
 import { useT, useLang } from '../context/LanguageContext.jsx'
+import { useIsMobile } from '../layout.js'
 
 // Переключатель тем оформления (THEMES_1.md). Самодостаточный — позже легко
 // перенести из «Подключений» в «Настройки». Тема хранится в localStorage и
@@ -16,6 +17,12 @@ const THEMES = [
   { id: 'cream',         ru: 'Кремовая',        en: 'Cream',         bg: '#EFE9DD', surface: '#FDFBF6', accent: '#C97B4A' },
   { id: 'original',      ru: 'Оригинальная',    en: 'Original',      bg: '#1E1B18', surface: '#2C2825', accent: '#818CF8' },
 ]
+// Минималистичные темы под мобильную (iOS-26): показываются на телефоне
+// (или если такая тема уже выбрана), на десктопе скрыты.
+const MOBILE_THEMES = [
+  { id: 'ios-dark',  ru: 'iOS Тёмная',  en: 'iOS Dark',  bg: '#000000', surface: '#1C1C1E', accent: '#0A84FF' },
+  { id: 'ios-light', ru: 'iOS Светлая', en: 'iOS Light', bg: '#F2F2F7', surface: '#FFFFFF', accent: '#007AFF' },
+]
 
 export function applyTheme(id) {
   document.documentElement.setAttribute('data-theme', id)
@@ -27,6 +34,7 @@ export default function ThemeSwitcher() {
     en: { title: 'Appearance', hint: 'Theme applies instantly and is remembered' },
   })
   const { lang } = useLang()
+  const isMobile = useIsMobile()
   const [theme, setTheme] = useState(() => {
     try { return localStorage.getItem(STORAGE_KEY) || DEFAULT_THEME } catch { return DEFAULT_THEME }
   })
@@ -36,6 +44,10 @@ export default function ThemeSwitcher() {
     try { localStorage.setItem(STORAGE_KEY, theme) } catch { /* ignore */ }
   }, [theme])
 
+  // iOS-темы — только на мобильном (или если такая тема уже выбрана, чтобы выбор было видно).
+  const showMobile = isMobile || theme.startsWith('ios-')
+  const list = showMobile ? [...THEMES, ...MOBILE_THEMES] : THEMES
+
   return (
     <div className="theme-switcher">
       <div className="ts-head">
@@ -43,7 +55,7 @@ export default function ThemeSwitcher() {
         <span className="ts-hint">{t.hint}</span>
       </div>
       <div className="ts-grid">
-        {THEMES.map((it) => (
+        {list.map((it) => (
           <button
             key={it.id}
             className={`ts-opt ${theme === it.id ? 'on' : ''}`}

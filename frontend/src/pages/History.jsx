@@ -181,6 +181,8 @@ export default function History() {
 
         @media (max-width: 640px) {
           .hist-stats { grid-template-columns: repeat(2, 1fr); }
+          /* На мобильном фильтры переносятся, а не листаются по горизонтали */
+          .hist-filters { flex-wrap: wrap; overflow-x: visible; }
           .hist-filters .ds-chip { min-height: 44px; padding-inline: 14px; }
         }
       `}</style>

@@ -1254,9 +1254,13 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
         /* Недельный вид */
         .ds-week {
           flex: 1; overflow-y: auto;
-          display: grid; grid-template-columns: repeat(7, 1fr);
+          /* minmax(0,1fr): колонки могут сжиматься УЖЕ контента — иначе 7 колонок
+             раздувают карточку шире экрана и страница листается по горизонтали (мобайл). */
+          display: grid; grid-template-columns: repeat(7, minmax(0, 1fr));
           gap: 6px; padding: 14px;
         }
+        .ds-wk-col { min-width: 0; }
+        .ds-wk-ev-title, .ds-wk-wd { overflow-wrap: anywhere; }
         .ds-wk-col {
           display: flex; flex-direction: column; gap: 6px;
           border-radius: 12px; padding: 6px;
@@ -1355,6 +1359,17 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
           .ds-event-menu { width: 40px; height: 40px; }
           .ds-chat-send { width: 40px; height: 40px; }
           .ft-pop { min-width: 0; width: min(300px, calc(100vw - 32px)); }
+          /* Неделя на телефоне: вертикальная лента-агенда вместо 7 узких колонок
+             (в колонках текст ломался по буквам). День — строка: слева дата, справа события. */
+          .ds-week { grid-template-columns: 1fr; gap: 8px; padding: 10px; }
+          .ds-wk-col { flex-direction: row; align-items: stretch; gap: 12px; padding: 10px 12px;
+            background: var(--bg-tile); box-shadow: var(--inset-tile, none); }
+          .ds-wk-head { flex-direction: column; justify-content: center; gap: 0;
+            min-width: 42px; flex-shrink: 0; padding: 0; }
+          .ds-wk-events { flex: 1; min-width: 0; }
+          .ds-wk-ev { padding: 8px 11px; }
+          .ds-wk-ev-title { overflow-wrap: normal; word-break: normal; }
+          .ds-wk-empty { text-align: left; padding: 4px 2px; }
         }
         .ds-icon-btn.active { background: var(--bg-secondary); color: var(--foreground); }
         .ds-bell-dot {
