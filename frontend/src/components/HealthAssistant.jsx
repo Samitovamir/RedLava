@@ -171,6 +171,11 @@ export default function HealthAssistant({ tab = 'activity' }) {
         .ha-send { width: 32px; height: 32px; flex-shrink: 0; border: none; border-radius: 9px; background: var(--accent); color: var(--on-accent, #fff); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: opacity 0.15s; }
         .ha-send:hover:not(:disabled) { opacity: 0.9; }
         .ha-send:disabled { opacity: 0.4; cursor: default; }
+        /* Не перекрывать плавающую таб-панель на мобильном — поднимаем FAB и панель выше неё */
+        @media (max-width: 640px) {
+          .ha-fab { bottom: calc(86px + env(safe-area-inset-bottom)); right: 16px; }
+          .ha-panel { bottom: calc(150px + env(safe-area-inset-bottom)); right: 16px; }
+        }
       `}</style>
     </>
   )
