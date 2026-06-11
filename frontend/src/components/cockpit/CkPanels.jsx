@@ -1,8 +1,16 @@
 import { useState } from 'react'
 import SleepHypnogram from '../SleepHypnogram.jsx'
 import CircularChart from '../CircularChart.jsx'
-import { recoveryColor, SLEEP_STAGES, fmtHm, WHOOP_DAYS } from '../../utils/whoop.js'
-import { useT } from '../../context/LanguageContext.jsx'
+import { recoveryColor, SLEEP_STAGES, WHOOP_DAYS } from '../../utils/whoop.js'
+import { useT, useLang } from '../../context/LanguageContext.jsx'
+
+// Подписи фаз сна на обоих языках (ключи = SLEEP_STAGES из utils/whoop.js)
+const STAGE_LABELS = {
+  ru: { awake: 'Бодрствование', light: 'Лёгкий сон', rem: 'REM (быстрый)', deep: 'Глубокий сон' },
+  en: { awake: 'Awake', light: 'Light', rem: 'REM', deep: 'Deep' },
+}
+// Длительность «Xч Yм» с локализованными единицами
+const fmtDur = (min, hUnit, mUnit) => `${Math.floor(min / 60)}${hUnit} ${Math.round(min % 60)}${mUnit}`
 
 /*
   Scoped-панели «Одного экрана»: разворот ИМЕННО той темы, на которую нажали.
@@ -21,16 +29,18 @@ function ConnectHint({ text }) {
 
 /* ── Панель «Сон» ── */
 export function CkSleepPanel({ whoop }) {
+  const { lang } = useLang()
   const t = useT({
     ru: {
       empty: 'Whoop не подключён — подключите в Настройках, чтобы видеть сон по фазам.',
-      slept: 'Проспал', need: 'Потребность', perf: 'Выполнение', eff: 'Эффективность', h: 'ч', window: 'Окно сна',
+      slept: 'Проспал', need: 'Потребность', perf: 'Выполнение', eff: 'Эффективность', h: 'ч', m: 'м', window: 'Окно сна',
     },
     en: {
       empty: 'Whoop is not connected — connect it in Settings to see sleep stages.',
-      slept: 'Slept', need: 'Needed', perf: 'Performance', eff: 'Efficiency', h: 'h', window: 'Sleep window',
+      slept: 'Slept', need: 'Needed', perf: 'Performance', eff: 'Efficiency', h: 'h', m: 'm', window: 'Sleep window',
     },
   })
+  const sl = STAGE_LABELS[lang === 'en' ? 'en' : 'ru']
   const s = whoop?.sleep
   if (!s) return <ConnectHint text={t.empty} />
   const stats = [
@@ -52,7 +62,7 @@ export function CkSleepPanel({ whoop }) {
       </div>
       <div className="ckpn-stages">
         {SLEEP_STAGES.map(st => (
-          <span key={st.key} className="ckpn-stage"><i style={{ background: st.color }} />{st.label} · {fmtHm(s.stages[st.key])}</span>
+          <span key={st.key} className="ckpn-stage"><i style={{ background: st.color }} />{sl[st.key]} · {fmtDur(s.stages[st.key], t.h, t.m)}</span>
         ))}
       </div>
       <SleepHypnogram stages={s.stages} start={s.start} end={s.end} />
@@ -79,7 +89,7 @@ export function CkRecoveryPanel({ whoop }) {
   const t = useT({
     ru: {
       empty: 'Whoop не подключён — подключите в Настройках, чтобы видеть восстановление.',
-      week: 'Неделя', hrv: 'HRV', rhr: 'Пульс покоя', resp: 'Дыхание', ms: 'мс',
+      week: 'Неделя', hrv: 'HRV', rhr: 'Пульс покоя', resp: 'Дыхание', ms: 'мс', strain: 'нагрузка',
       high: 'Организм хорошо восстановился. Хороший день для интенсивной тренировки.',
       mid: 'Среднее восстановление. Лучше умеренная нагрузка, без рекордов.',
       low: 'Низкое восстановление. День для отдыха или лёгкой активности.',
@@ -87,7 +97,7 @@ export function CkRecoveryPanel({ whoop }) {
     },
     en: {
       empty: 'Whoop is not connected — connect it in Settings to see recovery.',
-      week: 'Week', hrv: 'HRV', rhr: 'Resting HR', resp: 'Respiration', ms: 'ms',
+      week: 'Week', hrv: 'HRV', rhr: 'Resting HR', resp: 'Respiration', ms: 'ms', strain: 'strain',
       high: 'Your body has recovered well. A good day for an intense workout.',
       mid: 'Medium recovery. Better to keep the load moderate.',
       low: 'Low recovery. A day for rest or light activity.',
@@ -126,7 +136,7 @@ export function CkRecoveryPanel({ whoop }) {
               </button>
             ))}
           </div>
-          {d && <p className="ckpn-day-note">{d.day}: {d.recovery}% · {lvl(d.recovery)}{d.strain != null ? ` · strain ${d.strain}` : ''}</p>}
+          {d && <p className="ckpn-day-note">{d.day}: {d.recovery}% · {lvl(d.recovery)}{d.strain != null ? ` · ${t.strain} ${d.strain}` : ''}</p>}
         </div>
       )}
       <style>{`

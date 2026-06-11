@@ -33,6 +33,7 @@ export default function CkDock() {
       ready: 'Готово.', accepted: 'Принято.',
       readFail: 'Не удалось получить ответ.',
       remembered: (f) => `Запомнил: ${f}`,
+      forgot: (f) => `Забыл устаревшее: ${f}`,
       mailDone: (s, to) => `Письмо «${s}» отправлено получателю «${to}».`,
     },
     en: {
@@ -47,6 +48,7 @@ export default function CkDock() {
       ready: 'Done.', accepted: 'Got it.',
       readFail: 'Couldn’t get a response.',
       remembered: (f) => `Remembered: ${f}`,
+      forgot: (f) => `Forgot outdated: ${f}`,
       mailDone: (s, to) => `Message “${s}” sent to “${to}”.`,
     },
   })
@@ -56,7 +58,6 @@ export default function CkDock() {
   const [result, setResult] = useState(null)   // { kind:'message', to, subject, body }
   const [doneInfo, setDoneInfo] = useState(null)
   const [reading, setReading] = useState(null)
-  const inputRef = useRef(null)
   const doneTimer = useRef(null)
   useEffect(() => () => clearTimeout(doneTimer.current), [])
 
@@ -124,7 +125,7 @@ export default function CkDock() {
           if (a.input?.fact) { addFact(a.input.fact); logAction({ actor: 'ai', type: 'task', title: t.remembered(a.input.fact) }) }
         })
         updateActions.forEach(a => {
-          if (a.input?.old) { updateFact(a.input.old, a.input.new); logAction({ actor: 'ai', type: 'task', title: a.input.new ? t.remembered(a.input.new) : `Забыл устаревшее: ${a.input.old}` }) }
+          if (a.input?.old) { updateFact(a.input.old, a.input.new); logAction({ actor: 'ai', type: 'task', title: a.input.new ? t.remembered(a.input.new) : t.forgot(a.input.old) }) }
         })
         complete(data.reply || (actions.length ? t.ready : t.accepted))
       } catch {
@@ -207,7 +208,6 @@ export default function CkDock() {
       ) : (
         <>
           <input
-            ref={inputRef}
             className="ckd-input"
             placeholder={t.placeholder}
             value={task}
@@ -263,7 +263,9 @@ export default function CkDock() {
           color: var(--on-accent);
         }
         .ckd-btn.primary:hover:not(:disabled) { filter: brightness(1.06); }
-        .ckd-btn.primary:disabled { background: var(--bg-tile); color: var(--text-faint); border-color: var(--border-med); cursor: not-allowed; }
+        /* Пустое поле — кнопка не серая-по-серому (выглядела сломанной), а приглушённый
+           акцент: единственное действие дока всегда читается как «то самое» */
+        .ckd-btn.primary:disabled { opacity: 0.5; cursor: not-allowed; }
         .ckd-btn.ghost { background: transparent; border-color: var(--border); color: var(--muted-foreground); }
         .ckd-btn.ghost:hover { color: var(--foreground); border-color: var(--border-hover); }
         .ckd-spin {

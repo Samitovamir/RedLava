@@ -20,6 +20,7 @@ import { useAiSummary } from '../hooks/useAiSummary.js'
 import { buildSignalData, SIGNAL_CONTEXT, parseSignal, fallbackSignal } from '../utils/daySignal.js'
 import { useT, useLang } from '../context/LanguageContext.jsx'
 import { mskNow } from '../utils/time.js'
+import { isGuest } from '../api/authFetch.js'
 import { variants, Z } from '../motion.js'
 
 /*
@@ -51,19 +52,19 @@ export default function CockpitShell() {
   const t = useT({
     ru: {
       brand: 'владелец',
-      mail: 'Письма', history: 'История', settings: 'Настройки',
+      mail: 'Письма', history: 'История', settings: 'Настройки', close: 'Закрыть',
       titles: {
         sleep: 'Сон', recovery: 'Восстановление', sport: 'Тренировки и активность', labs: 'Анализы крови',
-        '/schedule': 'Расписание', '/health': 'Показатели тела', '/nutrition': 'Питание',
+        '/schedule': 'Расписание', '/sport': 'Тренировки и активность', '/health': 'Показатели тела', '/nutrition': 'Питание',
         '/mail': 'Письма', '/history': 'История', '/settings': 'Настройки',
       },
     },
     en: {
       brand: 'Owner',
-      mail: 'Mail', history: 'History', settings: 'Settings',
+      mail: 'Mail', history: 'History', settings: 'Settings', close: 'Close',
       titles: {
         sleep: 'Sleep', recovery: 'Recovery', sport: 'Workouts & activity', labs: 'Blood tests',
-        '/schedule': 'Schedule', '/health': 'Body metrics', '/nutrition': 'Nutrition',
+        '/schedule': 'Schedule', '/sport': 'Workouts & activity', '/health': 'Body metrics', '/nutrition': 'Nutrition',
         '/mail': 'Mail', '/history': 'History', '/settings': 'Settings',
       },
     },
@@ -114,13 +115,14 @@ export default function CockpitShell() {
 
   const whoop = readWhoop()
   const garmin = readGarmin()
+  const guest = isGuest()
 
   const title = panel ? t.titles[panel] : (t.titles[Object.keys(t.titles).find(k => k.startsWith('/') && location.pathname.startsWith(k))] || '')
   const narrow = panel === 'sleep' || panel === 'recovery'
 
   return (
     <div className="cockpit-shell">
-      <header className="ck-top">
+      <header className={`ck-top ${guest ? 'has-demo' : ''}`}>
         <span className="ck-logo">А</span>
         <div className="ck-signal" role="button" tabIndex={0} onClick={() => navigate('/schedule')} onKeyDown={(e) => e.key === 'Enter' && navigate('/schedule')}>
           <span className="ck-headline">{headline}</span>
@@ -166,7 +168,7 @@ export default function CockpitShell() {
             >
               <div className="ck-win-head">
                 <h2 className="ck-win-title">{title}</h2>
-                <button className="ck-win-close" onClick={closeTop} aria-label="Закрыть">
+                <button className="ck-win-close" onClick={closeTop} aria-label={t.close}>
                   <X size={18} strokeWidth={2} />
                 </button>
               </div>
@@ -225,6 +227,9 @@ export default function CockpitShell() {
         .ck-signal:hover .ck-headline { color: var(--accent); }
         .ck-note { font-size: 12.5px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .ck-top-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+        /* Гость: плавающий демо-бейдж (fixed, top-right ~280px) — отводим контролам
+           шапки место слева от него, чтобы иконки не уходили под бейдж */
+        .ck-top.has-demo .ck-top-right { margin-right: 292px; }
         .ck-clock { font-size: 13px; color: var(--text-muted); font-variant-numeric: tabular-nums; margin-right: 6px; }
         .ck-icon-btn {
           width: 34px; height: 34px; border-radius: 10px;
@@ -235,15 +240,20 @@ export default function CockpitShell() {
         }
         .ck-icon-btn:hover { color: var(--accent); border-color: var(--accent); }
 
+        /* Иерархия: ОДИН большой герой (Восстановление, 2 ряда — кольцо+тренд),
+           Сон и Нагрузка справа средними, ряд Шаги/Питание/Анализы — компактный
+           (auto, по контенту → без мёртвых зон), внизу полоса виталов и ИИ-док.
+           Колонка «Сегодня» слева во всю высоту приборной зоны. */
         .ck-hub {
           flex: 1; min-height: 0;
           display: grid;
           grid-template-columns: repeat(12, 1fr);
-          grid-template-rows: minmax(0, 1.45fr) minmax(0, 1fr) auto auto;
+          grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) auto auto auto;
           grid-template-areas:
-            "t t t r r r s s s l l l"
+            "t t t r r r r r s s s s"
+            "t t t r r r r r l l l l"
             "t t t p p p n n n a a a"
-            "t t t v v v v v v v v v"
+            "v v v v v v v v v v v v"
             "d d d d d d d d d d d d";
           gap: 12px;
           padding: 12px 26px 16px;
@@ -303,8 +313,10 @@ export default function CockpitShell() {
         @media (max-width: 1100px) {
           /* На узком экране «один экран» невозможен — обычная вертикальная лента */
           .cockpit-shell { height: auto; overflow: visible; display: block; }
-          .ck-hub { display: flex; flex-direction: column; }
+          .ck-hub { display: flex; flex-direction: column; padding: 12px 16px 20px; }
           .ck-today .ckt-list { max-height: 300px; }
+          .ck-top { padding: 12px 16px 0; flex-wrap: wrap; }
+          .ck-top.has-demo .ck-top-right { margin-right: 0; }
           .ck-scrim { padding: 8px; }
           .ck-win-body { padding: 14px; }
         }
