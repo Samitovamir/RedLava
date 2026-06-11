@@ -33,11 +33,15 @@ export default function DemoBanner() {
         }
         .demo-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--yellow); flex-shrink: 0; }
         .demo-label-short { display: none; }
-        /* На телефоне бейдж компактный («Демо») — не перекрывает заголовки страниц */
-        @media (max-width: 640px) {
-          .demo-banner { top: calc(8px + env(safe-area-inset-top)); right: 10px; padding: 5px 10px; font-size: 11.5px; }
+        /* На узких экранах бейдж компактный («Демо») — не перекрывает заголовки
+           страниц и контролы шапок (порог совпадает с переходом оболочек в колонку) */
+        @media (max-width: 1100px) {
+          .demo-banner { top: calc(10px + env(safe-area-inset-top)); right: 12px; padding: 5px 11px; font-size: 11.5px; }
           .demo-label-full { display: none; }
           .demo-label-short { display: inline; }
+        }
+        @media (max-width: 640px) {
+          .demo-banner { top: calc(8px + env(safe-area-inset-top)); right: 10px; }
         }
       `}</style>
     </div>

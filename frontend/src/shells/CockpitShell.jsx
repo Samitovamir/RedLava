@@ -315,8 +315,12 @@ export default function CockpitShell() {
           .cockpit-shell { height: auto; overflow: visible; display: block; }
           .ck-hub { display: flex; flex-direction: column; padding: 12px 16px 20px; }
           .ck-today .ckt-list { max-height: 300px; }
+          /* Шапка в стопку: лого+часы+иконки в ряд, вывод дня — отдельной строкой во всю ширину */
           .ck-top { padding: 12px 16px 0; flex-wrap: wrap; }
-          .ck-top.has-demo .ck-top-right { margin-right: 0; }
+          /* Компактный «Демо»-бейдж (≤1100) ~76px — отводим иконкам место, чтобы не уходили под него */
+          .ck-top.has-demo .ck-top-right { margin-right: 84px; }
+          .ck-signal { order: 3; flex-basis: 100%; }
+          .ck-headline { white-space: normal; }
           .ck-scrim { padding: 8px; }
           .ck-win-body { padding: 14px; }
         }
