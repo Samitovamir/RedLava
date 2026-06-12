@@ -32,7 +32,7 @@ const fileToDataUrl = (file) => new Promise((res, rej) => {
 })
 const num = (v) => Math.max(0, Math.round(+v || 0))
 
-export default function DiaryTab({ target, eaten, remaining, intake, setIntake, selectedDay, flash }) {
+export default function DiaryTab({ target, intake, setIntake, selectedDay, flash }) {
   const t = useT({
     ru: {
       eaten: 'Съедено', of: 'из', kcal: 'ккал', left: 'осталось', over: 'перебор',
@@ -78,13 +78,19 @@ export default function DiaryTab({ target, eaten, remaining, intake, setIntake, 
   // Чистим миниатюры старше вчера при входе
   useEffect(() => { pruneIntakeThumbs(intake) }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const rec = intake[selectedDay]?.source === 'photo' ? intake[selectedDay] : null
+  // Дневник показывает ЗАЛОГИРОВАННОЕ (фото/штрих-код/этикетка/сохранённое/довесок) — кольцо,
+  // плитки и лента из одного источника (intake), без плановых блюд (план — на вкладке «Меню»).
+  const dayRec = intake[selectedDay]
+  const tracked = !!dayRec && (dayRec.source === 'photo' || dayRec.source === 'calai' || dayRec.source === 'manual')
+  const rec = dayRec?.source === 'photo' ? dayRec : null
   const entries = rec ? [...(rec.entries || [])].sort((a, b) => (b.ts || 0) - (a.ts || 0)) : []
-  const eatenP = intake[selectedDay]?.protein || 0
-  const eatenF = intake[selectedDay]?.fat || 0
-  const eatenC = intake[selectedDay]?.carb || 0
-  const pct = target.kcal > 0 ? Math.min(100, Math.round(eaten / target.kcal * 100)) : 0
-  const over = eaten > target.kcal
+  const eatenK = tracked ? Math.round(dayRec.kcal || 0) : 0
+  const eatenP = tracked ? (dayRec.protein || 0) : 0
+  const eatenF = tracked ? (dayRec.fat || 0) : 0
+  const eatenC = tracked ? (dayRec.carb || 0) : 0
+  const remK = Math.max(0, target.kcal - eatenK)
+  const pct = target.kcal > 0 ? Math.min(100, Math.round(eatenK / target.kcal * 100)) : 0
+  const over = eatenK > target.kcal
   const ringColor = over ? 'var(--status-warn)' : 'var(--accent)'
 
   async function onFile(e) {
@@ -101,7 +107,8 @@ export default function DiaryTab({ target, eaten, remaining, intake, setIntake, 
       })
       const data = await res.json()
       if (!data.ok || !data.intake) { flash(data.message || t.failRecognize); setEstBusy(false); return }
-      const thumb = await compressToThumb(dataUrl)
+      let thumb = null
+      try { thumb = await compressToThumb(dataUrl) } catch { /* без миниатюры — оценку не теряем */ }
       const ink = data.intake
       setEstimate({
         name: ink.name || (ink.items?.[0]?.name) || 'Приём пищи',
@@ -185,8 +192,8 @@ export default function DiaryTab({ target, eaten, remaining, intake, setIntake, 
       <div className="card nd-summary">
         <div className="nd-sum-top">
           <div className="nd-sum-nums">
-            <div className="nd-eaten"><span className="nd-eaten-n">{eaten}</span><span className="nd-eaten-of"> {t.of} {target.kcal} {t.kcal}</span></div>
-            <div className={`nd-left ${over ? 'over' : ''}`}>{over ? `${t.over} ${eaten - target.kcal}` : `${t.left} ${remaining}`} {t.kcal}</div>
+            <div className="nd-eaten"><span className="nd-eaten-n">{eatenK}</span><span className="nd-eaten-of"> {t.of} {target.kcal} {t.kcal}</span></div>
+            <div className={`nd-left ${over ? 'over' : ''}`}>{over ? `${t.over} ${eatenK - target.kcal}` : `${t.left} ${remK}`} {t.kcal}</div>
           </div>
           <CircularChart value={pct} size={108} color={ringColor} centerText={`${pct}%`} />
         </div>
