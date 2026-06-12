@@ -49,6 +49,7 @@ export const ICONS = {
   'event-calendar': CalendarDays,
   'event-email': Mail,
   'event-meeting': Users,
+  'event-workout': Activity,
   'event-personal': User,
   // приоритеты (как маркер; цвет — через StatusPill)
   'priority-urgent': AlertTriangle,

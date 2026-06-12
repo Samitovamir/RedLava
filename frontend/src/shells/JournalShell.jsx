@@ -10,6 +10,7 @@ import Settings from '../pages/Settings.jsx'
 import JournalGlance from '../components/journal/JournalGlance.jsx'
 import { useLang } from '../context/LanguageContext.jsx'
 import { mskNow } from '../utils/time.js'
+import { MAIL_ENABLED, HISTORY_ENABLED } from '../config/features.js'
 
 /*
   Оболочка «Лента» — ВЕСЬ сайт одной журнальной полосой-брифингом.
@@ -28,8 +29,8 @@ const CHAPTERS = [
   { id: 'schedule', path: '/schedule', ru: 'Расписание', en: 'Schedule', El: Schedule },
   { id: 'health', path: '/health', ru: 'Здоровье', en: 'Health', El: Health },
   { id: 'nutrition', path: '/nutrition', ru: 'Питание', en: 'Nutrition', El: Nutrition },
-  { id: 'mail', path: '/mail', ru: 'Письма', en: 'Mail', El: MailPage },
-  { id: 'history', path: '/history', ru: 'История', en: 'History', El: History },
+  ...(MAIL_ENABLED ? [{ id: 'mail', path: '/mail', ru: 'Письма', en: 'Mail', El: MailPage }] : []),
+  ...(HISTORY_ENABLED ? [{ id: 'history', path: '/history', ru: 'История', en: 'History', El: History }] : []),
   { id: 'settings', path: '/settings', ru: 'Настройки', en: 'Settings', El: Settings },
 ]
 

@@ -188,7 +188,7 @@ const EVENT_TOOLS = [
         end: { type: 'string', description: 'Время окончания HH:MM' },
         who: { type: 'string', description: 'С кем / участники (необязательно)' },
         priority: { type: 'integer', description: '1 — неотложный, 2 — важный, 3 — обычный (по умолчанию 3)' },
-        type: { type: 'string', enum: ['call', 'meeting', 'email', 'calendar'], description: 'Тип: call — звонок, meeting — встреча/личное, email — письмо/задача, calendar — прочее' }
+        type: { type: 'string', enum: ['call', 'meeting', 'email', 'calendar', 'workout'], description: 'Тип: call — звонок, meeting — встреча/личное, email — письмо/задача, calendar — прочее, workout — тренировка' }
       },
       required: ['title', 'date', 'start', 'end']
     }

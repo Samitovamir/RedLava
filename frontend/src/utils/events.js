@@ -12,6 +12,7 @@ export const EVENT_TYPES = [
   { value: 'calendar', ru: 'Событие', en: 'Event', colorKey: 'event-calendar' },
   { value: 'email', ru: 'Письмо', en: 'Email', colorKey: 'event-email' },
   { value: 'meeting', ru: 'Встреча', en: 'Meeting', colorKey: 'event-meeting' },
+  { value: 'workout', ru: 'Тренировка', en: 'Workout', colorKey: 'event-workout' },
 ]
 
 export const eventTypeColor = (type) =>
@@ -24,6 +25,7 @@ const WORKOUT_RE = /трениров|бассейн|плаван|заплыв|п
 const PERSONAL_RE = /личное|семья|\bдом\b|врач|family|personal|doctor/i
 
 export function eventCategory(e) {
+  if (e.type === 'workout') return 'workout'   // явный тип «Тренировка» (не только по ключевым словам)
   const txt = `${e.title || ''} ${e.who || ''}`
   if (WORKOUT_RE.test(txt)) return 'workout'
   if (e.type === 'email') return 'mail'

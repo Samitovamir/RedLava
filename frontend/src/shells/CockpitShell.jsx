@@ -21,6 +21,7 @@ import { buildSignalData, SIGNAL_CONTEXT, parseSignal, fallbackSignal } from '..
 import { useT, useLang } from '../context/LanguageContext.jsx'
 import { mskNow } from '../utils/time.js'
 import { isGuest } from '../api/authFetch.js'
+import { MAIL_ENABLED, HISTORY_ENABLED } from '../config/features.js'
 import { variants, Z } from '../motion.js'
 
 /*
@@ -130,8 +131,8 @@ export default function CockpitShell() {
         </div>
         <div className="ck-top-right">
           <span className="ck-clock">{dateStr} · {clock}</span>
-          <button className="ck-icon-btn" title={t.mail} aria-label={t.mail} onClick={() => navigate('/mail')}><Mail size={17} /></button>
-          <button className="ck-icon-btn" title={t.history} aria-label={t.history} onClick={() => navigate('/history')}><HistoryIcon size={17} /></button>
+          {MAIL_ENABLED && <button className="ck-icon-btn" title={t.mail} aria-label={t.mail} onClick={() => navigate('/mail')}><Mail size={17} /></button>}
+          {HISTORY_ENABLED && <button className="ck-icon-btn" title={t.history} aria-label={t.history} onClick={() => navigate('/history')}><HistoryIcon size={17} /></button>}
           <button className="ck-icon-btn" title={t.settings} aria-label={t.settings} onClick={() => navigate('/settings')}><SettingsIcon size={17} /></button>
         </div>
       </header>
@@ -183,8 +184,8 @@ export default function CockpitShell() {
                     <Route path="/sport" element={<GarminLive />} />
                     <Route path="/health" element={<MetricsView />} />
                     <Route path="/nutrition" element={<Nutrition />} />
-                    <Route path="/mail" element={<MailPage />} />
-                    <Route path="/history" element={<History />} />
+                    <Route path="/mail" element={MAIL_ENABLED ? <MailPage /> : <Navigate to="/" replace />} />
+                    <Route path="/history" element={HISTORY_ENABLED ? <History /> : <Navigate to="/" replace />} />
                     <Route path="/connections" element={<Navigate to="/settings" replace />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="*" element={<Navigate to="/" replace />} />

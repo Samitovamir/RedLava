@@ -13,6 +13,7 @@ import RecentActions from '../components/RecentActions.jsx'
 import AIWorkZone from '../components/AIWorkZone.jsx'
 import { useT, useLang } from '../context/LanguageContext.jsx'
 import { mskNow } from '../utils/time.js'
+import { MAIL_ENABLED, HISTORY_ENABLED } from '../config/features.js'
 
 /*
   Оболочка «Командный центр» — рабочий стол: НИЧЕГО не «переходит».
@@ -26,8 +27,8 @@ const TABS = [
   { path: '/schedule', ru: 'Расписание', en: 'Schedule' },
   { path: '/health', ru: 'Здоровье', en: 'Health' },
   { path: '/nutrition', ru: 'Питание', en: 'Nutrition' },
-  { path: '/mail', ru: 'Письма', en: 'Mail' },
-  { path: '/history', ru: 'История', en: 'History' },
+  ...(MAIL_ENABLED ? [{ path: '/mail', ru: 'Письма', en: 'Mail' }] : []),
+  ...(HISTORY_ENABLED ? [{ path: '/history', ru: 'История', en: 'History' }] : []),
   { path: '/settings', ru: 'Настройки', en: 'Settings' },
 ]
 
@@ -108,8 +109,8 @@ export default function CommandShell() {
             <Route path="/sport" element={<Navigate to="/health" replace />} />
             <Route path="/health" element={<Health />} />
             <Route path="/nutrition" element={<Nutrition />} />
-            <Route path="/mail" element={<MailPage />} />
-            <Route path="/history" element={<History />} />
+            <Route path="/mail" element={MAIL_ENABLED ? <MailPage /> : <Navigate to="/" replace />} />
+            <Route path="/history" element={HISTORY_ENABLED ? <History /> : <Navigate to="/" replace />} />
             <Route path="/connections" element={<Navigate to="/settings" replace />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<Navigate to="/" replace />} />

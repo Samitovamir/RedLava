@@ -6,6 +6,7 @@ import {
   Settings, MoreHorizontal,
 } from 'lucide-react'
 import { useLang } from '../context/LanguageContext.jsx'
+import { MAIL_ENABLED, HISTORY_ENABLED } from '../config/features.js'
 
 /*
   Навигация (CarPlay-рельс):
@@ -17,17 +18,20 @@ import { useLang } from '../context/LanguageContext.jsx'
     раздела + «Ещё» (лист с остальными и Настройками).
 */
 
+// Письма/История архивированы флагами (config/features.js) — код разделов на месте,
+// возврат переключением флага. «Настройки» на мобиле — в шапке Главной (не в «Ещё»).
 const ITEMS = [
   { path: '/', ru: 'Главная', en: 'Home', Ico: Home },
   { path: '/schedule', ru: 'Расписание', en: 'Schedule', Ico: CalendarDays },
   { path: '/health', ru: 'Здоровье', en: 'Health', Ico: HeartPulse },
   { path: '/nutrition', ru: 'Питание', en: 'Nutrition', Ico: UtensilsCrossed },
-  { path: '/mail', ru: 'Письма', en: 'Mail', Ico: Mail },
-  { path: '/history', ru: 'История', en: 'History', Ico: HistoryIcon },
+  ...(MAIL_ENABLED ? [{ path: '/mail', ru: 'Письма', en: 'Mail', Ico: Mail }] : []),
+  ...(HISTORY_ENABLED ? [{ path: '/history', ru: 'История', en: 'History', Ico: HistoryIcon }] : []),
 ]
 const SETTINGS_ITEM = { path: '/settings', ru: 'Настройки', en: 'Settings', Ico: Settings }
 const TAB_ITEMS = ITEMS.slice(0, 4)            // в нижней панели
-const MORE_ITEMS = [...ITEMS.slice(4), SETTINGS_ITEM] // в листе «Ещё»
+// Лист «Ещё» — только для неосновных разделов (если включены). Пусто → «Ещё» не рендерится.
+const MORE_ITEMS = ITEMS.slice(4)
 
 const PIN_KEY = 'albert-nav-pinned'
 
@@ -158,6 +162,7 @@ export default function FluidMenu() {
       {/* ── Мобайл: плавающая «жидкое стекло» таб-панель (iOS-26) ──────── */}
       <nav className="mobile-tabbar">
         {TAB_ITEMS.map(tabItem)}
+        {MORE_ITEMS.length > 0 && (
         <button className={`tab-item ${moreOpen || moreActive ? 'active' : ''}`} onClick={() => setMoreOpen((v) => !v)}>
           {moreActive && (
             <motion.span className="tab-pill" layoutId="mobileTabPill"
@@ -166,6 +171,7 @@ export default function FluidMenu() {
           <span className="tab-ico"><MoreHorizontal size={23} strokeWidth={moreOpen || moreActive ? 2.2 : 1.8} /></span>
           <span className="tab-lbl">{lang === 'en' ? 'More' : 'Ещё'}</span>
         </button>
+        )}
       </nav>
       <AnimatePresence>
         {moreOpen && (

@@ -574,7 +574,7 @@ body::after {
   /* спорт */
   --cat-sport-run: var(--c-warm); --cat-sport-bike: var(--c-steel); --cat-sport-swim: var(--c-sage); --cat-sport-gym: var(--c-rose); --cat-sport-walk: var(--c-amber);
   /* события */
-  --cat-event-call: var(--c-steel); --cat-event-calendar: var(--c-warm); --cat-event-email: var(--c-sage); --cat-event-meeting: var(--c-neutral);
+  --cat-event-call: var(--c-steel); --cat-event-calendar: var(--c-warm); --cat-event-email: var(--c-sage); --cat-event-meeting: var(--c-neutral); --cat-event-workout: var(--c-rose);
   /* приоритеты */
   --cat-pri-1: var(--status-crit); --cat-pri-2: var(--status-warn); --cat-pri-3: var(--text-secondary);
   /* анализы (14 групп) */
