@@ -16,6 +16,7 @@ import { mskNow, mskDateKey } from '../utils/time.js'
 */
 
 const HOME_DISH_KEY = 'albert-home-dish'
+const HOME_RECENT_KEY = 'albert-home-recent'   // недавние блюда — чтобы не повторять (не «всегда курица»)
 const MEAL_EN = { 'Завтрак': 'Breakfast', 'Обед': 'Lunch', 'Перекус': 'Snack', 'Ужин': 'Dinner' }
 
 // Текущий приём пищи по часу (пороги между ориентирами MEALS: 9 / 14 / 17 / 20)
@@ -73,14 +74,25 @@ export default function NutritionHomeCard() {
         const tgt = computeTarget(profile)
         const share = (MEALS.find(m => m.key === mealType)?.share) ?? 0.3
         const pm = mealTarget(tgt, share)
+        let recent = []
+        try { recent = JSON.parse(localStorage.getItem(HOME_RECENT_KEY) || '[]') } catch { /* ignore */ }
         const res = await fetch('/api/nutrition/meals', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ target: pm, mealType, prefs, count: 1, components: ['Основное'], health: nutritionHealthBrief() })
+          body: JSON.stringify({
+            target: pm, mealType, prefs, count: 1, components: ['Основное'],
+            health: nutritionHealthBrief(),
+            exclude: recent,
+            note: 'Чередуй блюда и источники белка ото дня ко дню (рыба, индейка, бобовые, яйца, морепродукты, нежирная говядина) — не предлагай каждый раз курицу.'
+          })
         })
         const data = await res.json()
         const d = (data.meals && data.meals[0]) || null
         if (cancelled) return
         setDish(d); setLoading(false)
+        // Запоминаем показанное блюдо, чтобы в следующие дни не повторять (скользящее окно из 8)
+        if (d?.name) {
+          try { localStorage.setItem(HOME_RECENT_KEY, JSON.stringify([d.name, ...recent.filter(n => n !== d.name)].slice(0, 8))) } catch { /* ignore */ }
+        }
         let img = null
         if (d) {
           try {
