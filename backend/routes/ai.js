@@ -29,6 +29,9 @@ function guestDeviceId(req) {
 // Для не-гостей (albert) всегда false.
 async function guestOverDailyLimit(req) {
   if (req.role !== 'guest') return false
+  // Локально (npm-дев через server.js) демо-лимит снят — чтобы свободно тестировать ИИ.
+  // На проде (Vercel, api/index.js) флаг LOCAL_DEV не выставлен → лимит работает как прежде.
+  if (process.env.LOCAL_DEV === '1') return false
   const key = `ai:guest:limit:${guestDeviceId(req)}:${mskDateKey()}`
   const used = Number(await kvGet(key)) || 0
   if (used >= GUEST_DAILY_LIMIT) return true
