@@ -51,11 +51,22 @@ export default function MealAdvisor({ target, eaten = 0, remaining = 0, intake, 
     fallback: ''
   })
 
-  // Не оставляем пустую карточку: если ИИ-совета нет и загрузка завершилась
-  // (демо-лимит у гостя / ИИ недоступен) — окно скрывается целиком, а не висит блоком-заглушкой.
-  // Во время загрузки карточку держим («Думаю…»), чтобы у владельца не прыгал лейаут.
+  // Советник ВСЕГДА виден и не пустует: пока ИИ думает — «Думаю…»; если ИИ недоступен
+  // (бэкенд недоступен / демо-лимит у гостя / ошибка) — показываем фактическую сводку по
+  // данным дня вместо исчезновения. Так карточка не блёкнет в пустоту и не пропадает.
   const advice = (summary.text || '').trim()
-  if (!advice && !summary.loading) return null
+  const eatenR = Math.round(eaten)
+  const remR = Math.round(remaining)
+  const kcalGoal = target?.kcal ?? '?'
+  const protGoal = target?.protein ?? '?'
+  const dataFallback = lang === 'en'
+    ? (eatenR < 30
+      ? `Nothing logged yet today. Goal — ${kcalGoal} kcal and ${protGoal} g protein. Next meal — ${(MEAL_EN[meal] || meal).toLowerCase()}.`
+      : `Eaten ~${eatenR} of ${kcalGoal} kcal, ~${remR} left. Protein ${eP}/${protGoal} g. Next meal — ${(MEAL_EN[meal] || meal).toLowerCase()}.`)
+    : (eatenR < 30
+      ? `Сегодня пока ничего не записано. Цель — ${kcalGoal} ккал и ${protGoal} г белка. Ближайший приём — ${mealName.toLowerCase()}.`
+      : `Съедено ~${eatenR} из ${kcalGoal} ккал, осталось ~${remR}. Белок ${eP}/${protGoal} г. Ближайший приём — ${mealName.toLowerCase()}.`)
+  const body = advice || (summary.loading ? t.loading : dataFallback)
 
   return (
     <motion.div className="card meal-advisor" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
@@ -63,9 +74,7 @@ export default function MealAdvisor({ target, eaten = 0, remaining = 0, intake, 
         <span className="adv-label"><Sparkles size={15} strokeWidth={1.8} /> {t.label}</span>
         <span className="adv-meal">{mealName}</span>
       </div>
-      {advice
-        ? <p className="adv-text">{advice}</p>
-        : <p className="adv-text muted">{t.loading}</p>}
+      <p className={`adv-text ${!advice && summary.loading ? 'muted' : ''}`}>{body}</p>
       <style>{`
         .meal-advisor { display: flex; flex-direction: column; gap: 10px; }
         .adv-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
