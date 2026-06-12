@@ -76,7 +76,7 @@ export default function DiaryTab({ target, intake, setIntake, selectedDay, flash
   const [barcodeOpen, setBarcodeOpen] = useState(false)
 
   // Чистим миниатюры старше вчера при входе
-  useEffect(() => { pruneIntakeThumbs(intake) }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { pruneIntakeThumbs(intake, loadSavedDishes()) }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Дневник показывает ЗАЛОГИРОВАННОЕ (фото/штрих-код/этикетка/сохранённое/довесок) — кольцо,
   // плитки и лента из одного источника (intake), без плановых блюд (план — на вкладке «Меню»).
@@ -131,7 +131,7 @@ export default function DiaryTab({ target, intake, setIntake, selectedDay, flash
     const next = addPhotoIntake(intake, selectedDay, entry)
     setIntake(next); saveIntake(next)
     if (estimate.photo) setThumb(id, estimate.photo)
-    pruneIntakeThumbs(next)
+    pruneIntakeThumbs(next, loadSavedDishes())
     setEstimate(null)
     flash(t.added)
   }
@@ -144,8 +144,11 @@ export default function DiaryTab({ target, intake, setIntake, selectedDay, flash
   }
 
   function saveDish(entry) {
-    const list = addSavedDish(loadSavedDishes(), { name: entry.name, kcal: entry.kcal, protein: entry.protein, fat: entry.fat, carb: entry.carb })
+    const sid = `s${Date.now()}${Math.round(Math.random() * 1000)}`
+    const list = addSavedDish(loadSavedDishes(), { id: sid, name: entry.name, kcal: entry.kcal, protein: entry.protein, fat: entry.fat, carb: entry.carb })
     saveSavedDishes(list)
+    const thumb = entry.hasPhoto ? getThumb(entry.id) : null
+    if (thumb) setThumb(sid, thumb)   // фото блюда живёт под id сохранённого (не пруним)
     flash(t.saved)
   }
 
@@ -177,7 +180,16 @@ export default function DiaryTab({ target, intake, setIntake, selectedDay, flash
     setEstBusy(false)
   }
   function confirmGrams(g, gramsVal) { logEntry(gramsToEntry(g.per100, gramsVal, g.name)); setGrams(null) }
-  function logSaved(dish) { logEntry({ name: dish.name, kcal: dish.kcal, protein: dish.protein, fat: dish.fat, carb: dish.carb }); setSavedOpen(false) }
+  function logSaved(dish) {
+    const id = `e${Date.now()}${Math.round(Math.random() * 1000)}`
+    const thumb = getThumb(dish.id)   // фото сохранённого блюда → переносим в новую запись
+    const next = addPhotoIntake(intake, selectedDay, { id, name: dish.name, kcal: dish.kcal, protein: dish.protein, fat: dish.fat, carb: dish.carb, hasPhoto: !!thumb })
+    setIntake(next); saveIntake(next)
+    if (thumb) setThumb(id, thumb)
+    pruneIntakeThumbs(next, loadSavedDishes())
+    setSavedOpen(false)
+    flash(t.added)
+  }
   async function onBarcode(code) {
     setBarcodeOpen(false); setEstBusy(true)
     let found = null
@@ -481,15 +493,23 @@ function SavedDishesModal({ t, onClose, onLog }) {
           <div className="nd-saved-empty muted">{t.savedEmpty}</div>
         ) : (
           <div className="nd-saved-list">
-            {list.map(d => (
-              <div key={d.id} className="nd-saved-row">
-                <button className="nd-saved-main" onClick={() => onLog(d)}>
-                  <span className="nd-saved-name">{d.name}</span>
-                  <span className="nd-saved-macros muted">{d.kcal} {t.kcal} · {t.protein} {d.protein} · {t.fat} {d.fat} · {t.carb} {d.carb}</span>
-                </button>
-                <button className="nd-saved-del" onClick={() => del(d.id)} aria-label={t.del}><Trash2 size={15} /></button>
-              </div>
-            ))}
+            {list.map(d => {
+              const thumb = getThumb(d.id)
+              return (
+                <div key={d.id} className="nd-saved-row">
+                  <button className="nd-saved-main" onClick={() => onLog(d)}>
+                    {thumb
+                      ? <span className="nd-saved-img" style={{ backgroundImage: `url(${thumb})` }} />
+                      : <span className="nd-saved-img nd-saved-img-empty"><Camera size={16} strokeWidth={1.5} /></span>}
+                    <span className="nd-saved-text">
+                      <span className="nd-saved-name">{d.name}</span>
+                      <span className="nd-saved-macros muted">{d.kcal} {t.kcal} · {t.protein} {d.protein} · {t.fat} {d.fat} · {t.carb} {d.carb}</span>
+                    </span>
+                  </button>
+                  <button className="nd-saved-del" onClick={() => del(d.id)} aria-label={t.del}><Trash2 size={15} /></button>
+                </div>
+              )
+            })}
           </div>
         )}
         <ModalStyles />
@@ -545,9 +565,12 @@ function ModalStyles() {
       .nd-saved-empty { font-size: 14px; line-height: 1.5; text-align: center; padding: 24px 8px; }
       .nd-saved-list { display: flex; flex-direction: column; gap: 8px; }
       .nd-saved-row { display: flex; align-items: stretch; gap: 8px; }
-      .nd-saved-main { flex: 1; display: flex; flex-direction: column; gap: 4px; align-items: flex-start; text-align: left; padding: 11px 13px; border-radius: var(--radius-md); border: 1px solid var(--border-med); background: var(--bg-tile); color: var(--text-primary); font-family: inherit; cursor: pointer; }
+      .nd-saved-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 11px; text-align: left; padding: 9px 11px; border-radius: var(--radius-md); border: 1px solid var(--border-med); background: var(--bg-tile); color: var(--text-primary); font-family: inherit; cursor: pointer; }
       .nd-saved-main:hover { border-color: var(--accent); }
-      .nd-saved-name { font-size: 15px; font-weight: 700; }
+      .nd-saved-img { width: 42px; height: 42px; flex-shrink: 0; border-radius: 9px; background-size: cover; background-position: center; background-color: var(--bg-app); }
+      .nd-saved-img-empty { display: flex; align-items: center; justify-content: center; color: var(--text-faint); }
+      .nd-saved-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+      .nd-saved-name { font-size: 15px; font-weight: 700; overflow-wrap: anywhere; }
       .nd-saved-macros { font-size: 12.5px; font-variant-numeric: tabular-nums; }
       .nd-saved-del { width: 44px; border-radius: var(--radius-md); border: 1px solid var(--border-med); background: var(--bg-tile); color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; }
       .nd-saved-del:hover { color: var(--status-crit); border-color: color-mix(in srgb, var(--status-crit) 30%, transparent); }

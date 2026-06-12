@@ -474,8 +474,8 @@ export function loadThumbs() { try { const s = localStorage.getItem(INTAKE_THUMB
 export function saveThumbs(o) { try { localStorage.setItem(INTAKE_THUMBS_KEY, JSON.stringify(o)) } catch { /* ignore */ } }
 export function setThumb(id, dataUrl) { const o = loadThumbs(); o[id] = dataUrl; saveThumbs(o) }
 export function getThumb(id) { return loadThumbs()[id] || null }
-// Держим миниатюры только за сегодня+вчера и только для существующих записей
-export function pruneIntakeThumbs(intake) {
+// Держим миниатюры только за сегодня+вчера (записи дневника) + миниатюры сохранённых блюд
+export function pruneIntakeThumbs(intake, savedDishes = []) {
   const p = n => String(n).padStart(2, '0')
   const y = mskNow(); y.setDate(y.getDate() - 1)
   const yKey = `${y.getFullYear()}-${p(y.getMonth() + 1)}-${p(y.getDate())}`
@@ -484,6 +484,7 @@ export function pruneIntakeThumbs(intake) {
     if (dateKey < yKey) continue
     ;(rec?.entries || []).forEach(e => { if (e.id) keep.add(e.id) })
   }
+  ;(savedDishes || []).forEach(d => { if (d.id) keep.add(d.id) })   // сохранённые блюда держат фото долго
   const thumbs = loadThumbs(); let changed = false
   for (const id of Object.keys(thumbs)) { if (!keep.has(id)) { delete thumbs[id]; changed = true } }
   if (changed) saveThumbs(thumbs)
