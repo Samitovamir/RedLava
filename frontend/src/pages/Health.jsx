@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import GarminLive from '../components/GarminLive.jsx'
 import MetricsView from '../components/MetricsView.jsx'
 import HealthAssistant from '../components/HealthAssistant.jsx'
@@ -32,7 +32,10 @@ export default function Health() {
     }
   })
 
-  const [tab, setTab] = useState('activity')
+  // Вкладка по умолчанию — «Активность» (Спорт). С Главной приходит state.tab:
+  // карточка «Здоровье» → «Показатели», карточка «Спорт» → «Активность».
+  const location = useLocation()
+  const [tab, setTab] = useState(location.state?.tab === 'metrics' ? 'metrics' : 'activity')
   const garminConnected = (() => {
     try { return !!localStorage.getItem('albert-garmin-live') } catch { return false }
   })()

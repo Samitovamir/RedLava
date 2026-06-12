@@ -303,11 +303,22 @@ export default function Nutrition() {
     else setRate(null)
   }, [plan])
 
-  // Открыли из окна «Питание» на Главной (state.autoSuggest = приём) → сразу подобрать блюда
+  // Переход из окна «Питание» на Главной:
+  //  • state.openDish — тап по конкретному блюду → сразу открываем ЕГО детали (рецепт/«в меню»);
+  //  • state.autoSuggest — «другие блюда» → открываем окно подбора СРАЗУ (видна загрузка) и подбираем.
   const location = useLocation()
   useEffect(() => {
-    const mt = location.state?.autoSuggest
-    if (mt && MEAL_KEYS.includes(mt)) { setMealType(mt); suggestMeals(mt, COMPONENT_DEFAULTS[mt] || ['Основное']) }
+    const st = location.state
+    if (!st) return
+    if (st.openDish && MEAL_KEYS.includes(st.mealType)) {
+      setMealType(st.mealType)
+      if (st.openImage) setImages(prev => ({ ...prev, [st.openDish.name]: st.openImage }))
+      openSuggestDetail(st.openDish, st.mealType)
+    } else if (st.autoSuggest && MEAL_KEYS.includes(st.autoSuggest)) {
+      setMealType(st.autoSuggest)
+      setResultsOpen(true)
+      suggestMeals(st.autoSuggest, COMPONENT_DEFAULTS[st.autoSuggest] || ['Основное'])
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -465,9 +476,9 @@ export default function Nutrition() {
     setKitchenBusy(null)
   }
 
-  async function openSuggestDetail(meal) {
+  async function openSuggestDetail(meal, mealKeyOverride) {
     const parts = partsOf(meal)
-    setDetail({ meal, mealKey: mealType, dateKey: selectedDay, source: 'suggest' })
+    setDetail({ meal, mealKey: mealKeyOverride || mealType, dateKey: selectedDay, source: 'suggest' })
     setDetailParts(parts.map(p => ({ component: p.component, name: p.name, recipe: null })))
     setDetailLoading(true)
     for (let i = 0; i < parts.length; i++) {
@@ -810,6 +821,8 @@ export default function Nutrition() {
                 </button>
               </div>
               <div className="nu-meal-list">
+                {loadingMeals && !meals.length && <div className="nu-meals-state muted">{t.picking}</div>}
+                {!loadingMeals && !meals.length && mealsMsg && <div className="nu-meals-state muted">{mealsMsg}</div>}
                 {meals.map((m, i) => {
                   const combo = m.parts && m.parts.length > 1
                   return (
@@ -1170,6 +1183,7 @@ export default function Nutrition() {
         .nu-suggest:disabled { opacity: .5; cursor: default; }
 
         .nu-meal-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+        .nu-meals-state { grid-column: 1 / -1; padding: 28px 8px; text-align: center; font-size: 14.5px; }
         .nu-meal-card { display: flex; flex-direction: column; gap: 8px; background: var(--bg-tile); border: 1px solid var(--border-soft); border-radius: var(--radius-md); padding: 16px; }
         .nu-meal-img { height: 150px; margin: -16px -16px 4px; border-radius: var(--radius-md) var(--radius-md) 0 0; background-size: cover; background-position: center; background-color: var(--bg-surface); }
         .nu-meal-name { font-size: 15.5px; font-weight: 700; color: var(--foreground); }

@@ -99,7 +99,10 @@ export default function NutritionHomeCard() {
     return () => { cancelled = true }
   }, [mealType])
 
+  // «Другие блюда» → раздел с окном подбора (несколько блюд). Тап по блюду →
+  // именно ЭТО блюдо: открываем его детали (рецепт/«в меню») в разделе питания.
   const open = () => navigate('/nutrition', { state: { autoSuggest: mealType } })
+  const openDish = () => dish && navigate('/nutrition', { state: { openDish: dish, openImage: image, mealType } })
 
   return (
     <motion.div className="card nutrition-home" whileHover={{ y: -3 }}>
@@ -111,7 +114,7 @@ export default function NutritionHomeCard() {
       {summary.text && <p className="nh-overview">{summary.text}</p>}
 
       {dish ? (
-        <button className="nh-dish" onClick={open}>
+        <button className="nh-dish" onClick={openDish}>
           {image?.url && <span className="nh-dish-img" style={{ backgroundImage: `url(${image.url})` }} />}
           <span className="nh-dish-body">
             <span className="nh-dish-name">{dish.name}</span>

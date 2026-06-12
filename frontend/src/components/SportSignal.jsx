@@ -63,7 +63,7 @@ export default function SportSignal() {
       metrics={metrics}
       aiText={summary.text}
       aiLoading={summary.loading}
-      onClick={() => navigate(g ? '/health' : '/connections')}
+      onClick={() => navigate(g ? '/health' : '/connections', g ? { state: { tab: 'activity' } } : undefined)}
     />
   )
 }
