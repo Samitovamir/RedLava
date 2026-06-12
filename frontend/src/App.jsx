@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { variants } from './motion.js'
@@ -12,6 +12,7 @@ import { useLayout, useIsMobile } from './layout.js'
 import { useThemeSync } from './theme.js'
 import { isGuest } from './api/authFetch.js'
 import { MAIL_ENABLED, HISTORY_ENABLED } from './config/features.js'
+import { pullSync, startSync } from './utils/sync.js'
 import { EventsProvider } from './context/EventsContext.jsx'
 import { HistoryProvider } from './context/HistoryContext.jsx'
 import { MemoryProvider } from './context/MemoryContext.jsx'
@@ -91,6 +92,18 @@ export default function App() {
   // Держим тему в согласии с устройством и оформлением телефона (тёмная/светлая) вживую.
   useThemeSync()
 
+  // Синхронизация между устройствами: ДО показа приложения подтягиваем пользовательские
+  // данные с сервера (расписание/память/анализы/питание), затем запускаем фоновый push.
+  // Не блокируем дольше 4 с, если сеть висит.
+  const [synced, setSynced] = useState(false)
+  useEffect(() => {
+    let done = false
+    const finish = () => { if (!done) { done = true; setSynced(true); startSync() } }
+    pullSync().finally(finish)
+    const tmr = setTimeout(finish, 4000)
+    return () => clearTimeout(tmr)
+  }, [])
+
   // Подтягиваем живые данные Whoop и Garmin в localStorage (для страниц и для ИИ).
   // Гость работает на демо-данных — реальные не запрашиваем (и не затираем демо).
   useEffect(() => {
@@ -108,6 +121,8 @@ export default function App() {
       } catch { /* ignore */ }
     }).catch(() => {})
   }, [])
+
+  if (!synced) return null
 
   return (
     <HistoryProvider>

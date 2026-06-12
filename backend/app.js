@@ -12,6 +12,7 @@ import whoopRoutes from './routes/whoop.js'
 import historyRoutes from './routes/history.js'
 import labsRoutes from './routes/labs.js'
 import nutritionRoutes from './routes/nutrition.js'
+import syncRoutes from './routes/sync.js'
 import authRoutes from './routes/auth.js'
 import { requireAuth, roleFromReq } from './authGuard.js'
 
@@ -64,6 +65,7 @@ app.use('/api/ai', requireAuth, aiRoutes)
 app.use('/api/history', requireAuth, historyRoutes)
 app.use('/api/labs', labsRoutes)
 app.use('/api/nutrition', requireAuth, nutritionRoutes)
+app.use('/api/sync', requireAuth, syncRoutes)
 
 // Интеграции: внутри есть публичный OAuth-callback (переход в браузере),
 // поэтому требование входа применяется точечно внутри роутов.
