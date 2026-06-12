@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { motion, AnimatePresence } from 'framer-motion'
 import { variants } from './motion.js'
 import FluidMenu from './components/FluidMenu.jsx'
+import BrandWatermark from './components/BrandWatermark.jsx'
 import MailModal from './components/MailModal.jsx'
 import DemoBanner from './components/DemoBanner.jsx'
 import CockpitShell from './shells/CockpitShell.jsx'
@@ -85,6 +86,7 @@ function ShellRouter() {
   return (
     <>
       <FluidMenu />
+      <BrandWatermark />
       <AnimatedRoutes />
     </>
   )

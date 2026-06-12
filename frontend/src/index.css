@@ -232,6 +232,8 @@ html[data-helper] #root { display: block; height: auto; min-height: 100dvh; over
   margin-left: var(--sidebar-width);
   padding: 32px 32px 96px 32px;
   overflow-y: auto;
+  position: relative;
+  z-index: 1;               /* контент поверх декоративного лого-водяного знака справа (z-index:0) */
   height: 100vh;
   height: 100dvh;
   scroll-behavior: smooth;
