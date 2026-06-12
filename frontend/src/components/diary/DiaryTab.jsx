@@ -577,6 +577,7 @@ function ModalStyles() {
       @media (max-width: 640px) {
         .nd-backdrop { align-items: flex-end; padding: 0; }
         .nd-modal { max-width: 100%; max-height: 94dvh; border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+        .nd-kcal-row { flex-direction: column; align-items: stretch; gap: 10px; }
       }
     `}</style>
   )
