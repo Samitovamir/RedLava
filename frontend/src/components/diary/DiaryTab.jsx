@@ -521,8 +521,8 @@ function SavedDishesModal({ t, onClose, onLog }) {
 function ModalStyles() {
   return (
     <style>{`
-      .nd-backdrop { position: fixed; inset: 0; z-index: 500; background: color-mix(in srgb, var(--bg-app) 70%, transparent); backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; padding: 20px; }
-      .nd-modal { width: 100%; max-width: 440px; max-height: 90dvh; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+      .nd-backdrop { position: fixed; inset: 0; z-index: 500; background: color-mix(in srgb, var(--bg-app) 70%, transparent); backdrop-filter: blur(3px); display: flex; align-items: flex-start; justify-content: center; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 20px; }
+      .nd-modal { width: 100%; max-width: 440px; margin: auto; display: flex; flex-direction: column; gap: 14px; }
       .nd-modal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
       .nd-modal-head h3 { margin: 0; font-size: 19px; font-weight: 700; color: var(--text-primary); overflow-wrap: anywhere; }
       .nd-x { border: none; background: var(--bg-tile); color: var(--text-secondary); width: 34px; height: 34px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
@@ -575,8 +575,8 @@ function ModalStyles() {
       .nd-saved-del { width: 44px; border-radius: var(--radius-md); border: 1px solid var(--border-med); background: var(--bg-tile); color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; }
       .nd-saved-del:hover { color: var(--status-crit); border-color: color-mix(in srgb, var(--status-crit) 30%, transparent); }
       @media (max-width: 640px) {
-        .nd-backdrop { align-items: flex-end; padding: 0; }
-        .nd-modal { max-width: 100%; max-height: 94dvh; border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+        .nd-backdrop { align-items: flex-end; padding: 0; overflow-y: hidden; }
+        .nd-modal { max-width: 100%; margin: 0; max-height: 94vh; max-height: 94dvh; overflow-y: auto; border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
         .nd-kcal-row { flex-direction: column; align-items: stretch; gap: 10px; }
       }
     `}</style>
