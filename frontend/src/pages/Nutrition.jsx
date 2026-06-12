@@ -21,6 +21,7 @@ import { mskDateKey } from '../utils/time.js'
 import { useT } from '../context/LanguageContext.jsx'
 import { useLocation } from 'react-router-dom'
 import { nutritionHealthBrief } from '../utils/siteSnapshot.js'
+import DiaryTab from '../components/diary/DiaryTab.jsx'
 
 const FOODS = [
   ['pork', 'Свинина'], ['beef', 'Говядина'], ['chicken', 'Курица'], ['fish', 'Рыба'],
@@ -47,6 +48,7 @@ export default function Nutrition() {
       // Заголовок страницы
       title: 'Питание',
       subtitle: 'Меню на неделю · подбор под цель · покупки',
+      tabDiary: 'Дневник', tabMenu: 'Меню',
       prefsBtn: 'Настроить предпочтения',
       // Карточка цели
       goalFor: 'Цель на',
@@ -155,6 +157,7 @@ export default function Nutrition() {
     en: {
       title: 'Nutrition',
       subtitle: 'Weekly menu · goal-based picks · groceries',
+      tabDiary: 'Diary', tabMenu: 'Menu',
       prefsBtn: 'Set preferences',
       goalFor: 'Goal for',
       today: 'today',
@@ -253,6 +256,10 @@ export default function Nutrition() {
   const week = useMemo(() => weekDays(), [])
   const [selectedDay, setSelectedDay] = useState(mskDateKey())
   const [plan, setPlan] = useState(loadPlan)
+  const location = useLocation()
+  // Вкладки раздела: «Дневник» (фотолог) и «Меню» (планировщик). По умолчанию — «Меню»
+  // (станет «Дневник», когда фотолог готов). С Главной приходит autoSuggest/openDish → «Меню».
+  const [tab, setTab] = useState(location.state?.tab === 'diary' ? 'diary' : 'menu')
 
   // Живые данные Garmin/Whoop (App.jsx кладёт их в localStorage асинхронно — перечитываем чуть позже)
   const [garmin, setGarmin] = useState(loadGarmin)
@@ -303,18 +310,19 @@ export default function Nutrition() {
     else setRate(null)
   }, [plan])
 
-  // Переход из окна «Питание» на Главной:
+  // Переход из окна «Питание» на Главной (всегда вкладка «Меню»):
   //  • state.openDish — тап по конкретному блюду → сразу открываем ЕГО детали (рецепт/«в меню»);
   //  • state.autoSuggest — «другие блюда» → открываем окно подбора СРАЗУ (видна загрузка) и подбираем.
-  const location = useLocation()
   useEffect(() => {
     const st = location.state
     if (!st) return
     if (st.openDish && MEAL_KEYS.includes(st.mealType)) {
+      setTab('menu')
       setMealType(st.mealType)
       if (st.openImage) setImages(prev => ({ ...prev, [st.openDish.name]: st.openImage }))
       openSuggestDetail(st.openDish, st.mealType)
     } else if (st.autoSuggest && MEAL_KEYS.includes(st.autoSuggest)) {
+      setTab('menu')
       setMealType(st.autoSuggest)
       setResultsOpen(true)
       suggestMeals(st.autoSuggest, COMPONENT_DEFAULTS[st.autoSuggest] || ['Основное'])
@@ -616,6 +624,16 @@ export default function Nutrition() {
         )}
       />
 
+      <div className="nu-tabs" role="tablist">
+        <button className={`nu-tab ${tab === 'diary' ? 'active' : ''}`} onClick={() => setTab('diary')}>{t.tabDiary}</button>
+        <button className={`nu-tab ${tab === 'menu' ? 'active' : ''}`} onClick={() => setTab('menu')}>{t.tabMenu}</button>
+      </div>
+
+      {tab === 'diary' && (
+        <DiaryTab target={target} eaten={eaten} remaining={remaining} plan={plan} intake={intake} setIntake={setIntake} selectedDay={selectedDay} selectDay={selectDay} week={week} profile={profile} flash={flash} />
+      )}
+
+      {tab === 'menu' && (<>
       {/* Цель + профиль */}
       <motion.div className="card nu-target" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
         <div className="nu-head">
@@ -792,6 +810,7 @@ export default function Nutrition() {
           </>
         )}
       </motion.div>
+      </>)}
 
       {/* Окно с подобранными блюдами */}
       <AnimatePresence>
@@ -1054,6 +1073,11 @@ export default function Nutrition() {
 
       <style>{`
         .nu-page { display: flex; flex-direction: column; gap: 18px; max-width: 1400px; padding-bottom: 24px; }
+        .nu-tabs { display: inline-flex; gap: 4px; align-self: flex-start; background: var(--bg-surface); border: 1px solid var(--border-med); padding: 4px; border-radius: 12px; }
+        .nu-tab { padding: 8px 18px; border: none; background: transparent; color: var(--text-secondary); font-family: inherit; font-size: 14px; font-weight: 600; border-radius: 9px; cursor: pointer; transition: color 0.18s, background 0.18s; }
+        .nu-tab:hover { color: var(--text-primary); }
+        .nu-tab.active { background: var(--accent); color: var(--on-accent); }
+        @media (max-width: 640px) { .nu-tab { min-height: 40px; padding: 9px 18px; } }
         .muted { color: var(--muted); }
         .card-title { font-size: 16px; font-weight: 700; color: var(--foreground); margin-bottom: 12px; }
         /* Зазор ≥8px от фиксированной плашки «Демо-режим» (top:14px, bottom ≈46px от вьюпорта) */
