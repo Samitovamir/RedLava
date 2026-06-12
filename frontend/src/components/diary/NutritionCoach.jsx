@@ -6,26 +6,27 @@ import { useCurrentMeal } from '../../hooks/useCurrentMeal.js'
 import { nutritionHealthBrief } from '../../utils/siteSnapshot.js'
 
 /*
-  Окно-советник в разделе «Питание»: ИИ советует, что есть сегодня в целом + конкретно к ближайшему
-  приёму, с учётом уже съеденного (фото-дневник) и состояния (анализы/тренировка/восстановление/стресс).
-  Приём определяется по времени суток и обновляется живьём (useCurrentMeal). Снимок для кэша — без
-  точного времени, поэтому ИИ перегенерируется при логе еды или смене приёма, а не каждую минуту.
+  Помощник по питанию в разделе «Питание». Полностью самодостаточная карточка: НЕ наследует
+  общий класс .card (чтобы не зависеть от стилей материала/прошивки) и задаёт ВСЕ цвета с
+  хардкод-фолбэками — поэтому не может отрендериться пустой/невидимой ни при каком состоянии
+  токенов. Контент есть ВСЕГДА: совет ИИ → иначе «Думаю…» → иначе фактическая сводка по дню.
+  Приём пищи определяется по времени и обновляется живьём (useCurrentMeal).
 */
 
 const MEAL_EN = { 'Завтрак': 'Breakfast', 'Обед': 'Lunch', 'Перекус': 'Snack', 'Ужин': 'Dinner' }
 
-const ADVISOR_CONTEXT =
-  'Ты советник по питанию владельца (триатлет, следит за здоровьем и формой). По его данным дай РОВНО ' +
+const COACH_CONTEXT =
+  'Ты помощник по питанию владельца (триатлет, следит за здоровьем и формой). По его данным дай РОВНО ' +
   'две короткие фразы, каждая с новой строки: (1) общий статус питания за сегодня — сколько съедено и ' +
   'осталось, чего не хватает (белок/калории), в графике ли по цели; (2) конкретный совет к ближайшему ' +
   'приёму — что съесть сейчас с учётом остатка КБЖУ и состояния (анализы/тренировка/восстановление/стресс). ' +
   'По делу, без вступлений и markdown, не паниковать.'
 
-export default function MealAdvisor({ target, eaten = 0, remaining = 0, intake, selectedDay }) {
+export default function NutritionCoach({ target, eaten = 0, remaining = 0, intake, selectedDay }) {
   const { lang } = useLang()
   const t = useT({
-    ru: { label: 'Советник', loading: 'Думаю…', empty: 'Подключите ИИ для совета' },
-    en: { label: 'Advisor', loading: 'Thinking…', empty: 'Connect AI for advice' },
+    ru: { title: 'Помощник по питанию', think: 'Думаю…' },
+    en: { title: 'Nutrition coach', think: 'Thinking…' },
   })
   const meal = useCurrentMeal()
   const mealName = lang === 'en' ? (MEAL_EN[meal] || meal) : meal
@@ -44,16 +45,14 @@ export default function MealAdvisor({ target, eaten = 0, remaining = 0, intake, 
   ].join('\n')
 
   const summary = useAiSummary({
-    id: 'meal-advisor',
-    context: ADVISOR_CONTEXT + (lang === 'en' ? ' Reply in English.' : ''),
+    id: 'nutrition-coach',
+    context: COACH_CONTEXT + (lang === 'en' ? ' Reply in English.' : ''),
     snapshot,
     message: 'Статус питания за сегодня и совет к ближайшему приёму.',
     fallback: ''
   })
 
-  // Советник ВСЕГДА виден и не пустует: пока ИИ думает — «Думаю…»; если ИИ недоступен
-  // (бэкенд недоступен / демо-лимит у гостя / ошибка) — показываем фактическую сводку по
-  // данным дня вместо исчезновения. Так карточка не блёкнет в пустоту и не пропадает.
+  // Контент ВСЕГДА непустой: совет ИИ → «Думаю…» → фактическая сводка по данным дня.
   const advice = (summary.text || '').trim()
   const eatenR = Math.round(eaten)
   const remR = Math.round(remaining)
@@ -66,21 +65,37 @@ export default function MealAdvisor({ target, eaten = 0, remaining = 0, intake, 
     : (eatenR < 30
       ? `Сегодня пока ничего не записано. Цель — ${kcalGoal} ккал и ${protGoal} г белка. Ближайший приём — ${mealName.toLowerCase()}.`
       : `Съедено ~${eatenR} из ${kcalGoal} ккал, осталось ~${remR}. Белок ${eP}/${protGoal} г. Ближайший приём — ${mealName.toLowerCase()}.`)
-  const body = advice || (summary.loading ? t.loading : dataFallback)
+  const body = advice || (summary.loading ? t.think : dataFallback)
 
   return (
-    <motion.div className="card meal-advisor" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-      <div className="adv-top">
-        <span className="adv-label"><Sparkles size={15} strokeWidth={1.8} /> {t.label}</span>
-        <span className="adv-meal">{mealName}</span>
+    <motion.div className="nutri-coach" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+      <div className="nuc-head">
+        <span className="nuc-badge"><Sparkles size={15} strokeWidth={1.9} /> {t.title}</span>
+        <span className="nuc-meal">{mealName}</span>
       </div>
-      <p className={`adv-text ${!advice && summary.loading ? 'muted' : ''}`}>{body}</p>
+      <p className="nuc-text">{body}</p>
       <style>{`
-        .meal-advisor { display: flex; flex-direction: column; gap: 10px; }
-        .adv-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-        .adv-label { display: inline-flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 700; color: var(--accent); }
-        .adv-meal { font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em; }
-        .adv-text { font-size: 13.5px; line-height: 1.55; color: var(--text-body); white-space: pre-line; }
+        .nutri-coach {
+          display: flex; flex-direction: column; gap: 9px;
+          padding: 16px 18px;
+          border-radius: var(--radius, 18px);
+          background: var(--bg-surface, #1B2027);
+          border: 1px solid var(--border-med, #2C333C);
+          box-shadow: var(--shadow-card, 0 4px 16px rgba(0,0,0,0.25));
+        }
+        .nuc-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .nuc-badge {
+          display: inline-flex; align-items: center; gap: 7px;
+          font-size: 14px; font-weight: 700; color: var(--accent, #6E8CA8);
+        }
+        .nuc-meal {
+          font-size: 11px; font-weight: 700; color: var(--text-secondary, #9AA3AF);
+          text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap;
+        }
+        .nuc-text {
+          font-size: 13.5px; line-height: 1.55; color: var(--text-body, #DDE1E6);
+          white-space: pre-line; min-height: 19px;
+        }
       `}</style>
     </motion.div>
   )

@@ -22,7 +22,7 @@ import { useT } from '../context/LanguageContext.jsx'
 import { useLocation } from 'react-router-dom'
 import { nutritionHealthBrief } from '../utils/siteSnapshot.js'
 import DiaryTab from '../components/diary/DiaryTab.jsx'
-import MealAdvisor from '../components/diary/MealAdvisor.jsx'
+import NutritionCoach from '../components/diary/NutritionCoach.jsx'
 
 const FOODS = [
   ['pork', 'Свинина'], ['beef', 'Говядина'], ['chicken', 'Курица'], ['fish', 'Рыба'],
@@ -600,8 +600,8 @@ export default function Nutrition() {
       {/* Единый экран раздела: фото-дневник → советник → подбор блюд по приёмам */}
       <DiaryTab target={target} eaten={eaten} remaining={remaining} plan={plan} intake={intake} setIntake={setIntake} selectedDay={selectedDay} selectDay={selectDay} week={week} profile={profile} flash={flash} />
 
-      {/* Окно-советник: что есть в целом + к ближайшему приёму (по времени, с учётом съеденного) */}
-      <MealAdvisor target={target} eaten={eaten} remaining={remaining} intake={intake} selectedDay={selectedDay} />
+      {/* Помощник по питанию: что есть в целом + к ближайшему приёму (по времени, с учётом съеденного) */}
+      <NutritionCoach target={target} eaten={eaten} remaining={remaining} intake={intake} selectedDay={selectedDay} />
 
       {/* Подбор блюда по приёмам (по времени суток) */}
       <motion.div className="card" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
