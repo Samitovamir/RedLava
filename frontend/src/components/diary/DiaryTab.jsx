@@ -1,13 +1,13 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Camera, Trash2, X, BookmarkPlus, Plus } from 'lucide-react'
+import { Camera, Trash2, X, BookmarkPlus, Plus, ScanText, Bookmark } from 'lucide-react'
 import CircularChart from '../CircularChart.jsx'
 import { useT } from '../../context/LanguageContext.jsx'
 import { nutritionHealthBrief } from '../../utils/siteSnapshot.js'
 import { compressToThumb, compressForUpload } from '../../utils/image.js'
 import {
   addPhotoIntake, removePhotoEntry, saveIntake, setThumb, getThumb, pruneIntakeThumbs,
-  loadSavedDishes, saveSavedDishes, addSavedDish
+  gramsToEntry, loadSavedDishes, saveSavedDishes, addSavedDish, removeSavedDish
 } from '../../utils/nutrition.js'
 
 /*
@@ -40,6 +40,9 @@ export default function DiaryTab({ target, eaten, remaining, intake, setIntake, 
       cancel: 'Отмена', add: 'Добавить в дневник', failRecognize: 'Не удалось распознать еду',
       failPhoto: 'Ошибка обработки фото', added: 'Добавлено в дневник',
       save: 'Сохранить блюдо', del: 'Удалить', saved: 'Блюдо сохранено', removed: 'Запись удалена',
+      actLabel: 'Этикетка', actSaved: 'Сохранённые',
+      gramsTitle: 'Сколько граммов?', per100: 'на 100 г', grams: 'Граммы',
+      savedTitle: 'Сохранённые блюда', savedEmpty: 'Пока нет сохранённых блюд. Сохрани блюдо из записи дневника.', logIt: 'Добавить',
     },
     en: {
       eaten: 'Eaten', of: 'of', kcal: 'kcal', left: 'left', over: 'over',
@@ -51,13 +54,19 @@ export default function DiaryTab({ target, eaten, remaining, intake, setIntake, 
       cancel: 'Cancel', add: 'Add to diary', failRecognize: 'Could not recognize food',
       failPhoto: 'Photo processing error', added: 'Added to diary',
       save: 'Save dish', del: 'Delete', saved: 'Dish saved', removed: 'Entry removed',
+      actLabel: 'Label', actSaved: 'Saved',
+      gramsTitle: 'How many grams?', per100: 'per 100 g', grams: 'Grams',
+      savedTitle: 'Saved dishes', savedEmpty: 'No saved dishes yet. Save one from a diary entry.', logIt: 'Add',
     },
   })
 
   const fileRef = useRef(null)
+  const labelRef = useRef(null)
   const [estBusy, setEstBusy] = useState(false)
-  const [estimate, setEstimate] = useState(null)   // оценка для экрана правки
+  const [estimate, setEstimate] = useState(null)   // оценка фото для экрана правки
   const [detail, setDetail] = useState(null)        // просмотр записи
+  const [grams, setGrams] = useState(null)          // { name, per100 } — ввод граммов (этикетка/штрих-код)
+  const [savedOpen, setSavedOpen] = useState(false) // список сохранённых блюд
 
   // Чистим миниатюры старше вчера при входе
   useEffect(() => { pruneIntakeThumbs(intake) }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -126,6 +135,36 @@ export default function DiaryTab({ target, eaten, remaining, intake, setIntake, 
     flash(t.saved)
   }
 
+  // Общий помощник: добавить любую запись (этикетка/штрих-код/сохранённое) — без фото
+  function logEntry(entry) {
+    const id = `e${Date.now()}${Math.round(Math.random() * 1000)}`
+    const next = addPhotoIntake(intake, selectedDay, { ...entry, id })
+    setIntake(next); saveIntake(next)
+    flash(t.added)
+  }
+
+  async function onLabelFile(e) {
+    const file = e.target.files?.[0]
+    if (e.target) e.target.value = ''
+    if (!file) return
+    setEstBusy(true)
+    try {
+      const dataUrl = await fileToDataUrl(file)
+      const upload = await compressForUpload(dataUrl)
+      const res = await fetch('/api/nutrition/intake-image', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: upload, mode: 'label' })
+      })
+      const data = await res.json()
+      if (!data.ok || !data.intake) { flash(data.message || t.failRecognize); setEstBusy(false); return }
+      const ink = data.intake
+      setGrams({ name: ink.name || 'Продукт', per100: { kcal: num(ink.kcal), protein: num(ink.protein), fat: num(ink.fat), carb: num(ink.carb) } })
+    } catch { flash(t.failPhoto) }
+    setEstBusy(false)
+  }
+  function confirmGrams(g, gramsVal) { logEntry(gramsToEntry(g.per100, gramsVal, g.name)); setGrams(null) }
+  function logSaved(dish) { logEntry({ name: dish.name, kcal: dish.kcal, protein: dish.protein, fat: dish.fat, carb: dish.carb }); setSavedOpen(false) }
+
   return (
     <motion.div className="nu-diary" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
       {/* Кольцо «съедено / цель» + плитки Б/Ж/У */}
@@ -147,11 +186,18 @@ export default function DiaryTab({ target, eaten, remaining, intake, setIntake, 
         </div>
       </div>
 
-      {/* Кнопка съёмки */}
+      {/* Захват: фото еды (основное) + этикетка + сохранённые (штрих-код — отдельным шагом) */}
       <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={onFile} style={{ display: 'none' }} />
-      <button className="nd-shoot" onClick={() => fileRef.current?.click()} disabled={estBusy}>
-        <Camera size={18} strokeWidth={1.8} />{estBusy ? t.reading : t.shoot}
-      </button>
+      <input ref={labelRef} type="file" accept="image/*" capture="environment" onChange={onLabelFile} style={{ display: 'none' }} />
+      <div className="nd-actions">
+        <button className="nd-shoot" onClick={() => fileRef.current?.click()} disabled={estBusy}>
+          <Camera size={18} strokeWidth={1.8} />{estBusy ? t.reading : t.shoot}
+        </button>
+        <div className="nd-actions-row">
+          <button className="nd-act" onClick={() => labelRef.current?.click()} disabled={estBusy}><ScanText size={16} strokeWidth={1.6} />{t.actLabel}</button>
+          <button className="nd-act" onClick={() => setSavedOpen(true)}><Bookmark size={16} strokeWidth={1.6} />{t.actSaved}</button>
+        </div>
+      </div>
 
       {/* Лента «съедено сегодня» */}
       {entries.length === 0 ? (
@@ -188,6 +234,16 @@ export default function DiaryTab({ target, eaten, remaining, intake, setIntake, 
         {detail && <EntryDetailModal entry={detail} t={t} onClose={() => setDetail(null)} onDelete={() => deleteEntry(detail.id)} onSave={() => saveDish(detail)} />}
       </AnimatePresence>
 
+      {/* Ввод граммов (этикетка/штрих-код) */}
+      <AnimatePresence>
+        {grams && <GramsModal data={grams} t={t} onCancel={() => setGrams(null)} onConfirm={confirmGrams} />}
+      </AnimatePresence>
+
+      {/* Сохранённые блюда */}
+      <AnimatePresence>
+        {savedOpen && <SavedDishesModal t={t} onClose={() => setSavedOpen(false)} onLog={logSaved} />}
+      </AnimatePresence>
+
       <style>{`
         .nu-diary { display: flex; flex-direction: column; gap: 14px; }
         .nd-summary { display: flex; flex-direction: column; gap: 16px; }
@@ -214,6 +270,11 @@ export default function DiaryTab({ target, eaten, remaining, intake, setIntake, 
         .nd-shoot:hover { filter: brightness(1.05); }
         .nd-shoot:active { transform: translateY(1px); }
         .nd-shoot:disabled { opacity: 0.7; cursor: default; }
+        .nd-actions { display: flex; flex-direction: column; gap: 8px; }
+        .nd-actions-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .nd-act { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border-med); background: var(--bg-tile); color: var(--text-secondary); font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; transition: color 0.15s, border-color 0.15s; }
+        .nd-act:hover { color: var(--text-primary); border-color: var(--accent); }
+        .nd-act:disabled { opacity: 0.6; cursor: default; }
 
         .nd-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding: 40px 24px; }
         .nd-empty-ic { width: 54px; height: 54px; border-radius: 15px; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--accent) 13%, transparent); color: var(--accent); }
@@ -346,6 +407,68 @@ function EntryDetailModal({ entry, t, onClose, onDelete, onSave }) {
   )
 }
 
+// ── Ввод граммов для этикетки/штрих-кода (КБЖУ на 100 г → за порцию) ──
+function GramsModal({ data, t, onCancel, onConfirm }) {
+  const [g, setG] = useState(100)
+  const k = (g || 0) / 100
+  const e = data.per100
+  return (
+    <div className="nd-backdrop" onClick={onCancel}>
+      <motion.div className="card nd-modal" onClick={ev => ev.stopPropagation()}
+        initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 24 }}>
+        <div className="nd-modal-head">
+          <h3>{data.name}</h3>
+          <button className="nd-x" onClick={onCancel} aria-label={t.cancel}><X size={18} /></button>
+        </div>
+        <div className="nd-per100 muted">{e.kcal} {t.kcal} · {t.protein} {e.protein} · {t.fat} {e.fat} · {t.carb} {e.carb} — {t.per100}</div>
+        <label className="nd-field">
+          <span className="nd-field-l muted">{t.grams}</span>
+          <input className="nd-input nd-input-big" type="number" inputMode="numeric" value={g} onChange={ev => setG(Math.max(0, Math.round(+ev.target.value || 0)))} autoFocus />
+        </label>
+        <div className="nd-grams-total">{Math.round(e.kcal * k)} {t.kcal} · {t.protein} {Math.round(e.protein * k)} · {t.fat} {Math.round(e.fat * k)} · {t.carb} {Math.round(e.carb * k)}</div>
+        <div className="nd-modal-actions">
+          <button className="nd-btn-ghost" onClick={onCancel}>{t.cancel}</button>
+          <button className="nd-btn-primary" onClick={() => onConfirm(data, g)}>{t.add}</button>
+        </div>
+        <ModalStyles />
+      </motion.div>
+    </div>
+  )
+}
+
+// ── Сохранённые блюда: быстрый повтор в один тап ──
+function SavedDishesModal({ t, onClose, onLog }) {
+  const [list, setList] = useState(loadSavedDishes())
+  const del = (id) => { const next = removeSavedDish(list, id); setList(next); saveSavedDishes(next) }
+  return (
+    <div className="nd-backdrop" onClick={onClose}>
+      <motion.div className="card nd-modal" onClick={ev => ev.stopPropagation()}
+        initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 24 }}>
+        <div className="nd-modal-head">
+          <h3>{t.savedTitle}</h3>
+          <button className="nd-x" onClick={onClose} aria-label={t.cancel}><X size={18} /></button>
+        </div>
+        {list.length === 0 ? (
+          <div className="nd-saved-empty muted">{t.savedEmpty}</div>
+        ) : (
+          <div className="nd-saved-list">
+            {list.map(d => (
+              <div key={d.id} className="nd-saved-row">
+                <button className="nd-saved-main" onClick={() => onLog(d)}>
+                  <span className="nd-saved-name">{d.name}</span>
+                  <span className="nd-saved-macros muted">{d.kcal} {t.kcal} · {t.protein} {d.protein} · {t.fat} {d.fat} · {t.carb} {d.carb}</span>
+                </button>
+                <button className="nd-saved-del" onClick={() => del(d.id)} aria-label={t.del}><Trash2 size={15} /></button>
+              </div>
+            ))}
+          </div>
+        )}
+        <ModalStyles />
+      </motion.div>
+    </div>
+  )
+}
+
 function ModalStyles() {
   return (
     <style>{`
@@ -388,6 +511,17 @@ function ModalStyles() {
       .nd-btn-ghost { color: var(--text-secondary); background: var(--bg-tile); border-color: var(--border-med); }
       .nd-btn-ghost:hover { color: var(--text-primary); }
       .nd-btn-danger { color: var(--status-crit); background: color-mix(in srgb, var(--status-crit) 12%, transparent); border-color: color-mix(in srgb, var(--status-crit) 30%, transparent); }
+      .nd-per100 { font-size: 13px; }
+      .nd-grams-total { font-size: 15px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; padding: 11px 14px; background: var(--bg-tile); border: 1px solid var(--border-soft); border-radius: var(--radius-md); }
+      .nd-saved-empty { font-size: 14px; line-height: 1.5; text-align: center; padding: 24px 8px; }
+      .nd-saved-list { display: flex; flex-direction: column; gap: 8px; }
+      .nd-saved-row { display: flex; align-items: stretch; gap: 8px; }
+      .nd-saved-main { flex: 1; display: flex; flex-direction: column; gap: 4px; align-items: flex-start; text-align: left; padding: 11px 13px; border-radius: var(--radius-md); border: 1px solid var(--border-med); background: var(--bg-tile); color: var(--text-primary); font-family: inherit; cursor: pointer; }
+      .nd-saved-main:hover { border-color: var(--accent); }
+      .nd-saved-name { font-size: 15px; font-weight: 700; }
+      .nd-saved-macros { font-size: 12.5px; font-variant-numeric: tabular-nums; }
+      .nd-saved-del { width: 44px; border-radius: var(--radius-md); border: 1px solid var(--border-med); background: var(--bg-tile); color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+      .nd-saved-del:hover { color: var(--status-crit); border-color: color-mix(in srgb, var(--status-crit) 30%, transparent); }
       @media (max-width: 640px) {
         .nd-backdrop { align-items: flex-end; padding: 0; }
         .nd-modal { max-width: 100%; max-height: 94dvh; border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
