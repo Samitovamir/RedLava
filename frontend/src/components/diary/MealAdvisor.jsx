@@ -51,15 +51,21 @@ export default function MealAdvisor({ target, eaten = 0, remaining = 0, intake, 
     fallback: ''
   })
 
+  // Не оставляем пустую карточку: если ИИ-совета нет и загрузка завершилась
+  // (демо-лимит у гостя / ИИ недоступен) — окно скрывается целиком, а не висит блоком-заглушкой.
+  // Во время загрузки карточку держим («Думаю…»), чтобы у владельца не прыгал лейаут.
+  const advice = (summary.text || '').trim()
+  if (!advice && !summary.loading) return null
+
   return (
     <motion.div className="card meal-advisor" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
       <div className="adv-top">
         <span className="adv-label"><Sparkles size={15} strokeWidth={1.8} /> {t.label}</span>
         <span className="adv-meal">{mealName}</span>
       </div>
-      {summary.text
-        ? <p className="adv-text">{summary.text}</p>
-        : <p className="adv-text muted">{summary.loading ? t.loading : t.empty}</p>}
+      {advice
+        ? <p className="adv-text">{advice}</p>
+        : <p className="adv-text muted">{t.loading}</p>}
       <style>{`
         .meal-advisor { display: flex; flex-direction: column; gap: 10px; }
         .adv-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
