@@ -279,7 +279,7 @@ export function CkNutrition({ onOpen }) {
   const intake = loadIntake()
   const dk = mskDateKey()
   const burned = workoutKcal(garmin, dk, base.bmr)
-  const carry = carryFromYesterday(plan, dk, base.kcal)
+  const carry = carryFromYesterday(plan, intake, dk, base.kcal)
   const target = dynamicTarget(base, profile, { burned, hasGarmin: !!garmin, recovery: whoop?.recovery ?? null, carry })
   const eaten = eatenForDay(plan, intake, dk)
   const remaining = Math.max(0, target.kcal - eaten)

@@ -127,13 +127,13 @@ export function dynamicTarget(base, profile, opts = {}) {
   return { kcal, protein, fat, carb: carbG, base: base.kcal, trainDelta, recDelta, recNote, carryDelta, burned }
 }
 
-// Мягкий перенос со вчера: переел → сегодня чуть меньше, недоел → чуть больше (по записанным приёмам)
-export function carryFromYesterday(plan, dateKey, prevTargetKcal) {
+// Мягкий перенос со вчера: переел → сегодня чуть меньше, недоел → чуть больше.
+// Считаем по ФАКТИЧЕСКИ съеденному (intake: фото-дневник/CalAI/довески), фолбэк — план.
+export function carryFromYesterday(plan, intake, dateKey, prevTargetKcal) {
   const prev = new Date(dateKey + 'T00:00:00'); prev.setDate(prev.getDate() - 1)
   const p = n => String(n).padStart(2, '0')
   const prevKey = `${prev.getFullYear()}-${p(prev.getMonth() + 1)}-${p(prev.getDate())}`
-  if (!plan[prevKey]) return 0
-  const ate = eatenKcal(plan, prevKey)
+  const ate = eatenForDay(plan, intake, prevKey)
   if (ate <= 0) return 0
   return Math.round((prevTargetKcal - ate) * 0.5)
 }
@@ -380,8 +380,12 @@ export function saveIntake(o) { try { localStorage.setItem(INTAKE_KEY, JSON.stri
 export function setCalaiIntake(intake, dateKey, data) {
   return { ...intake, [dateKey]: { source: 'calai', kcal: data.kcal || 0, protein: data.protein || 0, fat: data.fat || 0, carb: data.carb || 0, items: data.items || [] } }
 }
-// Добавить «довесок» вручную (кофе, батончик…)
+// Добавить «довесок» вручную (кофе, батончик…). Если день уже ведётся фото-дневником —
+// добавляем как его запись (суммируется), иначе legacy-режим manual.
 export function addIntakeExtra(intake, dateKey, item) {
+  if (intake[dateKey]?.source === 'photo') {
+    return addPhotoIntake(intake, dateKey, { name: item.label || item.name, kcal: item.kcal || 0, protein: item.protein || 0, fat: item.fat || 0, carb: item.carb || 0, manual: true })
+  }
   const cur = intake[dateKey]?.source === 'manual' ? intake[dateKey] : { source: 'manual', kcal: 0, protein: 0, fat: 0, carb: 0, items: [] }
   return {
     ...intake,
@@ -395,13 +399,94 @@ export function addIntakeExtra(intake, dateKey, item) {
 }
 export function clearDayIntake(intake, dateKey) { const n = { ...intake }; delete n[dateKey]; return n }
 
-// Съедено за день: если есть точный итог CalAI — берём его; иначе оценка по плану + ручные довески
+// Съедено за день: точный итог (CalAI / фото-дневник) авторитетен; иначе оценка по плану + ручные довески
 export function eatenForDay(plan, intake, dateKey) {
   const rec = intake?.[dateKey]
-  if (rec?.source === 'calai') return Math.round(rec.kcal || 0)
+  if (rec?.source === 'calai' || rec?.source === 'photo') return Math.round(rec.kcal || 0)
   const planned = eatenKcal(plan, dateKey)
   const extra = rec?.source === 'manual' ? (rec.kcal || 0) : 0
   return Math.round(planned + extra)
+}
+
+// ── Фото-дневник: записи приёмов за день (фото/штрих-код/этикетка/сохранённое/довесок) ──
+// Несколько записей за день суммируются. source:'photo' — авторитетный итог дня.
+function rollupEntries(entries) {
+  const sum = k => entries.reduce((s, e) => s + (e[k] || 0), 0)
+  return {
+    source: 'photo',
+    kcal: Math.round(sum('kcal')), protein: Math.round(sum('protein')), fat: Math.round(sum('fat')), carb: Math.round(sum('carb')),
+    items: entries.map(e => ({ name: e.name, kcal: e.kcal })),   // плоский items — для обратной совместимости
+    entries
+  }
+}
+export function addPhotoIntake(intake, dateKey, entry) {
+  const cur = intake[dateKey]?.source === 'photo' ? intake[dateKey] : null
+  const e = {
+    id: entry.id || `e${Date.now()}${Math.round(Math.random() * 1000)}`,
+    ts: entry.ts || Date.now(),
+    name: entry.name || 'Приём пищи',
+    kcal: Math.round(entry.kcal || 0), protein: Math.round(entry.protein || 0), fat: Math.round(entry.fat || 0), carb: Math.round(entry.carb || 0),
+    items: entry.items || [], health: entry.health ?? null, grams: entry.grams ?? null, manual: !!entry.manual, hasPhoto: !!entry.hasPhoto
+  }
+  return { ...intake, [dateKey]: rollupEntries([...((cur?.entries) || []), e]) }
+}
+export function removePhotoEntry(intake, dateKey, id) {
+  const rec = intake[dateKey]
+  if (rec?.source !== 'photo') return intake
+  const entries = (rec.entries || []).filter(e => e.id !== id)
+  if (!entries.length) { const n = { ...intake }; delete n[dateKey]; return n }
+  return { ...intake, [dateKey]: rollupEntries(entries) }
+}
+export function updatePhotoEntry(intake, dateKey, id, patch) {
+  const rec = intake[dateKey]
+  if (rec?.source !== 'photo') return intake
+  const entries = (rec.entries || []).map(e => e.id === id
+    ? { ...e, ...patch, kcal: Math.round(patch.kcal ?? e.kcal), protein: Math.round(patch.protein ?? e.protein), fat: Math.round(patch.fat ?? e.fat), carb: Math.round(patch.carb ?? e.carb) }
+    : e)
+  return { ...intake, [dateKey]: rollupEntries(entries) }
+}
+// Из КБЖУ на 100 г + граммы → запись приёма (штрих-код/этикетка)
+export function gramsToEntry(per100, grams, name) {
+  const k = (grams || 0) / 100
+  return {
+    name: name || per100.name || 'Продукт',
+    kcal: Math.round((per100.kcal || 0) * k), protein: Math.round((per100.protein || 0) * k),
+    fat: Math.round((per100.fat || 0) * k), carb: Math.round((per100.carb || 0) * k),
+    grams: Math.round(grams || 0)
+  }
+}
+
+// ── Сохранённые блюда: быстрый повтор частых приёмов без новой фотографии (синкается) ──
+export const SAVED_DISHES_KEY = 'albert-saved-dishes'
+export function loadSavedDishes() { try { const s = localStorage.getItem(SAVED_DISHES_KEY); if (s) return JSON.parse(s) } catch { /* ignore */ } return [] }
+export function saveSavedDishes(list) { try { localStorage.setItem(SAVED_DISHES_KEY, JSON.stringify(list)) } catch { /* ignore */ } }
+export function addSavedDish(list, dish) {
+  const key = String(dish.name || '').trim().toLowerCase()
+  if (!key) return list || []
+  const without = (list || []).filter(d => String(d.name || '').trim().toLowerCase() !== key)
+  return [{ id: dish.id || `s${Date.now()}${Math.round(Math.random() * 1000)}`, name: dish.name, kcal: Math.round(dish.kcal || 0), protein: Math.round(dish.protein || 0), fat: Math.round(dish.fat || 0), carb: Math.round(dish.carb || 0), savedAt: Date.now() }, ...without].slice(0, 30)
+}
+export function removeSavedDish(list, id) { return (list || []).filter(d => d.id !== id) }
+
+// ── Миниатюры фото-дневника: ОТДЕЛЬНЫЙ ключ, НЕ синкается (большой base64) ──
+export const INTAKE_THUMBS_KEY = 'albert-intake-thumbs'
+export function loadThumbs() { try { const s = localStorage.getItem(INTAKE_THUMBS_KEY); if (s) return JSON.parse(s) } catch { /* ignore */ } return {} }
+export function saveThumbs(o) { try { localStorage.setItem(INTAKE_THUMBS_KEY, JSON.stringify(o)) } catch { /* ignore */ } }
+export function setThumb(id, dataUrl) { const o = loadThumbs(); o[id] = dataUrl; saveThumbs(o) }
+export function getThumb(id) { return loadThumbs()[id] || null }
+// Держим миниатюры только за сегодня+вчера и только для существующих записей
+export function pruneIntakeThumbs(intake) {
+  const p = n => String(n).padStart(2, '0')
+  const y = mskNow(); y.setDate(y.getDate() - 1)
+  const yKey = `${y.getFullYear()}-${p(y.getMonth() + 1)}-${p(y.getDate())}`
+  const keep = new Set()
+  for (const [dateKey, rec] of Object.entries(intake || {})) {
+    if (dateKey < yKey) continue
+    ;(rec?.entries || []).forEach(e => { if (e.id) keep.add(e.id) })
+  }
+  const thumbs = loadThumbs(); let changed = false
+  for (const id of Object.keys(thumbs)) { if (!keep.has(id)) { delete thumbs[id]; changed = true } }
+  if (changed) saveThumbs(thumbs)
 }
 
 // ── Память покупок: что брали раньше, чтобы не было излишков (специи, масло и т.п.) ──

@@ -50,7 +50,7 @@ export default function JournalGlance() {
   const intake = loadIntake()
   const dk = mskDateKey()
   const burned = workoutKcal(garmin, dk, base.bmr)
-  const carry = carryFromYesterday(plan, dk, base.kcal)
+  const carry = carryFromYesterday(plan, intake, dk, base.kcal)
   const target = dynamicTarget(base, profile, { burned, hasGarmin: !!garmin, recovery: rec ?? null, carry })
   const eaten = eatenForDay(plan, intake, dk)
 

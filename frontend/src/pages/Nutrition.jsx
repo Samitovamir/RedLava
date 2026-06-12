@@ -345,7 +345,7 @@ export default function Nutrition() {
   const isToday = selectedDay === mskDateKey()
   const burned = workoutKcal(garmin, selectedDay, base.bmr)
   const recovery = isToday ? (whoop?.recovery ?? null) : null
-  const carry = carryFromYesterday(plan, selectedDay, base.kcal)
+  const carry = carryFromYesterday(plan, intake, selectedDay, base.kcal)
   const target = dynamicTarget(base, profile, { burned, hasGarmin: !!garmin, recovery, carry })
   const eaten = eatenForDay(plan, intake, selectedDay)
   const remaining = Math.max(0, target.kcal - eaten)

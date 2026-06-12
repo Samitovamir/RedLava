@@ -242,37 +242,78 @@ router.post('/images', async (req, res) => {
 // ── CalAI: читаем скриншот сводки и достаём съеденное за день ──
 const INTAKE_TOOL = [{
   name: 'log_intake',
-  description: 'Извлечь съеденное за день со скриншота приложения подсчёта калорий.',
+  description: 'Записать оценку КБЖУ съеденного по фотографии еды (или по этикетке/скриншоту).',
   input_schema: {
     type: 'object',
     properties: {
-      kcal: { type: 'number', description: 'Съедено калорий за день' },
+      name: { type: 'string', description: 'Короткое название блюда/приёма (для фото реальной еды), по-русски' },
+      kcal: { type: 'number', description: 'Калории: итог за приём (фото еды) или на 100 г (этикетка)' },
       protein: { type: 'number', description: 'Белки, г' },
       fat: { type: 'number', description: 'Жиры, г' },
       carb: { type: 'number', description: 'Углеводы, г' },
-      items: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, kcal: { type: 'number' } } }, description: 'Отдельные приёмы/продукты, если видны' },
-      note: { type: 'string', description: 'Короткий комментарий, если что-то непонятно на скрине' }
+      items: {
+        type: 'array',
+        description: 'Отдельные блюда/продукты на фото с их КБЖУ',
+        items: {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            kcal: { type: 'number' },
+            protein: { type: 'number' },
+            fat: { type: 'number' },
+            carb: { type: 'number' },
+            guess: { type: 'boolean', description: 'true, если порция/состав оценены приблизительно' }
+          }
+        }
+      },
+      health: { type: 'number', description: 'Полезность блюда ИМЕННО для этого человека с учётом его состояния (целое 1–10), если дан контекст состояния' },
+      note: { type: 'string', description: 'Короткий комментарий: что непонятно или на что обратить внимание' }
     },
     required: ['kcal']
   }
 }]
 
+// Промпты по режиму. food — фото реальной еды (основной путь, с персональной оценкой полезности
+// по состоянию владельца); label — таблица пищевой ценности (числа на 100 г); calai — legacy-скриншот.
+const FOOD_PROMPT = (health) =>
+  'Это фотография РЕАЛЬНОЙ еды (тарелка/продукты), НЕ скриншот приложения. ' +
+  'Определи блюда/продукты, оцени порции и КБЖУ по КАЖДОЙ позиции (items: name, kcal, protein, fat, carb) ' +
+  'и суммарно за приём (kcal/protein/fat/carb). Дай короткое название всего приёма (name). ' +
+  'Если порция или состав оценены приблизительно — ставь guess=true для такой позиции. ' +
+  (health
+    ? `Оцени поле health (целое 1–10) — насколько это блюдо уместно ИМЕННО для этого человека ПРЯМО СЕЙЧАС, ` +
+      `опираясь на его актуальное состояние: ${health} ` +
+      `(например, при высоком холестерине жирное — ниже; после тяжёлой тренировки или при низком восстановлении ` +
+      `белок и сложные углеводы — выше; при высоком стрессе/позднем часе тяжёлое — ниже). В note кратко поясни оценку. `
+    : '') +
+  'Названия — по-русски, кратко. Вызови log_intake.'
+
+const LABEL_PROMPT =
+  'Это фотография таблицы «Пищевая ценность» с упаковки. Считай числа КБЖУ НА 100 Г ' +
+  '(kcal/protein/fat/carb на 100 г). Если на упаковке только «на порцию» — верни их и отметь в note «на порцию». ' +
+  'Название продукта — в поле name, если видно. Вызови log_intake.'
+
+const CALAI_PROMPT =
+  'Это скриншот из приложения подсчёта калорий (CalAI и т.п.). Извлеки итог за день: калории и БЖУ ' +
+  '(и отдельные позиции, если видно). Вызови log_intake.'
+
 router.post('/intake-image', async (req, res) => {
   if (!process.env.ANTHROPIC_API_KEY) return res.json({ ok: false, message: 'Нет ключа ИИ' })
-  const { image } = req.body || {}
+  const { image, mode = 'food', health = '' } = req.body || {}
   const m = /^data:(image\/(png|jpeg|jpg|webp));base64,(.+)$/.exec(String(image || ''))
-  if (!m) return res.status(400).json({ ok: false, message: 'Нужен скриншот (png/jpg/webp)' })
+  if (!m) return res.status(400).json({ ok: false, message: 'Нужно фото (png/jpg/webp)' })
   const media = m[1] === 'image/jpg' ? 'image/jpeg' : m[1]
+  const prompt = mode === 'label' ? LABEL_PROMPT : mode === 'calai' ? CALAI_PROMPT : FOOD_PROMPT(health)
   try {
     const client = getClient()
     const resp = await client.messages.create({
-      model: 'claude-sonnet-4-6', max_tokens: 800,
+      model: 'claude-sonnet-4-6', max_tokens: 1000,
       tools: INTAKE_TOOL, tool_choice: { type: 'tool', name: 'log_intake' },
       messages: [{
         role: 'user',
         content: [
           { type: 'image', source: { type: 'base64', media_type: media, data: m[3] } },
-          { type: 'text', text: 'Это скриншот из приложения подсчёта калорий (CalAI и т.п.). Извлеки итог за день: калории и БЖУ (и отдельные позиции, если видно). Вызови log_intake.' }
+          { type: 'text', text: prompt }
         ]
       }]
     })
