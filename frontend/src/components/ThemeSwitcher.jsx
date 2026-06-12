@@ -21,6 +21,7 @@ const MOBILE_OPTIONS = [
   { id: 'auto',      ru: 'Авто',        en: 'Auto',      sub: { ru: 'Как на телефоне', en: 'Matches your phone' }, auto: true },
   { id: 'ios-dark',  ru: 'iOS Тёмная',  en: 'iOS Dark',  bg: '#000000', surface: '#1C1C1E', accent: '#0A84FF' },
   { id: 'ios-light', ru: 'iOS Светлая', en: 'iOS Light', bg: '#F2F2F7', surface: '#FFFFFF', accent: '#007AFF' },
+  { id: 'brown-leather', ru: 'Коричневая кожа', en: 'Brown leather', bg: '#120E0B', surface: '#271F19', accent: '#C89B6A' },
 ]
 
 export default function ThemeSwitcher() {

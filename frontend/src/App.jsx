@@ -3,7 +3,6 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { motion, AnimatePresence } from 'framer-motion'
 import { variants } from './motion.js'
 import FluidMenu from './components/FluidMenu.jsx'
-import WhatsNew from './components/WhatsNew.jsx'
 import MailModal from './components/MailModal.jsx'
 import DemoBanner from './components/DemoBanner.jsx'
 import CockpitShell from './shells/CockpitShell.jsx'
@@ -116,7 +115,6 @@ export default function App() {
     <EventsProvider>
     <BrowserRouter>
       <div className="main-layout">
-        <WhatsNew />
         <DemoBanner />
         <MailModal />
         <ShellRouter />

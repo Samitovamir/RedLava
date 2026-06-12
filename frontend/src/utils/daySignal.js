@@ -45,7 +45,7 @@ export function buildSignalData({ events = [], facts = [] } = {}) {
   }
 
   const stress = garmin?.stress
-  if (stress && (stress.avg ?? stress.current) != null) lines.push(`Стресс (Garmin) ${stress.avg ?? stress.current}/100.`)
+  if (stress && (stress.current ?? stress.avg) != null) lines.push(`Стресс (Garmin) ${stress.current ?? stress.avg}/100.`)
 
   const todayEvents = events.filter(e => e.date === today)
   lines.push(todayEvents.length

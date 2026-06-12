@@ -38,7 +38,7 @@ export function getMobilePref() {
 export function resolveTheme() {
   if (isMobileViewport()) {
     const m = getMobilePref()
-    if (m === 'ios-dark' || m === 'ios-light') return m
+    if (m === 'ios-dark' || m === 'ios-light' || m === 'brown-leather') return m
     return prefersDark() ? 'ios-dark' : 'ios-light' // 'auto' → следуем телефону
   }
   return getDesktopTheme()

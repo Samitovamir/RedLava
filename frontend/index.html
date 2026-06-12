@@ -9,7 +9,7 @@
         var t;
         if (matchMedia('(max-width: 640px)').matches) {
           var mp = localStorage.getItem('albert-theme-mobile') || 'auto';
-          t = (mp === 'ios-dark' || mp === 'ios-light') ? mp
+          t = (mp === 'ios-dark' || mp === 'ios-light' || mp === 'brown-leather') ? mp
             : (matchMedia('(prefers-color-scheme: dark)').matches ? 'ios-dark' : 'ios-light');
         } else {
           t = localStorage.getItem('albert-theme') || 'black-leather';
