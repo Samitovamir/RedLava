@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1E1E1C"/>
+      <stop offset="1" stop-color="#121211"/>
+    </linearGradient>
+    <linearGradient id="steel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8FB2D4"/>
+      <stop offset="1" stop-color="#4B6F97"/>
+    </linearGradient>
+    <linearGradient id="brass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#EDC08F"/>
+      <stop offset="0.5" stop-color="#DCA26B"/>
+      <stop offset="1" stop-color="#B9824C"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="512" height="512" rx="115" fill="url(#bg)"/>
+  <rect x="20" y="20" width="472" height="472" rx="99" fill="none" stroke="#F2EFE9" stroke-opacity="0.08" stroke-width="3"/>
+  <path d="M256 78 L406 406 L106 406 Z M256 205 L348 406 L164 406 Z" fill="url(#steel)" fill-rule="evenodd"/>
+  <path d="M338 162 C318 139 290 126 250 126 C208 126 178 154 178 198 C178 224 188 244 222 252 L290 268 C324 276 334 296 334 322 C334 366 304 394 262 394 C222 394 194 381 174 358" fill="none" stroke="url(#brass)" stroke-width="52" stroke-linecap="butt"/>
+</svg>
