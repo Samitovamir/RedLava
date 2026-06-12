@@ -1,14 +1,18 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, lazy, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Camera, Trash2, X, BookmarkPlus, Plus, ScanText, Bookmark } from 'lucide-react'
+import { Camera, Trash2, X, BookmarkPlus, Plus, ScanText, Bookmark, ScanBarcode } from 'lucide-react'
 import CircularChart from '../CircularChart.jsx'
 import { useT } from '../../context/LanguageContext.jsx'
 import { nutritionHealthBrief } from '../../utils/siteSnapshot.js'
+import { lookupBarcode } from '../../utils/openfoodfacts.js'
 import { compressToThumb, compressForUpload } from '../../utils/image.js'
 import {
   addPhotoIntake, removePhotoEntry, saveIntake, setThumb, getThumb, pruneIntakeThumbs,
   gramsToEntry, loadSavedDishes, saveSavedDishes, addSavedDish, removeSavedDish
 } from '../../utils/nutrition.js'
+
+// Сканер штрих-кода тянет тяжёлый ZXing (~480 КБ) — грузим лениво, только при открытии.
+const BarcodeScanner = lazy(() => import('./BarcodeScanner.jsx'))
 
 /*
   Вкладка «Дневник» — фотолог (свой CalAI). Кольцо «съедено/цель» + плитки Б/Ж/У +
@@ -40,7 +44,8 @@ export default function DiaryTab({ target, eaten, remaining, intake, setIntake, 
       cancel: 'Отмена', add: 'Добавить в дневник', failRecognize: 'Не удалось распознать еду',
       failPhoto: 'Ошибка обработки фото', added: 'Добавлено в дневник',
       save: 'Сохранить блюдо', del: 'Удалить', saved: 'Блюдо сохранено', removed: 'Запись удалена',
-      actLabel: 'Этикетка', actSaved: 'Сохранённые',
+      actLabel: 'Этикетка', actSaved: 'Сохранённые', actBarcode: 'Штрих-код',
+      notFound: 'Продукт не найден — сфотографируй еду', camFail: 'Камера недоступна — сфотографируй еду',
       gramsTitle: 'Сколько граммов?', per100: 'на 100 г', grams: 'Граммы',
       savedTitle: 'Сохранённые блюда', savedEmpty: 'Пока нет сохранённых блюд. Сохрани блюдо из записи дневника.', logIt: 'Добавить',
     },
@@ -54,7 +59,8 @@ export default function DiaryTab({ target, eaten, remaining, intake, setIntake, 
       cancel: 'Cancel', add: 'Add to diary', failRecognize: 'Could not recognize food',
       failPhoto: 'Photo processing error', added: 'Added to diary',
       save: 'Save dish', del: 'Delete', saved: 'Dish saved', removed: 'Entry removed',
-      actLabel: 'Label', actSaved: 'Saved',
+      actLabel: 'Label', actSaved: 'Saved', actBarcode: 'Barcode',
+      notFound: 'Product not found — photograph the food', camFail: 'Camera unavailable — photograph the food',
       gramsTitle: 'How many grams?', per100: 'per 100 g', grams: 'Grams',
       savedTitle: 'Saved dishes', savedEmpty: 'No saved dishes yet. Save one from a diary entry.', logIt: 'Add',
     },
@@ -67,6 +73,7 @@ export default function DiaryTab({ target, eaten, remaining, intake, setIntake, 
   const [detail, setDetail] = useState(null)        // просмотр записи
   const [grams, setGrams] = useState(null)          // { name, per100 } — ввод граммов (этикетка/штрих-код)
   const [savedOpen, setSavedOpen] = useState(false) // список сохранённых блюд
+  const [barcodeOpen, setBarcodeOpen] = useState(false)
 
   // Чистим миниатюры старше вчера при входе
   useEffect(() => { pruneIntakeThumbs(intake) }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -164,6 +171,13 @@ export default function DiaryTab({ target, eaten, remaining, intake, setIntake, 
   }
   function confirmGrams(g, gramsVal) { logEntry(gramsToEntry(g.per100, gramsVal, g.name)); setGrams(null) }
   function logSaved(dish) { logEntry({ name: dish.name, kcal: dish.kcal, protein: dish.protein, fat: dish.fat, carb: dish.carb }); setSavedOpen(false) }
+  async function onBarcode(code) {
+    setBarcodeOpen(false); setEstBusy(true)
+    let found = null
+    try { found = await lookupBarcode(code) } catch { /* ignore */ }
+    setEstBusy(false)
+    if (found) setGrams(found); else flash(t.notFound)
+  }
 
   return (
     <motion.div className="nu-diary" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
@@ -194,8 +208,9 @@ export default function DiaryTab({ target, eaten, remaining, intake, setIntake, 
           <Camera size={18} strokeWidth={1.8} />{estBusy ? t.reading : t.shoot}
         </button>
         <div className="nd-actions-row">
-          <button className="nd-act" onClick={() => labelRef.current?.click()} disabled={estBusy}><ScanText size={16} strokeWidth={1.6} />{t.actLabel}</button>
-          <button className="nd-act" onClick={() => setSavedOpen(true)}><Bookmark size={16} strokeWidth={1.6} />{t.actSaved}</button>
+          <button className="nd-act" onClick={() => setBarcodeOpen(true)} disabled={estBusy}><ScanBarcode size={17} strokeWidth={1.6} />{t.actBarcode}</button>
+          <button className="nd-act" onClick={() => labelRef.current?.click()} disabled={estBusy}><ScanText size={17} strokeWidth={1.6} />{t.actLabel}</button>
+          <button className="nd-act" onClick={() => setSavedOpen(true)}><Bookmark size={17} strokeWidth={1.6} />{t.actSaved}</button>
         </div>
       </div>
 
@@ -244,6 +259,13 @@ export default function DiaryTab({ target, eaten, remaining, intake, setIntake, 
         {savedOpen && <SavedDishesModal t={t} onClose={() => setSavedOpen(false)} onLog={logSaved} />}
       </AnimatePresence>
 
+      {/* Сканер штрих-кода (ленивый) */}
+      <Suspense fallback={null}>
+        <AnimatePresence>
+          {barcodeOpen && <BarcodeScanner onDetected={onBarcode} onClose={() => setBarcodeOpen(false)} onError={() => flash(t.camFail)} />}
+        </AnimatePresence>
+      </Suspense>
+
       <style>{`
         .nu-diary { display: flex; flex-direction: column; gap: 14px; }
         .nd-summary { display: flex; flex-direction: column; gap: 16px; }
@@ -271,8 +293,8 @@ export default function DiaryTab({ target, eaten, remaining, intake, setIntake, 
         .nd-shoot:active { transform: translateY(1px); }
         .nd-shoot:disabled { opacity: 0.7; cursor: default; }
         .nd-actions { display: flex; flex-direction: column; gap: 8px; }
-        .nd-actions-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        .nd-act { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border-med); background: var(--bg-tile); color: var(--text-secondary); font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; transition: color 0.15s, border-color 0.15s; }
+        .nd-actions-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .nd-act { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; padding: 11px 6px; border-radius: var(--radius-md); border: 1px solid var(--border-med); background: var(--bg-tile); color: var(--text-secondary); font-family: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; transition: color 0.15s, border-color 0.15s; }
         .nd-act:hover { color: var(--text-primary); border-color: var(--accent); }
         .nd-act:disabled { opacity: 0.6; cursor: default; }
 
