@@ -257,9 +257,11 @@ export default function Nutrition() {
   const [selectedDay, setSelectedDay] = useState(mskDateKey())
   const [plan, setPlan] = useState(loadPlan)
   const location = useLocation()
-  // Вкладки раздела: «Дневник» (фотолог) и «Меню» (планировщик). По умолчанию — «Меню»
-  // (станет «Дневник», когда фотолог готов). С Главной приходит autoSuggest/openDish → «Меню».
-  const [tab, setTab] = useState(location.state?.tab === 'diary' ? 'diary' : 'menu')
+  // Вкладки раздела: «Дневник» (фотолог, по умолчанию) и «Меню» (планировщик).
+  // С Главной приходит autoSuggest/openDish/tab:'menu' → открываем «Меню».
+  const [tab, setTab] = useState(
+    location.state?.tab === 'menu' || location.state?.autoSuggest || location.state?.openDish ? 'menu' : 'diary'
+  )
 
   // Живые данные Garmin/Whoop (App.jsx кладёт их в localStorage асинхронно — перечитываем чуть позже)
   const [garmin, setGarmin] = useState(loadGarmin)
