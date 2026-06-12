@@ -17,6 +17,8 @@ const SYNC_KEYS = [
   'albert-shopping-2',        // список покупок
   'albert-pantry',            // недавно купленное
   'albert-home-dish',         // блюдо на Главной (под текущий приём)
+  'albert-saved-dishes',      // сохранённые блюда фото-дневника (быстрый повтор)
+  // NB: albert-intake-thumbs (миниатюры фото) НЕ синкаем — большой base64, только локально.
 ]
 const AT_KEY = 'albert-sync-at'
 let lastSnap = ''

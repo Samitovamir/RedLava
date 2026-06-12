@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react'
 import { Button, SectionHeader } from '../ui'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Camera, Footprints, BedDouble, RotateCcw,
+  Footprints, BedDouble, RotateCcw,
   ThumbsUp, ThumbsDown, ShoppingCart, SlidersHorizontal
 } from 'lucide-react'
 import Icon from '../ui/Icon.jsx'
@@ -14,7 +14,7 @@ import {
   loadPlan, savePlan, setPlanMeal, clearPlanMeal, rateMeal, weekDays, dayPlanned, pendingRating,
   loadShopping, saveShopping, addToShopping, formatProduct,
   loadGarmin, loadWhoop, workoutKcal, eatenKcal, dynamicTarget, carryFromYesterday,
-  QUICK_ADD, loadIntake, saveIntake, setCalaiIntake, addIntakeExtra, clearDayIntake, eatenForDay,
+  QUICK_ADD, loadIntake, saveIntake, addIntakeExtra, clearDayIntake, eatenForDay,
   loadPantry, savePantry, archivePantry, recentlyBought
 } from '../utils/nutrition.js'
 import { mskDateKey } from '../utils/time.js'
@@ -294,8 +294,6 @@ export default function Nutrition() {
   const [pantry, setPantry] = useState(loadPantry)
   const [intake, setIntake] = useState(loadIntake)
   const [components, setComponents] = useState(['Основное'])
-  const [calaiBusy, setCalaiBusy] = useState(false)
-  const calaiInput = useRef(null)
   const weekRef = useRef(null)
   const [toast, setToast] = useState('')
 
@@ -586,24 +584,6 @@ export default function Nutrition() {
     const ni = clearDayIntake(intake, selectedDay)
     setIntake(ni); saveIntake(ni)
   }
-  async function onCalaiFile(e) {
-    const file = e.target.files?.[0]; e.target.value = ''
-    if (!file) return
-    setCalaiBusy(true)
-    try {
-      const dataUrl = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file) })
-      const resp = await fetch('/api/nutrition/intake-image', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: dataUrl })
-      })
-      const data = await resp.json()
-      if (data.ok && data.intake) {
-        const ni = setCalaiIntake(intake, selectedDay, data.intake)
-        setIntake(ni); saveIntake(ni)
-        flash(`${t.calaiAte}${Math.round(data.intake.kcal)}${t.calaiAteSuffix}`)
-      } else flash(data.message || t.calaiFail)
-    } catch { flash(t.calaiUploadErr) }
-    setCalaiBusy(false)
-  }
 
   // ── Предпочтения ──
   function openPrefs() { setPrefsDraft(prefs); setPrefsOpen(true) }
@@ -686,12 +666,8 @@ export default function Nutrition() {
           </div>
         )}
 
-        {/* Учёт съеденного: CalAI-скриншот + быстрые довески */}
+        {/* Быстрые довески (полноценный учёт еды по фото — на вкладке «Дневник») */}
         <div className="nu-intake-row">
-          <input ref={calaiInput} type="file" accept="image/*" onChange={onCalaiFile} style={{ display: 'none' }} />
-          <button className="nu-calai" onClick={() => calaiInput.current?.click()} disabled={calaiBusy}>
-            <Camera size={15} strokeWidth={1.5} />{calaiBusy ? t.calaiReading : t.calaiBtn}
-          </button>
           {QUICK_ADD.filter(q => {
             if (q.key.startsWith('coffee')) return q.key === 'coffee_' + prefs.coffee
             if (q.key === 'protein_bar') return prefs.proteinBar
