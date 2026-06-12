@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Mail, History as HistoryIcon, Settings as SettingsIcon } from 'lucide-react'
+import { X, Mail, History as HistoryIcon, Settings as SettingsIcon, CheckSquare } from 'lucide-react'
 import CkToday from '../components/cockpit/CkToday.jsx'
 import CkDock from '../components/cockpit/CkDock.jsx'
 import { CkRecovery, CkSleep, CkLoad, CkSteps, CkNutrition, CkLabs, CkVitals } from '../components/cockpit/CkWidgets.jsx'
@@ -14,6 +14,7 @@ import Nutrition from '../pages/Nutrition.jsx'
 import MailPage from '../pages/Mail.jsx'
 import History from '../pages/History.jsx'
 import Settings from '../pages/Settings.jsx'
+import Tasks from '../pages/Tasks.jsx'
 import { useEvents } from '../context/EventsContext.jsx'
 import { useMemoryFacts } from '../context/MemoryContext.jsx'
 import { useAiSummary } from '../hooks/useAiSummary.js'
@@ -53,20 +54,20 @@ export default function CockpitShell() {
   const t = useT({
     ru: {
       brand: 'владелец',
-      mail: 'Письма', history: 'История', settings: 'Настройки', close: 'Закрыть',
+      mail: 'Письма', history: 'История', tasks: 'Задачи', settings: 'Настройки', close: 'Закрыть',
       titles: {
         sleep: 'Сон', recovery: 'Восстановление', sport: 'Тренировки и активность', labs: 'Анализы крови',
         '/schedule': 'Расписание', '/sport': 'Тренировки и активность', '/health': 'Показатели тела', '/nutrition': 'Питание',
-        '/mail': 'Письма', '/history': 'История', '/settings': 'Настройки',
+        '/mail': 'Письма', '/history': 'История', '/tasks': 'Задачи', '/settings': 'Настройки',
       },
     },
     en: {
       brand: 'Owner',
-      mail: 'Mail', history: 'History', settings: 'Settings', close: 'Close',
+      mail: 'Mail', history: 'History', tasks: 'Tasks', settings: 'Settings', close: 'Close',
       titles: {
         sleep: 'Sleep', recovery: 'Recovery', sport: 'Workouts & activity', labs: 'Blood tests',
         '/schedule': 'Schedule', '/sport': 'Workouts & activity', '/health': 'Body metrics', '/nutrition': 'Nutrition',
-        '/mail': 'Mail', '/history': 'History', '/settings': 'Settings',
+        '/mail': 'Mail', '/history': 'History', '/tasks': 'Tasks', '/settings': 'Settings',
       },
     },
   })
@@ -133,6 +134,7 @@ export default function CockpitShell() {
           <span className="ck-clock">{dateStr} · {clock}</span>
           {MAIL_ENABLED && <button className="ck-icon-btn" title={t.mail} aria-label={t.mail} onClick={() => navigate('/mail')}><Mail size={17} /></button>}
           {HISTORY_ENABLED && <button className="ck-icon-btn" title={t.history} aria-label={t.history} onClick={() => navigate('/history')}><HistoryIcon size={17} /></button>}
+          <button className="ck-icon-btn" title={t.tasks} aria-label={t.tasks} onClick={() => navigate('/tasks')}><CheckSquare size={17} /></button>
           <button className="ck-icon-btn" title={t.settings} aria-label={t.settings} onClick={() => navigate('/settings')}><SettingsIcon size={17} /></button>
         </div>
       </header>
@@ -187,6 +189,7 @@ export default function CockpitShell() {
                     <Route path="/mail" element={MAIL_ENABLED ? <MailPage /> : <Navigate to="/" replace />} />
                     <Route path="/history" element={HISTORY_ENABLED ? <History /> : <Navigate to="/" replace />} />
                     <Route path="/connections" element={<Navigate to="/settings" replace />} />
+                    <Route path="/tasks" element={<Tasks />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>

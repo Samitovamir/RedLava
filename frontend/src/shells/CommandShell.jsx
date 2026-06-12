@@ -7,6 +7,7 @@ import Nutrition from '../pages/Nutrition.jsx'
 import MailPage from '../pages/Mail.jsx'
 import History from '../pages/History.jsx'
 import Settings from '../pages/Settings.jsx'
+import Tasks from '../pages/Tasks.jsx'
 import StatusStrip from '../components/StatusStrip.jsx'
 import TodayTimelineStrip from '../components/TodayTimelineStrip.jsx'
 import RecentActions from '../components/RecentActions.jsx'
@@ -29,6 +30,7 @@ const TABS = [
   { path: '/nutrition', ru: 'Питание', en: 'Nutrition' },
   ...(MAIL_ENABLED ? [{ path: '/mail', ru: 'Письма', en: 'Mail' }] : []),
   ...(HISTORY_ENABLED ? [{ path: '/history', ru: 'История', en: 'History' }] : []),
+  { path: '/tasks', ru: 'Задачи', en: 'Tasks' },
   { path: '/settings', ru: 'Настройки', en: 'Settings' },
 ]
 
@@ -112,6 +114,7 @@ export default function CommandShell() {
             <Route path="/mail" element={MAIL_ENABLED ? <MailPage /> : <Navigate to="/" replace />} />
             <Route path="/history" element={HISTORY_ENABLED ? <History /> : <Navigate to="/" replace />} />
             <Route path="/connections" element={<Navigate to="/settings" replace />} />
+            <Route path="/tasks" element={<Tasks />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

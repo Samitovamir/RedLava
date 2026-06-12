@@ -48,12 +48,15 @@ export function installAuthFetch() {
 
     const headers = new Headers(init.headers || (typeof input !== 'string' && input.headers) || {})
     const token = getToken()
-    if (token) headers.set('Authorization', 'Bearer ' + token)
+    // НЕ перетираем Authorization, если вызывающий уже задал свой (приложение помощника
+    // /tasks/h шлёт собственный PIN-токен сессии — его нельзя подменять токеном владельца).
+    if (token && !headers.has('Authorization')) headers.set('Authorization', 'Bearer ' + token)
     headers.set('X-Device-Id', getDeviceId())
 
     const res = await orig(input, { ...init, headers })
-    // Токен протух / неверный — кроме самих эндпоинтов входа
-    if (res.status === 401 && !url.includes('/api/auth/')) {
+    // Токен протух / неверный — кроме самих эндпоинтов входа и задач помощника
+    // (у /api/tasks своя PIN-авторизация; её 401 не должен разлогинивать дашборд владельца).
+    if (res.status === 401 && !url.includes('/api/auth/') && !url.includes('/api/tasks/')) {
       clearToken()
       window.dispatchEvent(new Event('albert-unauthorized'))
     }

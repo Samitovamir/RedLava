@@ -583,6 +583,8 @@ body::after {
   --cat-lab-inflammation: var(--status-warn); --cat-lab-coagulation: var(--c-rose); --cat-lab-infections: var(--status-crit); --cat-lab-other: var(--c-neutral);
   /* приёмы пищи */
   --cat-meal-breakfast: var(--c-amber); --cat-meal-lunch: var(--c-sage); --cat-meal-snack: var(--c-rose); --cat-meal-dinner: var(--c-steel);
+  /* помощники (задачи по дому) — цвет адаптируется к теме через общую палитру */
+  --cat-helper-vika: var(--c-rose); --cat-helper-yan: var(--c-steel); --cat-helper-sergey: var(--c-sage); --cat-helper-farhad: var(--c-amber);
 }
 
 /* ===== ПРИМИТИВЫ (.ds-*) — единый источник правды для атомов ===== */

@@ -15,6 +15,8 @@ import {
   AlertTriangle, Circle,
   // интерфейс / ИИ
   Sparkles, Brain, Globe, Settings, X, Check, Bot, Lock, UtensilsCrossed,
+  // задачи по дому
+  CheckSquare,
 } from 'lucide-react'
 
 export const ICONS = {
@@ -67,4 +69,7 @@ export const ICONS = {
   nutrition: UtensilsCrossed,
   health: Heart,
   nap: Sun,
+  // задачи по дому
+  tasks: CheckSquare,
+  helper: Users,
 }

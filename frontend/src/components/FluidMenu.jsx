@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Home, CalendarDays, HeartPulse, UtensilsCrossed, Mail, History as HistoryIcon,
-  Settings, MoreHorizontal,
+  Settings, MoreHorizontal, CheckSquare,
 } from 'lucide-react'
 import { useLang } from '../context/LanguageContext.jsx'
 import { MAIL_ENABLED, HISTORY_ENABLED } from '../config/features.js'
@@ -25,13 +25,15 @@ const ITEMS = [
   { path: '/schedule', ru: 'Расписание', en: 'Schedule', Ico: CalendarDays },
   { path: '/health', ru: 'Здоровье', en: 'Health', Ico: HeartPulse },
   { path: '/nutrition', ru: 'Питание', en: 'Nutrition', Ico: UtensilsCrossed },
+  { path: '/tasks', ru: 'Задачи', en: 'Tasks', Ico: CheckSquare },
   ...(MAIL_ENABLED ? [{ path: '/mail', ru: 'Письма', en: 'Mail', Ico: Mail }] : []),
   ...(HISTORY_ENABLED ? [{ path: '/history', ru: 'История', en: 'History', Ico: HistoryIcon }] : []),
 ]
 const SETTINGS_ITEM = { path: '/settings', ru: 'Настройки', en: 'Settings', Ico: Settings }
-const TAB_ITEMS = ITEMS.slice(0, 4)            // в нижней панели
+// Нижняя панель: 5 главных вкладок (Главная, Расписание, Здоровье, Питание, Задачи).
+const TAB_ITEMS = ITEMS.slice(0, 5)
 // Лист «Ещё» — только для неосновных разделов (если включены). Пусто → «Ещё» не рендерится.
-const MORE_ITEMS = ITEMS.slice(4)
+const MORE_ITEMS = ITEMS.slice(5)
 
 const PIN_KEY = 'albert-nav-pinned'
 

@@ -7,6 +7,7 @@ import Nutrition from '../pages/Nutrition.jsx'
 import MailPage from '../pages/Mail.jsx'
 import History from '../pages/History.jsx'
 import Settings from '../pages/Settings.jsx'
+import Tasks from '../pages/Tasks.jsx'
 import JournalGlance from '../components/journal/JournalGlance.jsx'
 import { useLang } from '../context/LanguageContext.jsx'
 import { mskNow } from '../utils/time.js'
@@ -31,6 +32,7 @@ const CHAPTERS = [
   { id: 'nutrition', path: '/nutrition', ru: 'Питание', en: 'Nutrition', El: Nutrition },
   ...(MAIL_ENABLED ? [{ id: 'mail', path: '/mail', ru: 'Письма', en: 'Mail', El: MailPage }] : []),
   ...(HISTORY_ENABLED ? [{ id: 'history', path: '/history', ru: 'История', en: 'History', El: History }] : []),
+  { id: 'tasks', path: '/tasks', ru: 'Задачи', en: 'Tasks', El: Tasks },
   { id: 'settings', path: '/settings', ru: 'Настройки', en: 'Settings', El: Settings },
 ]
 
