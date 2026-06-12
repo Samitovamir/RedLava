@@ -5,7 +5,6 @@ import { variants } from './motion.js'
 import FluidMenu from './components/FluidMenu.jsx'
 import MailModal from './components/MailModal.jsx'
 import DemoBanner from './components/DemoBanner.jsx'
-import NavGuide from './components/NavGuide.jsx'
 import CockpitShell from './shells/CockpitShell.jsx'
 import JournalShell from './shells/JournalShell.jsx'
 import CommandShell from './shells/CommandShell.jsx'
@@ -137,7 +136,6 @@ export default function App() {
         <DemoBanner />
         <MailModal />
         <ShellRouter />
-        <NavGuide />
       </div>
     </BrowserRouter>
     </EventsProvider>
