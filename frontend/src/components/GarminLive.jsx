@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Button } from '../ui'
 import { motion } from 'framer-motion'
 import WorkoutModal from './WorkoutModal.jsx'
+import WheelTimePicker from './WheelTimePicker.jsx'
 import { useEvents } from '../context/EventsContext.jsx'
 import { isGuest } from '../api/authFetch.js'
 import { demoPlanned } from '../utils/demo.js'
@@ -155,6 +156,8 @@ export default function GarminLive({ embedded = false }) {
 
   const [g, setG] = useState(readLive)
   const [selected, setSelected] = useState(null)   // открытая тренировка (окно деталей)
+  const [pickW, setPickW] = useState(null)         // тренировка, для которой выбираем время колёсиком
+  const [pickTime, setPickTime] = useState('07:00')
 
   // Плановые тренировки (TrainingPeaks/Garmin) и какие уже добавлены в календарь
   const { events, applyAiActions } = useEvents()
@@ -169,7 +172,7 @@ export default function GarminLive({ embedded = false }) {
 
   const eventInput = (w, start, end) => ({
     name: 'create_event',
-    input: { type: 'meeting', title: w.title || t.defaultWorkout, date: w.date, start, end, who: t.defaultWorkout, priority: 2 }
+    input: { type: 'workout', title: w.title || t.defaultWorkout, date: w.date, start, end, who: t.defaultWorkout, priority: 2 }
   })
   // Уже есть такое событие в календаре? (защита от дублей, в т.ч. с другого устройства)
   const existsInCal = (date, start, title) =>
@@ -184,6 +187,22 @@ export default function GarminLive({ embedded = false }) {
       : proposeSlot(w.date, dur, events)
     if (!existsInCal(w.date, start, w.title)) applyAiActions([eventInput(w, start, end)])
     persistAdded({ ...added, [w.id]: { date: w.date, start, end } })
+  }
+
+  // Открыть колёсико времени: дефолт — время тренировки или предложенный утренний слот
+  function openPicker(w) {
+    if (added[w.id]) return
+    const dur = w.durationMin || 60
+    const start = w.time || proposeSlot(w.date, dur, events).start
+    setPickTime(start); setPickW(w)
+  }
+  // Добавить тренировку на выбранное колёсиком время (тип события — workout)
+  function scheduleWorkoutAt(w, start) {
+    const dur = w.durationMin || 60
+    const end = minToHm(hmToMin(start) + dur)
+    if (!existsInCal(w.date, start, w.title)) applyAiActions([eventInput(w, start, end)])
+    persistAdded({ ...added, [w.id]: { date: w.date, start, end } })
+    setPickW(null)
   }
 
   useEffect(() => {
@@ -313,7 +332,7 @@ export default function GarminLive({ embedded = false }) {
                   </div>
                   {info
                     ? <span className="gl-added">{t.inCal}{info.start ? `, ${info.start}` : ''}</span>
-                    : <Button variant="primary" size="sm" onClick={() => scheduleWorkout(w)}>
+                    : <Button variant="primary" size="sm" onClick={() => openPicker(w)}>
                         {t.toCal}
                       </Button>}
                 </div>
@@ -323,6 +342,47 @@ export default function GarminLive({ embedded = false }) {
           <div className="gl-planned-note muted">{t.plannedNote}</div>
           </>))}
         </motion.div>
+
+      {pickW && (
+        <div className="gl-pick-backdrop" onClick={() => setPickW(null)}>
+          <motion.div
+            className="card gl-pick-sheet"
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: 'spring', stiffness: 420, damping: 34 }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="gl-pick-title">{lang === 'en' ? 'Workout time' : 'Время тренировки'}</div>
+            <div className="gl-pick-name muted">{pickL(pickW, 'title')} · {fmtDate(pickW.date, months)}</div>
+            <WheelTimePicker value={pickTime} onChange={setPickTime} minuteStep={5} />
+            <div className="gl-pick-actions">
+              <button className="gl-pick-cancel" onClick={() => setPickW(null)}>{lang === 'en' ? 'Cancel' : 'Отмена'}</button>
+              <Button variant="primary" onClick={() => scheduleWorkoutAt(pickW, pickTime)}>{lang === 'en' ? 'Done' : 'Готово'}</Button>
+            </div>
+            <style>{`
+              .gl-pick-backdrop {
+                position: fixed; inset: 0; z-index: 400;
+                display: flex; align-items: center; justify-content: center; padding: 20px;
+                background: var(--scrim, rgba(0,0,0,0.55));
+                backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+              }
+              .gl-pick-sheet { width: min(360px, 100%); display: flex; flex-direction: column; gap: 14px; align-items: center; padding: 22px; }
+              .gl-pick-title { font-size: 17px; font-weight: 700; color: var(--text-primary); align-self: flex-start; }
+              .gl-pick-name { font-size: 13px; align-self: flex-start; margin-top: -8px; }
+              .gl-pick-actions { display: flex; gap: 10px; align-items: center; justify-content: flex-end; width: 100%; margin-top: 4px; }
+              .gl-pick-cancel {
+                border: 1px solid var(--border-med); background: var(--bg-tile); color: var(--text-secondary);
+                border-radius: var(--radius-md); padding: 10px 16px; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+              }
+              .gl-pick-cancel:hover { color: var(--text-body); border-color: var(--accent); }
+              @media (max-width: 640px) {
+                .gl-pick-backdrop { align-items: flex-end; padding: 0; }
+                .gl-pick-sheet { width: 100%; border-radius: var(--radius) var(--radius) 0 0; padding-bottom: max(22px, env(safe-area-inset-bottom)); }
+              }
+            `}</style>
+          </motion.div>
+        </div>
+      )}
 
       <motion.div className="card gl-list-card"
         initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.16 }}>
