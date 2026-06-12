@@ -213,6 +213,12 @@ h1, h2, h3 { letter-spacing: -0.015em; }
   overflow: hidden;
 }
 
+/* Приложение помощника (/tasks/h) рендерится прямо в #root, без дашбордовского
+   .page-content со своим скроллом. Базовые overflow:hidden + фикс-высота обрезали бы
+   длинный список задач — поэтому возвращаем прокрутку самому документу на любой ширине. */
+html[data-helper], html[data-helper] body { height: auto; min-height: 100%; overflow: visible; }
+html[data-helper] #root { display: block; height: auto; min-height: 100dvh; overflow: visible; }
+
 .main-layout {
   display: flex;
   width: 100%;

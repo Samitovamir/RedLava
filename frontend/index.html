@@ -27,12 +27,32 @@
       /* Запущено «с экрана Домой» (standalone): нет панели Safari снизу — помечаем,
          чтобы нижнее меню доковалось к краю и не висело над чёрной зоной жеста. */
       try { if (navigator.standalone || matchMedia('(display-mode: standalone)').matches) document.documentElement.setAttribute('data-standalone', '') } catch (e) {}
+      /* Манифест PWA выбираем СИНХРОННО здесь, до того как Safari его прочитает: на странице
+         помощника (/tasks/h) — личный манифест (start_url = его ссылка), иначе — дашборда.
+         Раньше манифест подменялся из React (useEffect) слишком поздно: iOS успевал взять
+         дашбордовский (start_url '/'), и установленное приложение помощника открывало вход
+         владельца вместо PIN-экрана. */
+      try {
+        var isHelper = location.pathname.indexOf('/tasks/h') === 0;
+        var mf = document.createElement('link');
+        mf.setAttribute('rel', 'manifest');
+        if (isHelper) {
+          var slug = new URLSearchParams(location.search).get('u') || '';
+          mf.setAttribute('href', '/api/tasks/manifest?u=' + encodeURIComponent(slug));
+          var ti = document.createElement('meta');
+          ti.setAttribute('name', 'apple-mobile-web-app-title');
+          ti.setAttribute('content', 'Задачи');
+          document.head.appendChild(ti);
+        } else {
+          mf.setAttribute('href', '/manifest.json');
+        }
+        document.head.appendChild(mf);
+      } catch (e) {}
     </script>
     <!-- Favicon: монограмма AS (как и иконка приложения) -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <!-- Иконка приложения на экране «Домой»: монограмма AS (владелец Самитов) -->
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-    <link rel="manifest" href="/manifest.json" />
     <!-- viewport-fit=cover: контент во весь экран, под Dynamic Island/«чёлку» (без полей-рамки) -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <!-- На домашнем экране (PWA): полноэкранно, статус-бар поверх контента -->
