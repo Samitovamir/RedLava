@@ -1,6 +1,4 @@
-import { useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
 import AIWorkZone from '../components/AIWorkZone.jsx'
 import DaySchedule from '../components/DaySchedule.jsx'
 import DaySummary from '../components/DaySummary.jsx'
@@ -12,7 +10,6 @@ import NutritionHomeCard from '../components/NutritionHomeCard.jsx'
 import TodaySignal from '../components/TodaySignal.jsx'
 import { useLayout } from '../layout.js'
 import { getQuoteOfDay } from '../utils/quotes.js'
-import { useEvents } from '../context/EventsContext.jsx'
 import { useT, useLang } from '../context/LanguageContext.jsx'
 import { mskNow } from '../utils/time.js'
 
@@ -34,37 +31,12 @@ function formatDate(t) {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
-const ICON_CAL = (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-    <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-  </svg>
-)
 const ICON_GEAR = (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <circle cx="12" cy="12" r="3"/>
     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
   </svg>
 )
-
-// Ближайшее (или текущее) событие из расписания
-function nextEvent(events) {
-  const now = mskNow(); const p = n => String(n).padStart(2, '0')
-  const nowKey = `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())} ${p(now.getHours())}:${p(now.getMinutes())}`
-  return [...events].sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start))
-    .find(e => `${e.date} ${e.end || e.start}` >= nowKey) || null
-}
-
-function humanDate(dateStr, t) {
-  const p = n => String(n).padStart(2, '0'); const d0 = mskNow()
-  const today = `${d0.getFullYear()}-${p(d0.getMonth() + 1)}-${p(d0.getDate())}`
-  const tm = new Date(d0); tm.setDate(d0.getDate() + 1)
-  const tomorrow = `${tm.getFullYear()}-${p(tm.getMonth() + 1)}-${p(tm.getDate())}`
-  if (dateStr === today) return t.today
-  if (dateStr === tomorrow) return t.tomorrow
-  const [, m, dd] = dateStr.split('-')
-  const months = t.months
-  return `${Number(dd)} ${months[Number(m) - 1]}`
-}
 
 export default function Home() {
   const t = useT({
@@ -73,47 +45,17 @@ export default function Home() {
       greetName: ', владелец',
       days: ['воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота'],
       months: ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'],
-      today: 'сегодня', tomorrow: 'завтра',
-      scheduleTitle: 'Расписание', noEvents: 'Нет событий', soon: 'на ближайшее время',
-      connectCalendar: 'Подключите Google Календарь',
     },
     en: {
       greetMorning: 'Good morning', greetDay: 'Good afternoon', greetEvening: 'Good evening', greetNight: 'Good night',
       greetName: ', Owner',
       days: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
       months: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
-      today: 'today', tomorrow: 'tomorrow',
-      scheduleTitle: 'Schedule', noEvents: 'No events', soon: 'for the near future',
-      connectCalendar: 'Connect Google Calendar',
     },
   })
-  const scheduleRef = useRef(null)
   const navigate = useNavigate()
   const { lang } = useLang()
-  // Английский вариант текста демо-данных, если он есть; иначе исходный (русский)
-  const pick = (o, f) => (lang === 'en' && o && o[f + 'En']) ? o[f + 'En'] : (o ? o[f] : '')
   const quote = getQuoteOfDay()
-  const { events, setFocusSignal } = useEvents()
-
-  // Карточки только из реальных данных (иначе — «Подключите …», без выдумок)
-  const nextEv = nextEvent(events)
-  // Иконки парных карточек «Расписание» и «Здоровье» держим в едином нейтральном
-  // цвете (var(--muted)) — без скачков по палитре. Семантику загруженности дня
-  // не теряем: она остаётся в самом тексте/разделе «Расписание».
-  const iconColor = 'var(--muted)'
-  const nowK = mskNow(); const pad = n => String(n).padStart(2, '0')
-  const todayKey = `${nowK.getFullYear()}-${pad(nowK.getMonth() + 1)}-${pad(nowK.getDate())}`
-  // Клик по карточке расписания → /schedule и фокус календаря на дату/время события.
-  const goToEvent = () => {
-    if (nextEv) setFocusSignal({ date: nextEv.date, time: nextEv.start, n: Date.now() })
-    navigate('/schedule')
-  }
-  const cards = [
-    nextEv
-      ? { label: t.scheduleTitle, value: pick(nextEv, 'title'), sub: `${humanDate(nextEv.date, t)} · ${nextEv.start}`, color: iconColor, onClick: goToEvent, icon: ICON_CAL }
-      : { label: t.scheduleTitle, value: t.noEvents, sub: events.length ? t.soon : t.connectCalendar, color: iconColor, onClick: () => navigate(events.length ? '/schedule' : '/connections'), icon: ICON_CAL }
-  ]
-
 
   const dateStr = formatDate(t)
   const greetStr = `${getGreeting(t)}${t.greetName}`
@@ -123,21 +65,6 @@ export default function Home() {
   // Раскладка: в «Командном центре» Главная — компактный обзор центра экрана
   // (лента дня/статусы/помощник живут в постоянных панелях оболочки).
   const layout = useLayout()
-  const scheduleCardEls = cards.map((c) => (
-    <motion.div
-      key={c.label}
-      className={`card quick-card ${c.onClick ? 'clickable' : ''}`}
-      whileHover={{ y: -4 }}
-      onClick={c.onClick}
-    >
-      <div className="quick-card-top">
-        <span className="quick-card-icon" style={{ color: c.color }}>{c.icon}</span>
-        <span className="quick-card-label">{c.label}</span>
-      </div>
-      <span className="quick-card-value">{c.value}</span>
-      <span className="quick-card-sub">{c.sub}</span>
-    </motion.div>
-  ))
 
   return (
     <div className="home-page">
@@ -182,7 +109,7 @@ export default function Home() {
         просто раскомментировав. Сетку (.home-grid / .quick-cards) пока не трогаем.
 
         <HealthBrief />            — «Коротко о здоровье»
-        <div className="home-grid" ref={scheduleRef} style={{ scrollMarginTop: 16 }}>
+        <div className="home-grid">
           <DaySchedule />          — календарь дня
           <DaySummary />           — «Сводка дня»
         </div>
