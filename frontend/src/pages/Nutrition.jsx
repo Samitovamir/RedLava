@@ -49,7 +49,6 @@ export default function Nutrition() {
       // Заголовок страницы
       title: 'Питание',
       subtitle: 'Фото-дневник · советник · подбор блюд',
-      tabDiary: 'Дневник', tabMenu: 'Меню',
       prefsBtn: 'Настроить предпочтения',
       // Карточка цели
       goalFor: 'Цель на',
@@ -158,7 +157,6 @@ export default function Nutrition() {
     en: {
       title: 'Nutrition',
       subtitle: 'Photo diary · advisor · dish picks',
-      tabDiary: 'Diary', tabMenu: 'Menu',
       prefsBtn: 'Set preferences',
       goalFor: 'Goal for',
       today: 'today',
@@ -258,11 +256,8 @@ export default function Nutrition() {
   const [selectedDay, setSelectedDay] = useState(mskDateKey())
   const [plan, setPlan] = useState(loadPlan)
   const location = useLocation()
-  // Вкладки раздела: «Дневник» (фотолог, по умолчанию) и «Меню» (планировщик).
-  // С Главной приходит autoSuggest/openDish/tab:'menu' → открываем «Меню».
-  const [tab, setTab] = useState(
-    location.state?.tab === 'menu' || location.state?.autoSuggest || location.state?.openDish ? 'menu' : 'diary'
-  )
+  // Раздел «Питание» — единый экран: фото-дневник + советник + подбор блюд (без вкладок).
+  // С Главной приходит autoSuggest/openDish → подбираем нужный приём прямо здесь.
 
   // Живые данные Garmin/Whoop (App.jsx кладёт их в localStorage асинхронно — перечитываем чуть позже)
   const [garmin, setGarmin] = useState(loadGarmin)
@@ -311,19 +306,17 @@ export default function Nutrition() {
     else setRate(null)
   }, [plan])
 
-  // Переход из окна «Питание» на Главной (всегда вкладка «Меню»):
+  // Переход из окна «Питание» на Главной (единый экран раздела):
   //  • state.openDish — тап по конкретному блюду → сразу открываем ЕГО детали (рецепт/«в меню»);
   //  • state.autoSuggest — «другие блюда» → открываем окно подбора СРАЗУ (видна загрузка) и подбираем.
   useEffect(() => {
     const st = location.state
     if (!st) return
     if (st.openDish && MEAL_KEYS.includes(st.mealType)) {
-      setTab('menu')
       setMealType(st.mealType)
       if (st.openImage) setImages(prev => ({ ...prev, [st.openDish.name]: st.openImage }))
       openSuggestDetail(st.openDish, st.mealType)
     } else if (st.autoSuggest && MEAL_KEYS.includes(st.autoSuggest)) {
-      setTab('menu')
       setMealType(st.autoSuggest)
       setResultsOpen(true)
       suggestMeals(st.autoSuggest, COMPONENT_DEFAULTS[st.autoSuggest] || ['Основное'])
@@ -604,16 +597,9 @@ export default function Nutrition() {
         subtitle={t.subtitle}
       />
 
-      <div className="nu-tabs" role="tablist">
-        <button className={`nu-tab ${tab === 'diary' ? 'active' : ''}`} onClick={() => setTab('diary')}>{t.tabDiary}</button>
-        <button className={`nu-tab ${tab === 'menu' ? 'active' : ''}`} onClick={() => setTab('menu')}>{t.tabMenu}</button>
-      </div>
+      {/* Единый экран раздела: фото-дневник → советник → подбор блюд по приёмам */}
+      <DiaryTab target={target} eaten={eaten} remaining={remaining} plan={plan} intake={intake} setIntake={setIntake} selectedDay={selectedDay} selectDay={selectDay} week={week} profile={profile} flash={flash} />
 
-      {tab === 'diary' && (
-        <DiaryTab target={target} eaten={eaten} remaining={remaining} plan={plan} intake={intake} setIntake={setIntake} selectedDay={selectedDay} selectDay={selectDay} week={week} profile={profile} flash={flash} />
-      )}
-
-      {tab === 'menu' && (<>
       {/* Окно-советник: что есть в целом + к ближайшему приёму (по времени, с учётом съеденного) */}
       <MealAdvisor target={target} eaten={eaten} remaining={remaining} intake={intake} selectedDay={selectedDay} />
 
@@ -644,7 +630,6 @@ export default function Nutrition() {
           <div className="nu-empty muted">{mealsMsg}</div>
         </motion.div>
       )}
-      </>)}
 
       {/* Окно с подобранными блюдами */}
       <AnimatePresence>
