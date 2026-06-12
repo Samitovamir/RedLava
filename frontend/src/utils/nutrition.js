@@ -63,6 +63,16 @@ export const MEALS = [
 ]
 export const MEAL_KEYS = MEALS.map(m => m.key)
 
+// Текущий приём пищи по времени суток (МСК). Пороги: <11 завтрак, <15:30 обед, <18:30 перекус, иначе ужин.
+export function currentMeal() {
+  const now = mskNow()
+  const h = now.getHours() + now.getMinutes() / 60
+  if (h < 11) return 'Завтрак'
+  if (h < 15.5) return 'Обед'
+  if (h < 18.5) return 'Перекус'
+  return 'Ужин'
+}
+
 export function mealTarget(dayTarget, share) {
   return {
     kcal: Math.round(dayTarget.kcal * share / 10) * 10,

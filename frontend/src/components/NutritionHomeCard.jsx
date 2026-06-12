@@ -6,7 +6,8 @@ import { useAiSummary } from '../hooks/useAiSummary.js'
 import { useSiteSnapshot } from '../hooks/useSiteSnapshot.js'
 import { loadProfile, computeTarget, mealTarget, loadPrefs, MEALS } from '../utils/nutrition.js'
 import { nutritionHealthBrief } from '../utils/siteSnapshot.js'
-import { mskNow, mskDateKey } from '../utils/time.js'
+import { mskDateKey } from '../utils/time.js'
+import { useCurrentMeal } from '../hooks/useCurrentMeal.js'
 
 /*
   Окно «Питание» на Главной: обзор диеты + ОДНО блюдо под ТЕКУЩИЙ приём пищи (с учётом всех
@@ -18,16 +19,6 @@ import { mskNow, mskDateKey } from '../utils/time.js'
 const HOME_DISH_KEY = 'albert-home-dish'
 const HOME_RECENT_KEY = 'albert-home-recent'   // недавние блюда — чтобы не повторять (не «всегда курица»)
 const MEAL_EN = { 'Завтрак': 'Breakfast', 'Обед': 'Lunch', 'Перекус': 'Snack', 'Ужин': 'Dinner' }
-
-// Текущий приём пищи по часу (пороги между ориентирами MEALS: 9 / 14 / 17 / 20)
-function currentMeal() {
-  const now = mskNow()
-  const h = now.getHours() + now.getMinutes() / 60
-  if (h < 11) return 'Завтрак'
-  if (h < 15.5) return 'Обед'
-  if (h < 18.5) return 'Перекус'
-  return 'Ужин'
-}
 
 const NUT_CONTEXT =
   'Ты помощник владельца по питанию. По его данным (цель КБЖУ, тренировки, восстановление, анализы) ' +
@@ -43,7 +34,7 @@ export default function NutritionHomeCard() {
     en: { label: 'Nutrition', loading: 'Finding a dish…', empty: 'Connect AI to suggest dishes', more: 'See other dishes', kcal: 'kcal' },
   })
   const snapshot = useSiteSnapshot()
-  const mealType = currentMeal()
+  const mealType = useCurrentMeal()
   const mealName = lang === 'en' ? (MEAL_EN[mealType] || mealType) : mealType
 
   const [dish, setDish] = useState(null)

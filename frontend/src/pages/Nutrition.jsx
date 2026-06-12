@@ -9,7 +9,7 @@ import Icon from '../ui/Icon.jsx'
 import MicButton from '../components/MicButton.jsx'
 import {
   loadProfile, saveProfile, computeTarget, GOALS,
-  MEALS, MEAL_KEYS, mealTarget,
+  MEALS, MEAL_KEYS, mealTarget, currentMeal,
   loadPrefs, savePrefs, DEFAULT_PREFS, CUISINES, rememberDish,
   loadPlan, savePlan, setPlanMeal, clearPlanMeal, rateMeal, weekDays, dayPlanned, pendingRating,
   loadShopping, saveShopping, addToShopping, formatProduct,
@@ -22,6 +22,7 @@ import { useT } from '../context/LanguageContext.jsx'
 import { useLocation } from 'react-router-dom'
 import { nutritionHealthBrief } from '../utils/siteSnapshot.js'
 import DiaryTab from '../components/diary/DiaryTab.jsx'
+import MealAdvisor from '../components/diary/MealAdvisor.jsx'
 
 const FOODS = [
   ['pork', 'Свинина'], ['beef', 'Говядина'], ['chicken', 'Курица'], ['fish', 'Рыба'],
@@ -47,7 +48,7 @@ export default function Nutrition() {
     ru: {
       // Заголовок страницы
       title: 'Питание',
-      subtitle: 'Меню на неделю · подбор под цель · покупки',
+      subtitle: 'Фото-дневник · советник · подбор блюд',
       tabDiary: 'Дневник', tabMenu: 'Меню',
       prefsBtn: 'Настроить предпочтения',
       // Карточка цели
@@ -156,7 +157,7 @@ export default function Nutrition() {
     },
     en: {
       title: 'Nutrition',
-      subtitle: 'Weekly menu · goal-based picks · groceries',
+      subtitle: 'Photo diary · advisor · dish picks',
       tabDiary: 'Diary', tabMenu: 'Menu',
       prefsBtn: 'Set preferences',
       goalFor: 'Goal for',
@@ -275,7 +276,7 @@ export default function Nutrition() {
   const [prefsOpen, setPrefsOpen] = useState(false)
   const [prefsDraft, setPrefsDraft] = useState(prefs)
 
-  const [mealType, setMealType] = useState('Обед')
+  const [mealType, setMealType] = useState(currentMeal)
   const [note, setNote] = useState('')
   const [meals, setMeals] = useState([])
   const [mealsMsg, setMealsMsg] = useState('')
@@ -601,9 +602,6 @@ export default function Nutrition() {
       <SectionHeader
         title={t.title}
         subtitle={t.subtitle}
-        actions={(
-          <Button variant="subtle" iconLeft={SlidersHorizontal} onClick={openPrefs}>{t.prefsBtn}</Button>
-        )}
       />
 
       <div className="nu-tabs" role="tablist">
@@ -616,178 +614,36 @@ export default function Nutrition() {
       )}
 
       {tab === 'menu' && (<>
-      {/* Цель + профиль */}
-      <motion.div className="card nu-target" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
-        <div className="nu-head">
-          <div className="card-title" style={{ margin: 0 }}>{t.goalFor} {isToday ? t.today : dayLabel}</div>
-        </div>
-        <div className="nu-kpi">
-          <div className="nu-kpi-hero">
-            <span className="nu-kpi-num">{target.kcal}<span className="nu-kpi-unit"> {t.kcal}</span></span>
-            <span className="nu-kpi-lbl">{t.mCalories}</span>
-          </div>
-          <div className="nu-kpi-macros">
-            <div className="nu-kpi-macro">
-              <span className="nu-kpi-mval">{target.protein}<span className="nu-kpi-munit"> {t.g}</span></span>
-              <span className="nu-kpi-mlbl">{t.mProtein}</span>
-            </div>
-            <div className="nu-kpi-macro">
-              <span className="nu-kpi-mval">{target.fat}<span className="nu-kpi-munit"> {t.g}</span></span>
-              <span className="nu-kpi-mlbl">{t.mFat}</span>
-            </div>
-            <div className="nu-kpi-macro">
-              <span className="nu-kpi-mval">{target.carb}<span className="nu-kpi-munit"> {t.g}</span></span>
-              <span className="nu-kpi-mlbl">{t.mCarbs}</span>
-            </div>
-          </div>
-        </div>
+      {/* Окно-советник: что есть в целом + к ближайшему приёму (по времени, с учётом съеденного) */}
+      <MealAdvisor target={target} eaten={eaten} remaining={remaining} intake={intake} selectedDay={selectedDay} />
 
-        {/* Из чего сложилась цель */}
-        <div className="nu-breakdown">
-          <span className="nu-bd-chip">{t.bdBase} {target.base}</span>
-          {target.trainDelta > 0 && (
-            <span className="nu-bd-chip plus"><Footprints size={14} strokeWidth={1.5} /> {sgn(target.trainDelta)} · {t.bdTraining}</span>
-          )}
-          {garmin && target.trainDelta === 0 && <span className="nu-bd-chip"><Footprints size={14} strokeWidth={1.5} /> {t.bdRestDay}</span>}
-          {target.recDelta !== 0 && <span className="nu-bd-chip minus"><BedDouble size={14} strokeWidth={1.5} /> {sgn(target.recDelta)} {t.bdRecovery}</span>}
-          {target.carryDelta !== 0 && <span className={`nu-bd-chip ${target.carryDelta > 0 ? 'plus' : 'minus'}`}><RotateCcw size={14} strokeWidth={1.5} /> {sgn(target.carryDelta)} {t.bdCarry}</span>}
-          {!garmin && <span className="nu-bd-chip muted-chip">{t.bdNoGarmin}</span>}
-        </div>
-
-        {/* Съедено / осталось на день */}
-        {eaten > 0 && (
-          <div className="nu-progress">
-            <div className="nu-prog-bar"><div className="nu-prog-fill" style={{ width: `${Math.min(100, Math.round(eaten / target.kcal * 100))}%` }} /></div>
-            <div className="nu-prog-text muted">
-              {t.eaten}{eaten} · <b style={{ color: 'var(--foreground)' }}>{t.remaining}{remaining} {t.kcal}</b>
-              {intakeRec?.source === 'calai' && <span className="nu-intake-tag">{t.fromCalai}</span>}
-              {intakeRec && <button className="nu-intake-reset" onClick={resetIntake} title={t.resetDayTitle}>{t.resetDay}</button>}
-            </div>
-          </div>
-        )}
-
-        {/* Быстрые довески (полноценный учёт еды по фото — на вкладке «Дневник») */}
-        <div className="nu-intake-row">
-          {QUICK_ADD.filter(q => {
-            if (q.key.startsWith('coffee')) return q.key === 'coffee_' + prefs.coffee
-            if (q.key === 'protein_bar') return prefs.proteinBar
-            if (q.key === 'protein_shake') return prefs.proteinShake
-            return false
-          }).map(q => (
-            <button key={q.key} className="nu-quick" onClick={() => quickAdd(q)} title={`+${q.kcal} ${t.kcal}`}>+ {t.quick[q.label] || q.label}</button>
-          ))}
-        </div>
-
-        <div className="nu-meta">
-          <div className="nu-meta-metric">
-            <span className="nu-meta-lbl muted">{t.mBmr}</span>
-            <span className="nu-meta-val">≈{base.bmr}</span>
-          </div>
-          <div className="nu-meta-metric">
-            <span className="nu-meta-lbl muted">{t.mNeat}</span>
-            <span className="nu-meta-val">≈{base.neat}</span>
-          </div>
-          <div className="nu-meta-chips">
-            <span className="nu-meta-chip">{t.mGoal}: {(() => { const gl = GOALS.find(g => g.key === profile.goal)?.label; return (t.goals[gl] || gl || '').toLowerCase() })()}</span>
-            {target.recNote && <span className="nu-meta-chip">{target.recNote}</span>}
-          </div>
-        </div>
-      </motion.div>
-
-      {/* Меню недели */}
-      <motion.div ref={weekRef} className="card" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
-        <div className="card-title">{t.weekMenu}</div>
-        <div className="nu-week">
-          {week.map(d => {
-            const info = dayPlanned(plan, d.key)
-            return (
-              <button key={d.key} className={`nu-day ${d.key === selectedDay ? 'active' : ''} ${d.isToday ? 'today' : ''}`} onClick={() => selectDay(d.key)}>
-                <span className="nu-day-wd">{t.wd[d.wd] || d.wd}</span>
-                <span className="nu-day-num">{d.day}</span>
-                <span className="nu-day-dots">{MEAL_KEYS.map(k => <i key={k} className={plan[d.key]?.[k] ? 'on' : ''} />)}</span>
-              </button>
-            )
-          })}
-        </div>
-
-        <div className="nu-day-head">
-          <span className="nu-day-title">{dayLabel}{selDay?.isToday ? t.todaySuffix : ''}</span>
-          <span className="muted nu-day-kcal">{dayInfo.count > 0 ? `${t.chosenOf}${dayInfo.kcal}${t.ofTarget}${target.kcal} ${t.kcal}` : `${t.target}${target.kcal} ${t.kcal}`}</span>
-        </div>
-
+      {/* Подбор блюда по приёмам (по времени суток) */}
+      <motion.div className="card" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
         <div className="nu-slots">
           {MEALS.map(m => {
-            const dish = plan[selectedDay]?.[m.key]
             const pm = mealTarget(target, m.share)
             const active = m.key === mealType
             return (
-              <div key={m.key} className={`nu-slot ${dish ? 'filled' : ''} ${active ? 'sel' : ''}`}>
+              <div key={m.key} className={`nu-slot ${active ? 'sel' : ''}`}>
                 <div className="nu-slot-head">
                   <span className="nu-slot-name"><MealIcon mealKey={m.key} /> {t.meals[m.key] || m.key}</span>
                   <span className="nu-slot-target muted">{t.mealApprox}{pm.kcal} {t.kcal}</span>
                 </div>
-                {dish ? (
-                  <>
-                    <button className="nu-slot-dish" onClick={() => openPlannedDetail(selectedDay, m.key)}>
-                      {dish.imageUrl && <div className="nu-slot-img" style={{ backgroundImage: `url(${dish.imageUrl})` }} />}
-                      <span className="nu-slot-dish-name">{dish.name}</span>
-                      <span className="nu-slot-dish-macros muted">{dish.kcal} {t.kcal} · {t.bMacro}{dish.protein} {t.fMacro}{dish.fat} {t.uMacro}{dish.carb}</span>
-                      {dish.rated && <span className={`nu-slot-rated ${dish.rating}`}>{dish.rating === 'up' ? <ThumbsUp size={13} strokeWidth={1.5} /> : <ThumbsDown size={13} strokeWidth={1.5} />} {dish.rating === 'up' ? t.liked : t.disliked}</span>}
-                    </button>
-                    <button className="nu-slot-cancel" onClick={() => removePlannedSlot(selectedDay, m.key)}>{t.cancelChoice}</button>
-                  </>
-                ) : (
-                  <button className="nu-slot-empty" onClick={() => pickSlot(m.key)} disabled={loadingMeals}>
-                    {loadingMeals && active ? t.picking : t.pickBtn}
-                  </button>
-                )}
+                <button className="nu-slot-empty" onClick={() => pickSlot(m.key)} disabled={loadingMeals}>
+                  {loadingMeals && active ? t.picking : t.pickBtn}
+                </button>
               </div>
             )
           })}
         </div>
       </motion.div>
 
-      {/* Если подбор не дал результата — короткое сообщение под слотами */}
+      {/* Если подбор не дал результата — короткое сообщение */}
       {!loadingMeals && mealsMsg && (
         <motion.div className="card nu-msg-card" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
           <div className="nu-empty muted">{mealsMsg}</div>
         </motion.div>
       )}
-
-      {/* Список покупок */}
-      <motion.div className="card nu-shop" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-        <div className="nu-head">
-          <div className="card-title" style={{ margin: 0 }}>{t.shopTitle}</div>
-          {shopping.items.length > 0 && <button className="nu-edit" onClick={clearShopping}>{t.clear}</button>}
-        </div>
-        {shopping.items.length === 0 ? (
-          <div className="nu-shop-empty">
-            <span className="nu-shop-empty-icon"><ShoppingCart size={28} strokeWidth={1.5} /></span>
-            <div className="nu-shop-empty-title">{t.shopEmptyTitle}</div>
-            <div className="nu-shop-empty-text muted">{t.shopEmptyText}</div>
-            <button className="nu-shop-empty-cta" onClick={() => weekRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>{t.shopEmptyCta}</button>
-          </div>
-        ) : (
-          <>
-            <div className="nu-shop-hint muted">{t.shopHint}</div>
-            <div className="nu-shop-list">
-              {shopping.items.map((it, i) => {
-                const recent = recentlyBought(pantry, it.name)
-                return (
-                  <div key={i} className="nu-shop-item">
-                    <span className="nu-shop-name">{it.name}{recent && <span className="nu-recent" title={t.recentTitle}>{t.recentBought}</span>}</span>
-                    <span className="nu-shop-qty muted">{formatProduct(it)}</span>
-                    <button className="nu-shop-del" onClick={() => removeShoppingItem(i)} title={t.removeItem}>×</button>
-                  </div>
-                )
-              })}
-            </div>
-            <button className="nu-send" disabled title={t.sendDriverTitle}>
-              {t.sendDriver}
-            </button>
-          </>
-        )}
-      </motion.div>
       </>)}
 
       {/* Окно с подобранными блюдами */}
@@ -817,6 +673,7 @@ export default function Nutrition() {
                   {loadingMeals ? t.picking : t.pickAgain}
                 </button>
               </div>
+              <button className="nu-prefs-inline" onClick={openPrefs}><SlidersHorizontal size={15} strokeWidth={1.5} /> {t.prefsBtn}</button>
               <div className="nu-meal-list">
                 {loadingMeals && !meals.length && <div className="nu-meals-state muted">{t.picking}</div>}
                 {!loadingMeals && !meals.length && mealsMsg && <div className="nu-meals-state muted">{mealsMsg}</div>}
@@ -839,9 +696,6 @@ export default function Nutrition() {
                       </div>
                       {m.tags?.length > 0 && <div className="nu-tags">{m.tags.map(tag => <span key={tag} className="nu-tag">{tag}</span>)}</div>}
                       <div className="nu-card-actions">
-                        <button className="nu-kitchen-card" onClick={() => quickKitchen(m)} disabled={kitchenBusy === m.name}>
-                          <ShoppingCart size={15} strokeWidth={1.5} />{kitchenBusy === m.name ? t.adding : t.toKitchenCard}
-                        </button>
                         <button className="nu-recipe-btn" onClick={() => openSuggestDetail(m)}>{t.more}</button>
                       </div>
                     </motion.div>
@@ -909,13 +763,6 @@ export default function Nutrition() {
                   )}
                 </div>
               ))}
-              <div className="nu-modal-actions">
-                {detail.source === 'suggest' ? (
-                  <button className="nu-suggest nu-kitchen" onClick={toKitchen}><ShoppingCart size={16} strokeWidth={1.5} />{t.toKitchen}{detailLoading ? t.recipeWillFinish : ''}</button>
-                ) : (
-                  <button className="nu-remove" onClick={removePlanned}>{t.cancelChoice}</button>
-                )}
-              </div>
             </motion.div>
           </div>
         )}
@@ -1229,8 +1076,10 @@ export default function Nutrition() {
         .nu-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.55); backdrop-filter: blur(3px); z-index: 500; display: flex; align-items: center; justify-content: center; padding: 24px; }
         .nu-modal { width: 100%; max-width: 560px; max-height: 88vh; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
         .nu-modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-        .nu-modal-head h3 { font-size: 19px; font-weight: 700; color: var(--foreground); }
-        .nu-modal-sub { font-size: 13px; margin-top: -6px; }
+        .nu-modal-head h3 { font-size: 19px; font-weight: 700; color: var(--foreground); margin: 0; }
+        .nu-modal-sub { font-size: 13px; margin-top: 3px; }
+        .nu-prefs-inline { align-self: flex-start; display: inline-flex; align-items: center; gap: 7px; padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-med); background: var(--bg-tile); color: var(--text-secondary); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: color .15s, border-color .15s; }
+        .nu-prefs-inline:hover { color: var(--text-primary); border-color: var(--accent); }
         .nu-modal-img-wrap { display: flex; flex-direction: column; gap: 5px; }
         .nu-modal-img { height: 200px; border-radius: var(--radius-md); background-size: cover; background-position: center; background-color: var(--bg-tile); }
         .nu-credit { font-size: 11.5px; }
