@@ -8,6 +8,7 @@ import HealthBrief from '../components/HealthBrief.jsx'
 import HealthSignal from '../components/HealthSignal.jsx'
 import SportSignal from '../components/SportSignal.jsx'
 import DayAgenda from '../components/DayAgenda.jsx'
+import NutritionHomeCard from '../components/NutritionHomeCard.jsx'
 import TodaySignal from '../components/TodaySignal.jsx'
 import { useLayout } from '../layout.js'
 import { getQuoteOfDay } from '../utils/quotes.js'
@@ -160,6 +161,7 @@ export default function Home() {
           <DayAgenda />
           <SportSignal />
           <HealthSignal />
+          <NutritionHomeCard />
         </div>
       ) : (
         <>
@@ -167,6 +169,7 @@ export default function Home() {
             <DayAgenda />
             <SportSignal />
             <HealthSignal />
+            <NutritionHomeCard />
           </div>
 
           <AIWorkZone />
@@ -249,6 +252,7 @@ export default function Home() {
           align-items: start;
         }
         .home-cards > .day-agenda { grid-column: 1 / -1; }
+        .home-cards > .nutrition-home { grid-column: 1 / -1; }
         .quick-card {
           display: flex;
           flex-direction: column;

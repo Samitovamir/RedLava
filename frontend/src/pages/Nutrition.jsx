@@ -19,6 +19,8 @@ import {
 } from '../utils/nutrition.js'
 import { mskDateKey } from '../utils/time.js'
 import { useT } from '../context/LanguageContext.jsx'
+import { useLocation } from 'react-router-dom'
+import { nutritionHealthBrief } from '../utils/siteSnapshot.js'
 
 const FOODS = [
   ['pork', 'Свинина'], ['beef', 'Говядина'], ['chicken', 'Курица'], ['fish', 'Рыба'],
@@ -301,6 +303,14 @@ export default function Nutrition() {
     else setRate(null)
   }, [plan])
 
+  // Открыли из окна «Питание» на Главной (state.autoSuggest = приём) → сразу подобрать блюда
+  const location = useLocation()
+  useEffect(() => {
+    const mt = location.state?.autoSuggest
+    if (mt && MEAL_KEYS.includes(mt)) { setMealType(mt); suggestMeals(mt, COMPONENT_DEFAULTS[mt] || ['Основное']) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   function flash(msg) {
     setToast(msg)
     clearTimeout(toastTimer.current)
@@ -358,7 +368,7 @@ export default function Nutrition() {
     try {
       const res = await fetch('/api/nutrition/meals', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target: pm, mealType: mt, prefs, count: 5, note, components: comps }),
+        body: JSON.stringify({ target: pm, mealType: mt, prefs, count: 5, note, components: comps, health: nutritionHealthBrief() }),
         signal: ctrl.signal
       })
       const data = await res.json()
@@ -396,7 +406,7 @@ export default function Nutrition() {
     try {
       const res = await fetch('/api/nutrition/meals', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target: perMeal, mealType, prefs, count: 5, note, components, exclude: meals.map(m => m.name) }),
+        body: JSON.stringify({ target: perMeal, mealType, prefs, count: 5, note, components, exclude: meals.map(m => m.name), health: nutritionHealthBrief() }),
         signal: ctrl.signal
       })
       const data = await res.json()

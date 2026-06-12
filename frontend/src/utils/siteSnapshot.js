@@ -34,6 +34,30 @@ export function labsFlagged() {
   return { flagged, hasData: Object.keys(hist).length > 0 }
 }
 
+// Краткий бриф состояния для ПОДБОРА БЛЮД (анализы + восстановление + сегодняшняя тренировка +
+// стресс) — чтобы предложения еды опирались на актуальные данные, а не только на цель КБЖУ + вкусы.
+export function nutritionHealthBrief() {
+  const parts = []
+  try {
+    const { flagged, hasData } = labsFlagged()
+    if (hasData && flagged.length) parts.push(`Анализы вне нормы: ${flagged.join('; ')}. Учитывай это в еде (при высоком холестерине/ЛПНП — меньше насыщенных жиров, упор на рыбу/птицу/овощи).`)
+  } catch { /* ignore */ }
+  let whoop = null, garmin = null
+  try { const s = localStorage.getItem('albert-whoop-live'); if (s) whoop = JSON.parse(s) } catch { /* ignore */ }
+  try { const s = localStorage.getItem('albert-garmin-live'); if (s) garmin = JSON.parse(s) } catch { /* ignore */ }
+  if (whoop?.recovery != null) parts.push(`Восстановление сегодня ${whoop.recovery}%${whoop.sleep?.hoursSlept != null ? `, сон ${whoop.sleep.hoursSlept} ч` : ''}. При низком восстановлении/тяжёлой тренировке — больше белка и сложных углеводов для восстановления.`)
+  try {
+    const n = mskNow(); const p = x => String(x).padStart(2, '0')
+    const today = `${n.getFullYear()}-${p(n.getMonth() + 1)}-${p(n.getDate())}`
+    const todW = (garmin?.workouts || []).filter(w => w.date === today)
+    if (todW.length) parts.push(`Сегодня была тренировка (${todW.map(w => w.title || 'тренировка').join(', ')}) — поддержи восстановление.`)
+  } catch { /* ignore */ }
+  const st = garmin?.stress
+  const sv = st ? (st.current ?? st.avg) : null
+  if (sv != null && sv >= 60) parts.push(`Стресс сейчас высокий (${sv}/100) — лучше что-то полегче.`)
+  return parts.join(' ')
+}
+
 export function buildSiteSnapshot({ events = [], history = [], facts = [] } = {}) {
   const now = mskNow()
   const p = n => String(n).padStart(2, '0')

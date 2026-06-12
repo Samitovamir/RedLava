@@ -121,7 +121,7 @@ const RECIPE_TOOL = [{
 // Подобрать блюда под цель
 router.post('/meals', async (req, res) => {
   if (!process.env.ANTHROPIC_API_KEY) return res.json({ ok: false, message: 'Нет ключа ИИ', meals: [] })
-  const { target = {}, mealType = 'обед', prefs = null, likes = [], dislikes = [], count = 5, note = '', exclude = [], components = [] } = req.body || {}
+  const { target = {}, mealType = 'обед', prefs = null, likes = [], dislikes = [], count = 5, note = '', exclude = [], components = [], health = '' } = req.body || {}
   try {
     const client = getClient()
     const brief = prefsBrief(prefs)
@@ -141,6 +141,7 @@ router.post('/meals', async (req, res) => {
       (likes.length ? `Также любит: ${likes.join(', ')}. ` : '') +
       (dislikes.length ? `Также исключить: ${dislikes.join(', ')}. ` : '') +
       (note ? `Доп. пожелание на сейчас: ${note}. ` : '') +
+      (health ? `ТЕКУЩЕЕ СОСТОЯНИЕ ВЛАДЕЛЬЦА (обязательно учти при выборе блюд): ${health} ` : '') +
       (exclude.length ? `НЕ повторяй уже предложенные блюда: ${exclude.slice(-40).join(', ')}. Дай ДРУГИЕ варианты. ` : '') +
       `Блюда реальные, доступные в России, разнообразные, вкусные и полезные для спортсмена. ` +
       KITCHEN + ' ' +
