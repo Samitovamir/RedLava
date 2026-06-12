@@ -14,7 +14,7 @@ import { mskNow } from './time.js'
 const PRIO = { 1: 'неотложный', 2: 'важный', 3: 'обычный' }
 const WD = ['воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота']
 
-function labsFlagged() {
+export function labsFlagged() {
   let reports = INITIAL_REPORTS
   try { const s = localStorage.getItem('albert-labs'); if (s) reports = JSON.parse(s) } catch { /* ignore */ }
   const hist = buildHistory(reports)

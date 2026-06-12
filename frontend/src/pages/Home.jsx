@@ -6,6 +6,8 @@ import DaySchedule from '../components/DaySchedule.jsx'
 import DaySummary from '../components/DaySummary.jsx'
 import HealthBrief from '../components/HealthBrief.jsx'
 import HealthSignal from '../components/HealthSignal.jsx'
+import SportSignal from '../components/SportSignal.jsx'
+import DayAgenda from '../components/DayAgenda.jsx'
 import TodaySignal from '../components/TodaySignal.jsx'
 import { useLayout } from '../layout.js'
 import { getQuoteOfDay } from '../utils/quotes.js'
@@ -154,14 +156,16 @@ export default function Home() {
       <TodaySignal />
 
       {layout === 'command' ? (
-        <div className="quick-cards">
-          {scheduleCardEls}
+        <div className="home-cards">
+          <DayAgenda />
+          <SportSignal />
           <HealthSignal />
         </div>
       ) : (
         <>
-          <div className="quick-cards">
-            {scheduleCardEls}
+          <div className="home-cards">
+            <DayAgenda />
+            <SportSignal />
             <HealthSignal />
           </div>
 
@@ -237,6 +241,14 @@ export default function Home() {
           grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 16px;
         }
+        /* Карточная сетка Главной: «Расписание» во всю ширину, Спорт/Здоровье парой под ним */
+        .home-cards {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 16px;
+          align-items: start;
+        }
+        .home-cards > .day-agenda { grid-column: 1 / -1; }
         .quick-card {
           display: flex;
           flex-direction: column;
@@ -289,6 +301,7 @@ export default function Home() {
            («Хорошо восстановились») помещаются в строку, без обрезки и сжатия. */
         @media (max-width: 640px) {
           .quick-cards { grid-template-columns: 1fr; gap: 12px; }
+          .home-cards { grid-template-columns: 1fr; gap: 12px; }
           .greeting { font-size: 30px; }
           /* На мобиле цитату прячем (тесно), вместо неё — кнопка «Настройки» в углу шапки
              (рейла меню на мобиле нет, поэтому настройки переезжают сюда) */
