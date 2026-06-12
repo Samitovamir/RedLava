@@ -21,7 +21,9 @@ function hash(str) {
 export function useAiSummary({ id, context, message, fallback, snapshot, manual = false }) {
   // Снимок входит в ключ кэша, чтобы сводка перегенерировалась при изменении данных,
   // но передаётся отдельным полем — на бэкенде он кэшируется как общий блок (экономия токенов).
-  const cacheKey = `ai-sum:${id}:${hash(context + '|' + (snapshot || ''))}`
+  // v2: бамп версии кэша инвалидирует старые значения — в т.ч. залипшие заглушки
+  // «слишком много запросов», которые прежний код по ошибке кэшировал как ответ.
+  const cacheKey = `ai-sum:v2:${id}:${hash(context + '|' + (snapshot || ''))}`
   const [text, setText] = useState('')
   const [loading, setLoading] = useState(!manual)   // manual → не грузим сами, ждём кнопку
   const [source, setSource] = useState('cache')
@@ -40,7 +42,9 @@ export function useAiSummary({ id, context, message, fallback, snapshot, manual 
       .then(r => r.json())
       .then(d => {
         if (cancelled) return
-        if (d?.reply) {
+        // d.limited === true → это заглушка предохранителя (лимит/троттлинг), а НЕ ответ ИИ.
+        // Такую НЕ кэшируем и не показываем — отдаём fallback, чтобы окно не залипало на ней.
+        if (d?.reply && !d.limited) {
           localStorage.setItem(cacheKey, d.reply)
           setText(d.reply); setSource('ai')
         } else {

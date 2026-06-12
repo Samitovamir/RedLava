@@ -92,10 +92,15 @@ async function yaRouteEta(fromAddr, toAddr) {
 }
 
 // --- Предохранитель: лимиты, чтобы случайно не потратить все токены ---
+// ВАЖНО: дашборд на ОДНОЙ загрузке штатно шлёт ~10–15 ИИ-карточек (сводка дня, питание,
+// спорт, здоровье, советник…). Прежние 15/мин срабатывали уже на первой загрузке и отдавали
+// заглушку «слишком много запросов» вместо реального ответа (а фронт её ещё и кэшировал).
+// Поднимаем до значений, при которых обычная навигация не режется, но настоящий разгон
+// (зацикленный вызов) по-прежнему ловится.
 const LIMITS = {
-  perMin: Number(process.env.AI_LIMIT_PER_MIN) || 15,
-  perHour: Number(process.env.AI_LIMIT_PER_HOUR) || 120,
-  perDay: Number(process.env.AI_LIMIT_PER_DAY) || 400,
+  perMin: Number(process.env.AI_LIMIT_PER_MIN) || 60,
+  perHour: Number(process.env.AI_LIMIT_PER_HOUR) || 300,
+  perDay: Number(process.env.AI_LIMIT_PER_DAY) || 1000,
   maxMessageChars: Number(process.env.AI_MAX_MESSAGE_CHARS) || 4000
 }
 let aiHits = [] // метки времени запросов (мс)
