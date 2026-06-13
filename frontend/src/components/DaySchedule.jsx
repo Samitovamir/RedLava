@@ -1645,6 +1645,13 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
           color: var(--muted-foreground); font-size: 14px;
           text-align: center; padding: 24px;
         }
+        /* В agenda (телефон) контейнер не position:relative, поэтому absolute-плашка
+           прилипала к карточке и налезала на строку с датой. В этом контексте —
+           обычный поток. */
+        .ds-agenda .ds-empty-list {
+          position: static; left: auto; right: auto; top: auto;
+          padding: 32px 16px;
+        }
 
         .ds-fab {
           position: absolute;
