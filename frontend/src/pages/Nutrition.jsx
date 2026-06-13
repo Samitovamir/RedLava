@@ -1039,6 +1039,10 @@ export default function Nutrition() {
         .nu-reopen { margin-top: 4px; align-self: flex-start; background: transparent; border: none; color: var(--accent); font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; padding: 6px 0 0; }
         .nu-reopen:hover { text-decoration: underline; }
         .nu-results { width: 100%; max-width: 920px; max-height: 88vh; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+        /* Прошивка (.card::after, inset:7px absolute) на скролл-окнах считает рамку по ВСЕЙ высоте
+           контента, а не по видимой области — дашед-строчка «разъезжается» и режет карточки.
+           На скроллящихся модалках подбора/рецепта/оценки убираем её (рамка и градиент остаются). */
+        .nu-results::after, .nu-modal::after, .nu-rate::after { display: none; }
 
         .nu-shop-hint { font-size: 13px; margin-bottom: 10px; }
         .nu-shop-list { display: flex; flex-direction: column; }
