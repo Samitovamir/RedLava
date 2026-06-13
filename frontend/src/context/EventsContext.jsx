@@ -49,16 +49,23 @@ export function EventsProvider({ children }) {
 
   // Если подключён Google Календарь — подтягиваем реальные события (он источник истины)
   const [googleConnected, setGoogleConnected] = useState(false)
+  // Токен Google протух/отозван (refresh упал с invalid_grant) — нужен реконнект.
+  // Отличаем от «никогда не подключали»: только в этом случае показываем плашку-предупреждение.
+  const [googleNeedsReconnect, setGoogleNeedsReconnect] = useState(false)
   function syncFromGoogle() {
     return fetch('/api/calendar/status')
       .then(r => r.json())
       .then(d => {
         setGoogleConnected(!!d.connected)
+        setGoogleNeedsReconnect(!!d.needsReconnect)
         if (!d.connected) { setEventsRaw([]); return null }  // не подключён → пустое расписание
         return fetch('/api/calendar/events').then(r => r.json())
       })
       .then(data => {
-        if (data && Array.isArray(data.events)) setEventsRaw(data.events)
+        if (!data) return
+        // первый заход после смерти токена: статус ещё «зелёный», но /events уже знает правду
+        if (data.needsReconnect) { setGoogleNeedsReconnect(true); setGoogleConnected(false) }
+        if (Array.isArray(data.events)) setEventsRaw(data.events)
       })
       .catch(() => {})
   }
@@ -248,7 +255,7 @@ export function EventsProvider({ children }) {
   }
 
   return (
-    <EventsContext.Provider value={{ events, setEvents, resetEvents, applyAiActions, removeEvent, upsertEvent, applyBulk, focusSignal, setFocusSignal, syncFromGoogle, googleConnected }}>
+    <EventsContext.Provider value={{ events, setEvents, resetEvents, applyAiActions, removeEvent, upsertEvent, applyBulk, focusSignal, setFocusSignal, syncFromGoogle, googleConnected, googleNeedsReconnect }}>
       {children}
     </EventsContext.Provider>
   )

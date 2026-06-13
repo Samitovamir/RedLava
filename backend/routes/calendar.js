@@ -24,7 +24,7 @@ function appUrl(req) {
 // Обновить access_token по refresh_token (экспортируется — общий для Gmail и др. Google-сервисов)
 export async function getAccessToken() {
   const t = await kvGet(TOKENS_KEY)
-  if (!t?.refresh_token) return null
+  if (!t?.refresh_token || t.dead) return null   // мёртвый токен не дёргаем — нужен реконнект
   const body = new URLSearchParams({
     client_id: process.env.GOOGLE_CLIENT_ID,
     client_secret: process.env.GOOGLE_CLIENT_SECRET,
@@ -34,7 +34,13 @@ export async function getAccessToken() {
   const r = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body
   })
-  if (!r.ok) return null
+  if (!r.ok) {
+    // invalid_grant = refresh_token протух/отозван. У Google-приложений в статусе «Testing»
+    // токен живёт всего 7 дней. Помечаем мёртвым, чтобы /status честно сказал «переподключите»,
+    // а не показывал зелёную галочку при молча пустом календаре. (Сеть/5xx — НЕ хороним.)
+    try { const e = await r.json(); if (e?.error === 'invalid_grant') await kvSet(TOKENS_KEY, { ...t, dead: true, dead_at: Date.now() }) } catch { /* временная ошибка — токен не трогаем */ }
+    return null
+  }
   const d = await r.json()
   return d.access_token || null
 }
@@ -109,10 +115,16 @@ router.get('/callback', async (req, res) => {
   } catch { return back(false) }
 })
 
-// 3) Статус подключения
+// 3) Статус подключения. Честно: помеченный dead токен (refresh упал с invalid_grant) =
+// «не подключён» + needsReconnect, чтобы UI предложил переподключение (как у Whoop).
 router.get('/status', requireAuth, async (_req, res) => {
   const t = await kvGet(TOKENS_KEY)
-  res.json({ configured: configured(), connected: !!t?.refresh_token })
+  const hasToken = !!t?.refresh_token
+  res.json({
+    configured: configured(),
+    connected: hasToken && !t.dead,
+    needsReconnect: hasToken && !!t.dead
+  })
 })
 
 // 4) Отключить
@@ -124,8 +136,11 @@ router.post('/disconnect', requireAuth, async (_req, res) => {
 // 5) Загрузить ближайшие события
 router.get('/events', requireAuth, async (_req, res) => {
   if (!configured()) return res.json({ events: [], connected: false })
-  const access = await getAccessToken()
-  if (!access) return res.json({ events: [], connected: false })
+  const access = await getAccessToken()   // при invalid_grant пометит токен dead
+  if (!access) {
+    const t = await kvGet(TOKENS_KEY)
+    return res.json({ events: [], connected: false, needsReconnect: !!(t?.refresh_token && t.dead) })
+  }
   const params = new URLSearchParams({
     timeMin: new Date().toISOString(),
     maxResults: '50', singleEvents: 'true', orderBy: 'startTime'

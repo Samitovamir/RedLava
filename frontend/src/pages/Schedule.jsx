@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import DaySchedule from '../components/DaySchedule.jsx'
 import DaySummary from '../components/DaySummary.jsx'
+import GoogleReconnectBanner from '../components/GoogleReconnectBanner.jsx'
 import { SectionHeader } from '../ui'
 import { useT } from '../context/LanguageContext.jsx'
 
@@ -15,6 +16,7 @@ export default function Schedule() {
   return (
     <div className="schedule-page">
       <SectionHeader title={t.title} subtitle={t.source} />
+      <GoogleReconnectBanner />
       <div className="schedule-layout">
         <motion.div
           className="schedule-col"
