@@ -79,6 +79,29 @@ export default function DiaryTab({ target, intake, setIntake, selectedDay, flash
   // Чистим миниатюры старше вчера при входе
   useEffect(() => { pruneIntakeThumbs(intake, loadSavedDishes()) }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Блокируем прокрутку фона, пока открыто любое окно дневника. На мобильном
+  // прокручивается САМ ДОКУМЕНТ (см. index.css), поэтому обычного overflow:hidden
+  // мало — iOS всё равно листает страницу за модалкой (тач-скролл «протекает»
+  // сквозь position:fixed бэкдроп). Фиксируем body на текущей позиции и
+  // возвращаем скролл при закрытии — тогда листается только само окно.
+  const modalOpen = !!(estimate || detail || grams || savedOpen || barcodeOpen)
+  useEffect(() => {
+    if (!modalOpen) return
+    const { body } = document
+    const scrollY = window.scrollY
+    const prev = { position: body.style.position, top: body.style.top, left: body.style.left, right: body.style.right, width: body.style.width, overflow: body.style.overflow }
+    body.style.position = 'fixed'
+    body.style.top = `-${scrollY}px`
+    body.style.left = '0'
+    body.style.right = '0'
+    body.style.width = '100%'
+    body.style.overflow = 'hidden'
+    return () => {
+      Object.assign(body.style, prev)
+      window.scrollTo(0, scrollY)
+    }
+  }, [modalOpen])
+
   // Дневник показывает ЗАЛОГИРОВАННОЕ (фото/штрих-код/этикетка/сохранённое/довесок) — кольцо,
   // плитки и лента из одного источника (intake), без плановых блюд (план — на вкладке «Меню»).
   const dayRec = intake[selectedDay]
@@ -543,6 +566,10 @@ function ModalStyles() {
     <style>{`
       .nd-backdrop { position: fixed; inset: 0; z-index: 500; background: color-mix(in srgb, var(--bg-app) 70%, transparent); backdrop-filter: blur(3px); display: flex; align-items: flex-start; justify-content: center; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 20px; }
       .nd-modal { width: 100%; max-width: 440px; margin: auto; display: flex; flex-direction: column; gap: 14px; }
+      /* Окно — flex-колонка. Без этого дети (flex-shrink:1 по умолчанию) сжимаются
+         под max-height вместо переполнения — тогда scrollHeight == clientHeight и
+         окно НЕ листается. Запрещаем сжатие: контент переполняет, overflow:auto скроллит. */
+      .nd-modal > * { flex-shrink: 0; }
       .nd-modal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
       .nd-modal-head h3 { margin: 0; font-size: 19px; font-weight: 700; color: var(--text-primary); overflow-wrap: anywhere; }
       .nd-x { border: none; background: var(--bg-tile); color: var(--text-secondary); width: 34px; height: 34px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
