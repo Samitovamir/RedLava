@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, lazy, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Camera, Trash2, X, BookmarkPlus, Plus, ScanText, Bookmark, ScanBarcode } from 'lucide-react'
+import { Camera, Trash2, X, BookmarkPlus, Plus, ScanText, Bookmark, ScanBarcode, Images } from 'lucide-react'
 import CircularChart from '../CircularChart.jsx'
 import { useT } from '../../context/LanguageContext.jsx'
 import { nutritionHealthBrief } from '../../utils/siteSnapshot.js'
@@ -44,7 +44,7 @@ export default function DiaryTab({ target, intake, setIntake, selectedDay, flash
       cancel: 'Отмена', add: 'Добавить в дневник', failRecognize: 'Не удалось распознать еду',
       failPhoto: 'Ошибка обработки фото', added: 'Добавлено в дневник',
       save: 'Сохранить блюдо', del: 'Удалить', saved: 'Блюдо сохранено', removed: 'Запись удалена',
-      actLabel: 'Этикетка', actSaved: 'Сохранённые', actBarcode: 'Штрих-код',
+      actLabel: 'Этикетка', actSaved: 'Сохранённые', actBarcode: 'Штрих-код', actGallery: 'Из галереи',
       notFound: 'Продукт не найден — сфотографируй еду', camFail: 'Камера недоступна — сфотографируй еду',
       gramsTitle: 'Сколько граммов?', per100: 'на 100 г', grams: 'Граммы',
       savedTitle: 'Сохранённые блюда', savedEmpty: 'Пока нет сохранённых блюд. Сохрани блюдо из записи дневника.', logIt: 'Добавить',
@@ -59,7 +59,7 @@ export default function DiaryTab({ target, intake, setIntake, selectedDay, flash
       cancel: 'Cancel', add: 'Add to diary', failRecognize: 'Could not recognize food',
       failPhoto: 'Photo processing error', added: 'Added to diary',
       save: 'Save dish', del: 'Delete', saved: 'Dish saved', removed: 'Entry removed',
-      actLabel: 'Label', actSaved: 'Saved', actBarcode: 'Barcode',
+      actLabel: 'Label', actSaved: 'Saved', actBarcode: 'Barcode', actGallery: 'From gallery',
       notFound: 'Product not found — photograph the food', camFail: 'Camera unavailable — photograph the food',
       gramsTitle: 'How many grams?', per100: 'per 100 g', grams: 'Grams',
       savedTitle: 'Saved dishes', savedEmpty: 'No saved dishes yet. Save one from a diary entry.', logIt: 'Add',
@@ -67,6 +67,7 @@ export default function DiaryTab({ target, intake, setIntake, selectedDay, flash
   })
 
   const fileRef = useRef(null)
+  const galleryRef = useRef(null)
   const labelRef = useRef(null)
   const [estBusy, setEstBusy] = useState(false)
   const [estimate, setEstimate] = useState(null)   // оценка фото для экрана правки
@@ -219,13 +220,20 @@ export default function DiaryTab({ target, intake, setIntake, selectedDay, flash
         </div>
       </div>
 
-      {/* Захват: фото еды (основное) + этикетка + сохранённые (штрих-код — отдельным шагом) */}
+      {/* Захват: фото еды (камера ИЛИ галерея) + этикетка + сохранённые (штрих-код — отдельным шагом).
+          Камера-инпут с capture, галерея — без capture (чтобы открывалась медиатека, а не камера). */}
       <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={onFile} style={{ display: 'none' }} />
+      <input ref={galleryRef} type="file" accept="image/*" onChange={onFile} style={{ display: 'none' }} />
       <input ref={labelRef} type="file" accept="image/*" capture="environment" onChange={onLabelFile} style={{ display: 'none' }} />
       <div className="nd-actions">
-        <button className="nd-shoot" onClick={() => fileRef.current?.click()} disabled={estBusy}>
-          <Camera size={18} strokeWidth={1.8} />{estBusy ? t.reading : t.shoot}
-        </button>
+        <div className="nd-shoot-row">
+          <button className="nd-shoot" onClick={() => fileRef.current?.click()} disabled={estBusy}>
+            <Camera size={18} strokeWidth={1.8} />{estBusy ? t.reading : t.shoot}
+          </button>
+          <button className="nd-shoot-gallery" onClick={() => galleryRef.current?.click()} disabled={estBusy} aria-label={t.actGallery} title={t.actGallery}>
+            <Images size={20} strokeWidth={1.7} />
+          </button>
+        </div>
         <div className="nd-actions-row">
           <button className="nd-act" onClick={() => setBarcodeOpen(true)} disabled={estBusy}><ScanBarcode size={17} strokeWidth={1.6} />{t.actBarcode}</button>
           <button className="nd-act" onClick={() => labelRef.current?.click()} disabled={estBusy}><ScanText size={17} strokeWidth={1.6} />{t.actLabel}</button>
@@ -311,6 +319,18 @@ export default function DiaryTab({ target, intake, setIntake, selectedDay, flash
         .nd-shoot:hover { filter: brightness(1.05); }
         .nd-shoot:active { transform: translateY(1px); }
         .nd-shoot:disabled { opacity: 0.7; cursor: default; }
+        /* Камера + галерея в одной строке: основная кнопка тянется, галерея — квадратная вторичная */
+        .nd-shoot-row { display: flex; gap: 8px; align-items: stretch; }
+        .nd-shoot-row .nd-shoot { flex: 1; }
+        .nd-shoot-gallery {
+          flex-shrink: 0; width: 56px;
+          border: 1px solid var(--border-med); background: var(--bg-tile); color: var(--text-secondary);
+          border-radius: var(--radius-md); cursor: pointer;
+          display: flex; align-items: center; justify-content: center;
+          transition: color 0.15s, border-color 0.15s;
+        }
+        .nd-shoot-gallery:hover { color: var(--text-primary); border-color: var(--accent); }
+        .nd-shoot-gallery:disabled { opacity: 0.6; cursor: default; }
         .nd-actions { display: flex; flex-direction: column; gap: 8px; }
         .nd-actions-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
         .nd-act { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; padding: 11px 6px; border-radius: var(--radius-md); border: 1px solid var(--border-med); background: var(--bg-tile); color: var(--text-secondary); font-family: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; transition: color 0.15s, border-color 0.15s; }
@@ -576,7 +596,10 @@ function ModalStyles() {
       .nd-saved-del:hover { color: var(--status-crit); border-color: color-mix(in srgb, var(--status-crit) 30%, transparent); }
       @media (max-width: 640px) {
         .nd-backdrop { align-items: flex-end; padding: 0; overflow-y: hidden; }
-        .nd-modal { max-width: 100%; margin: 0; max-height: 94vh; max-height: 94dvh; overflow-y: auto; border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+        /* Лист-снизу в PWA на iPhone: нижний контент (кнопки «Добавить») уезжал под
+           home-индикатор и до него нельзя было долистать — добавляем отступ под safe-area
+           и гасим scroll-chaining (как в ui/Modal, GarminLive, Nutrition). */
+        .nd-modal { max-width: 100%; margin: 0; max-height: 94vh; max-height: 94dvh; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; border-radius: var(--radius-lg) var(--radius-lg) 0 0; padding-bottom: max(20px, env(safe-area-inset-bottom)); }
         .nd-kcal-row { flex-direction: column; align-items: stretch; gap: 10px; }
       }
     `}</style>
