@@ -339,7 +339,9 @@ export default function FluidMenu() {
           body:has(.nu-backdrop) .mobile-tabbar,
           body:has(.ro-backdrop) .mobile-tabbar,
           body:has(.ds-conflict-backdrop) .mobile-tabbar,
-          body:has(.ds-backdrop) .mobile-tabbar {
+          body:has(.ds-backdrop) .mobile-tabbar,
+          body:has(.nd-backdrop) .mobile-tabbar,
+          body:has(.bc-backdrop) .mobile-tabbar {
             transform: translateY(180%);
             opacity: 0;
             pointer-events: none;
