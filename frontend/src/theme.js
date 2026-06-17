@@ -16,7 +16,7 @@ import { useEffect } from 'react'
 const KEY = 'albert-theme'
 const MOBILE_KEY = 'albert-theme-mobile'
 export const DEFAULT_DESKTOP = 'black-leather'
-export const DEFAULT_MOBILE = 'auto'
+export const DEFAULT_MOBILE = 'red-lava'   // фирменное оформление RedLava на телефоне по умолчанию
 const MOBILE_Q = '(max-width: 640px)'
 const DARK_Q = '(prefers-color-scheme: dark)'
 const EVT = 'albert-theme-change'
@@ -38,7 +38,7 @@ export function getMobilePref() {
 export function resolveTheme() {
   if (isMobileViewport()) {
     const m = getMobilePref()
-    if (m === 'ios-dark' || m === 'ios-light' || m === 'brown-leather') return m
+    if (m === 'red-lava' || m === 'ios-dark' || m === 'ios-light' || m === 'brown-leather') return m
     return prefersDark() ? 'ios-dark' : 'ios-light' // 'auto' → следуем телефону
   }
   return getDesktopTheme()

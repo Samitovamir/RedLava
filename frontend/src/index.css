@@ -501,6 +501,30 @@ body { transition: background-color var(--dur-base) var(--ease), color var(--dur
   --weave-hi: transparent; --weave-lo: transparent;
 }
 
+/* ТЕМА 7: RED LAVA — фирменный стиль команды по триатлону redlava.team:
+   чистый светлый фон + фирменный лава-красный #CF1020, чёрный жирный текст.
+   База — ios-light (плоские белые карточки, hairline-границы, без кожи/зерна).
+   Сделана под мобильную версию (бренд-оформление приложения для атлетов). */
+[data-theme="red-lava"] {
+  --bg-app: #F4F5F7; --bg-surface: #FFFFFF;
+  --bg-anchor-top: #FFFFFF; --bg-anchor-bot: #FFF6F5;
+  --bg-card-top: #FFFFFF; --bg-card-bot: #FFFFFF;
+  --edge-light: #FFFFFF; --edge-dark: rgba(0,0,0,0.05); --border-soft: #ECE6E5;
+  --text-primary: #14100F; --text-body: #221B19; --text-secondary: rgba(38,27,25,0.66); --text-muted: rgba(38,27,25,0.50); --text-faint: rgba(38,27,25,0.38);
+  /* Лава-красный — единственный интерактивный акцент (кнопки, активный пункт, кольца действия) */
+  --accent: #CF1020; --accent-btn-top: #E61E2B; --accent-btn-bot: #CF1020; --on-accent: #FFFFFF;
+  --accent-today: #FF5600; /* оранжевая лава — «сегодня/сейчас», отлична от красного акцента */
+  --bg-tile: #F4EEED; --border-med: #E3DAD9; --shadow-btn: 0 2px 8px rgba(207,16,32,0.24);
+  --status-ok: #2EA85F; --status-warn: #F08A00; --status-crit: #CF1020;
+  --stitch: transparent;
+  --shadow-anchor: 0 1px 3px rgba(0,0,0,0.06), 0 12px 32px -18px rgba(207,16,32,0.20);
+  --shadow-card: 0 1px 2px rgba(20,10,10,0.05), 0 8px 22px -16px rgba(207,16,32,0.12);
+  --inset-tile: inset 0 0 0 1px rgba(0,0,0,0.045);
+  --grain: 0; --vignette-top: transparent; --vignette-edge: transparent;
+  --scrim: rgba(20,12,11,0.36);
+  --weave-hi: transparent; --weave-lo: transparent;
+}
+
 /* МОСТ: новые токены тем → «старые» имена, на которые завязаны компоненты.
    Идёт ПОСЛЕ .dark и блоков тем, поэтому переопределяет их. */
 [data-theme] {
@@ -576,6 +600,7 @@ body::after {
 [data-theme="brown-leather"]{ --c-warm:#C89B6A; --c-steel:#8FA8B6; --c-sage:#9DAE72; --c-amber:#D6A24A; --c-rose:#C98E7E; --c-neutral:#A89684; }
 [data-theme="cream"]{ --c-warm:#B0683B; --c-steel:#4E7A9E; --c-sage:#5E8A55; --c-amber:#B0822A; --c-rose:#AE5E66; --c-neutral:#7A6F5C; }
 [data-theme="original"]{ --c-warm:#C98A5E; --c-steel:#6E8CA8; --c-sage:#6FA06B; --c-amber:#D6973E; --c-rose:#C77F86; --c-neutral:#9CA3AF; }
+[data-theme="red-lava"]{ --c-warm:#E0512A; --c-steel:#3E7CB1; --c-sage:#2E9E64; --c-amber:#E0922A; --c-rose:#CF4D5A; --c-neutral:#7C7470; }
 
 [data-theme]{
   --sidebar-width-expanded: 248px;

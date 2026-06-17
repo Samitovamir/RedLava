@@ -18,6 +18,7 @@ const DESKTOP_THEMES = [
 ]
 // Телефон: «Авто» + две iOS-темы
 const MOBILE_OPTIONS = [
+  { id: 'red-lava',  ru: 'RedLava',     en: 'RedLava',   sub: { ru: 'Фирменный стиль', en: 'Brand style' }, bg: '#F4F5F7', surface: '#FFFFFF', accent: '#CF1020' },
   { id: 'auto',      ru: 'Авто',        en: 'Auto',      sub: { ru: 'Как на телефоне', en: 'Matches your phone' }, auto: true },
   { id: 'ios-dark',  ru: 'iOS Тёмная',  en: 'iOS Dark',  bg: '#000000', surface: '#1C1C1E', accent: '#0A84FF' },
   { id: 'ios-light', ru: 'iOS Светлая', en: 'iOS Light', bg: '#F2F2F7', surface: '#FFFFFF', accent: '#007AFF' },
