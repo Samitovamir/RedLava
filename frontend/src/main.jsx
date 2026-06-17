@@ -6,6 +6,7 @@ import TasksHelper from './pages/TasksHelper.jsx'
 import { LanguageProvider } from './context/LanguageContext.jsx'
 import { installAuthFetch } from './api/authFetch.js'
 import { applyTheme } from './theme.js'
+import { TASKS_ENABLED } from './config/features.js'
 import './index.css'
 
 // Применяем эффективную тему до рендера (учитывает мобильный + системную тему телефона)
@@ -13,7 +14,12 @@ applyTheme()
 
 // Личное приложение помощника (/tasks/h) — публичная страница БЕЗ AuthGate и без тяжёлого
 // App (шеллы/sync/провайдеры): помощник входит своим PIN, а не паролем владельца.
-const isHelperApp = window.location.pathname.startsWith('/tasks/h')
+// Архивировано флагом TASKS_ENABLED вместе с разделом «Задачи»: при false страница
+// недоступна (редирект на /), код TasksHelper остаётся на месте — возврат флагом.
+const wantsHelper = window.location.pathname.startsWith('/tasks/h')
+const helperArchived = wantsHelper && !TASKS_ENABLED
+if (helperArchived) window.location.replace('/')
+const isHelperApp = wantsHelper && TASKS_ENABLED
 
 // Глобальный инжектор токена дашборда — ТОЛЬКО для приложения владельца. В приложении
 // помощника НЕ ставим его: у помощника своя PIN-авторизация, а подмешанный из localStorage
@@ -28,7 +34,7 @@ if (isHelperApp) document.documentElement.setAttribute('data-helper', '')
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <LanguageProvider>
-      {isHelperApp ? <TasksHelper /> : (
+      {helperArchived ? null : isHelperApp ? <TasksHelper /> : (
         <AuthGate>
           <App />
         </AuthGate>

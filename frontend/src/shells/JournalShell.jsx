@@ -11,7 +11,7 @@ import Tasks from '../pages/Tasks.jsx'
 import JournalGlance from '../components/journal/JournalGlance.jsx'
 import { useLang } from '../context/LanguageContext.jsx'
 import { mskNow } from '../utils/time.js'
-import { MAIL_ENABLED, HISTORY_ENABLED } from '../config/features.js'
+import { MAIL_ENABLED, HISTORY_ENABLED, TASKS_ENABLED } from '../config/features.js'
 
 /*
   Оболочка «Лента» — ВЕСЬ сайт одной журнальной полосой-брифингом.
@@ -25,14 +25,20 @@ import { MAIL_ENABLED, HISTORY_ENABLED } from '../config/features.js'
   ленту к нужной главе — все внутренние ссылки сайта продолжают работать.
 */
 
+// Спорт и Здоровье — отдельные главы. В журнале всё на одной прокручиваемой странице,
+// поэтому гасим плавающую ИИ-кнопку (showAssistant=false), чтобы она не дублировалась.
+const JournalSport = () => <Health view="activity" showAssistant={false} />
+const JournalHealth = () => <Health view="metrics" showAssistant={false} />
+
 const CHAPTERS = [
   { id: 'today', path: '/', ru: 'Сегодня', en: 'Today', El: Home },
   { id: 'schedule', path: '/schedule', ru: 'Расписание', en: 'Schedule', El: Schedule },
-  { id: 'health', path: '/health', ru: 'Здоровье', en: 'Health', El: Health },
+  { id: 'sport', path: '/sport', ru: 'Спорт', en: 'Sport', El: JournalSport },
+  { id: 'health', path: '/health', ru: 'Здоровье', en: 'Health', El: JournalHealth },
   { id: 'nutrition', path: '/nutrition', ru: 'Питание', en: 'Nutrition', El: Nutrition },
   ...(MAIL_ENABLED ? [{ id: 'mail', path: '/mail', ru: 'Письма', en: 'Mail', El: MailPage }] : []),
   ...(HISTORY_ENABLED ? [{ id: 'history', path: '/history', ru: 'История', en: 'History', El: History }] : []),
-  { id: 'tasks', path: '/tasks', ru: 'Задачи', en: 'Tasks', El: Tasks },
+  ...(TASKS_ENABLED ? [{ id: 'tasks', path: '/tasks', ru: 'Задачи', en: 'Tasks', El: Tasks }] : []),
   { id: 'settings', path: '/settings', ru: 'Настройки', en: 'Settings', El: Settings },
 ]
 
@@ -43,7 +49,6 @@ const WD_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday',
 
 function chapterForPath(pathname) {
   if (pathname === '/') return CHAPTERS[0]
-  if (pathname.startsWith('/sport')) return CHAPTERS.find(c => c.id === 'health')
   if (pathname.startsWith('/connections')) return CHAPTERS.find(c => c.id === 'settings')
   return CHAPTERS.find(c => c.path !== '/' && pathname.startsWith(c.path)) || CHAPTERS[0]
 }

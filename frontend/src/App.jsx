@@ -12,7 +12,7 @@ import CommandShell from './shells/CommandShell.jsx'
 import { useLayout, useIsMobile } from './layout.js'
 import { useThemeSync } from './theme.js'
 import { isGuest } from './api/authFetch.js'
-import { MAIL_ENABLED, HISTORY_ENABLED } from './config/features.js'
+import { MAIL_ENABLED, HISTORY_ENABLED, TASKS_ENABLED } from './config/features.js'
 import { pullSync, startSync } from './utils/sync.js'
 import { EventsProvider } from './context/EventsContext.jsx'
 import { HistoryProvider } from './context/HistoryContext.jsx'
@@ -49,14 +49,14 @@ function AnimatedRoutes() {
         <Routes location={location}>
           <Route path="/" element={<Home />} />
           <Route path="/schedule" element={<Schedule />} />
-          <Route path="/sport" element={<Navigate to="/health" replace />} />
-          <Route path="/health" element={<Health />} />
+          <Route path="/sport" element={<Health view="activity" />} />
+          <Route path="/health" element={<Health view="metrics" />} />
           <Route path="/nutrition" element={<Nutrition />} />
           <Route path="/mail" element={MAIL_ENABLED ? <Mail /> : <Navigate to="/" replace />} />
           <Route path="/history" element={HISTORY_ENABLED ? <History /> : <Navigate to="/" replace />} />
           {/* «Подключения» влиты в Настройки — старые ссылки ведут туда */}
           <Route path="/connections" element={<Navigate to="/settings" replace />} />
-          <Route path="/tasks" element={<Tasks />} />
+          <Route path="/tasks" element={TASKS_ENABLED ? <Tasks /> : <Navigate to="/" replace />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

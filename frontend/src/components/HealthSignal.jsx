@@ -59,7 +59,7 @@ export default function HealthSignal() {
       metrics={metrics}
       aiText={summary.text}
       aiLoading={summary.loading}
-      onClick={() => navigate(whoop ? '/health' : '/connections', whoop ? { state: { tab: 'metrics' } } : undefined)}
+      onClick={() => navigate(whoop ? '/health' : '/connections')}
     />
   )
 }

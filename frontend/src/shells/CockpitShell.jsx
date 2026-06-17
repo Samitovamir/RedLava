@@ -22,7 +22,7 @@ import { buildSignalData, SIGNAL_CONTEXT, parseSignal, fallbackSignal } from '..
 import { useT, useLang } from '../context/LanguageContext.jsx'
 import { mskNow } from '../utils/time.js'
 import { isGuest } from '../api/authFetch.js'
-import { MAIL_ENABLED, HISTORY_ENABLED } from '../config/features.js'
+import { MAIL_ENABLED, HISTORY_ENABLED, TASKS_ENABLED } from '../config/features.js'
 import { variants, Z } from '../motion.js'
 
 /*
@@ -134,7 +134,7 @@ export default function CockpitShell() {
           <span className="ck-clock">{dateStr} · {clock}</span>
           {MAIL_ENABLED && <button className="ck-icon-btn" title={t.mail} aria-label={t.mail} onClick={() => navigate('/mail')}><Mail size={17} /></button>}
           {HISTORY_ENABLED && <button className="ck-icon-btn" title={t.history} aria-label={t.history} onClick={() => navigate('/history')}><HistoryIcon size={17} /></button>}
-          <button className="ck-icon-btn" title={t.tasks} aria-label={t.tasks} onClick={() => navigate('/tasks')}><CheckSquare size={17} /></button>
+          {TASKS_ENABLED && <button className="ck-icon-btn" title={t.tasks} aria-label={t.tasks} onClick={() => navigate('/tasks')}><CheckSquare size={17} /></button>}
           <button className="ck-icon-btn" title={t.settings} aria-label={t.settings} onClick={() => navigate('/settings')}><SettingsIcon size={17} /></button>
         </div>
       </header>
@@ -189,7 +189,7 @@ export default function CockpitShell() {
                     <Route path="/mail" element={MAIL_ENABLED ? <MailPage /> : <Navigate to="/" replace />} />
                     <Route path="/history" element={HISTORY_ENABLED ? <History /> : <Navigate to="/" replace />} />
                     <Route path="/connections" element={<Navigate to="/settings" replace />} />
-                    <Route path="/tasks" element={<Tasks />} />
+                    <Route path="/tasks" element={TASKS_ENABLED ? <Tasks /> : <Navigate to="/" replace />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>

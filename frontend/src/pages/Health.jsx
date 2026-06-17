@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import GarminLive from '../components/GarminLive.jsx'
 import MetricsView from '../components/MetricsView.jsx'
 import HealthAssistant from '../components/HealthAssistant.jsx'
@@ -7,24 +6,26 @@ import { Button, SectionHeader } from '../ui'
 import { useT } from '../context/LanguageContext.jsx'
 
 /*
-  Страница «Здоровье» — объединяет спорт и здоровье.
-  Две вкладки: «Активность» (тренировки/шаги/объём — Garmin) и «Показатели»
-  (восстановление/сон/VO2max/анализы) — во ВСЕХ раскладках одинаково
-  (колонки/якоря в оболочках пробовали — владельцу неудобно). Встроенных
-  ИИ-чатов нет — плавающая круг-кнопка ИИ (HealthAssistant) знает вкладку.
+  Спорт и Здоровье — ДВЕ отдельные вкладки нижней навигации, но один компонент с
+  переключателем view:
+   • view="activity" (Спорт)     → тренировки/шаги/объём из Garmin (GarminLive)
+   • view="metrics"  (Здоровье)  → восстановление/сон/VO2max/анализы (MetricsView)
+  Роуты: /sport → activity, /health → metrics. Встроенного переключателя-вкладок нет —
+  разделение даёт сама навигация. Плавающая ИИ-кнопка (HealthAssistant) знает вкладку.
 */
-export default function Health() {
+export default function Health({ view = 'metrics', showAssistant = true }) {
   const navigate = useNavigate()
+  const isSport = view === 'activity'
   const t = useT({
     ru: {
-      heading: 'Здоровье', activity: 'Активность', metrics: 'Показатели',
+      sport: 'Спорт', health: 'Здоровье',
       srcGarmin: 'Garmin Connect', srcMetrics: 'Whoop · анализы',
       notConnTitle: 'Garmin не подключён',
       notConnText: 'Подключите Garmin, чтобы видеть тренировки, шаги и форму.',
       go: 'Перейти к подключениям'
     },
     en: {
-      heading: 'Health', activity: 'Activity', metrics: 'Metrics',
+      sport: 'Sport', health: 'Health',
       srcGarmin: 'Garmin Connect', srcMetrics: 'Whoop · labs',
       notConnTitle: 'Garmin is not connected',
       notConnText: 'Connect Garmin to see your workouts, steps and fitness.',
@@ -32,10 +33,6 @@ export default function Health() {
     }
   })
 
-  // Вкладка по умолчанию — «Активность» (Спорт). С Главной приходит state.tab:
-  // карточка «Здоровье» → «Показатели», карточка «Спорт» → «Активность».
-  const location = useLocation()
-  const [tab, setTab] = useState(location.state?.tab === 'metrics' ? 'metrics' : 'activity')
   const garminConnected = (() => {
     try { return !!localStorage.getItem('albert-garmin-live') } catch { return false }
   })()
@@ -58,34 +55,15 @@ export default function Health() {
 
   return (
     <div className="health-page">
-      <SectionHeader title={t.heading} subtitle={tab === 'activity' ? t.srcGarmin : t.srcMetrics} />
+      <SectionHeader title={isSport ? t.sport : t.health} subtitle={isSport ? t.srcGarmin : t.srcMetrics} />
 
-      <div className="health-tabs" role="tablist">
-        <button className={`health-tab ${tab === 'activity' ? 'active' : ''}`} onClick={() => setTab('activity')}>{t.activity}</button>
-        <button className={`health-tab ${tab === 'metrics' ? 'active' : ''}`} onClick={() => setTab('metrics')}>{t.metrics}</button>
-      </div>
+      {isSport ? activitySection : <MetricsView />}
 
-      {tab === 'activity' ? activitySection : <MetricsView />}
-
-      <HealthAssistant tab={tab} />
+      {showAssistant && <HealthAssistant tab={view} />}
 
       <style>{`
         .health-page { display: flex; flex-direction: column; gap: 20px; max-width: 1400px; padding-bottom: 40px; }
         .muted { color: var(--muted-foreground); }
-
-        .health-tabs {
-          display: inline-flex; gap: 4px; align-self: flex-start;
-          background: var(--bg-surface); border: 1px solid var(--border);
-          padding: 4px; border-radius: 12px;
-        }
-        .health-tab {
-          padding: 8px 18px; border: none; background: transparent;
-          color: var(--muted-foreground); font-family: inherit; font-size: 14px; font-weight: 600;
-          border-radius: 9px; cursor: pointer; transition: all 0.18s;
-        }
-        .health-tab:hover { color: var(--foreground); }
-        .health-tab.active { background: var(--accent); color: var(--on-accent); border-color: transparent; }
-        @media (max-width: 640px) { .health-tab { min-height: 40px; padding: 9px 18px; } }
 
         /* Ряд метрик тренировки (GarminLive embedded): подпись в одну строку,
            плитки ряда одной высоты — «Эффект · аэробный» больше не растягивает плитку */

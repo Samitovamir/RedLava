@@ -13,6 +13,7 @@ import { useLayout } from '../layout.js'
 import { getQuoteOfDay } from '../utils/quotes.js'
 import { useT, useLang } from '../context/LanguageContext.jsx'
 import { mskNow } from '../utils/time.js'
+import { TASKS_ENABLED } from '../config/features.js'
 
 function getGreeting(t) {
   const hour = mskNow().getHours()
@@ -90,7 +91,7 @@ export default function Home() {
           <SportSignal />
           <HealthSignal />
           <NutritionHomeCard />
-          <TasksHomeCard />
+          {TASKS_ENABLED && <TasksHomeCard />}
         </div>
       ) : (
         <>
@@ -99,7 +100,7 @@ export default function Home() {
             <SportSignal />
             <HealthSignal />
             <NutritionHomeCard />
-            <TasksHomeCard />
+            {TASKS_ENABLED && <TasksHomeCard />}
           </div>
 
           <AIWorkZone />

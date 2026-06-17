@@ -3,10 +3,10 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Home, CalendarDays, HeartPulse, UtensilsCrossed, Mail, History as HistoryIcon,
-  Settings, MoreHorizontal, CheckSquare,
+  Settings, MoreHorizontal, CheckSquare, Activity,
 } from 'lucide-react'
 import { useLang } from '../context/LanguageContext.jsx'
-import { MAIL_ENABLED, HISTORY_ENABLED } from '../config/features.js'
+import { MAIL_ENABLED, HISTORY_ENABLED, TASKS_ENABLED } from '../config/features.js'
 
 /*
   Навигация (CarPlay-рельс):
@@ -23,14 +23,15 @@ import { MAIL_ENABLED, HISTORY_ENABLED } from '../config/features.js'
 const ITEMS = [
   { path: '/', ru: 'Главная', en: 'Home', Ico: Home },
   { path: '/schedule', ru: 'Расписание', en: 'Schedule', Ico: CalendarDays },
+  { path: '/sport', ru: 'Спорт', en: 'Sport', Ico: Activity },
   { path: '/health', ru: 'Здоровье', en: 'Health', Ico: HeartPulse },
   { path: '/nutrition', ru: 'Питание', en: 'Nutrition', Ico: UtensilsCrossed },
-  { path: '/tasks', ru: 'Задачи', en: 'Tasks', Ico: CheckSquare },
+  ...(TASKS_ENABLED ? [{ path: '/tasks', ru: 'Задачи', en: 'Tasks', Ico: CheckSquare }] : []),
   ...(MAIL_ENABLED ? [{ path: '/mail', ru: 'Письма', en: 'Mail', Ico: Mail }] : []),
   ...(HISTORY_ENABLED ? [{ path: '/history', ru: 'История', en: 'History', Ico: HistoryIcon }] : []),
 ]
 const SETTINGS_ITEM = { path: '/settings', ru: 'Настройки', en: 'Settings', Ico: Settings }
-// Нижняя панель: 5 главных вкладок (Главная, Расписание, Здоровье, Питание, Задачи).
+// Нижняя панель: 5 главных вкладок (Главная, Расписание, Спорт, Здоровье, Питание).
 const TAB_ITEMS = ITEMS.slice(0, 5)
 // Лист «Ещё» — только для неосновных разделов (если включены). Пусто → «Ещё» не рендерится.
 const MORE_ITEMS = ITEMS.slice(5)
