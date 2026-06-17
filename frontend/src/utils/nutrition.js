@@ -418,6 +418,47 @@ export function eatenForDay(plan, intake, dateKey) {
   return Math.round(planned + extra)
 }
 
+// Сводка питания на СЕГОДНЯ для ИИ (статус/снимок/подбор на Главной). Считает ТО ЖЕ, что
+// показывает страница «Питание» (динамическая цель: база + тренировка + восстановление +
+// перенос со вчера, минус фактически съеденное) — один источник, чтобы ИИ и страница не
+// противоречили. hasData=false, если профиль/данные недоступны.
+export function nutritionToday() {
+  try {
+    const profile = loadProfile()
+    const base = computeTarget(profile)
+    const intake = loadIntake()
+    const plan = loadPlan()
+    const garmin = loadGarmin()
+    const whoop = loadWhoop()
+    const today = mskDateKey()
+    const burned = workoutKcal(garmin, today, base.bmr)
+    const carry = carryFromYesterday(plan, intake, today, base.kcal)
+    const target = dynamicTarget(base, profile, { burned, hasGarmin: !!garmin, recovery: whoop?.recovery ?? null, carry })
+    const eaten = eatenForDay(plan, intake, today)
+    const rec = intake?.[today]
+    const tracked = !!rec && (rec.source === 'photo' || rec.source === 'calai' || rec.source === 'manual')
+    const macros = tracked
+      ? { protein: Math.round(rec.protein || 0), fat: Math.round(rec.fat || 0), carb: Math.round(rec.carb || 0) }
+      : { protein: 0, fat: 0, carb: 0 }
+    const remaining = Math.max(0, target.kcal - eaten)
+    const goalLabel = (GOALS.find(g => g.key === profile.goal) || {}).label || profile.goal
+    return { hasData: true, target, eaten, remaining, macros, goalLabel }
+  } catch { return { hasData: false } }
+}
+
+// Человеческая строка «питание сегодня» для снимков ИИ: цель + СКОЛЬКО УЖЕ СЪЕДЕНО и сколько
+// осталось (а не только цель). Именно за счёт «съедено» меняется снимок → ИИ-статус
+// перегенерируется при каждом новом логе еды (ключ кэша зависит от снимка).
+export function nutritionTodayLine() {
+  const n = nutritionToday()
+  if (!n.hasData) return 'Данные питания недоступны.'
+  const { target, eaten, remaining, macros, goalLabel } = n
+  const goal = `Цель «${goalLabel}»: ${target.kcal} ккал/день (белок ${target.protein} г, жиры ${target.fat} г, углеводы ${target.carb} г); в дни тренировок растёт на реальный расход.`
+  if (eaten < 30) return `${goal} Сегодня пока ничего не залогировано — впереди вся дневная норма.`
+  const needProtein = Math.max(0, target.protein - macros.protein)
+  return `${goal} Уже съедено сегодня: ${eaten} ккал (белок ${macros.protein} г, жиры ${macros.fat} г, углеводы ${macros.carb} г). Осталось: ${remaining} ккал${needProtein > 0 ? `, белка добрать ещё ~${needProtein} г` : ''}.`
+}
+
 // ── Фото-дневник: записи приёмов за день (фото/штрих-код/этикетка/сохранённое/довесок) ──
 // Несколько записей за день суммируются. source:'photo' — авторитетный итог дня.
 function rollupEntries(entries) {

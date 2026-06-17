@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import { useT, useLang } from '../context/LanguageContext.jsx'
 import { useAiSummary } from '../hooks/useAiSummary.js'
 import { useSiteSnapshot } from '../hooks/useSiteSnapshot.js'
-import { loadProfile, computeTarget, mealTarget, loadPrefs, MEALS } from '../utils/nutrition.js'
+import { loadProfile, computeTarget, mealTarget, loadPrefs, MEALS, nutritionToday } from '../utils/nutrition.js'
 import { nutritionHealthBrief } from '../utils/siteSnapshot.js'
 import { mskDateKey } from '../utils/time.js'
 import { useCurrentMeal } from '../hooks/useCurrentMeal.js'
@@ -51,7 +51,11 @@ export default function NutritionHomeCard() {
 
   useEffect(() => {
     let cancelled = false
-    const cacheKey = `${mskDateKey()}:${mealType}`
+    // Учитываем уже съеденное: остаток дня входит в ключ кэша (грубо, по 250 ккал), чтобы
+    // после логирования еды блюдо переподобралось под остаток, а не висело прежним.
+    const today = nutritionToday()
+    const remBucket = today.hasData ? Math.round(today.remaining / 250) : 'x'
+    const cacheKey = `${mskDateKey()}:${mealType}:${remBucket}`
     try {
       const c = JSON.parse(localStorage.getItem(HOME_DISH_KEY) || 'null')
       if (c && c.key === cacheKey && c.dish) { setDish(c.dish); setImage(c.image || null); setLoading(false); return }
@@ -60,11 +64,20 @@ export default function NutritionHomeCard() {
     setLoading(true)
     ;(async () => {
       try {
-        const profile = loadProfile()
         const prefs = loadPrefs()
-        const tgt = computeTarget(profile)
+        const tgt = today.hasData ? today.target : computeTarget(loadProfile())
         const share = (MEALS.find(m => m.key === mealType)?.share) ?? 0.3
-        const pm = mealTarget(tgt, share)
+        const baseMeal = mealTarget(tgt, share)
+        // «Держим в голове» съеденное: если на день уже что-то залогировано — размер блюда
+        // вписываем в ОСТАТОК (не фиксированная доля), чтобы не предлагать сверх нормы.
+        let pm = baseMeal
+        let eatenNote = ''
+        if (today.hasData && today.eaten > 30) {
+          const capKcal = Math.max(150, Math.min(baseMeal.kcal, today.remaining))
+          const f = baseMeal.kcal > 0 ? capKcal / baseMeal.kcal : 1
+          pm = { kcal: Math.round(capKcal), protein: Math.round(baseMeal.protein * f), fat: Math.round(baseMeal.fat * f), carb: Math.round(baseMeal.carb * f) }
+          eatenNote = ` Сегодня уже съедено ~${today.eaten} из ${today.target.kcal} ккал, осталось ~${today.remaining} ккал — блюдо должно вписаться в остаток и помочь добрать белок.`
+        }
         let recent = []
         try { recent = JSON.parse(localStorage.getItem(HOME_RECENT_KEY) || '[]') } catch { /* ignore */ }
         const res = await fetch('/api/nutrition/meals', {
@@ -73,7 +86,7 @@ export default function NutritionHomeCard() {
             target: pm, mealType, prefs, count: 1, components: ['Основное'],
             health: nutritionHealthBrief(),
             exclude: recent,
-            note: 'Чередуй блюда и источники белка ото дня ко дню (рыба, индейка, бобовые, яйца, морепродукты, нежирная говядина) — не предлагай каждый раз курицу.'
+            note: 'Чередуй блюда и источники белка ото дня ко дню (рыба, индейка, бобовые, яйца, морепродукты, нежирная говядина) — не предлагай каждый раз курицу.' + eatenNote
           })
         })
         const data = await res.json()
