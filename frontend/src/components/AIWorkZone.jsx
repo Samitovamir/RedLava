@@ -4,35 +4,28 @@ import ReadingOverlay from './ReadingOverlay.jsx'
 import { fetchImagesForQueries } from '../utils/wikiImages.js'
 import { useSiteSnapshot } from '../hooks/useSiteSnapshot.js'
 import { useEvents } from '../context/EventsContext.jsx'
-import { useMail } from '../context/MailContext.jsx'
 import { useMemoryFacts } from '../context/MemoryContext.jsx'
 import { useHistory } from '../context/HistoryContext.jsx'
 import { useLang, useT } from '../context/LanguageContext.jsx'
 import VoiceInput from './VoiceInput.jsx'
 
 /*
-  Рабочая зона ИИ на главной.
-  Режимы:
-   - file: сюда прилетают рабочие файлы; ИИ распределяет их по папкам / делает разбор
-   - text: текстовая задача (узнать что-то, написать email/сообщение, создать событие)
+  Рабочая зона ИИ на главной. Только текстовая задача (узнать что-то, написать
+  email/сообщение, создать событие). Файловый режим убран — он был заглушкой
+  («в разработке» + фейковый разбор), реальный разбор файлов появится отдельно
+  на /api/ai/analyze-file.
   Состояния:
    - idle      → ввод
    - processing→ "Выполняется..."
-   - result    → обзор файла с разбором ИЛИ превью сообщения с кнопками Одобрить/Править
+   - result    → превью сообщения с кнопками Одобрить/Править
 */
 
 export default function AIWorkZone() {
-  const [mode, setMode] = useState('text') // 'text' | 'file' — по умолчанию текстовая задача
-  const [isDragging, setIsDragging] = useState(false)
   const [status, setStatus] = useState('idle') // 'idle' | 'processing' | 'result' | 'done'
-  const [file, setFile] = useState(null)
   const [task, setTask] = useState('')
   const [result, setResult] = useState(null)
-  const [editingMsg, setEditingMsg] = useState(false)
   const [doneInfo, setDoneInfo] = useState(null) // { title, detail }
   const [reading, setReading] = useState(null) // { open, entries:[{q,text,images,loadingImages}], loading }
-  const msgBackup = useRef(null)
-  const fileInputRef = useRef(null)
 
   // Снимок данных (расписание/спорт/здоровье/анализы) и инструменты — чтобы ИИ в рабочей зоне
   // ВИДЕЛ календарь и реально выполнял задачи, как командная строка.
@@ -103,69 +96,17 @@ export default function AIWorkZone() {
 
   const snapshot = useSiteSnapshot()
   const { applyAiActions } = useEvents()
-  const { openDraft } = useMail()
   const { addFact, updateFact } = useMemoryFacts()
   const { logAction } = useHistory()
 
-  function handleDrop(e) {
-    e.preventDefault()
-    setIsDragging(false)
-    const dropped = e.dataTransfer.files?.[0]
-    if (dropped) processFile(dropped)
-  }
-
-  function handleFilePick(e) {
-    const picked = e.target.files?.[0]
-    if (picked) processFile(picked)
-  }
-
-  async function processFile(f) {
-    setFile(f)
-    setStatus('processing')
-    // TODO: реальный вызов POST /api/ai/analyze-file
-    await new Promise(r => setTimeout(r, 1800))
-    setResult({
-      kind: 'file',
-      title: f.name,
-      folder: t.fileFolder,
-      summary: t.fileSummary
-    })
-    setStatus('result')
-  }
 
   // Отправить запрос к ИИ. Письма → превью с одобрением; вопросы/«расскажи» → большое подробное окно.
   async function processTask() {
     const q = task.trim()
     if (!q) return
     setStatus('processing')
-    const isMessage = /напиши|письмо|email|сообщени|ответь|ответ /i.test(q)
     // Команда на расписание/память — создать/перенести/удалить событие, запомнить факт
     const isCommand = /поставь|запиш|закин|добавь|напомн|назнач|перенес|сдвин|передвин|убер|удал|отмен|запомни|созда/i.test(q)
-
-    if (isMessage) {
-      const context =
-        'Ты — личный секретарь владельца. Составь готовый текст письма/сообщения по его просьбе. ' +
-        'Верни ТОЛЬКО сам текст сообщения, без пояснений и без подписи «от ИИ». Вежливо, тепло, по-деловому. ' +
-        'Если уместна подпись — подпиши «С уважением, владелец».' +
-        (lang === 'en' ? ' Always reply to the user in English.' : '')
-      try {
-        const res = await fetch('/api/ai/chat', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: q, context, snapshot })
-        })
-        const data = await res.json()
-        setResult({
-          kind: 'message',
-          to: t.recipient,
-          subject: t.noSubject,
-          body: data.reply || t.msgFail
-        })
-      } catch {
-        setResult({ kind: 'message', to: t.recipient, subject: t.noSubject, body: t.noServerMsg })
-      }
-      setStatus('result')
-      return
-    }
 
     if (isCommand) {
       // Команда — идём в /agent (видит снимок, умеет инструменты), затем применяем действия
@@ -180,9 +121,7 @@ export default function AIWorkZone() {
         const eventActions = actions.filter(a => !memNames.includes(a.name) && a.name !== 'send_email')
         const memActions = actions.filter(a => a.name === 'remember_fact')
         const updateActions = actions.filter(a => a.name === 'update_fact')
-        const mailActions = actions.filter(a => a.name === 'send_email')
         if (eventActions.length) applyAiActions(eventActions)
-        if (mailActions.length) openDraft(mailActions[0].input)
         memActions.forEach(a => {
           if (a.input?.fact) { addFact(a.input.fact); logAction({ actor: 'ai', type: 'task', title: t.remembered(a.input.fact) }) }
         })
@@ -232,46 +171,14 @@ export default function AIWorkZone() {
   function reset() {
     setStatus('idle')
     setResult(null)
-    setFile(null)
     setTask('')
-    setEditingMsg(false)
     setDoneInfo(null)
   }
 
   // Завершить задачу — показать зелёный экран успеха
   function complete(title, detail) {
     setDoneInfo({ title, detail })
-    setEditingMsg(false)
     setStatus('done')
-  }
-
-  // Возврат к прошлому этапу — текстовая задача с сохранённым текстом
-  function backToTask() {
-    setStatus('idle')
-    setMode('text')
-    setResult(null)
-    setEditingMsg(false)
-  }
-
-  // Войти в режим правки письма (с бэкапом для отмены)
-  function startEditMsg() {
-    msgBackup.current = { ...result }
-    setEditingMsg(true)
-  }
-
-  // Применить правки
-  function saveEditMsg() {
-    setEditingMsg(false)
-  }
-
-  // Отменить правки — восстановить из бэкапа
-  function cancelEditMsg() {
-    if (msgBackup.current) setResult(msgBackup.current)
-    setEditingMsg(false)
-  }
-
-  function updateMsg(field, value) {
-    setResult(prev => ({ ...prev, [field]: value }))
   }
 
   return (
@@ -285,54 +192,11 @@ export default function AIWorkZone() {
             <span className="awz-title-sub">{t.titleSub}</span>
           </div>
         </div>
-        {status === 'idle' && (
-          <div className="awz-switch">
-            <button
-              className={`awz-tab ${mode === 'text' ? 'active' : ''}`}
-              onClick={() => setMode('text')}
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="14" y2="18"/>
-              </svg>
-              {t.tabText}
-            </button>
-            <button
-              className={`awz-tab ${mode === 'file' ? 'active' : ''}`}
-              onClick={() => setMode('file')}
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
-              </svg>
-              {t.tabFile}
-            </button>
-          </div>
-        )}
       </div>
 
       <AnimatePresence mode="wait">
-        {/* IDLE: режим файла — пока В РАЗРАБОТКЕ (без фейкового разбора) */}
-        {status === 'idle' && mode === 'file' && (
-          <motion.div
-            key="file"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="awz-dropzone awz-dev"
-          >
-            <div className="awz-drop-icon">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
-              </svg>
-            </div>
-            <p>{t.fileTitle}</p>
-            <span>{t.fileSub}</span>
-            <div className="awz-dev-overlay">
-              <div className="awz-dev-tape">{t.inDev}</div>
-            </div>
-          </motion.div>
-        )}
-
         {/* IDLE: текстовая задача */}
-        {status === 'idle' && mode === 'text' && (
+        {status === 'idle' && (
           <motion.div
             key="text"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -352,90 +216,7 @@ export default function AIWorkZone() {
           >
             <div className="awz-spinner" />
             <p>{t.processing}</p>
-            <span>{file ? t.analyzing(file.name) : t.processingTask}</span>
-          </motion.div>
-        )}
-
-        {/* RESULT: разбор файла */}
-        {status === 'result' && result?.kind === 'file' && (
-          <motion.div
-            key="res-file"
-            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-            className="awz-result"
-          >
-            <div className="awz-result-head">
-              <span className="awz-file-name">{result.title}</span>
-              <span className="awz-folder-tag">→ {result.folder}</span>
-            </div>
-            <p className="awz-result-text">{result.summary}</p>
-            <div className="awz-actions">
-              <button
-                className="awz-btn primary"
-                onClick={() => complete(t.fileDoneTitle, t.fileDoneDetail(result.title, result.folder))}
-              >{t.confirmDistribute}</button>
-              <button className="awz-btn ghost" onClick={reset}>{t.cancel}</button>
-            </div>
-          </motion.div>
-        )}
-
-        {/* RESULT: превью сообщения — режим просмотра */}
-        {status === 'result' && result?.kind === 'message' && !editingMsg && (
-          <motion.div
-            key="res-msg"
-            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-            className="awz-result"
-          >
-            <div className="awz-msg-preview">
-              <div className="awz-msg-row"><span className="awz-msg-label">{t.to}</span><span>{result.to}</span></div>
-              <div className="awz-msg-row"><span className="awz-msg-label">{t.subject}</span><span>{result.subject}</span></div>
-              <div className="awz-msg-body">{result.body}</div>
-            </div>
-            <div className="awz-actions">
-              <button
-                className="awz-btn primary"
-                onClick={() => complete(t.mailDoneTitle, t.mailDoneDetail(result.subject, result.to))}
-              >{t.approveSend}</button>
-              <button className="awz-btn ghost" onClick={startEditMsg}>{t.edit}</button>
-              <button className="awz-btn ghost" onClick={backToTask}>{t.cancelMsg}</button>
-            </div>
-          </motion.div>
-        )}
-
-        {/* RESULT: превью сообщения — режим редактирования */}
-        {status === 'result' && result?.kind === 'message' && editingMsg && (
-          <motion.div
-            key="edit-msg"
-            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-            className="awz-result"
-          >
-            <div className="awz-msg-edit">
-              <div className="awz-edit-field">
-                <span className="awz-msg-label">{t.to}</span>
-                <input
-                  className="awz-edit-input"
-                  value={result.to}
-                  onChange={(e) => updateMsg('to', e.target.value)}
-                />
-              </div>
-              <div className="awz-edit-field">
-                <span className="awz-msg-label">{t.subject}</span>
-                <input
-                  className="awz-edit-input"
-                  value={result.subject}
-                  onChange={(e) => updateMsg('subject', e.target.value)}
-                />
-              </div>
-              <textarea
-                className="awz-edit-body"
-                value={result.body}
-                onChange={(e) => updateMsg('body', e.target.value)}
-                rows={4}
-              />
-            </div>
-            <div className="awz-actions">
-              <button className="awz-btn primary" onClick={saveEditMsg}>{t.done}</button>
-              <button className="awz-btn ghost" onClick={cancelEditMsg}>{t.cancelMsg}</button>
-            </div>
+            <span>{t.processingTask}</span>
           </motion.div>
         )}
 

@@ -68,18 +68,6 @@ function eventOccursOn(ev, viewDate) {
   return view.getTime() === evDate.getTime()
 }
 
-const MOCK_NOTIFICATIONS = [
-  { text: 'Через 40 минут: Звонок с командой', time: '14:20' },
-  { text: 'Whoop: восстановление обновлено — 78%', time: '08:05' },
-  { text: 'Эдвард принял приглашение на встречу', time: 'вчера' }
-]
-
-const MOCK_NOTIFICATIONS_EN = [
-  { text: 'In 40 minutes: Call with the team', time: '14:20' },
-  { text: 'Whoop: recovery updated — 78%', time: '08:05' },
-  { text: 'Edward accepted the meeting invitation', time: 'yesterday' }
-]
-
 function toMinutes(t) {
   const [h, m] = t.split(':').map(Number)
   return h * 60 + m
@@ -773,26 +761,6 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
               </AnimatePresence>
             </div>
           )}
-
-          <div className="ds-menu-wrap">
-            <button className={`ds-icon-btn ${openMenu === 'bell' ? 'active' : ''}`} onClick={() => toggleMenu('bell')} title={t.notifications}>
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-              <span className="ds-bell-dot" />
-            </button>
-            <AnimatePresence>
-              {openMenu === 'bell' && (
-                <motion.div className="ds-dropdown wide" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.15 }}>
-                  <div className="ds-dropdown-title">{t.notifications}</div>
-                  {(lang === 'en' ? MOCK_NOTIFICATIONS_EN : MOCK_NOTIFICATIONS).map((n, i) => (
-                    <div key={i} className="ds-notif">
-                      <span className="ds-notif-text">{n.text}</span>
-                      <span className="ds-notif-time">{n.time}</span>
-                    </div>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
 
           <div className="ds-menu-wrap">
             <button className={`ds-icon-btn ${openMenu === 'header' ? 'active' : ''}`} onClick={() => toggleMenu('header')} title={t.menu}>
