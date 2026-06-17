@@ -564,7 +564,7 @@ function SavedDishesModal({ t, onClose, onLog }) {
 function ModalStyles() {
   return (
     <style>{`
-      .nd-backdrop { position: fixed; inset: 0; z-index: 500; background: color-mix(in srgb, var(--bg-app) 70%, transparent); backdrop-filter: blur(3px); display: flex; align-items: flex-start; justify-content: center; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 20px; }
+      .nd-backdrop { position: fixed; inset: 0; z-index: 500; background: color-mix(in srgb, var(--bg-app) 70%, transparent); backdrop-filter: blur(3px); display: flex; align-items: flex-start; justify-content: center; overflow-y: auto; padding: 20px; }
       .nd-modal { width: 100%; max-width: 440px; margin: auto; display: flex; flex-direction: column; gap: 14px; }
       /* Окно — flex-колонка. Без этого дети (flex-shrink:1 по умолчанию) сжимаются
          под max-height вместо переполнения — тогда scrollHeight == clientHeight и
@@ -625,8 +625,11 @@ function ModalStyles() {
         .nd-backdrop { align-items: flex-end; padding: 0; overflow-y: hidden; }
         /* Лист-снизу в PWA на iPhone: нижний контент (кнопки «Добавить») уезжал под
            home-индикатор и до него нельзя было долистать — добавляем отступ под safe-area
-           и гасим scroll-chaining (как в ui/Modal, GarminLive, Nutrition). */
-        .nd-modal { max-width: 100%; margin: 0; max-height: 94vh; max-height: 94dvh; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; border-radius: var(--radius-lg) var(--radius-lg) 0 0; padding-bottom: max(20px, env(safe-area-inset-bottom)); }
+           и гасим scroll-chaining (как в ui/Modal, GarminLive, Nutrition).
+           БЕЗ -webkit-overflow-scrolling:touch — на современном iOS этот legacy-флаг
+           оставляет overflow-контейнер «незаведённым»: он не листается, пока фокус на
+           поле ввода не вызовет reflow. Рабочее ui/Modal его и не использует. */
+        .nd-modal { max-width: 100%; margin: 0; max-height: 94vh; max-height: 94dvh; overflow-y: auto; overscroll-behavior: contain; border-radius: var(--radius-lg) var(--radius-lg) 0 0; padding-bottom: max(20px, env(safe-area-inset-bottom)); }
         .nd-kcal-row { flex-direction: column; align-items: stretch; gap: 10px; }
       }
     `}</style>
