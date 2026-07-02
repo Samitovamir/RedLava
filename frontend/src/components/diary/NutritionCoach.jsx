@@ -4,6 +4,8 @@ import { useT, useLang } from '../../context/LanguageContext.jsx'
 import { useAiSummary } from '../../hooks/useAiSummary.js'
 import { useCurrentMeal } from '../../hooks/useCurrentMeal.js'
 import { nutritionHealthBrief } from '../../utils/siteSnapshot.js'
+import { loadPrefs } from '../../utils/nutrition.js'
+import RichText from '../RichText.jsx'
 
 /*
   Помощник по питанию в разделе «Питание». Полностью самодостаточная карточка: НЕ наследует
@@ -20,7 +22,7 @@ const COACH_CONTEXT =
   'две короткие фразы, каждая с новой строки: (1) общий статус питания за сегодня — сколько съедено и ' +
   'осталось, чего не хватает (белок/калории), в графике ли по цели; (2) конкретный совет к ближайшему ' +
   'приёму — что съесть сейчас с учётом остатка КБЖУ и состояния (анализы/тренировка/восстановление/стресс). ' +
-  'По делу, без вступлений и markdown, не паниковать.'
+  'По делу, без вступлений, без эмодзи, не паниковать. Самое важное — число или главный вывод — выдели **жирным** (1–2 на ответ, умеренно).'
 
 export default function NutritionCoach({ target, eaten = 0, remaining = 0, intake, selectedDay }) {
   const { lang } = useLang()
@@ -37,16 +39,20 @@ export default function NutritionCoach({ target, eaten = 0, remaining = 0, intak
   const eF = tracked ? (rec.fat || 0) : 0
   const eC = tracked ? (rec.carb || 0) : 0
 
+  const fodmapOn = !!loadPrefs().fodmap
   const snapshot = [
     `Ближайший приём: ${meal}.`,
     `Цель на день: ${target?.kcal ?? '?'} ккал (белок ${target?.protein ?? '?'} г, жиры ${target?.fat ?? '?'} г, углеводы ${target?.carb ?? '?'} г).`,
     `Съедено сегодня: ${Math.round(eaten)} ккал (белок ${eP} г, жиры ${eF} г, углеводы ${eC} г). Осталось: ${Math.round(remaining)} ккал.`,
+    fodmapOn ? 'владелец на диете Low-FODMAP (назначено врачом).' : '',
     nutritionHealthBrief()
-  ].join('\n')
+  ].filter(Boolean).join('\n')
 
   const summary = useAiSummary({
     id: 'nutrition-coach',
-    context: COACH_CONTEXT + (lang === 'en' ? ' Reply in English.' : ''),
+    context: COACH_CONTEXT
+      + (fodmapOn ? ' владелец на Low-FODMAP: совет к приёму — только низкий FODMAP (без лука, чеснока, пшеницы, бобовых, молока); коротко упомяни это.' : '')
+      + (lang === 'en' ? ' Reply in English.' : ''),
     snapshot,
     message: 'Статус питания за сегодня и совет к ближайшему приёму.',
     fallback: ''
@@ -68,25 +74,24 @@ export default function NutritionCoach({ target, eaten = 0, remaining = 0, intak
   const body = advice || (summary.loading ? t.think : dataFallback)
 
   return (
-    <motion.div className="nutri-coach" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+    <motion.div className="nutri-coach ai-glow" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
       <div className="nuc-head">
         <span className="nuc-badge"><Sparkles size={15} strokeWidth={1.9} /> {t.title}</span>
         <span className="nuc-meal">{mealName}</span>
       </div>
-      <p className="nuc-text">{body}</p>
+      <RichText className="nuc-text">{body}</RichText>
       <style>{`
         .nutri-coach {
           display: flex; flex-direction: column; gap: 9px;
           padding: 16px 18px;
           border-radius: var(--radius, 18px);
           background: var(--bg-surface, #1B2027);
-          border: 1px solid var(--border-med, #2C333C);
-          box-shadow: var(--shadow-card, 0 4px 16px rgba(0,0,0,0.25));
+          /* рамка/тень — от .ai-glow (кольцо «цвета ИИ» + волна свечения) */
         }
         .nuc-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
         .nuc-badge {
           display: inline-flex; align-items: center; gap: 7px;
-          font-size: 14px; font-weight: 700; color: var(--accent, #6E8CA8);
+          font-size: 14px; font-weight: 700; color: var(--ai, #EBC15C);
         }
         .nuc-meal {
           font-size: 11px; font-weight: 700; color: var(--text-secondary, #9AA3AF);

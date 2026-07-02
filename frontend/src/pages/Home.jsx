@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import AIWorkZone from '../components/AIWorkZone.jsx'
+import BrandLogo from '../components/BrandLogo.jsx'
 import DaySchedule from '../components/DaySchedule.jsx'
 import DaySummary from '../components/DaySummary.jsx'
 import HealthBrief from '../components/HealthBrief.jsx'
@@ -72,6 +73,7 @@ export default function Home() {
     <div className="home-page">
       <div className="home-header">
         <div className="header-left">
+          <BrandLogo />
           <span className="home-date">{dateStr}</span>
           <h1 className="greeting">{greetStr}</h1>
         </div>
@@ -133,6 +135,7 @@ export default function Home() {
           gap: 32px;
         }
         .header-left { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+        .header-left .brand-logo { margin-bottom: 6px; }
         .home-settings { display: none; }
 
         .quote-of-day {

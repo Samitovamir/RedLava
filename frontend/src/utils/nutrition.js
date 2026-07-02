@@ -156,6 +156,7 @@ export const DEFAULT_PREFS = {
   pork: true, beef: true, chicken: true, fish: true, seafood: true, dairy: true, eggs: true, mushrooms: true,
   cuisines: [], cookTime: 'any',  // 'fast' | 'any'
   allergies: '', avoid: '',
+  fodmap: true,                    // диета Low-FODMAP — по умолчанию включена (назначено врачом)
   // регулярные «довески», которые тоже идут в КБЖУ
   coffee: 'no',        // 'no' | 'black' | 'milk' | 'milk_sugar'
   coffeeCups: 1,
@@ -171,6 +172,14 @@ export const QUICK_ADD = [
   { key: 'protein_bar', label: 'Протеиновый батончик', kcal: 200, protein: 20, fat: 7, carb: 22 },
   { key: 'protein_shake', label: 'Протеиновый коктейль', kcal: 160, protein: 27, fat: 3, carb: 8 }
 ]
+
+// FODMAP-светофор: уровень → подпись + цвет (токены статуса). null, если уровня нет.
+export function fodmapMeta(band) {
+  if (band === 'high') return { key: 'high', label: 'Высокий', color: 'var(--status-crit)' }
+  if (band === 'mod') return { key: 'mod', label: 'Умеренный', color: 'var(--status-warn)' }
+  if (band === 'low') return { key: 'low', label: 'Низкий', color: 'var(--status-ok)' }
+  return null
+}
 
 export function loadPrefs() {
   try { const s = localStorage.getItem(TASTE_KEY); if (s) return { ...DEFAULT_PREFS, ...JSON.parse(s) } } catch { /* ignore */ }

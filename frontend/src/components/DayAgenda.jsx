@@ -6,6 +6,7 @@ import { useSiteSnapshot } from '../hooks/useSiteSnapshot.js'
 import { eventCategory } from '../utils/events.js'
 import { mskNow } from '../utils/time.js'
 import { useLang, useT } from '../context/LanguageContext.jsx'
+import AiAdvice from './AiAdvice.jsx'
 
 /*
   «Расписание» на Главной: один развёрнутый ближайший/текущий ивент,
@@ -185,10 +186,7 @@ export default function DayAgenda() {
       )}
 
       {aiLine && (
-        <div className="da-ai">
-          <span className="da-ai-badge">{t.aiBadge}</span>
-          <span className="da-ai-text">{aiLine}</span>
-        </div>
+        <AiAdvice glow="soft" label={t.aiBadge}>{aiLine}</AiAdvice>
       )}
 
       <style>{`

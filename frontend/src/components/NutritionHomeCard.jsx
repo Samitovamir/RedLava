@@ -4,10 +4,11 @@ import { motion } from 'framer-motion'
 import { useT, useLang } from '../context/LanguageContext.jsx'
 import { useAiSummary } from '../hooks/useAiSummary.js'
 import { useSiteSnapshot } from '../hooks/useSiteSnapshot.js'
-import { loadProfile, computeTarget, mealTarget, loadPrefs, MEALS, nutritionToday } from '../utils/nutrition.js'
+import { loadProfile, computeTarget, mealTarget, loadPrefs, MEALS, nutritionToday, fodmapMeta } from '../utils/nutrition.js'
 import { nutritionHealthBrief } from '../utils/siteSnapshot.js'
 import { mskDateKey } from '../utils/time.js'
 import { useCurrentMeal } from '../hooks/useCurrentMeal.js'
+import AiAdvice from './AiAdvice.jsx'
 
 /*
   Окно «Питание» на Главной: обзор диеты + ОДНО блюдо под ТЕКУЩИЙ приём пищи (с учётом всех
@@ -24,7 +25,7 @@ const NUT_CONTEXT =
   'Ты помощник владельца по питанию. По его данным (цель КБЖУ, тренировки, восстановление, анализы) ' +
   'дай РОВНО две короткие фразы, каждая с новой строки: (1) общий обзор его диеты сейчас; (2) с учётом ' +
   'сегодняшнего дня (тренировки/восстановление/анализы) — какой акцент в еде сегодня уместен. ' +
-  'Без markdown, без списков, кратко.'
+  'Без эмодзи, кратко. Ключевое — число или главный акцент — выдели **жирным** (умеренно).'
 
 export default function NutritionHomeCard() {
   const navigate = useNavigate()
@@ -127,7 +128,7 @@ export default function NutritionHomeCard() {
         <span className="nh-meal">{mealName}</span>
       </div>
 
-      {summary.text && <p className="nh-overview">{summary.text}</p>}
+      {summary.text && <AiAdvice glow="soft" label="ИИ">{summary.text}</AiAdvice>}
 
       {dish ? (
         <button className="nh-dish" onClick={openDish}>
@@ -135,6 +136,12 @@ export default function NutritionHomeCard() {
           <span className="nh-dish-body">
             <span className="nh-dish-name">{dish.name}</span>
             <span className="nh-dish-macros">{dish.kcal} {t.kcal} · Б {dish.protein} · Ж {dish.fat} · У {dish.carb}</span>
+            {loadPrefs().fodmap && fodmapMeta(dish.fodmap) && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11.5, marginTop: 2 }}>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: fodmapMeta(dish.fodmap).color, flex: 'none' }} />
+                <b style={{ color: fodmapMeta(dish.fodmap).color }}>{fodmapMeta(dish.fodmap).label} FODMAP</b>
+              </span>
+            )}
           </span>
         </button>
       ) : (

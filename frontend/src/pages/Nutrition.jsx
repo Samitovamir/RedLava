@@ -15,12 +15,13 @@ import {
   loadShopping, saveShopping, addToShopping, formatProduct,
   loadGarmin, loadWhoop, workoutKcal, eatenKcal, dynamicTarget, carryFromYesterday,
   QUICK_ADD, loadIntake, saveIntake, addIntakeExtra, clearDayIntake, eatenForDay,
-  loadPantry, savePantry, archivePantry, recentlyBought
+  loadPantry, savePantry, archivePantry, recentlyBought, fodmapMeta
 } from '../utils/nutrition.js'
 import { mskDateKey } from '../utils/time.js'
 import { useT } from '../context/LanguageContext.jsx'
 import { useLocation } from 'react-router-dom'
 import { nutritionHealthBrief } from '../utils/siteSnapshot.js'
+import Portal from '../ui/Portal.jsx'
 import DiaryTab from '../components/diary/DiaryTab.jsx'
 import NutritionCoach from '../components/diary/NutritionCoach.jsx'
 
@@ -634,6 +635,7 @@ export default function Nutrition() {
       {/* Окно с подобранными блюдами */}
       <AnimatePresence>
         {resultsOpen && (
+          <Portal>
           <div className="nu-backdrop" onClick={() => setResultsOpen(false)}>
             <motion.div className="card nu-results" onClick={e => e.stopPropagation()}
               initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.97 }}>
@@ -680,6 +682,13 @@ export default function Nutrition() {
                         <span>{t.bMacro} {m.protein}</span><span>{t.fMacro} {m.fat}</span><span>{t.uMacro} {m.carb}</span>
                       </div>
                       {m.tags?.length > 0 && <div className="nu-tags">{m.tags.map(tag => <span key={tag} className="nu-tag">{tag}</span>)}</div>}
+                      {prefs.fodmap && fodmapMeta(m.fodmap) && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, fontSize: 12, flexWrap: 'wrap' }}>
+                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: fodmapMeta(m.fodmap).color, flex: 'none' }} />
+                          <b style={{ color: fodmapMeta(m.fodmap).color }}>{fodmapMeta(m.fodmap).label} FODMAP</b>
+                          {m.fodmapReason && <span className="muted">· {m.fodmapReason}</span>}
+                        </div>
+                      )}
                       <div className="nu-card-actions">
                         <button className="nu-recipe-btn" onClick={() => openSuggestDetail(m)}>{t.more}</button>
                       </div>
@@ -692,12 +701,14 @@ export default function Nutrition() {
               </button>
             </motion.div>
           </div>
+          </Portal>
         )}
       </AnimatePresence>
 
       {/* Детальная карточка / рецепт */}
       <AnimatePresence>
         {detail && (
+          <Portal>
           <div className="nu-backdrop" onClick={closeDetail}>
             <motion.div className="card nu-modal" onClick={e => e.stopPropagation()}
               initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }}>
@@ -750,12 +761,14 @@ export default function Nutrition() {
               ))}
             </motion.div>
           </div>
+          </Portal>
         )}
       </AnimatePresence>
 
       {/* Предпочтения */}
       <AnimatePresence>
         {prefsOpen && (
+          <Portal>
           <div className="nu-backdrop" onClick={() => setPrefsOpen(false)}>
             <motion.div className="card nu-modal" onClick={e => e.stopPropagation()}
               initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }}>
@@ -845,18 +858,30 @@ export default function Nutrition() {
               <div className="nu-sec-title">{t.avoid}</div>
               <input className="nu-note" placeholder={t.avoidPlaceholder} value={prefsDraft.avoid} onChange={e => setDraft('avoid', e.target.value)} />
 
+              <div className="nu-sec-title">FODMAP-диета</div>
+              <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.45, marginTop: -4, marginBottom: 8 }}>
+                Лечебное питание — по назначению врача. При включении ИИ подбирает блюда и рецепты с низким FODMAP и помечает уровень.
+              </div>
+              <div className="nu-foods">
+                <button className={`nu-food ${prefsDraft.fodmap ? 'yes' : 'no'}`} onClick={() => setDraft('fodmap', !prefsDraft.fodmap)}>
+                  Low-FODMAP <b>{prefsDraft.fodmap ? 'ВКЛ' : 'ВЫКЛ'}</b>
+                </button>
+              </div>
+
               <div className="nu-modal-actions">
                 <button className="nu-suggest" onClick={savePrefsModal}>{t.save}</button>
                 <button className="nu-edit" onClick={() => setPrefsDraft({ ...DEFAULT_PREFS, likes: prefs.likes, dislikes: prefs.dislikes })}>{t.reset}</button>
               </div>
             </motion.div>
           </div>
+          </Portal>
         )}
       </AnimatePresence>
 
       {/* Оценка съеденного блюда */}
       <AnimatePresence>
         {rate && (
+          <Portal>
           <div className="nu-backdrop">
             <motion.div className="card nu-rate" onClick={e => e.stopPropagation()}
               initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}>
@@ -871,6 +896,7 @@ export default function Nutrition() {
               <button className="nu-rate-later" onClick={laterRate}>{t.rateLater}</button>
             </motion.div>
           </div>
+          </Portal>
         )}
       </AnimatePresence>
 

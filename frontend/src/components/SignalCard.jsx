@@ -1,9 +1,10 @@
 import { motion } from 'framer-motion'
+import AiAdvice from './AiAdvice.jsx'
 
 /*
   Общая карточка-сигнал для Главной: заголовок (иконка + ярлык) + пара ключевых метрик
-  + ОДНА короткая фраза от ИИ. Используется парой «Спорт» и «Здоровье», чтобы они были
-  визуально одинаковы. Только CSS-переменные; числа — tabular-nums.
+  + ОДНА короткая фраза от ИИ (в едином блоке AiAdvice). Используется парой «Спорт» и
+  «Здоровье», чтобы они были визуально одинаковы. Только CSS-переменные; числа — tabular-nums.
 */
 export default function SignalCard({ label, icon, metrics = [], aiText = '', aiLoading = false, onClick }) {
   return (
@@ -25,10 +26,9 @@ export default function SignalCard({ label, icon, metrics = [], aiText = '', aiL
       )}
 
       {(aiText || aiLoading) && (
-        <p className="sig2-ai">
-          <span className="sig2-ai-badge">ИИ</span>
+        <AiAdvice glow="soft" label="ИИ">
           {aiLoading ? '…' : aiText}
-        </p>
+        </AiAdvice>
       )}
 
       <style>{`

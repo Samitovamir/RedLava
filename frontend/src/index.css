@@ -525,6 +525,16 @@ body { transition: background-color var(--dur-base) var(--ease), color var(--dur
   --weave-hi: transparent; --weave-lo: transparent;
 }
 
+/* ЦВЕТ ИИ (--ai / --ai-glow): жёлтое золото на ТЁМНЫХ темах, фиолет на СВЕТЛЫХ.
+   Списки тем взаимоисключающие — пересечений нет, конфликтов специфичности нет. */
+[data-theme="black-leather"], [data-theme="brown-leather"],
+[data-theme="original"], [data-theme="ios-dark"], .dark {
+  --ai: #EBC15C; --ai-glow: #E0A23A;
+}
+[data-theme="cream"], [data-theme="red-lava"], [data-theme="ios-light"] {
+  --ai: #6D28D9; --ai-glow: #7C3AED;
+}
+
 /* МОСТ: новые токены тем → «старые» имена, на которые завязаны компоненты.
    Идёт ПОСЛЕ .dark и блоков тем, поэтому переопределяет их. */
 [data-theme] {
@@ -602,6 +612,20 @@ body::after {
 [data-theme="original"]{ --c-warm:#C98A5E; --c-steel:#6E8CA8; --c-sage:#6FA06B; --c-amber:#D6973E; --c-rose:#C77F86; --c-neutral:#9CA3AF; }
 [data-theme="red-lava"]{ --c-warm:#E0512A; --c-steel:#3E7CB1; --c-sage:#2E9E64; --c-amber:#E0922A; --c-rose:#CF4D5A; --c-neutral:#7C7470; }
 
+/* ============================================================
+   Бренд-марка RED LAVA. На светлых темах лого «парит» прозрачным
+   (по умолчанию плашки нет — токены не заданы, BrandLogo берёт
+   transparent). На тёмных — садится на белый патч-шеврон, иначе
+   чёрные части лого («LAVA», остриё щита) тонут в тёмном фоне.
+   ============================================================ */
+[data-theme="black-leather"], [data-theme="brown-leather"],
+[data-theme="original"], [data-theme="ios-dark"] {
+  --brand-badge-bg: #FFFFFF;
+  --brand-badge-pad: 8px 12px;
+  --brand-badge-border: 1px solid rgba(0, 0, 0, 0.06);
+  --brand-badge-shadow: 0 6px 18px rgba(0, 0, 0, 0.34);
+}
+
 [data-theme]{
   --sidebar-width-expanded: 248px;
   /* спорт */
@@ -619,6 +643,39 @@ body::after {
   /* помощники (задачи по дому) — цвет адаптируется к теме через общую палитру */
   --cat-helper-vika: var(--c-rose); --cat-helper-yan: var(--c-steel); --cat-helper-sergey: var(--c-sage); --cat-helper-farhad: var(--c-amber);
 }
+
+/* ===== БЛОК ИИ-СОВЕТА — рамка «цвета ИИ» (--ai) + бегущая волна свечения =====
+   .ai-glow — утилита (кольцо + волна) на любой контейнер; .ai-advice — готовый блок. */
+@property --ai-wave { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+.ai-glow {
+  position: relative;
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--ai) 55%, transparent),
+              0 7px 22px -10px color-mix(in srgb, var(--ai-glow) 68%, transparent);
+}
+/* Волна идёт по рамке (маскированный конический бордюр ВНУТРИ элемента):
+   не режется overflow, не ломается transform-предком, крутится всегда, на любой ширине. */
+.ai-glow::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  padding: 1.5px;
+  background: conic-gradient(from var(--ai-wave),
+    transparent 0deg,
+    color-mix(in srgb, var(--ai) 88%, transparent) 60deg,
+    var(--ai-glow) 90deg,
+    color-mix(in srgb, var(--ai) 82%, transparent) 120deg,
+    transparent 180deg, transparent 360deg);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation: ai-wave 3.8s linear infinite;
+}
+@keyframes ai-wave { to { --ai-wave: 360deg; } }
+@media (prefers-reduced-motion: reduce) { .ai-glow::after { animation: none; } }
+.ai-glow-soft.ai-glow   { box-shadow: 0 0 0 1px color-mix(in srgb, var(--ai) 34%, transparent), 0 4px 15px -13px color-mix(in srgb, var(--ai-glow) 44%, transparent); }
+.ai-glow-strong.ai-glow { box-shadow: 0 0 0 2px color-mix(in srgb, var(--ai) 65%, transparent), 0 10px 27px -8px color-mix(in srgb, var(--ai-glow) 78%, transparent); }
+.ai-advice { padding: 13px 15px; border-radius: 12px; background: var(--bg-tile); border: 1px solid var(--border-soft); }
+.ai-advice-label { display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--ai); margin-bottom: 6px; }
+.ai-advice-body { font-size: 13.5px; line-height: 1.55; color: var(--text-body); white-space: pre-line; }
 
 /* ===== ПРИМИТИВЫ (.ds-*) — единый источник правды для атомов ===== */
 .ds-btn{

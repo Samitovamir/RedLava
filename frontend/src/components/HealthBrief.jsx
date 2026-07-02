@@ -5,6 +5,7 @@ import { useAgent } from '../hooks/useAgent.js'
 import { useSiteSnapshot } from '../hooks/useSiteSnapshot.js'
 import { useLang, useT } from '../context/LanguageContext.jsx'
 import MicButton from './MicButton.jsx'
+import AiAdvice from './AiAdvice.jsx'
 import {
   INITIAL_REPORTS, buildHistory, markerStatus, STATUS_INFO, rangeText, barGeom, fmtDate, resolveMarker
 } from '../utils/labs.js'
@@ -96,7 +97,7 @@ const CONTEXT =
   'Если показатель влияет на тренировки — дай совет по нагрузке и насколько настоятельно его соблюдать. ' +
   'Из-за мелких или некритичных отклонений менять режим НЕ надо, не паникуй и не отговаривай его от спорта по пустякам. ' +
   'Но если очевидно, что тренировки могут УХУДШИТЬ состояние (например, отклонения по сердцу, сильная анемия, явное воспаление) — прямо и чётко скажи снизить нагрузку или временно прекратить и обратиться к врачу. Калибруй настойчивость по реальной серьёзности. ' +
-  'Без вступлений, без воды, без общих лекций. Если всё в норме — скажи одним предложением и подбодри. ' +
+  'Без вступлений, без воды, без общих лекций, без эмодзи. Ключевые показатели и главный вывод выделяй **жирным** — умеренно, для читаемости (не выделяй всё подряд). Если всё в норме — скажи одним предложением и подбодри. ' +
   'ПРО ВОССТАНОВЛЕНИЕ: показатель Whoop «Восстановление» — это УТРЕННИЙ балл готовности (с ним он проснулся), он фиксирован на день и не убывает к вечеру. Не путай его с «остатком заряда»/Body Battery (энергией, которая тратится за день) — такого показателя в данных нет. ' +
   'Опирайся ТОЛЬКО на данные ниже, ничего не выдумывай. Ты не ставишь диагноз, а даёшь дружеский ориентир.'
 
@@ -239,7 +240,7 @@ export default function HealthBrief() {
       {loading
         ? <div className="hb-loading">{t.loading}</div>
         : text
-          ? <p className="hb-text">{text}</p>
+          ? <AiAdvice glow="mid" showLabel={false} className="hb-ai">{text}</AiAdvice>
           : <button className="hb-run" onClick={run}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
               {t.run}
@@ -304,6 +305,7 @@ export default function HealthBrief() {
         }
         .hb-run:hover { background: color-mix(in srgb, var(--accent) 18%, transparent); }
         .hb-text { font-size: 17px; line-height: 1.6; color: var(--foreground); white-space: pre-wrap; }
+        .hb-ai .ai-advice-body { font-size: 16px; line-height: 1.6; color: var(--foreground); }
 
         .hb-markers { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; padding-top: 4px; }
         .hb-marker { display: flex; flex-direction: column; gap: 6px; background: var(--bg-secondary); border-radius: 12px; padding: 12px 14px; }

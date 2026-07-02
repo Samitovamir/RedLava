@@ -1,14 +1,15 @@
 import { useState, useRef, useEffect, lazy, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Camera, Trash2, X, BookmarkPlus, Plus, ScanText, Bookmark, ScanBarcode, Images } from 'lucide-react'
-import CircularChart from '../CircularChart.jsx'
+import NutriSummary from './NutriSummary.jsx'
 import { useT } from '../../context/LanguageContext.jsx'
 import { nutritionHealthBrief } from '../../utils/siteSnapshot.js'
 import { lookupBarcode } from '../../utils/openfoodfacts.js'
 import { compressToThumb, compressForUpload } from '../../utils/image.js'
 import {
   addPhotoIntake, removePhotoEntry, saveIntake, setThumb, getThumb, pruneIntakeThumbs,
-  gramsToEntry, loadSavedDishes, saveSavedDishes, addSavedDish, removeSavedDish
+  gramsToEntry, loadSavedDishes, saveSavedDishes, addSavedDish, removeSavedDish,
+  loadPrefs, fodmapMeta
 } from '../../utils/nutrition.js'
 
 // Сканер штрих-кода тянет тяжёлый ZXing (~480 КБ) — грузим лениво, только при открытии.
@@ -116,6 +117,14 @@ export default function DiaryTab({ target, intake, setIntake, selectedDay, flash
   const pct = target.kcal > 0 ? Math.min(100, Math.round(eatenK / target.kcal * 100)) : 0
   const over = eatenK > target.kcal
   const ringColor = over ? 'var(--status-warn)' : 'var(--accent)'
+  // FODMAP за день: худший уровень среди записей + причина для него
+  const fodmapOn = loadPrefs().fodmap
+  const dayFodmap = (() => {
+    const bands = entries.map(en => en.fodmap).filter(Boolean)
+    if (!bands.length) return null
+    return bands.includes('high') ? 'high' : bands.includes('mod') ? 'mod' : 'low'
+  })()
+  const dayFodmapReason = dayFodmap ? (entries.find(en => en.fodmap === dayFodmap && en.fodmapReason)?.fodmapReason || '') : ''
 
   async function onFile(e) {
     const file = e.target.files?.[0]
@@ -139,6 +148,7 @@ export default function DiaryTab({ target, intake, setIntake, selectedDay, flash
         kcal: num(ink.kcal), protein: num(ink.protein), fat: num(ink.fat), carb: num(ink.carb),
         items: (ink.items || []).map(it => ({ name: it.name || '—', kcal: num(it.kcal), guess: !!it.guess })),
         health: Number.isFinite(+ink.health) ? Math.round(+ink.health) : null,
+        fodmap: ink.fodmap || null, fodmapReason: ink.fodmapReason || '',
         note: ink.note || '', photo: thumb
       })
     } catch { flash(t.failPhoto) }
@@ -150,7 +160,9 @@ export default function DiaryTab({ target, intake, setIntake, selectedDay, flash
     const entry = {
       id, ts: Date.now(), name: edit.name || 'Приём пищи',
       kcal: num(edit.kcal), protein: num(edit.protein), fat: num(edit.fat), carb: num(edit.carb),
-      items: estimate.items, health: estimate.health, hasPhoto: !!estimate.photo
+      items: estimate.items, health: estimate.health,
+      fodmap: estimate.fodmap || null, fodmapReason: estimate.fodmapReason || '',
+      hasPhoto: !!estimate.photo
     }
     const next = addPhotoIntake(intake, selectedDay, entry)
     setIntake(next); saveIntake(next)
@@ -224,24 +236,12 @@ export default function DiaryTab({ target, intake, setIntake, selectedDay, flash
 
   return (
     <motion.div className="nu-diary" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-      {/* Кольцо «съедено / цель» + плитки Б/Ж/У */}
-      <div className="card nd-summary">
-        <div className="nd-sum-top">
-          <div className="nd-sum-nums">
-            <div className="nd-eaten"><span className="nd-eaten-n">{eatenK}</span><span className="nd-eaten-of"> {t.of} {target.kcal} {t.kcal}</span></div>
-            <div className={`nd-left ${over ? 'over' : ''}`}>{over ? `${t.over} ${eatenK - target.kcal}` : `${t.left} ${remK}`} {t.kcal}</div>
-          </div>
-          <CircularChart value={pct} size={108} color={ringColor} centerText={`${pct}%`} />
-        </div>
-        <div className="nd-macros">
-          {[{ l: t.protein, e: eatenP, g: target.protein }, { l: t.fat, e: eatenF, g: target.fat }, { l: t.carb, e: eatenC, g: target.carb }].map((m, i) => (
-            <div key={i} className="nd-macro">
-              <span className="nd-macro-v">{Math.round(m.e)}<span className="nd-macro-of">/{m.g} {t.g}</span></span>
-              <span className="nd-macro-l">{m.l}</span>
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* Верхняя сводка: полусферы калорий + светофор FODMAP + бары Б/Ж/У */}
+      <NutriSummary
+        eatenK={eatenK} target={target} remK={remK} over={over} pct={pct}
+        eatenP={eatenP} eatenF={eatenF} eatenC={eatenC}
+        fodmapOn={fodmapOn} fodmapBand={dayFodmap} fodmapReason={dayFodmapReason} t={t}
+      />
 
       {/* Захват: фото еды (камера ИЛИ галерея) + этикетка + сохранённые (штрих-код — отдельным шагом).
           Камера-инпут с capture, галерея — без capture (чтобы открывалась медиатека, а не камера). */}
@@ -427,6 +427,14 @@ function EstimateEditScreen({ est, t, onCancel, onConfirm }) {
 
         {est.health != null && (
           <div className="nd-health"><span className="nd-health-l">{t.health}</span><span className="nd-health-v">{est.health}/10</span></div>
+        )}
+
+        {loadPrefs().fodmap && fodmapMeta(est.fodmap) && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginTop: 2, flexWrap: 'wrap' }}>
+            <span style={{ width: 9, height: 9, borderRadius: '50%', background: fodmapMeta(est.fodmap).color, flex: 'none' }} />
+            <b style={{ color: fodmapMeta(est.fodmap).color }}>{fodmapMeta(est.fodmap).label} FODMAP</b>
+            {est.fodmapReason && <span className="muted">— {est.fodmapReason}</span>}
+          </div>
         )}
 
         {est.items?.length > 0 && (

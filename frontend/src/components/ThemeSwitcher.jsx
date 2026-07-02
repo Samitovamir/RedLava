@@ -11,7 +11,8 @@ import { getDesktopTheme, setDesktopTheme, getMobilePref, setMobilePref } from '
 
 // Десктоп: образцы фон / поверхность / акцент для превью
 const DESKTOP_THEMES = [
-  { id: 'black-leather', ru: 'Чёрная кожа',    en: 'Black leather', bg: '#121211', surface: '#1E1E1C', accent: '#8FB2D4' },
+  { id: 'black-leather', ru: 'Тёмная',   en: 'Dark',  sub: { ru: 'Чёрная кожа', en: 'Black leather' }, bg: '#121211', surface: '#1E1E1C', accent: '#8FB2D4' },
+  { id: 'red-lava',      ru: 'Светлая',  en: 'Light', sub: { ru: 'RedLava, как на телефоне', en: 'RedLava, like on phone' }, bg: '#F4F5F7', surface: '#FFFFFF', accent: '#CF1020' },
   { id: 'brown-leather', ru: 'Коричневая кожа', en: 'Brown leather', bg: '#120E0B', surface: '#271F19', accent: '#C89B6A' },
   { id: 'cream',         ru: 'Кремовая',        en: 'Cream',         bg: '#EFE9DD', surface: '#FDFBF6', accent: '#C97B4A' },
   { id: 'original',      ru: 'Оригинальная',    en: 'Original',      bg: '#1E1B18', surface: '#2C2825', accent: '#818CF8' },
