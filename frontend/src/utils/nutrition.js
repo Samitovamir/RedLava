@@ -181,6 +181,23 @@ export function fodmapMeta(band) {
   return null
 }
 
+// Грубая оценка FODMAP по названию/составу — для уже залогированной еды без метки ИИ.
+const FOD_HIGH = [['чеснок', 'чеснок'], ['лук', 'лук'], ['пшениц', 'пшеница'], ['хлеб', 'хлеб'], ['булк', 'выпечка'], ['паста', 'паста'], ['макарон', 'макароны'], ['блин', 'пшеница (блин)'], ['кесадиль', 'пшеница (кесадилья)'], ['тортиль', 'тортилья'], ['лаваш', 'лаваш'], ['пельмен', 'пшеница'], ['вареник', 'пшеница'], ['фасол', 'бобовые'], ['бобов', 'бобовые'], ['горох', 'горох'], ['чечевиц', 'чечевица'], ['нут', 'нут'], ['молоко', 'лактоза'], ['сливк', 'сливки'], ['йогурт', 'лактоза'], ['мороженое', 'лактоза'], ['яблок', 'яблоко'], ['груш', 'груша'], ['манго', 'манго'], ['мед', 'мёд'], ['гриб', 'грибы'], ['спаржа', 'спаржа'], ['цветная капуст', 'цветная капуста']]
+const FOD_MOD = [['авокадо', 'авокадо'], ['батат', 'батат'], ['свекл', 'свёкла'], ['кукуруз', 'кукуруза'], ['брокколи', 'брокколи'], ['сельдер', 'сельдерей'], ['вишн', 'вишня'], ['черешн', 'черешня'], ['изюм', 'изюм'], ['кешью', 'кешью'], ['фисташ', 'фисташки']]
+function guessFodmap(name, items) {
+  const hay = ((name || '') + ' ' + (Array.isArray(items) ? items.map(i => i?.name || '').join(' ') : '')).toLowerCase().replace(/ё/g, 'е')
+  for (const [k, label] of FOD_HIGH) if (hay.includes(k)) return { band: 'high', reason: label }
+  for (const [k, label] of FOD_MOD) if (hay.includes(k)) return { band: 'mod', reason: label }
+  return { band: 'low', reason: '' }
+}
+// Уровень FODMAP записи: метка от ИИ если есть, иначе оценка по названию (estimated: true).
+export function entryFodmap(entry) {
+  if (!entry) return null
+  if (entry.fodmap) return { band: entry.fodmap, reason: entry.fodmapReason || '', estimated: false }
+  const g = guessFodmap(entry.name, entry.items)
+  return { band: g.band, reason: g.reason, estimated: true }
+}
+
 export function loadPrefs() {
   try { const s = localStorage.getItem(TASTE_KEY); if (s) return { ...DEFAULT_PREFS, ...JSON.parse(s) } } catch { /* ignore */ }
   return { ...DEFAULT_PREFS }
@@ -486,7 +503,8 @@ export function addPhotoIntake(intake, dateKey, entry) {
     ts: entry.ts || Date.now(),
     name: entry.name || 'Приём пищи',
     kcal: Math.round(entry.kcal || 0), protein: Math.round(entry.protein || 0), fat: Math.round(entry.fat || 0), carb: Math.round(entry.carb || 0),
-    items: entry.items || [], health: entry.health ?? null, grams: entry.grams ?? null, manual: !!entry.manual, hasPhoto: !!entry.hasPhoto
+    items: entry.items || [], health: entry.health ?? null, grams: entry.grams ?? null, manual: !!entry.manual, hasPhoto: !!entry.hasPhoto,
+    fodmap: entry.fodmap ?? null, fodmapReason: entry.fodmapReason || ''
   }
   return { ...intake, [dateKey]: rollupEntries([...((cur?.entries) || []), e]) }
 }

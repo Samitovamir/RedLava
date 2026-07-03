@@ -63,7 +63,7 @@ function FodmapDial({ band, size = 120 }) {
   )
 }
 
-export default function NutriSummary({ eatenK, target, remK, over, pct, eatenP, eatenF, eatenC, fodmapOn, fodmapBand, fodmapReason, t }) {
+export default function NutriSummary({ eatenK, target, remK, over, pct, eatenP, eatenF, eatenC, fodmapOn, fodmapBand, fodmapReason, t, onOpenBreakdown }) {
   const macros = [
     { l: t.protein, e: eatenP, g: target.protein, c: 'var(--c-steel)' },
     { l: t.fat, e: eatenF, g: target.fat, c: 'var(--c-amber)' },
@@ -72,7 +72,8 @@ export default function NutriSummary({ eatenK, target, remK, over, pct, eatenP, 
   const showDial = fodmapOn   // светофор всегда виден при включённой диете (без данных — нейтральный «—»)
   return (
     <div className="card ns-summary">
-      <div className="ns-heroes">
+      <div className={`ns-heroes ${onOpenBreakdown ? 'ns-click' : ''}`}
+        onClick={onOpenBreakdown} role={onOpenBreakdown ? 'button' : undefined}>
         <SemiGauge pct={pct} centerText={eatenK} unit={`/ ${target.kcal} ${t.kcal}`}
           color={over ? 'var(--status-warn)' : 'var(--accent)'} size={showDial ? 132 : 150} label={t.kcal} />
         {showDial && <FodmapDial band={fodmapBand} size={116} />}
@@ -100,9 +101,18 @@ export default function NutriSummary({ eatenK, target, remK, over, pct, eatenP, 
         })}
       </div>
 
+      {onOpenBreakdown && eatenK > 0 && (
+        <button className="ns-details" onClick={onOpenBreakdown} type="button">
+          Что съедено сегодня{fodmapOn ? ' · FODMAP по блюдам' : ''} →
+        </button>
+      )}
+
       <style>{`
         .ns-summary { display: flex; flex-direction: column; gap: 12px; }
-        .ns-heroes { display: flex; align-items: flex-end; justify-content: space-around; gap: 12px; margin-top: 4px; }
+        .ns-heroes { display: flex; align-items: flex-end; justify-content: space-around; gap: 12px; margin-top: 4px; border-radius: 12px; }
+        .ns-heroes.ns-click { cursor: pointer; }
+        .ns-details { align-self: center; background: none; border: none; cursor: pointer; font-family: inherit; font-size: 12px; font-weight: 600; color: var(--accent); padding: 4px 8px; }
+        .ns-details:hover { text-decoration: underline; }
         .ns-g { display: flex; flex-direction: column; align-items: center; gap: 3px; }
         .ns-lbl { font-size: 11.5px; color: var(--text-secondary); font-weight: 500; text-transform: uppercase; letter-spacing: .04em; }
         .ns-wrap { position: relative; }

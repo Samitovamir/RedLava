@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, lazy, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Camera, Trash2, X, BookmarkPlus, Plus, ScanText, Bookmark, ScanBarcode, Images } from 'lucide-react'
 import NutriSummary from './NutriSummary.jsx'
+import Portal from '../../ui/Portal.jsx'
 import { useT } from '../../context/LanguageContext.jsx'
 import { nutritionHealthBrief } from '../../utils/siteSnapshot.js'
 import { lookupBarcode } from '../../utils/openfoodfacts.js'
@@ -9,7 +10,7 @@ import { compressToThumb, compressForUpload } from '../../utils/image.js'
 import {
   addPhotoIntake, removePhotoEntry, saveIntake, setThumb, getThumb, pruneIntakeThumbs,
   gramsToEntry, loadSavedDishes, saveSavedDishes, addSavedDish, removeSavedDish,
-  loadPrefs, fodmapMeta
+  loadPrefs, fodmapMeta, entryFodmap
 } from '../../utils/nutrition.js'
 
 // Сканер штрих-кода тянет тяжёлый ZXing (~480 КБ) — грузим лениво, только при открытии.
@@ -76,6 +77,7 @@ export default function DiaryTab({ target, intake, setIntake, selectedDay, flash
   const [grams, setGrams] = useState(null)          // { name, per100 } — ввод граммов (этикетка/штрих-код)
   const [savedOpen, setSavedOpen] = useState(false) // список сохранённых блюд
   const [barcodeOpen, setBarcodeOpen] = useState(false)
+  const [breakdownOpen, setBreakdownOpen] = useState(false) // таблица «съедено сегодня» + FODMAP
 
   // Чистим миниатюры старше вчера при входе
   useEffect(() => { pruneIntakeThumbs(intake, loadSavedDishes()) }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -85,7 +87,7 @@ export default function DiaryTab({ target, intake, setIntake, selectedDay, flash
   // мало — iOS всё равно листает страницу за модалкой (тач-скролл «протекает»
   // сквозь position:fixed бэкдроп). Фиксируем body на текущей позиции и
   // возвращаем скролл при закрытии — тогда листается только само окно.
-  const modalOpen = !!(estimate || detail || grams || savedOpen || barcodeOpen)
+  const modalOpen = !!(estimate || detail || grams || savedOpen || barcodeOpen || breakdownOpen)
   useEffect(() => {
     if (!modalOpen) return
     const { body } = document
@@ -119,12 +121,13 @@ export default function DiaryTab({ target, intake, setIntake, selectedDay, flash
   const ringColor = over ? 'var(--status-warn)' : 'var(--accent)'
   // FODMAP за день: худший уровень среди записей + причина для него
   const fodmapOn = loadPrefs().fodmap
+  const entryFods = entries.map(en => ({ en, f: entryFodmap(en) }))   // уровень FODMAP каждой записи (метка ИИ или оценка)
   const dayFodmap = (() => {
-    const bands = entries.map(en => en.fodmap).filter(Boolean)
+    const bands = entryFods.map(x => x.f?.band).filter(Boolean)
     if (!bands.length) return null
     return bands.includes('high') ? 'high' : bands.includes('mod') ? 'mod' : 'low'
   })()
-  const dayFodmapReason = dayFodmap ? (entries.find(en => en.fodmap === dayFodmap && en.fodmapReason)?.fodmapReason || '') : ''
+  const dayFodmapReason = dayFodmap ? (entryFods.find(x => x.f?.band === dayFodmap && x.f?.reason)?.f.reason || '') : ''
 
   async function onFile(e) {
     const file = e.target.files?.[0]
@@ -241,7 +244,49 @@ export default function DiaryTab({ target, intake, setIntake, selectedDay, flash
         eatenK={eatenK} target={target} remK={remK} over={over} pct={pct}
         eatenP={eatenP} eatenF={eatenF} eatenC={eatenC}
         fodmapOn={fodmapOn} fodmapBand={dayFodmap} fodmapReason={dayFodmapReason} t={t}
+        onOpenBreakdown={() => entries.length && setBreakdownOpen(true)}
       />
+      {breakdownOpen && (
+        <Portal>
+          <div onClick={() => setBreakdownOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', backdropFilter: 'blur(3px)', zIndex: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+            <div onClick={e => e.stopPropagation()} className="card" style={{ width: '100%', maxWidth: 460, maxHeight: '82vh', overflowY: 'auto', padding: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                <h3 style={{ margin: 0, fontSize: 17, color: 'var(--text-primary)' }}>Съедено сегодня</h3>
+                <button onClick={() => setBreakdownOpen(false)} aria-label="Закрыть" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 24, cursor: 'pointer', lineHeight: 1 }}>×</button>
+              </div>
+              <div style={{ fontSize: 12.5, color: 'var(--text-secondary)', marginBottom: 10 }}>
+                {eatenK} ккал · Б {Math.round(eatenP)} · Ж {Math.round(eatenF)} · У {Math.round(eatenC)}
+              </div>
+              {entryFods.map(({ en, f }, i) => {
+                const meta = fodmapMeta(f?.band)
+                return (
+                  <div key={en.id || i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '11px 0', borderTop: '1px solid var(--border-soft)' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{en.name}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{en.kcal} ккал · Б {en.protein} · Ж {en.fat} · У {en.carb}</div>
+                    </div>
+                    {fodmapOn && meta && (
+                      <div style={{ textAlign: 'right', flex: 'none', maxWidth: 130 }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: meta.color, flex: 'none' }} />
+                          <b style={{ color: meta.color, fontSize: 12.5 }}>{meta.label}</b>
+                        </span>
+                        {(f.reason || f.estimated) && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{f.reason}{f.estimated ? ' · оценка' : ''}</div>}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+              {fodmapOn && dayFodmap && (
+                <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border-soft)', fontSize: 13, color: 'var(--text-body)' }}>
+                  Итог дня по FODMAP: <b style={{ color: fodmapMeta(dayFodmap).color }}>{fodmapMeta(dayFodmap).label}</b>
+                  {dayFodmapReason && <span style={{ color: 'var(--text-muted)' }}> — {dayFodmapReason}</span>}
+                </div>
+              )}
+            </div>
+          </div>
+        </Portal>
+      )}
 
       {/* Захват: фото еды (камера ИЛИ галерея) + этикетка + сохранённые (штрих-код — отдельным шагом).
           Камера-инпут с capture, галерея — без capture (чтобы открывалась медиатека, а не камера). */}
