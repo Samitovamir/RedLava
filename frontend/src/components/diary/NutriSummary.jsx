@@ -56,9 +56,9 @@ function FodmapDial({ band, size = 120 }) {
             <circle cx={cx} cy={cy} r={3.4} fill="var(--text-primary)" />
           </>}
         </svg>
-        <div className="ns-word" style={{ color: meta ? meta.c : 'var(--text-muted)' }}>{meta ? meta.w : '—'}</div>
       </div>
-      <span className="ns-lbl">FODMAP</span>
+      <span className="ns-word" style={{ color: meta ? meta.c : 'var(--text-muted)' }}>{meta ? meta.w : 'FODMAP'}</span>
+      {meta && <span className="ns-lbl">FODMAP</span>}
     </div>
   )
 }
@@ -119,7 +119,7 @@ export default function NutriSummary({ eatenK, target, remK, over, pct, eatenP, 
         .ns-center { position: absolute; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; }
         .ns-val { font-weight: 800; color: var(--text-primary); line-height: 1; letter-spacing: -.02em; }
         .ns-unit { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
-        .ns-word { font-size: 15px; font-weight: 800; line-height: 1; margin-top: -2px; }
+        .ns-word { font-size: 15px; font-weight: 800; line-height: 1.05; }
         .ns-left { text-align: center; font-size: 13px; font-weight: 600; color: var(--text-secondary); }
         .ns-left.over { color: var(--status-warn); }
         .ns-fodreason { display: flex; align-items: center; gap: 7px; justify-content: center; font-size: 12.5px; flex-wrap: wrap; }

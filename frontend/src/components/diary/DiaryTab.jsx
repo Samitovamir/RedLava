@@ -139,7 +139,7 @@ export default function DiaryTab({ target, intake, setIntake, selectedDay, flash
       const upload = await compressForUpload(dataUrl)
       const res = await fetch('/api/nutrition/intake-image', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: upload, mode: 'food', health: nutritionHealthBrief() })
+        body: JSON.stringify({ image: upload, mode: 'food', health: nutritionHealthBrief() + (loadPrefs().fodmap ? ' владелец на лечебной диете Low-FODMAP — учитывай уровень FODMAP блюда при оценке пользы (high FODMAP — это триггер, снижай пользу).' : '') })
       })
       const data = await res.json()
       if (!data.ok || !data.intake) { flash(data.message || t.failRecognize); setEstBusy(false); return }
@@ -526,6 +526,19 @@ function EntryDetailModal({ entry, t, onClose, onDelete, onSave }) {
         {entry.health != null && (
           <div className="nd-health"><span className="nd-health-l">{t.health}</span><span className="nd-health-v">{entry.health}/10</span></div>
         )}
+        {loadPrefs().fodmap && (() => {
+          const ef = entryFodmap(entry); const m = ef && fodmapMeta(ef.band)
+          if (!m) return null
+          return (
+            <div className="nd-health">
+              <span className="nd-health-l">FODMAP</span>
+              <span className="nd-health-v" style={{ color: m.color, display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: m.color, flex: 'none' }} />{m.label}
+                {ef.reason && <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· {ef.reason}{ef.estimated ? ' · оценка' : ''}</span>}
+              </span>
+            </div>
+          )
+        })()}
         {entry.items?.length > 0 && (
           <div className="nd-items">
             <div className="nd-items-h muted">{t.items}</div>
