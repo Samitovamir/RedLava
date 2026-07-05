@@ -4,11 +4,13 @@ import { Button } from '../ui'
 import { motion, AnimatePresence } from 'framer-motion'
 import CircularChart from './CircularChart.jsx'
 import WhoopRings from './WhoopRings.jsx'
+import RecoveryBalance from './RecoveryBalance.jsx'
 import SleepHypnogram from './SleepHypnogram.jsx'
 import LabResults from './LabResults.jsx'
 import Icon from '../ui/Icon.jsx'
 import { useLang, useT } from '../context/LanguageContext.jsx'
 import { WHOOP, WHOOP_DAYS, SLEEP_STAGES, recoveryColor, fmtHm } from '../utils/whoop.js'
+import { loadSourcePref, saveSourcePref, resolveSource, hasWhoopData, hasGarminData } from '../utils/healthSource.js'
 
 /*
   Вкладка «Показатели» страницы «Здоровье» (без ИИ).
@@ -44,7 +46,15 @@ const STR = {
     whoopOffTitle: 'Whoop не подключён',
     whoopOff: 'Подключите часы — и здесь появятся восстановление, сон, HRV и пульс покоя.',
     whoopOffBtn: 'Подключить Whoop',
-    gm: { vo2: 'VO₂max', vo2sub: 'мл/кг/мин', age: 'Фитнес-возраст', ageSub: 'лет', rhr: 'Пульс покоя · Garmin', rhrSub: 'уд/мин', bb: 'Body Battery', stress: 'Стресс', status: 'Статус тренировок', load: 'Нагрузка (load)' }
+    gm: { vo2: 'VO₂max', vo2sub: 'мл/кг/мин', age: 'Фитнес-возраст', ageSub: 'лет', rhr: 'Пульс покоя · Garmin', rhrSub: 'уд/мин', bb: 'Body Battery', stress: 'Стресс', status: 'Статус тренировок', load: 'Нагрузка (load)' },
+    srcTitle: 'Источник', srcAuto: 'Авто', srcWhoop: 'Whoop', srcGarmin: 'Garmin',
+    srcActive: (s) => `Данные по ${s}`,
+    garminMode: 'Показатели по Garmin. Восстановление и детальный сон появятся при подключении Whoop.',
+    noSourceTitle: 'Нет данных о здоровье',
+    noSource: 'Подключите Whoop или Garmin — и здесь появятся восстановление, сон и нагрузка.',
+    connectBtn: 'Подключить устройство',
+    bbLabel: 'Заряд тела', stressLabel: 'Стресс', loadLabel: 'Нагрузка',
+    recoveryWord: 'Восстановление', of: 'из'
   },
   en: {
     stages: { awake: 'Awake', light: 'Light', rem: 'REM', deep: 'Deep' },
@@ -72,7 +82,15 @@ const STR = {
     whoopOffTitle: 'Whoop is not connected',
     whoopOff: 'Connect your band to see recovery, sleep, HRV and resting heart rate here.',
     whoopOffBtn: 'Connect Whoop',
-    gm: { vo2: 'VO₂max', vo2sub: 'ml/kg/min', age: 'Fitness age', ageSub: 'yrs', rhr: 'Resting HR · Garmin', rhrSub: 'bpm', bb: 'Body Battery', stress: 'Stress', status: 'Training status', load: 'Training load' }
+    gm: { vo2: 'VO₂max', vo2sub: 'ml/kg/min', age: 'Fitness age', ageSub: 'yrs', rhr: 'Resting HR · Garmin', rhrSub: 'bpm', bb: 'Body Battery', stress: 'Stress', status: 'Training status', load: 'Training load' },
+    srcTitle: 'Source', srcAuto: 'Auto', srcWhoop: 'Whoop', srcGarmin: 'Garmin',
+    srcActive: (s) => `Data from ${s}`,
+    garminMode: 'Metrics from Garmin. Recovery and detailed sleep will appear once Whoop is connected.',
+    noSourceTitle: 'No health data',
+    noSource: 'Connect Whoop or Garmin to see recovery, sleep and load here.',
+    connectBtn: 'Connect a device',
+    bbLabel: 'Body Battery', stressLabel: 'Stress', loadLabel: 'Load',
+    recoveryWord: 'Recovery', of: 'of'
   }
 }
 
@@ -115,6 +133,13 @@ export default function MetricsView() {
   const [selDay, setSelDay] = useState(null)
   const [sleepOpen, setSleepOpen] = useState(false)
 
+  // Приоритет источника: Whoop → Garmin (с ручным оверрайдом). Экран меняется под источник.
+  const [sourcePref, setSourcePref] = useState(loadSourcePref)
+  const hasW = hasWhoopData(live)
+  const hasG = hasGarminData(garmin)
+  const source = resolveSource(sourcePref, live, garmin)   // 'whoop' | 'garmin' | null
+  function pickSource(v) { setSourcePref(v); saveSourcePref(v) }
+
   const w = live ? { ...WHOOP, ...live, sleep: { ...WHOOP.sleep, ...live.sleep } } : WHOOP
   const DAY_FULL = t.dayFull
   function daySummary(d) {
@@ -136,22 +161,55 @@ export default function MetricsView() {
   const stages = SLEEP_STAGES.map(s => ({ ...s, label: t.stages[s.key] || s.label, min: w.sleep.stages[s.key] }))
   const totalSleepMin = stages.reduce((a, s) => a + s.min, 0)
 
-  // Метрики Garmin — только реально присутствующие в живых данных (VO2max и т.д.)
+  // Метрики Garmin — только реально присутствующие (VO2max и т.д.).
+  // Body Battery и стресс показываем кольцами (см. ниже), поэтому в сетку карточек НЕ дублируем.
   const G = t.gm
   const bb = garmin?.bodyBattery, str = garmin?.stress
-  // Числа-метрики — в --foreground (без декоративной окраски; статусной семантики здесь нет)
+  const stressVal = str ? (str.current ?? str.avg) : null
   const garminMetrics = [
     garmin?.vo2Max != null && { val: `${garmin.vo2Max}`, lbl: G.vo2, sub: G.vo2sub },
     garmin?.fitnessAge != null && { val: `${garmin.fitnessAge}`, lbl: G.age, sub: G.ageSub },
     garmin?.restingHr != null && { val: `${garmin.restingHr}`, lbl: G.rhr, sub: G.rhrSub },
-    bb?.current != null && { val: `${bb.current}`, lbl: G.bb, sub: '/100' },
-    (str && (str.current ?? str.avg) != null) && { val: `${str.current ?? str.avg}`, lbl: G.stress, sub: '/100' },
     garmin?.trainingStatus && { val: garmin.trainingStatus, lbl: G.status }
   ].filter(Boolean)
 
+  // Стресс для кольца Garmin: ниже — лучше
+  const stressColor = v => v <= 25 ? 'var(--green)' : v <= 50 ? 'var(--yellow)' : v <= 75 ? 'var(--orange)' : 'var(--red)'
+  const bbColor = v => v >= 50 ? 'var(--green)' : v >= 25 ? 'var(--yellow)' : 'var(--red)'
+
+  // Данные для виджета «Восстановление ↔ Нагрузка» под текущий источник
+  const strainMaxW = w.strainMax || 21
+  const balance = source === 'whoop'
+    ? { recovery: w.recovery, recoveryLabel: t.recoveryWord, load: (w.strain / strainMaxW) * 100, loadDisplay: `${w.strain} ${t.of} ${strainMaxW}`, loadLabel: t.loadLabel }
+    : source === 'garmin' && bb?.current != null && stressVal != null
+      ? { recovery: bb.current, recoveryLabel: t.bbLabel, load: stressVal, loadDisplay: `${stressVal} /100`, loadLabel: t.stressLabel }
+      : null
+
+  // Сегменты переключателя источника
+  const srcSegs = [
+    { key: 'auto', lbl: t.srcAuto },
+    { key: 'whoop', lbl: t.srcWhoop, disabled: !hasW },
+    { key: 'garmin', lbl: t.srcGarmin, disabled: !hasG }
+  ]
+
   return (
     <div className="metrics-view">
-      {live ? (<>
+      {/* Переключатель источника: Whoop → Garmin. Экран ниже меняется под выбранный источник. */}
+      {(hasW || hasG) && (
+        <div className="src-switch">
+          <span className="src-title">{t.srcTitle}</span>
+          <div className="src-segs">
+            {srcSegs.map(s => (
+              <button key={s.key} type="button" disabled={s.disabled}
+                className={`src-seg ${sourcePref === s.key ? 'on' : ''}`}
+                onClick={() => pickSource(s.key)}>{s.lbl}</button>
+            ))}
+          </div>
+          {source && <span className="src-badge">{t.srcActive(source === 'whoop' ? 'Whoop' : 'Garmin')}</span>}
+        </div>
+      )}
+
+      {source === 'whoop' && (<>
         {/* Восстановление */}
         <motion.div className="card recovery-card"
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
@@ -166,6 +224,9 @@ export default function MetricsView() {
             <div className="rc-metric"><span className="rc-m-val">{w.spo2}%</span><span className="rc-m-lbl">SpO₂</span></div>
           </div>
         </motion.div>
+
+        {/* Восстановление ↔ Нагрузка (сопоставление ёмкости и нагрузки) */}
+        {balance && <RecoveryBalance {...balance} />}
 
         {/* Сон */}
         <div className="card sleep-card">
@@ -259,14 +320,39 @@ export default function MetricsView() {
             </div>
           ))}
         </div>
-      </>) : (
+      </>)}
+
+      {source === 'garmin' && (<>
+        {/* Garmin-режим: заряд тела + стресс кольцами (сна/recovery в API Garmin нет) */}
+        <motion.div className="card recovery-card"
+          initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+          <div className="garmin-rings">
+            {bb?.current != null && (
+              <CircularChart value={bb.current} label={t.bbLabel} color={bbColor(bb.current)} size={124}
+                sublabel={(bb.charged != null || bb.drained != null)
+                  ? `${bb.charged != null ? '+' + bb.charged : ''}${bb.drained != null ? ' −' + bb.drained : ''}`.trim()
+                  : null} />
+            )}
+            {stressVal != null && (
+              <CircularChart value={stressVal} label={t.stressLabel} color={stressColor(stressVal)} size={124}
+                centerText={`${stressVal}`} sublabel="/100" />
+            )}
+          </div>
+          <p className="rc-text muted">{t.garminMode}</p>
+        </motion.div>
+
+        {/* Восстановление ↔ Нагрузка (заряд тела ↔ стресс) */}
+        {balance && <RecoveryBalance {...balance} />}
+      </>)}
+
+      {source === null && (
         <div className="card metrics-whoop-off">
           <span className="mwo-icon"><Icon name="health" size={26} color="var(--accent)" /></span>
           <div className="mwo-text">
-            <div className="mwo-title">{t.whoopOffTitle}</div>
-            <p className="mwo-sub">{t.whoopOff}</p>
+            <div className="mwo-title">{t.noSourceTitle}</div>
+            <p className="mwo-sub">{t.noSource}</p>
           </div>
-          <Button variant="primary" onClick={() => navigate('/connections')}>{t.whoopOffBtn}</Button>
+          <Button variant="primary" onClick={() => navigate('/connections')}>{t.connectBtn}</Button>
         </div>
       )}
 
@@ -292,6 +378,18 @@ export default function MetricsView() {
       <style>{`
         .metrics-view { display: flex; flex-direction: column; gap: 24px; }
         .metrics-section { display: flex; flex-direction: column; gap: 12px; }
+
+        /* Переключатель источника Whoop/Garmin */
+        .src-switch { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .src-title { font-size: 13px; font-weight: 600; color: var(--muted-foreground); }
+        .src-segs { display: inline-flex; padding: 3px; border-radius: 999px; background: var(--bg-tile, var(--bg-secondary)); box-shadow: var(--inset-tile); border: 1px solid var(--border-med, var(--border)); }
+        .src-seg { padding: 6px 14px; border-radius: 999px; border: none; background: transparent; color: var(--muted-foreground); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: color .15s, background .15s; }
+        .src-seg:disabled { opacity: .4; cursor: not-allowed; }
+        .src-seg.on { background: var(--accent); color: var(--on-accent, #fff); }
+        .src-badge { font-size: 12px; font-weight: 600; color: var(--accent); }
+
+        .garmin-rings { display: flex; gap: 24px; flex-wrap: wrap; justify-content: center; }
+        @media (max-width: 520px) { .garmin-rings { gap: 16px; } }
         .metrics-whoop-off { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
         .mwo-icon { width: 52px; height: 52px; border-radius: 14px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: var(--bg-tile, var(--bg-secondary)); box-shadow: var(--inset-tile); }
         .mwo-text { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 4px; }

@@ -7,6 +7,17 @@ import { useEvents } from '../context/EventsContext.jsx'
 import { isGuest } from '../api/authFetch.js'
 import { demoPlanned } from '../utils/demo.js'
 import { useT, useLang } from '../context/LanguageContext.jsx'
+import { mskDateKey } from '../utils/time.js'
+import ArcGauge from './ArcGauge.jsx'
+
+// Ключ даты N дней назад (YYYY-MM-DD) от сегодняшней МСК-даты
+function daysAgoKey(n) {
+  const [y, m, d] = mskDateKey().split('-').map(Number)
+  const dt = new Date(Date.UTC(y, m - 1, d))
+  dt.setUTCDate(dt.getUTCDate() - n)
+  const p = x => String(x).padStart(2, '0')
+  return `${dt.getUTCFullYear()}-${p(dt.getUTCMonth() + 1)}-${p(dt.getUTCDate())}`
+}
 
 // Спорт-тип Garmin → локализованная подпись (для плановых тренировок)
 const SPORT_LABELS = {
@@ -99,12 +110,14 @@ function heroMetrics(w, t, trainingLabel) {
   return out
 }
 
-export default function GarminLive({ embedded = false }) {
+export default function GarminLive({ embedded = false, listsOnly = false }) {
   const t = useT({
     ru: {
       header: 'Спорт', source: 'Garmin Connect',
       stepsToday: 'Шаги сегодня', stepsGoal: 'цель 10 000', restingHr: 'Пульс покоя', vo2max: 'VO₂max', week: 'За неделю',
       bpm: 'уд/мин', vo2unit: 'мл/кг/мин',
+      steps: 'Шаги', bodyBattery: 'Заряд тела', charge: 'заряд',
+      fitTop: 'Превосходно', fitExc: 'Отлично', fitGood: 'Хорошо', fitAvg: 'Средне', fitLow: 'Ниже среднего',
       defaultWorkout: 'Тренировка', lastWorkout: 'последняя тренировка', more: 'подробнее →',
       // hero metric labels
       mDistance: 'Дистанция', mTime: 'Время', mPace: 'Темп', mSpeed: 'Скорость',
@@ -121,12 +134,16 @@ export default function GarminLive({ embedded = false }) {
       at: 'в',
       plannedNote: 'Без своего времени тренировка ставится на утро (≈6:30), с учётом длительности и других дел дня.',
       recentEmpty: 'Нет недавних тренировок в Garmin.',
-      kmShort: 'км', minShort: 'мин', perKmShort: '/км', kmhShort: 'км/ч', mUpShort: 'м ↑', kcalShort: 'ккал'
+      kmShort: 'км', minShort: 'мин', perKmShort: '/км', kmhShort: 'км/ч', mUpShort: 'м ↑', kcalShort: 'ккал',
+      calTitle: 'Калории тренировок', calToday: 'сегодня', calWeek: 'за неделю',
+      pfTitle: 'План / факт', pfToday: 'Сегодня', pfWeek: 'За неделю', pfPlan: 'план', pfFact: 'факт', pfWk: 'трен.', pfNone: 'нет'
     },
     en: {
       header: 'Sport', source: 'Garmin Connect',
       stepsToday: 'Steps today', stepsGoal: 'goal 10,000', restingHr: 'Resting HR', vo2max: 'VO₂ Max', week: 'This week',
       bpm: 'bpm', vo2unit: 'ml/kg/min',
+      steps: 'Steps', bodyBattery: 'Body Battery', charge: 'charge',
+      fitTop: 'Superior', fitExc: 'Excellent', fitGood: 'Good', fitAvg: 'Fair', fitLow: 'Below average',
       defaultWorkout: 'Workout', lastWorkout: 'latest workout', more: 'details →',
       // hero metric labels
       mDistance: 'Distance', mTime: 'Duration', mPace: 'Pace', mSpeed: 'Speed',
@@ -143,7 +160,9 @@ export default function GarminLive({ embedded = false }) {
       at: 'at',
       plannedNote: 'Without a set time, the workout is scheduled in the morning (≈6:30), accounting for its duration and other plans of the day.',
       recentEmpty: 'No recent workouts in Garmin.',
-      kmShort: 'km', minShort: 'min', perKmShort: '/km', kmhShort: 'km/h', mUpShort: 'm ↑', kcalShort: 'kcal'
+      kmShort: 'km', minShort: 'min', perKmShort: '/km', kmhShort: 'km/h', mUpShort: 'm ↑', kcalShort: 'kcal',
+      calTitle: 'Workout calories', calToday: 'today', calWeek: 'this week',
+      pfTitle: 'Plan / actual', pfToday: 'Today', pfWeek: 'This week', pfPlan: 'plan', pfFact: 'actual', pfWk: 'wk', pfNone: 'none'
     }
   })
   const { lang } = useLang()
@@ -237,21 +256,50 @@ export default function GarminLive({ embedded = false }) {
   const workouts = g?.workouts || []
   const accent = typeColor(last?.type)
 
-  const weekCountLabel = g?.weekCount == null ? ''
-    : lang === 'en'
-      ? `${g.weekCount} ${g.weekCount === 1 ? 'workout' : 'workouts'}`
-      : `${g.weekCount} ${plural(g.weekCount, 'тренировка', 'тренировки', 'тренировок')}`
-  // VO2max и пульс покоя в embedded-режиме (вкладка «Активность») не показываем —
-  // они живут в «Показателях». Здесь оставляем только активность: шаги + объём недели.
-  // KPI: числа в --foreground (без статусной/акцентной окраски). У шагов — подстрока «цель N».
-  const stats = [
-    { label: t.stepsToday, value: g?.steps != null ? g.steps.toLocaleString('ru-RU') : '—', sub: g?.steps != null ? t.stepsGoal : '' },
-    ...(embedded ? [] : [
-      { label: t.restingHr, value: g?.restingHr != null ? `${g.restingHr}` : '—', sub: t.bpm },
-      { label: t.vo2max, value: g?.vo2Max != null ? `${g.vo2Max}` : '—', sub: t.vo2unit }
-    ]),
-    { label: t.week, value: g?.weekKm != null ? `${g.weekKm} ${t.uKm}` : '—', sub: weekCountLabel }
+  // Сводка «Калории» и «План/факт» (сегодня + за последние 7 дней)
+  const todayKey = mskDateKey()
+  const weekAgoKey = daysAgoKey(6)   // окно последних 7 дней, включая сегодня
+  const inWeek = w => w.date >= weekAgoKey && w.date <= todayKey
+  const doneToday = workouts.filter(w => w.date === todayKey)
+  const doneWeek = workouts.filter(inWeek)
+  const sumKcal = list => list.reduce((s, w) => s + (w.calories || 0), 0)
+  const sumKm = list => Math.round(list.reduce((s, w) => s + (w.distanceKm || 0), 0) * 10) / 10
+  const kcalToday = sumKcal(doneToday)
+  const kcalWeek = sumKcal(doneWeek)
+  const planToday = planned.filter(w => w.date === todayKey)
+  const planWeek = planned.filter(inWeek)
+  const hasCalData = kcalWeek > 0
+  const hasPlanFact = planned.length > 0 || doneWeek.length > 0
+
+  // Гейджи в стиле Garmin: VO₂max с цветными зонами и маркером, кольца шагов/заряда, дуга пульса.
+  const vo2 = g?.vo2Max
+  const vo2Label = vo2 == null ? '' : vo2 >= 50 ? t.fitTop : vo2 >= 45 ? t.fitExc : vo2 >= 40 ? t.fitGood : vo2 >= 35 ? t.fitAvg : t.fitLow
+  const VO2_ZONES = [
+    { from: 20, to: 33, color: 'var(--status-crit)' },
+    { from: 33, to: 40, color: 'var(--status-warn)' },
+    { from: 40, to: 46, color: 'var(--status-ok)' },
+    { from: 46, to: 58, color: 'var(--accent)' }
   ]
+  const bb = g?.bodyBattery?.current
+  const bbColor = bb == null ? 'var(--accent)' : bb >= 50 ? 'var(--status-ok)' : bb >= 25 ? 'var(--status-warn)' : 'var(--status-crit)'
+  const gauges = [
+    g?.steps != null && (
+      <ArcGauge key="steps" value={g.steps} max={10000} color="var(--accent)"
+        centerText={g.steps.toLocaleString('ru-RU')} sublabel={t.stepsGoal} label={t.steps} />
+    ),
+    vo2 != null && (
+      <ArcGauge key="vo2" value={vo2} min={20} max={58} zones={VO2_ZONES} marker
+        centerText={`${vo2}`} sublabel={vo2Label} label={t.vo2max} />
+    ),
+    g?.restingHr != null && (
+      <ArcGauge key="rhr" value={g.restingHr} min={40} max={90} color="var(--accent)"
+        centerText={`${g.restingHr}`} sublabel={t.bpm} label={t.restingHr} />
+    ),
+    bb != null && (
+      <ArcGauge key="bb" value={bb} max={100} color={bbColor}
+        centerText={`${bb}`} sublabel={t.charge} label={t.bodyBattery} />
+    )
+  ].filter(Boolean)
 
   return (
     <div className="gl-page">
@@ -262,16 +310,54 @@ export default function GarminLive({ embedded = false }) {
         </div>
       )}
 
-      <div className="gl-stats">
-        {stats.map((c, i) => (
-          <motion.div key={c.label} className="card gl-stat"
-            initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: i * 0.05 }}>
-            <span className="gl-stat-label">{c.label}</span>
-            <span className="gl-stat-value">{c.value}</span>
-            {c.sub && <span className="gl-stat-sub muted">{c.sub}</span>}
-          </motion.div>
-        ))}
-      </div>
+      {!listsOnly && gauges.length > 0 && (
+        <motion.div className="card gl-gauges"
+          initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
+          {gauges}
+        </motion.div>
+      )}
+
+      {/* Виджеты «Калории» и «План/факт» (просьба владельца) */}
+      {!listsOnly && (hasCalData || hasPlanFact) && (
+        <div className="gl-summary">
+          {hasCalData && (
+            <motion.div className="card gl-sum-card"
+              initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.06 }}>
+              <div className="gl-sum-title">{t.calTitle}</div>
+              <div className="gl-sum-cols">
+                <div className="gl-sum-col">
+                  <span className="gl-sum-val">{kcalToday.toLocaleString('ru-RU')}<span className="gl-sum-u"> {t.kcalShort}</span></span>
+                  <span className="gl-sum-cap muted">{t.calToday}</span>
+                </div>
+                <div className="gl-sum-col">
+                  <span className="gl-sum-val">{kcalWeek.toLocaleString('ru-RU')}<span className="gl-sum-u"> {t.kcalShort}</span></span>
+                  <span className="gl-sum-cap muted">{t.calWeek}</span>
+                </div>
+              </div>
+            </motion.div>
+          )}
+          {hasPlanFact && (
+            <motion.div className="card gl-sum-card"
+              initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.1 }}>
+              <div className="gl-sum-title">{t.pfTitle}</div>
+              <div className="gl-pf-rows">
+                <div className="gl-pf-row">
+                  <span className="gl-pf-when">{t.pfToday}</span>
+                  <span className="gl-pf-val"><b>{planToday.length}</b> {t.pfPlan}</span>
+                  <span className="gl-pf-sep">·</span>
+                  <span className="gl-pf-val"><b>{doneToday.length}</b> {t.pfFact}</span>
+                </div>
+                <div className="gl-pf-row">
+                  <span className="gl-pf-when">{t.pfWeek}</span>
+                  <span className="gl-pf-val"><b>{planWeek.length}</b> {t.pfPlan}</span>
+                  <span className="gl-pf-sep">·</span>
+                  <span className="gl-pf-val"><b>{doneWeek.length}</b> {t.pfFact}{sumKm(doneWeek) > 0 ? `, ${sumKm(doneWeek)} ${t.kmShort}` : ''}</span>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </div>
+      )}
 
       {last && (
         <motion.div className={`card gl-hero ${last.id ? 'gl-clickable' : ''}`}
@@ -440,6 +526,26 @@ export default function GarminLive({ embedded = false }) {
         .gl-stat-label { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
         .gl-stat-value { font-size: 26px; font-weight: 700; letter-spacing: -0.01em; color: var(--foreground); }
         .gl-stat-sub { font-size: 12px; }
+
+        /* Гарминовская сетка гейджей */
+        .gl-gauges { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 18px 8px; justify-items: center; align-items: start; padding: 22px 18px; }
+        @media (max-width: 520px) { .gl-gauges { grid-template-columns: repeat(2, 1fr); gap: 14px 4px; } }
+
+        /* Сводные виджеты: Калории + План/факт */
+        .gl-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+        .gl-sum-card { display: flex; flex-direction: column; gap: 14px; padding: 18px 20px; }
+        .gl-sum-title { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+        .gl-sum-cols { display: flex; gap: 28px; }
+        .gl-sum-col { display: flex; flex-direction: column; gap: 4px; }
+        .gl-sum-val { font-size: 26px; font-weight: 700; color: var(--foreground); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+        .gl-sum-u { font-size: 0.5em; font-weight: 500; color: var(--muted); }
+        .gl-sum-cap { font-size: 12px; }
+        .gl-pf-rows { display: flex; flex-direction: column; gap: 10px; }
+        .gl-pf-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+        .gl-pf-when { font-size: 13px; font-weight: 700; color: var(--foreground); min-width: 74px; }
+        .gl-pf-val { font-size: 14px; color: var(--muted); }
+        .gl-pf-val b { color: var(--foreground); font-weight: 700; font-size: 15px; }
+        .gl-pf-sep { color: var(--muted); }
 
         /* Левая акцентная полоса = border-left: повторяет скругление 16px углов карточки (overflow:hidden клипает) */
         .gl-hero { position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 14px; padding: 22px 24px; border-left: 4px solid var(--hero-accent); }

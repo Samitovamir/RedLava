@@ -12,14 +12,12 @@ import { getDesktopTheme, setDesktopTheme, getMobilePref, setMobilePref } from '
 // Десктоп: образцы фон / поверхность / акцент для превью
 const DESKTOP_THEMES = [
   { id: 'black-leather', ru: 'Тёмная',   en: 'Dark',  sub: { ru: 'Чёрная кожа', en: 'Black leather' }, bg: '#121211', surface: '#1E1E1C', accent: '#8FB2D4' },
-  { id: 'red-lava',      ru: 'Светлая',  en: 'Light', sub: { ru: 'RedLava, как на телефоне', en: 'RedLava, like on phone' }, bg: '#F4F5F7', surface: '#FFFFFF', accent: '#CF1020' },
   { id: 'brown-leather', ru: 'Коричневая кожа', en: 'Brown leather', bg: '#120E0B', surface: '#271F19', accent: '#C89B6A' },
   { id: 'cream',         ru: 'Кремовая',        en: 'Cream',         bg: '#EFE9DD', surface: '#FDFBF6', accent: '#C97B4A' },
   { id: 'original',      ru: 'Оригинальная',    en: 'Original',      bg: '#1E1B18', surface: '#2C2825', accent: '#818CF8' },
 ]
 // Телефон: «Авто» + две iOS-темы
 const MOBILE_OPTIONS = [
-  { id: 'red-lava',  ru: 'RedLava',     en: 'RedLava',   sub: { ru: 'Фирменный стиль', en: 'Brand style' }, bg: '#F4F5F7', surface: '#FFFFFF', accent: '#CF1020' },
   { id: 'auto',      ru: 'Авто',        en: 'Auto',      sub: { ru: 'Как на телефоне', en: 'Matches your phone' }, auto: true },
   { id: 'ios-dark',  ru: 'iOS Тёмная',  en: 'iOS Dark',  bg: '#000000', surface: '#1C1C1E', accent: '#0A84FF' },
   { id: 'ios-light', ru: 'iOS Светлая', en: 'iOS Light', bg: '#F2F2F7', surface: '#FFFFFF', accent: '#007AFF' },

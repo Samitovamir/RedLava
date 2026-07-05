@@ -6,8 +6,6 @@ import FluidMenu from './components/FluidMenu.jsx'
 import BrandWatermark from './components/BrandWatermark.jsx'
 import MailModal from './components/MailModal.jsx'
 import DemoBanner from './components/DemoBanner.jsx'
-import CockpitShell from './shells/CockpitShell.jsx'
-import JournalShell from './shells/JournalShell.jsx'
 import CommandShell from './shells/CommandShell.jsx'
 import { useLayout, useIsMobile } from './layout.js'
 import { useThemeSync } from './theme.js'
@@ -18,6 +16,9 @@ import { EventsProvider } from './context/EventsContext.jsx'
 import { HistoryProvider } from './context/HistoryContext.jsx'
 import { MemoryProvider } from './context/MemoryContext.jsx'
 import { MailProvider } from './context/MailContext.jsx'
+// Страницы — обычные (не lazy): ленивая загрузка + Suspense + AnimatePresence давали
+// белый экран при переключении вкладок. Тяжёлый сканер (BarcodeScanner) и так отдельным
+// чанком (ленивый импорт в DiaryTab), поэтому бандл остаётся разбит без риска пустого экрана.
 import Home from './pages/Home.jsx'
 import Schedule from './pages/Schedule.jsx'
 import Health from './pages/Health.jsx'
@@ -80,8 +81,6 @@ function ShellRouter() {
   useEffect(() => {
     document.documentElement.setAttribute('data-layout', effective)
   }, [effective])
-  if (effective === 'cockpit') return <CockpitShell />
-  if (effective === 'journal') return <JournalShell />
   if (effective === 'command') return <CommandShell />
   return (
     <>

@@ -762,6 +762,11 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
             </div>
           )}
 
+          <button className="ds-add-btn" onClick={openAdd} title={t.addEvent}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <span className="ds-add-txt">{t.addEvent}</span>
+          </button>
+
           <div className="ds-menu-wrap">
             <button className={`ds-icon-btn ${openMenu === 'header' ? 'active' : ''}`} onClick={() => toggleMenu('header')} title={t.menu}>
               <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>
@@ -1454,6 +1459,18 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
         }
         .ds-icon-btn:hover { background: var(--bg-secondary); color: var(--foreground); }
         @media (max-width: 640px) { .ds-icon-btn { width: 40px; height: 40px; } }
+
+        /* Заметная кнопка «Добавить событие» (раньше была спрятана в меню «…») */
+        .ds-add-btn {
+          display: inline-flex; align-items: center; gap: 7px;
+          padding: 8px 14px; border-radius: 999px;
+          border: none; background: var(--accent); color: var(--on-accent, #fff);
+          font-family: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer;
+          transition: filter 0.15s, transform 0.1s;
+        }
+        .ds-add-btn:hover { filter: brightness(1.06); }
+        .ds-add-btn:active { transform: translateY(1px); }
+        @media (max-width: 640px) { .ds-add-btn .ds-add-txt { display: none; } .ds-add-btn { padding: 10px; } }
 
         /* Плашки «весь день» над шкалой */
         .ds-allday { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 18px 0; flex-shrink: 0; }

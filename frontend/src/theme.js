@@ -16,7 +16,7 @@ import { useEffect } from 'react'
 const KEY = 'albert-theme'
 const MOBILE_KEY = 'albert-theme-mobile'
 export const DEFAULT_DESKTOP = 'black-leather'
-export const DEFAULT_MOBILE = 'red-lava'   // фирменное оформление RedLava на телефоне по умолчанию
+export const DEFAULT_MOBILE = 'auto'   // по умолчанию следуем оформлению телефона (тёмная/светлая)
 const MOBILE_Q = '(max-width: 640px)'
 const DARK_Q = '(prefers-color-scheme: dark)'
 const EVT = 'albert-theme-change'
@@ -31,14 +31,18 @@ export function getDesktopTheme() {
   try { return localStorage.getItem(KEY) || DEFAULT_DESKTOP } catch { return DEFAULT_DESKTOP }
 }
 export function getMobilePref() {
-  try { return localStorage.getItem(MOBILE_KEY) || DEFAULT_MOBILE } catch { return DEFAULT_MOBILE }
+  try {
+    const v = localStorage.getItem(MOBILE_KEY)
+    if (v === 'red-lava') return 'auto'   // RedLava убран — мигрируем на авто
+    return v || DEFAULT_MOBILE
+  } catch { return DEFAULT_MOBILE }
 }
 
 // Эффективная data-theme с учётом устройства и системной темы телефона.
 export function resolveTheme() {
   if (isMobileViewport()) {
     const m = getMobilePref()
-    if (m === 'red-lava' || m === 'ios-dark' || m === 'ios-light' || m === 'brown-leather') return m
+    if (m === 'ios-dark' || m === 'ios-light' || m === 'brown-leather') return m
     return prefersDark() ? 'ios-dark' : 'ios-light' // 'auto' → следуем телефону
   }
   return getDesktopTheme()

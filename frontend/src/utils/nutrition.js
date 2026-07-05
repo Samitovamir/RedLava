@@ -86,13 +86,16 @@ export function mealTarget(dayTarget, share) {
 export function loadGarmin() { try { const s = localStorage.getItem('albert-garmin-live'); if (s) return JSON.parse(s) } catch { /* ignore */ } return null }
 export function loadWhoop() { try { const s = localStorage.getItem('albert-whoop-live'); if (s) return JSON.parse(s) } catch { /* ignore */ } return null }
 
-// АКТИВНЫЕ калории тренировок за дату (из Garmin), т.е. СВЕРХ обмена покоя.
+// АКТИВНЫЕ калории тренировок за дату (из Garmin), т.е. СВЕРХ повседневного расхода.
 // Garmin отдаёт полные калории активности (включая обмен покоя за время тренировки),
-// поэтому вычитаем покой за минуты тренировки — иначе он бы посчитался дважды
-// (один раз в базе NEAT, второй — здесь). bmr нужен для этого вычета.
+// поэтому вычитаем повседневный расход за минуты тренировки — иначе он бы посчитался
+// дважды: один раз в базе (BMR × NEAT за все 1440 мин суток), второй — здесь.
+// ВАЖНО: вычитаем по той же ставке, что заложена в базу — BMR × NEAT_MULT / 1440,
+// а не «голый» BMR/1440, иначе остаётся остаток ~(NEAT_MULT−1)×BMR/мин, который
+// раздувал дневную норму на ~100 ккал за час тренировки (баг «задвоения калорий»).
 export function workoutKcal(garmin, dateKey, bmr = 0) {
   if (!garmin?.workouts) return 0
-  const perMin = bmr > 0 ? bmr / 1440 : 0
+  const perMin = bmr > 0 ? (bmr * NEAT_MULT) / 1440 : 0
   return Math.round(
     garmin.workouts
       .filter(w => w.date === dateKey)

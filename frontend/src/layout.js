@@ -37,13 +37,14 @@ export function useIsMobile() {
 
 export const LAYOUTS = [
   { id: 'classic', ru: 'Классика',         en: 'Classic',        ruHint: 'Разделы и сайдбар — сайт как сейчас',                    enHint: 'Sections and sidebar — the site as it is' },
-  { id: 'cockpit', ru: 'Один экран',       en: 'One screen',     ruHint: 'Весь сайт на одном экране, разделы всплывают окнами',    enHint: 'Whole site on one screen, sections pop up as windows' },
-  { id: 'journal', ru: 'Лента',            en: 'Feed',           ruHint: 'Весь сайт — одна прокручиваемая лента-брифинг',          enHint: 'The whole site as one scrollable brief' },
   { id: 'command', ru: 'Командный центр',  en: 'Command center', ruHint: 'Рабочий стол: день и помощник всегда на экране',         enHint: 'Workspace: day and assistant always on screen' },
 ]
 
+const VALID_LAYOUTS = new Set(LAYOUTS.map(l => l.id))
+
+// Старые сохранённые раскладки (cockpit/journal) больше не поддерживаются → Классика.
 export function getLayout() {
-  try { return localStorage.getItem(STORAGE_KEY) || DEFAULT_LAYOUT } catch { return DEFAULT_LAYOUT }
+  try { const v = localStorage.getItem(STORAGE_KEY); return VALID_LAYOUTS.has(v) ? v : DEFAULT_LAYOUT } catch { return DEFAULT_LAYOUT }
 }
 
 export function applyLayout(id) {

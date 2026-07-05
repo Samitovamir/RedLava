@@ -3,7 +3,7 @@ import { Button, SectionHeader } from '../ui'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Footprints, BedDouble, RotateCcw,
-  ThumbsUp, ThumbsDown, ShoppingCart, SlidersHorizontal
+  ThumbsUp, ThumbsDown, ShoppingCart, SlidersHorizontal, Share2
 } from 'lucide-react'
 import Icon from '../ui/Icon.jsx'
 import MicButton from '../components/MicButton.jsx'
@@ -51,6 +51,13 @@ export default function Nutrition() {
       title: 'Питание',
       subtitle: 'Фото-дневник · советник · подбор блюд',
       prefsBtn: 'Настроить предпочтения',
+      fodmapToggle: 'Индикатор FODMAP',
+      fodmapOnMsg: 'Индикатор FODMAP включён',
+      fodmapOffMsg: 'Индикатор FODMAP выключен',
+      shareRecipe: 'Отправить рецепт',
+      recipeCopied: 'Рецепт скопирован — можно переслать домработнице',
+      recipeWait: 'Рецепт ещё собирается — подождите пару секунд',
+      on: 'ВКЛ', off: 'ВЫКЛ',
       // Карточка цели
       goalFor: 'Цель на',
       today: 'сегодня',
@@ -159,6 +166,13 @@ export default function Nutrition() {
       title: 'Nutrition',
       subtitle: 'Photo diary · advisor · dish picks',
       prefsBtn: 'Set preferences',
+      fodmapToggle: 'FODMAP indicator',
+      fodmapOnMsg: 'FODMAP indicator on',
+      fodmapOffMsg: 'FODMAP indicator off',
+      shareRecipe: 'Share recipe',
+      recipeCopied: 'Recipe copied — you can forward it',
+      recipeWait: 'Recipe is still building — wait a couple of seconds',
+      on: 'ON', off: 'OFF',
       goalFor: 'Goal for',
       today: 'today',
       editProfile: 'Edit profile',
@@ -591,12 +605,59 @@ export default function Nutrition() {
   }
   function savePrefsModal() { savePrefs(prefsDraft); setPrefs(prefsDraft); setPrefsOpen(false); flash(t.prefsSaved) }
 
+  // Быстрый тумблер индикатора FODMAP прямо в шапке (не всем нужен — владелец просил вынести на видное место)
+  function toggleFodmap() {
+    const np = { ...prefs, fodmap: !prefs.fodmap }
+    setPrefs(np); savePrefs(np)
+    flash(np.fodmap ? t.fodmapOnMsg : t.fodmapOffMsg)
+  }
+
+  // Собрать рецепт в читаемый текст и отправить (домработнице): системный share-sheet, фолбэк — буфер обмена.
+  async function shareRecipe() {
+    if (!detail) return
+    const parts = detailParts.filter(p => p.recipe)
+    if (!parts.length) { flash(t.recipeWait); return }
+    const lines = [detail.meal.name.toUpperCase(), '']
+    for (const p of parts) {
+      if (detailParts.length > 1) lines.push(`— ${p.name} —`)
+      const ings = p.recipe.ingredients || []
+      if (ings.length) {
+        lines.push('Ингредиенты:')
+        for (const ing of ings) {
+          const qty = ing.qty != null ? ` — ${ing.qty} ${ing.unit || ''}`.trimEnd() : (ing.unit ? ` — ${ing.unit}` : '')
+          lines.push(`• ${ing.name}${qty}`)
+        }
+      }
+      const steps = p.recipe.steps || []
+      if (steps.length) {
+        lines.push('Приготовление:')
+        steps.forEach((s, i) => lines.push(`${i + 1}. ${s}`))
+      }
+      lines.push('')
+    }
+    const text = lines.join('\n').trim()
+    try {
+      if (navigator.share) { await navigator.share({ title: detail.meal.name, text }); return }
+    } catch { /* пользователь отменил share — падаем в копирование */ }
+    try { await navigator.clipboard.writeText(text); flash(t.recipeCopied) }
+    catch { flash(t.recipeCopied) }
+  }
+
   return (
     <div className="nu-page">
       <SectionHeader
         title={t.title}
         subtitle={t.subtitle}
       />
+
+      {/* Тумблер индикатора FODMAP на видном месте — не всем нужен (просьба владельца) */}
+      <div className="nu-top-row">
+        <button className={`nu-fodmap-toggle ${prefs.fodmap ? 'on' : ''}`} onClick={toggleFodmap} aria-pressed={prefs.fodmap}>
+          <span className="nu-fodmap-dot" />
+          {t.fodmapToggle}
+          <b>{prefs.fodmap ? t.on : t.off}</b>
+        </button>
+      </div>
 
       {/* Единый экран раздела: фото-дневник → советник → подбор блюд по приёмам */}
       <DiaryTab target={target} eaten={eaten} remaining={remaining} plan={plan} intake={intake} setIntake={setIntake} selectedDay={selectedDay} selectDay={selectDay} week={week} profile={profile} flash={flash} />
@@ -714,7 +775,12 @@ export default function Nutrition() {
               initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }}>
               <div className="nu-modal-head">
                 <h3>{detail.meal.name}</h3>
-                <button className="nu-close" onClick={closeDetail} aria-label={t.close}>×</button>
+                <div className="nu-modal-head-actions">
+                  <button className="nu-share-btn" onClick={shareRecipe}>
+                    <Share2 size={15} strokeWidth={1.6} /> {t.shareRecipe}
+                  </button>
+                  <button className="nu-close" onClick={closeDetail} aria-label={t.close}>×</button>
+                </div>
               </div>
               <div className="nu-modal-sub muted">{t.meals[detail.mealKey] || detail.mealKey} · {dayLabel}</div>
               {(() => {
@@ -1092,6 +1158,18 @@ export default function Nutrition() {
         .nu-modal { width: 100%; max-width: 560px; max-height: 88vh; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
         .nu-modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
         .nu-modal-head h3 { font-size: 19px; font-weight: 700; color: var(--foreground); margin: 0; }
+        .nu-modal-head-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+        .nu-share-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-med); background: var(--bg-tile); color: var(--text-secondary); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: color .15s, border-color .15s; }
+        .nu-share-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+        /* Тумблер индикатора FODMAP в шапке страницы */
+        .nu-top-row { display: flex; justify-content: flex-end; margin: -4px 0 14px; }
+        .nu-fodmap-toggle { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border-med); background: var(--bg-tile); color: var(--text-secondary); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: color .15s, border-color .15s, background .15s; }
+        .nu-fodmap-toggle b { color: var(--text-muted); font-weight: 700; letter-spacing: .02em; }
+        .nu-fodmap-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-faint); flex: none; transition: background .15s; }
+        .nu-fodmap-toggle.on { color: var(--text-primary); border-color: var(--accent); }
+        .nu-fodmap-toggle.on b { color: var(--accent); }
+        .nu-fodmap-toggle.on .nu-fodmap-dot { background: var(--accent); }
         .nu-modal-sub { font-size: 13px; margin-top: 3px; }
         .nu-prefs-inline { align-self: flex-start; display: inline-flex; align-items: center; gap: 7px; padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-med); background: var(--bg-tile); color: var(--text-secondary); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: color .15s, border-color .15s; }
         .nu-prefs-inline:hover { color: var(--text-primary); border-color: var(--accent); }

@@ -97,13 +97,15 @@ export default function Home() {
         </div>
       ) : (
         <>
-          <div className="home-cards">
-            <DayAgenda />
-            <SportSignal />
-            <HealthSignal />
-            <NutritionHomeCard />
-            {TASKS_ENABLED && <TasksHomeCard />}
-          </div>
+          {/* По просьбе владельца: под «Статусом» убраны блоки Расписание/Спорт/Здоровье/Питание —
+              оставлен только «Ваш помощник». Основная мысль по доменам теперь внутри «Статуса»
+              (виджеты: спидометр стресса, ползунок событий). Компоненты сохранены (импорты ниже),
+              их можно вернуть, если понадобится. */}
+          {TASKS_ENABLED && (
+            <div className="home-cards">
+              <TasksHomeCard />
+            </div>
+          )}
 
           <AIWorkZone />
         </>
