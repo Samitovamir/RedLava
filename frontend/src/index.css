@@ -612,6 +612,9 @@ body::after {
 [data-theme="cream"]{ --c-warm:#B0683B; --c-steel:#4E7A9E; --c-sage:#5E8A55; --c-amber:#B0822A; --c-rose:#AE5E66; --c-neutral:#7A6F5C; }
 [data-theme="original"]{ --c-warm:#C98A5E; --c-steel:#6E8CA8; --c-sage:#6FA06B; --c-amber:#D6973E; --c-rose:#C77F86; --c-neutral:#9CA3AF; }
 [data-theme="red-lava"]{ --c-warm:#E0512A; --c-steel:#3E7CB1; --c-sage:#2E9E64; --c-amber:#E0922A; --c-rose:#CF4D5A; --c-neutral:#7C7470; }
+/* iOS-темы (мобилка) — без этих токенов БЖУ-бары и категорийные цвета были прозрачными */
+[data-theme="ios-dark"]{ --c-warm:#FF7A45; --c-steel:#0A84FF; --c-sage:#30D158; --c-amber:#FF9F0A; --c-rose:#FF375F; --c-neutral:#98989F; }
+[data-theme="ios-light"]{ --c-warm:#F2601F; --c-steel:#007AFF; --c-sage:#34C759; --c-amber:#FF9500; --c-rose:#FF2D55; --c-neutral:#8E8E93; }
 
 /* ============================================================
    Бренд-марка RED LAVA. На светлых темах лого «парит» прозрачным
