@@ -53,8 +53,8 @@ export function nutritionHealthBrief() {
     if (todW.length) parts.push(`Сегодня была тренировка (${todW.map(w => w.title || 'тренировка').join(', ')}) — поддержи восстановление.`)
   } catch { /* ignore */ }
   const st = garmin?.stress
-  const sv = st ? (st.current ?? st.avg) : null
-  if (sv != null && sv >= 60) parts.push(`Стресс сейчас высокий (${sv}/100) — лучше что-то полегче.`)
+  const sv = st ? (st.recent ?? st.current ?? st.avg) : null
+  if (sv != null && sv >= 60) parts.push(`Стресс за последний час высокий (${sv}/100) — лучше что-то полегче.`)
   return parts.join(' ')
 }
 
@@ -93,7 +93,7 @@ export function buildSiteSnapshot({ events = [], history = [], facts = [] } = {}
       g.restingHr != null ? `пульс покоя ${g.restingHr}` : null,
       g.vo2Max != null ? `VO2max ${g.vo2Max}` : null,
       bb?.current != null ? `Body Battery (заряд тела) сейчас ${bb.current}/100${bb.charged != null ? `, заряжено +${bb.charged}` : ''}${bb.drained != null ? `, потрачено −${bb.drained}` : ''}` : null,
-      str && (str.current ?? str.avg) != null ? `Стресс ${str.current ?? str.avg}/100${str.avg != null ? ` (средний ${str.avg})` : ''}` : null,
+      str && (str.recent ?? str.current ?? str.avg) != null ? `Стресс ${str.recent ?? str.current ?? str.avg}/100 (за последний час)` : null,
       g.weekKm != null ? `за 7 дней ${g.weekKm} км (${g.weekCount} тренировок)` : null
     ].filter(Boolean).join(', ')
     const bbNote = bb?.current != null

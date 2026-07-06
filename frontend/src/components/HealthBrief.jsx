@@ -82,7 +82,7 @@ function buildHealthData(reports, whoop, garmin) {
   const g = garmin
     ? `Тренировки (Garmin): за 7 дней ${garmin.weekKm ?? '?'} км, ${garmin.weekCount ?? '?'} тренировок, пульс покоя ${garmin.restingHr ?? '?'}, VO2max ${garmin.vo2Max ?? '?'}.` +
       (bb?.current != null ? ` Body Battery ${bb.current}/100 (остаток энергии на день, меняется в течение дня — не утренний балл).` : '') +
-      (str && (str.current ?? str.avg) != null ? ` Стресс ${str.current ?? str.avg}/100.` : '')
+      (str && (str.recent ?? str.current ?? str.avg) != null ? ` Стресс ${str.recent ?? str.current ?? str.avg}/100 (за последний час, обновляется при синхронизации часов).` : '')
     : ''
   return [labs, w, g].filter(Boolean).join(' ')
 }

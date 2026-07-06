@@ -53,7 +53,7 @@ const STR = {
     noSourceTitle: 'Нет данных о здоровье',
     noSource: 'Подключите Whoop или Garmin — и здесь появятся восстановление, сон и нагрузка.',
     connectBtn: 'Подключить устройство',
-    bbLabel: 'Заряд тела', stressLabel: 'Стресс', loadLabel: 'Нагрузка',
+    bbLabel: 'Заряд тела', stressLabel: 'Стресс', stressSub: 'за последний час', stressUpd: 'обновлено', loadLabel: 'Нагрузка',
     recoveryWord: 'Восстановление', of: 'из'
   },
   en: {
@@ -89,7 +89,7 @@ const STR = {
     noSourceTitle: 'No health data',
     noSource: 'Connect Whoop or Garmin to see recovery, sleep and load here.',
     connectBtn: 'Connect a device',
-    bbLabel: 'Body Battery', stressLabel: 'Stress', loadLabel: 'Load',
+    bbLabel: 'Body Battery', stressLabel: 'Stress', stressSub: 'last hour', stressUpd: 'updated', loadLabel: 'Load',
     recoveryWord: 'Recovery', of: 'of'
   }
 }
@@ -165,7 +165,13 @@ export default function MetricsView() {
   // Body Battery и стресс показываем кольцами (см. ниже), поэтому в сетку карточек НЕ дублируем.
   const G = t.gm
   const bb = garmin?.bodyBattery, str = garmin?.stress
-  const stressVal = str ? (str.current ?? str.avg) : null
+  // Близко к «сейчас»: среднее за последний час → последний замер → среднее дня.
+  // Облачный Garmin обновляется только при синке часов, поэтому подписываем время последнего замера.
+  const stressVal = str ? (str.recent ?? str.current ?? str.avg) : null
+  const stressAt = str?.currentTs ? new Date(str.currentTs) : null
+  const stressSub = stressAt
+    ? `${t.stressUpd} ${stressAt.toLocaleTimeString(lang === 'en' ? 'en-GB' : 'ru-RU', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Moscow' })}`
+    : t.stressSub
   const garminMetrics = [
     garmin?.vo2Max != null && { val: `${garmin.vo2Max}`, lbl: G.vo2, sub: G.vo2sub },
     garmin?.fitnessAge != null && { val: `${garmin.fitnessAge}`, lbl: G.age, sub: G.ageSub },
@@ -335,7 +341,7 @@ export default function MetricsView() {
             )}
             {stressVal != null && (
               <CircularChart value={stressVal} label={t.stressLabel} color={stressColor(stressVal)} size={124}
-                centerText={`${stressVal}`} sublabel="/100" />
+                centerText={`${stressVal}`} sublabel={stressSub} />
             )}
           </div>
           <p className="rc-text muted">{t.garminMode}</p>

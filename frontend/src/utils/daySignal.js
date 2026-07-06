@@ -56,10 +56,10 @@ export function buildSignalData({ events = [], facts = [] } = {}) {
     lines.push('Данных Whoop нет (восстановление/сон неизвестны).')
   }
 
-  // Стресс — АКТУАЛЬНЫЙ (current), как и в остальном приложении (не средний за день)
+  // Стресс — недавний (среднее за последний час, обновляется при синке часов)
   const stress = garmin?.stress
-  if (stress && (stress.current ?? stress.avg) != null) {
-    lines.push(`Стресс (Garmin) сейчас ${stress.current ?? stress.avg}/100.`)
+  if (stress && (stress.recent ?? stress.current ?? stress.avg) != null) {
+    lines.push(`Стресс (Garmin) ${stress.recent ?? stress.current ?? stress.avg}/100 за последний час.`)
   }
 
   // Спорт: последняя тренировка (+ маркер «после тренировки» по дате/названию для кэша)
@@ -107,7 +107,7 @@ export const SIGNAL_CONTEXT =
   'ФОРМАТ ОТВЕТА — строго так, КАЖДЫЙ пункт с новой строки, без markdown, без кавычек, без лишних строк:\n' +
   'СТАТУС: <ok|warn|crit>\n' +
   'Заголовок: <короткий вывод 3–6 слов, без точки>\n' +
-  'Стресс: <актуальный стресс/100 + короткая словесная оценка>\n' +
+  'Стресс: <недавний стресс/100 + короткая словесная оценка>\n' +
   'Впереди: <ближайшие события дня кратко, либо «свободно»>\n' +
   'Спорт: <последняя тренировка кратко · восстановление %>\n' +
   'Здоровье: <сопоставь восстановление и текущую нагрузку в одной мысли (есть запас / баланс / перегруз); если есть отклонение в анализах — добавь его коротко>\n' +
@@ -156,7 +156,7 @@ export function fallbackSignal(lang = 'ru') {
   const whoop = readWhoop()
   const garmin = readGarmin()
   const r = whoop?.recovery
-  const stress = garmin?.stress ? (garmin.stress.current ?? garmin.stress.avg) : null
+  const stress = garmin?.stress ? (garmin.stress.recent ?? garmin.stress.current ?? garmin.stress.avg) : null
 
   let status = 'ok'
   if (r != null) {

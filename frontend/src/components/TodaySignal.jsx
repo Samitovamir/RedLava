@@ -61,7 +61,7 @@ export default function TodaySignal() {
   const whoop = readLS('albert-whoop-live')
   const garmin = readLS('albert-garmin-live')
   const nut = (() => { try { return nutritionToday() } catch { return null } })()
-  const stress = garmin?.stress ? (garmin.stress.current ?? garmin.stress.avg ?? null) : null
+  const stress = garmin?.stress ? (garmin.stress.recent ?? garmin.stress.current ?? garmin.stress.avg ?? null) : null
   const ev = eventsProgress(events)
   const evPct = ev.total ? Math.round(ev.passed / ev.total * 100) : 0
 

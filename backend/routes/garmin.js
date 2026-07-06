@@ -99,18 +99,30 @@ async function getBodyBattery(c, dateStr) {
   } catch { return null }
 }
 
-// Стресс Garmin (0–100): средний за день, максимум и текущий уровень.
+// Стресс Garmin (0–100). Массив замеров каждые ~3 мин: [метка_времени_мс, значение].
+// Возвращаем последний валидный замер + его метку времени (чтобы подписать «обновлено HH:MM»),
+// скользящее среднее за ~последний час (близко к «сейчас», но без шума одного пика), плюс avg/max дня.
 async function getStress(c, dateStr) {
   try {
     const r = await c.client.get(`${CONNECT}/wellness-service/wellness/dailyStress/${dateStr}`)
     if (!r) return null
     const arr = r.stressValuesArray || []
-    let current = null
-    for (let i = arr.length - 1; i >= 0; i--) { const v = arr[i]?.[1]; if (v != null && v >= 0) { current = v; break } }
+    let current = null, currentTs = null
+    for (let i = arr.length - 1; i >= 0; i--) {
+      const ts = arr[i]?.[0], v = arr[i]?.[1]
+      if (v != null && v >= 0) { current = v; currentTs = ts ?? null; break }
+    }
+    // Среднее за последние 60 минут валидных замеров (относительно последнего замера)
+    let recent = null
+    if (currentTs != null) {
+      const win = 60 * 60 * 1000
+      const vals = arr.filter(p => p?.[1] != null && p[1] >= 0 && p[0] != null && (currentTs - p[0]) <= win).map(p => p[1])
+      if (vals.length) recent = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length)
+    }
     const avg = r.avgStressLevel >= 0 ? r.avgStressLevel : null
     const max = r.maxStressLevel >= 0 ? r.maxStressLevel : null
     if (current == null && avg == null && max == null) return null
-    return { current, avg, max }
+    return { current, currentTs, recent, avg, max }
   } catch { return null }
 }
 
