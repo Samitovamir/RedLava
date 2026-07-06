@@ -360,7 +360,7 @@ router.get('/data', requireAuth, async (_req, res) => {
 
     // Body Battery (остаток заряда дня), стресс и готовность к тренировкам — по московской дате
     const today = mskDateStr()
-    const [bodyBattery, stress, readiness, advanced] = await Promise.all([getBodyBattery(c, today), getStress(c, today), getTrainingReadiness(c, today), getAdvancedMetrics(c, today)])
+    const [bodyBattery, stress, readiness] = await Promise.all([getBodyBattery(c, today), getStress(c, today), getTrainingReadiness(c, today)])
 
     // VO2max — берём из свежайшей тренировки, где он есть
     const vo2Max = mapped.find(w => w.vo2Max)?.vo2Max ?? null
@@ -379,7 +379,6 @@ router.get('/data', requireAuth, async (_req, res) => {
         bodyBattery,
         stress,
         readiness,
-        ...advanced,
         weekKm,
         weekCount,
         lastWorkout: mapped[0] || null,
@@ -388,6 +387,21 @@ router.get('/data', requireAuth, async (_req, res) => {
     })
   } catch (err) {
     res.json({ connected: true, error: String(err?.message || '').slice(0, 120), garmin: null })
+  }
+})
+
+// Расширенные метрики Garmin (Training Status/Load, HRV, прогнозы забегов, Endurance/Hill,
+// лактатный порог, интенсивные минуты) — ОТДЕЛЬНО и лениво: это ~7 тяжёлых запросов к
+// Garmin, они не должны тормозить основной /data (заряд тела / стресс / готовность).
+router.get('/insights', requireAuth, async (_req, res) => {
+  const t = await kvGet(TOKEN_KEY)
+  if (!t?.oauth2) return res.json({ connected: false })
+  try {
+    const c = clientFromToken(t)
+    const advanced = await getAdvancedMetrics(c, mskDateStr())
+    res.json({ connected: true, ...advanced })
+  } catch (err) {
+    res.json({ connected: true, error: String(err?.message || '').slice(0, 120) })
   }
 })
 

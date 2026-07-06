@@ -5,6 +5,9 @@
   если данные есть. Только CSS-переменные, тёмная тема, тексты на русском.
   props: garmin (объект albert-garmin-live). Иначе читает из localStorage.
 */
+import { useState, useEffect } from 'react'
+import { isGuest } from '../api/authFetch.js'
+
 function readGarmin() {
   try { const s = localStorage.getItem('albert-garmin-live'); return s ? JSON.parse(s) : null } catch { return null }
 }
@@ -19,7 +22,16 @@ const balanceColor = k => ({ OPTIMAL: 'var(--status-ok)', LOW: 'var(--status-war
 const hrvColor = k => ({ BALANCED: 'var(--status-ok)', UNBALANCED: 'var(--status-warn)', LOW: 'var(--status-crit)', POOR: 'var(--status-crit)' }[k] || 'var(--accent)')
 
 export default function GarminInsights({ garmin }) {
-  const g = garmin || readGarmin()
+  // Гость — расширенные метрики в демо (albert-garmin-live). Реальный — ленивый /insights,
+  // чтобы не блокировать основную загрузку заряда тела / стресса.
+  const [fetched, setFetched] = useState(null)
+  useEffect(() => {
+    if (isGuest()) return
+    let ok = true
+    fetch('/api/garmin/insights').then(r => r.json()).then(d => { if (ok && d && d.connected) setFetched(d) }).catch(() => {})
+    return () => { ok = false }
+  }, [])
+  const g = fetched || garmin || readGarmin()
   if (!g) return null
   const ts = g.trainingStatus, tl = g.trainingLoad, hrv = g.hrvStatus
   const race = g.racePredictions, endur = g.enduranceScore, hill = g.hillScore
