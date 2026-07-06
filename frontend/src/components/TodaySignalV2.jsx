@@ -134,8 +134,8 @@ function sportPlanFact(planned, garmin, todayKey) {
 // Выше — лучше (в отличие от стресса). Уровень/цвет/лид по порогам.
 function readyMeta(v) {
   if (v == null) return null
-  if (v >= 66) return { w: 'высокая', c: 'var(--status-ok)', lead: 'Готов к нагрузке' }
-  if (v >= 33) return { w: 'средняя', c: 'var(--status-warn)', lead: 'Умеренная готовность' }
+  if (v >= 75) return { w: 'высокая', c: 'var(--status-ok)', lead: 'Готов к нагрузке' }
+  if (v >= 50) return { w: 'средняя', c: 'var(--status-warn)', lead: 'Умеренная готовность' }
   return { w: 'низкая', c: 'var(--status-crit)', lead: 'Нужно восстановление' }
 }
 
@@ -269,9 +269,9 @@ export default function TodaySignalV2() {
             <div className="sv2-dgauge">
               <ZoneArc value={readyScore} max={100} center={readyScore} sub={rm.w} subColor={rm.c} size={gaugeSize}
                 zones={[
-                  { from: 0, to: 33, color: 'var(--status-crit)' },
-                  { from: 33, to: 66, color: 'var(--status-warn)' },
-                  { from: 66, to: 100, color: 'var(--status-ok)' },
+                  { from: 0, to: 50, color: 'var(--status-crit)' },
+                  { from: 50, to: 75, color: 'var(--status-warn)' },
+                  { from: 75, to: 100, color: 'var(--status-ok)' },
                 ]} />
             </div>
             <div className="sv2-dtext">
