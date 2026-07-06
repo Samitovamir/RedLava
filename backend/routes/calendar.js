@@ -141,8 +141,13 @@ router.get('/events', requireAuth, async (_req, res) => {
     const t = await kvGet(TOKENS_KEY)
     return res.json({ events: [], connected: false, needsReconnect: !!(t?.refresh_token && t.dead) })
   }
+  // timeMin — НАЧАЛО сегодняшнего дня по Москве (а не «сейчас»), иначе уже прошедшие
+  // сегодня события пропадают из расписания. Так они остаются видны весь день.
+  const mp = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Moscow' }))
+  const pad = n => String(n).padStart(2, '0')
+  const dayStartMsk = `${mp.getFullYear()}-${pad(mp.getMonth() + 1)}-${pad(mp.getDate())}T00:00:00+03:00`
   const params = new URLSearchParams({
-    timeMin: new Date().toISOString(),
+    timeMin: dayStartMsk,
     maxResults: '50', singleEvents: 'true', orderBy: 'startTime'
   })
   const r = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?${params}`, {
