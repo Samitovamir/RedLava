@@ -42,6 +42,13 @@ export default function GarminInsights({ garmin }) {
   const hrvPos = hrv && hrv.low != null && hrv.high != null && hrv.high > hrv.low
     ? Math.max(0, Math.min(1, (hrv.lastNight - hrv.low) / (hrv.high - hrv.low))) * 100 : null
   const imPct = im && im.goal ? Math.min(100, Math.round(im.weekly / im.goal * 100)) : null
+  // Баланс нагрузки по ACWR (острая/хроническая): 0.8–1.3 — оптимальное окно
+  const acwr = tl?.ratio
+  const loadBal = acwr == null ? null
+    : acwr < 0.8 ? { w: 'малый объём', c: 'var(--status-warn)' }
+    : acwr <= 1.3 ? { w: 'оптимально', c: 'var(--status-ok)' }
+    : acwr <= 1.5 ? { w: 'высоковато', c: 'var(--status-warn)' }
+    : { w: 'перегруз', c: 'var(--status-crit)' }
 
   return (
     <div className="gi">
@@ -68,7 +75,7 @@ export default function GarminInsights({ garmin }) {
             <div className="gi-load-top">
               <div className="gi-load-num"><span className="gi-big">{tl.acute}</span><span className="gi-mut">острая</span></div>
               <div className="gi-load-num"><span className="gi-big">{tl.chronic}</span><span className="gi-mut">хроническая</span></div>
-              {clean(tl.balanceRu) && <div className="gi-balance" style={{ color: balanceColor(tl.balanceKey) }}>{clean(tl.balanceRu)}{tl.ratio != null ? ` · ${tl.ratio.toFixed(2)}` : ''}</div>}
+              {loadBal && <div className="gi-balance" style={{ color: loadBal.c }}>{loadBal.w}{acwr != null ? ` · ${acwr.toFixed(2)}` : ''}</div>}
             </div>
             {tl.focus && (
               <div className="gi-focus">
