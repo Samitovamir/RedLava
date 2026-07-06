@@ -22,6 +22,10 @@ import { mskNow, mskDateKey } from '../utils/time.js'
 import { isGuest } from '../api/authFetch.js'
 import { demoPlanned } from '../utils/demo.js'
 import { loadSourcePref, resolveSource } from '../utils/healthSource.js'
+import { useAiSummary } from '../hooks/useAiSummary.js'
+import { useMemoryFacts } from '../context/MemoryContext.jsx'
+import { useLang } from '../context/LanguageContext.jsx'
+import { buildSignalData, DOMAIN_ADVICE_CONTEXT, parseAdvice } from '../utils/daySignal.js'
 
 function readLS(key) {
   try { const s = localStorage.getItem(key); return s ? JSON.parse(s) : null } catch { return null }
@@ -215,6 +219,24 @@ export default function TodaySignalV2() {
   const word = value != null ? stressWord(value) : null
   const fresh = 'за последний час'   // без метки времени — иначе подпись шире гейджа и всё съезжает
 
+  // ── Персональные ИИ-советы по доменам (что делать), с детерминированным фолбэком ──
+  const { facts } = useMemoryFacts()
+  const { lang } = useLang()
+  const adviceSummary = useAiSummary({
+    id: 'status-advice-v2',
+    context: DOMAIN_ADVICE_CONTEXT + (lang === 'en' ? '\nReply in English; keep field labels in Russian (Стресс/Расписание/Спорт/Здоровье/Питание).' : ''),
+    snapshot: buildSignalData({ events, facts }),
+    message: 'Дай короткий совет по каждому разделу строго по формату.',
+    fallback: ''
+  })
+  const ai = adviceSummary.text ? parseAdvice(adviceSummary.text) : {}
+  const stressAdvice = ai.стресс || (value == null ? 'Данных о стрессе пока нет.' : value <= 50 ? 'Стресс низкий — удачное окно для дел на концентрацию или качественной тренировки.' : 'Стресс повышен — сбавь темп и сделай паузу перед нагрузкой.')
+  const schedAdvice = ai.расписание || (sched.count === 0 ? 'День свободный — закрой отложенное или добавь тренировочный объём.' : sched.loadPct >= 66 ? 'День плотный — заложи буфер между делами, тяжёлую тренировку не ставь впритык.' : 'День размеренный — успеваешь без спешки.')
+  const readyAdvice = ai.спорт || (readyScore == null ? 'Данных о готовности пока нет.' : readyScore >= 75 ? 'Готовность высокая — можно провести ключевую тренировку.' : readyScore >= 50 ? 'Готовность средняя — умеренная нагрузка по силам, без максимума.' : 'Готовность низкая — сегодня лучше лёгкая аэробная или отдых.')
+  const healthAdvice = ai.здоровье || (balDiff == null ? 'Данные восстановления пока не собраны.' : balDiff >= 15 ? 'Есть запас восстановления — можно взять нагрузку без риска перебора.' : balDiff <= -15 ? 'Нагрузка обгоняет восстановление — сегодня разгрузись и добери сон.' : 'Восстановление и нагрузка вровень — держи привычный темп.')
+  const nutAdvice = ai.питание || (!nutOk ? 'Залогируй приёмы, чтобы видеть баланс дня.' : nut.eaten > (nut.target?.kcal || 0) ? 'Норма закрыта — вечером лучше лёгкий белковый приём.' : `Осталось ${nut.remaining} ккал — сделай упор на белок в оставшихся приёмах.`)
+  const planAdvice = planFact && (planFact.pct <= 0 ? 'Тренировка впереди — держи цель, но не выкладывайся заранее.' : planFact.pct > 100 ? 'План перевыполнен — не добавляй лишнего, дай телу восстановиться.' : planFact.pct >= 100 ? 'План закрыт — дальше восстановление.' : 'До плана немного осталось — добери объём позже или засчитай как есть.')
+
   return (
     <motion.div
       className="card status-v2"
@@ -233,8 +255,7 @@ export default function TodaySignalV2() {
           </div>
           <div className="sv2-dtext">
             <span className="sv2-dtitle">Стресс</span>
-            <p className="sv2-lead">{stressText(value, word).lead}</p>
-            <p className="sv2-sub">{stressText(value, word).sub}</p>
+            <p className="sv2-advice">{stressAdvice}</p>
           </div>
         </div>
 
@@ -250,8 +271,7 @@ export default function TodaySignalV2() {
           </div>
           <div className="sv2-dtext">
             <span className="sv2-dtitle">Расписание</span>
-            <p className="sv2-lead">{sched.lead}</p>
-            <p className="sv2-sub">{sched.daySentence}</p>
+            <p className="sv2-advice">{schedAdvice}</p>
           </div>
           <div className="sv2-sched-bar">
             <DayProgress todays={sched.todays} nowMin={sched.nowMin} />
@@ -276,8 +296,7 @@ export default function TodaySignalV2() {
             </div>
             <div className="sv2-dtext">
               <span className="sv2-dtitle">Спорт · готовность к тренировкам</span>
-              <p className="sv2-lead">{rm.lead}</p>
-              <p className="sv2-sub">{readySub}</p>
+              <p className="sv2-advice">{readyAdvice}</p>
             </div>
           </div>
         )}
@@ -290,8 +309,7 @@ export default function TodaySignalV2() {
             </div>
             <div className="sv2-dtext">
               <span className="sv2-dtitle">Спорт · план/факт</span>
-              <p className="sv2-lead">{planFact.lead}</p>
-              <p className="sv2-sub">{planFact.sub}</p>
+              <p className="sv2-advice">{planAdvice}</p>
             </div>
           </div>
         )}
@@ -305,8 +323,7 @@ export default function TodaySignalV2() {
             </div>
             <div className="sv2-dtext">
               <span className="sv2-dtitle">Здоровье</span>
-              <p className="sv2-lead">{healthLead}</p>
-              <p className="sv2-sub">{healthSub}</p>
+              <p className="sv2-advice">{healthAdvice}</p>
             </div>
           </div>
         )}
@@ -333,8 +350,7 @@ export default function TodaySignalV2() {
             </div>
             <div className="sv2-dtext">
               <span className="sv2-dtitle">Питание</span>
-              <p className="sv2-lead">{nutLead}</p>
-              <p className="sv2-sub">{nutSub}</p>
+              <p className="sv2-advice">{nutAdvice}</p>
             </div>
           </div>
         )}
@@ -360,6 +376,8 @@ export default function TodaySignalV2() {
         .sv2-dtitle { font-size: 11.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 2px; }
         .sv2-lead { font-size: 20px; font-weight: 700; line-height: 1.25; letter-spacing: -0.01em; color: var(--text-primary); overflow-wrap: anywhere; }
         .sv2-sub { font-size: 14.5px; line-height: 1.5; color: var(--text-secondary); overflow-wrap: anywhere; }
+        /* ИИ-совет по домену (что делать) — вместо пересказа графика */
+        .sv2-advice { font-size: 15px; line-height: 1.5; color: var(--text-body); overflow-wrap: anywhere; }
         /* Расписание: сетка 2×2 — [гейдж | текст] сверху, [HP-бар | след. событие] снизу.
            HP-бар автоматически под гейджем (та же колонка = та же ось X). */
         .sv2-sched {
