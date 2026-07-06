@@ -125,14 +125,18 @@ export function eatenKcal(plan, dateKey) {
 export function dynamicTarget(base, profile, opts = {}) {
   const { burned = 0, hasGarmin = false, recovery = null, carry = 0 } = opts
   const trainDelta = hasGarmin ? Math.max(0, Math.min(3000, Math.round(burned))) : 0
-  let recDelta = 0, recNote = ''
+  // Восстановление НЕ трогает калории: расход уже регулируется тренировками (burned из Garmin),
+  // а урезать еду при плохом восстановлении вредно — телу нужны белок/энергия на восстановление.
+  // Оставляем только текстовую подсказку по нагрузке.
+  const recDelta = 0
+  let recNote = ''
   if (typeof recovery === 'number' && recovery > 0) {
-    if (recovery < 34) { recDelta = -150; recNote = 'низкое восстановление — сегодня полегче' }
+    if (recovery < 34) recNote = 'низкое восстановление — сегодня без тяжёлого, не голодай'
     else if (recovery >= 67) recNote = 'высокое восстановление — можно нагрузиться'
   }
   const carryDelta = Math.max(-300, Math.min(300, Math.round(carry)))
   const floor = Math.round(base.bmr * 1.2)
-  const kcal = Math.max(floor, Math.round((base.kcal + trainDelta + recDelta + carryDelta) / 10) * 10)
+  const kcal = Math.max(floor, Math.round((base.kcal + trainDelta + carryDelta) / 10) * 10)
   const weight = Math.min(250, Math.max(30, +profile.weight || 70))
   const protein = Math.round(weight * (profile.goal === 'gain' ? 2.0 : 1.8))
   const fat = Math.round(kcal * 0.27 / 9)

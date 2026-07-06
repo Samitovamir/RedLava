@@ -1,6 +1,6 @@
 {
-  "name": "Дашборд владельца",
-  "short_name": "владелец",
+  "name": "RedLava",
+  "short_name": "RedLava",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

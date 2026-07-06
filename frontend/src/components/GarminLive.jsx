@@ -3,6 +3,7 @@ import { Button } from '../ui'
 import { motion } from 'framer-motion'
 import WorkoutModal from './WorkoutModal.jsx'
 import WheelTimePicker from './WheelTimePicker.jsx'
+import GarminInsights from './GarminInsights.jsx'
 import { useEvents } from '../context/EventsContext.jsx'
 import { isGuest } from '../api/authFetch.js'
 import { demoPlanned } from '../utils/demo.js'
@@ -383,6 +384,14 @@ export default function GarminLive({ embedded = false, listsOnly = false }) {
               </div>
             ))}
           </div>
+        </motion.div>
+      )}
+
+      {/* Расширенные метрики Garmin (Training Status/Load, HRV, прогнозы забегов и т.д.) —
+          ниже последней тренировки, но выше «Приближающихся тренировок» */}
+      {!listsOnly && (
+        <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.16 }}>
+          <GarminInsights />
         </motion.div>
       )}
 

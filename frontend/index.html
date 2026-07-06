@@ -45,6 +45,10 @@
           document.head.appendChild(ti);
         } else {
           mf.setAttribute('href', '/manifest.json');
+          var ti = document.createElement('meta');
+          ti.setAttribute('name', 'apple-mobile-web-app-title');
+          ti.setAttribute('content', 'RedLava');
+          document.head.appendChild(ti);
         }
         document.head.appendChild(mf);
       } catch (e) {}
@@ -62,10 +66,33 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet" />
-    <title>Дашборд владельца</title>
+    <title>RedLava</title>
+    <style>
+      /* iOS не даёт залочить ориентацию для home-screen приложения (manifest.orientation
+         игнорируется). Поэтому в УСТАНОВЛЕННОМ приложении при повороте в ландшафт показываем
+         подсказку «поверните вертикально» — контент не разъезжается. В обычной вкладке Safari
+         заглушки нет (data-standalone отсутствует). */
+      .rotate-guard { display: none; }
+      @media (orientation: landscape) and (max-height: 480px) {
+        html[data-standalone] .rotate-guard {
+          display: flex; position: fixed; inset: 0; z-index: 100000;
+          flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+          text-align: center; padding: 24px;
+          background: var(--bg-app, #121211); color: var(--text-secondary, #9ca3af);
+        }
+        html[data-standalone] .rotate-guard svg { color: var(--accent, #8FB2D4); }
+        html[data-standalone] .rotate-guard p { margin: 0; font-size: 16px; font-weight: 600; color: var(--text-primary, #e2e8f0); }
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
+    <div class="rotate-guard" aria-hidden="true">
+      <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/>
+      </svg>
+      <p>Поверните телефон вертикально</p>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

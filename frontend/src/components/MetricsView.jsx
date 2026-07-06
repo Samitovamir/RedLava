@@ -176,7 +176,7 @@ export default function MetricsView() {
     garmin?.vo2Max != null && { val: `${garmin.vo2Max}`, lbl: G.vo2, sub: G.vo2sub },
     garmin?.fitnessAge != null && { val: `${garmin.fitnessAge}`, lbl: G.age, sub: G.ageSub },
     garmin?.restingHr != null && { val: `${garmin.restingHr}`, lbl: G.rhr, sub: G.rhrSub },
-    garmin?.trainingStatus && { val: garmin.trainingStatus, lbl: G.status }
+    garmin?.trainingStatus && { val: (typeof garmin.trainingStatus === 'string' ? garmin.trainingStatus : (garmin.trainingStatus.statusRu || garmin.trainingStatus.status || '—')), lbl: G.status }
   ].filter(Boolean)
 
   // Стресс для кольца Garmin: ниже — лучше

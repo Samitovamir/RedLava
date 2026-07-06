@@ -21,6 +21,11 @@ const demoWorkouts = () => {
   const k = (o) => dk(addDays(t, o))   // o<0 — дни назад
   return [
     {
+      id: 'demo-w0', type: 'running', label: 'Бег', labelEn: 'Run', title: 'Темповый бег', titleEn: 'Tempo run', date: k(0),
+      distanceKm: 7.2, durationMin: 39, pace: '5:25', avgHr: 150, maxHr: 168,
+      calories: 470, elevationGain: 40, cadence: 172, trainingEffect: 3.2, trainingLabel: 'аэробный', trainingLabelEn: 'aerobic'
+    },
+    {
       id: 'demo-w1', type: 'running', label: 'Бег', labelEn: 'Run', title: 'Утренняя пробежка', titleEn: 'Morning run', date: k(-1),
       distanceKm: 10.4, durationMin: 53, pace: '5:06', avgHr: 142, maxHr: 161,
       calories: 612, elevationGain: 74, cadence: 173, trainingEffect: 3.4, trainingLabel: 'аэробный', trainingLabelEn: 'aerobic'
@@ -58,6 +63,16 @@ const demoGarmin = () => {
     steps: 8420, restingHr: 47, vo2Max: 51,
     bodyBattery: { current: 64, charged: 70, drained: 44 },
     stress: { current: 26, avg: 33, max: 68 },
+    readiness: { score: 68, level: 'MODERATE', levelRu: 'средняя', feedback: 'Восстановление в приоритете, но лёгкая нагрузка по силам', sleepScore: 78, recoveryTime: 540, hrvFactor: 55, acuteLoad: 320 },
+    // Продвинутые метрики Garmin (Training Status/Load, HRV, прогнозы забегов и т.д.)
+    trainingStatus: { status: 'PRODUCTIVE', statusRu: 'Продуктивно', feedback: 'Нагрузка растит форму — так держать', vo2Max: 51 },
+    trainingLoad: { acute: 320, chronic: 372, ratio: 0.86, balanceRu: 'Оптимально', balanceKey: 'OPTIMAL', focus: { low: 52, high: 31, anaerobic: 17 } },
+    hrvStatus: { lastNight: 62, weeklyAvg: 58, statusRu: 'Сбалансировано', statusKey: 'BALANCED', low: 48, high: 70 },
+    racePredictions: { fiveK: '21:20', tenK: '44:30', half: '1:38:40', marathon: '3:27:10' },
+    enduranceScore: { score: 6840, levelRu: 'Тренирован' },
+    hillScore: { score: 61, levelRu: 'Средне' },
+    lactateThreshold: { hr: 164, pace: '4:38' },
+    intensityMinutes: { weekly: 210, goal: 150 },
     weekKm: 38.5, weekCount: 5,
     lastWorkout: workouts[0], workouts
   }
@@ -74,6 +89,22 @@ export function demoPlanned() {
     { id: 'demo-p3', title: 'Длинный велозаезд', titleEn: 'Long bike ride', date: k(2), sport: 'cycling', durationMin: 120, distanceKm: 55 },
     { id: 'demo-p4', title: 'Лёгкая восстановительная пробежка', titleEn: 'Easy recovery run', date: k(4), sport: 'running', durationMin: 35, distanceKm: 6 }
   ]
+}
+
+// Дневник питания на сегодня (как из фото-дневника): пара приёмов с FODMAP-метками.
+const demoIntake = () => {
+  const today = dk(mskNow())
+  return {
+    [today]: {
+      source: 'photo', kcal: 1180, protein: 82, fat: 38, carb: 120,
+      items: [{ name: 'Куриная грудка с рисом', kcal: 520 }, { name: 'Овсянка с бананом', kcal: 340 }, { name: 'Греческий салат', kcal: 320 }],
+      entries: [
+        { id: 'di1', name: 'Куриная грудка с рисом', kcal: 520, protein: 48, fat: 12, carb: 56, fodmap: 'low' },
+        { id: 'di2', name: 'Овсянка с бананом', kcal: 340, protein: 12, fat: 8, carb: 58, fodmap: 'low' },
+        { id: 'di3', name: 'Греческий салат', kcal: 320, protein: 22, fat: 18, carb: 12, fodmap: 'mod', fodmapReason: 'лук' }
+      ]
+    }
+  }
 }
 
 const demoEvents = () => {
@@ -94,7 +125,7 @@ const has = (key) => { try { return !!localStorage.getItem(key) } catch { return
 
 // Версия демо-данных. Меняй при изменении содержимого, чтобы вернувшиеся гости
 // получили обновлённый (теперь двуязычный) набор.
-const DEMO_VERSION = '2'
+const DEMO_VERSION = '4'
 
 // Заполнить localStorage демо-данными. force=true — перезаписать (свежий демо при входе).
 // Несовпадение версии (albert-demo-ver !== DEMO_VERSION) тоже считается force.
@@ -105,5 +136,6 @@ export function seedGuestDemo({ force = false } = {}) {
   if (overwrite || !has('albert-whoop-live')) set('albert-whoop-live', demoWhoop())
   if (overwrite || !has('albert-garmin-live')) set('albert-garmin-live', demoGarmin())
   if (overwrite || !has('albert-events')) set('albert-events', demoEvents())
+  if (overwrite || !has('albert-intake')) set('albert-intake', demoIntake())
   try { localStorage.setItem('albert-demo-ver', DEMO_VERSION) } catch { /* ignore */ }
 }

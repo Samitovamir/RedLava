@@ -126,6 +126,152 @@ async function getStress(c, dateStr) {
   } catch { return null }
 }
 
+// Готовность к тренировкам (Training Readiness, 0–100) — сводный балл Garmin: сон,
+// восстановление, ВЧП/HRV, острая нагрузка, история стресса. Внутренний эндпоинт
+// возвращает массив замеров за день — берём самый свежий. Уровень и факторы —
+// как в приложении Garmin (для текста «почему такая готовность»).
+const TR_LEVEL_RU = { NONE: 'нет данных', LOW: 'низкая', MODERATE: 'средняя', HIGH: 'высокая', MAXIMUM: 'высокая' }
+async function getTrainingReadiness(c, dateStr) {
+  try {
+    const r = await c.client.get(`${CONNECT}/metrics-service/metrics/trainingreadiness/${dateStr}`)
+    const arr = Array.isArray(r) ? r : (r ? [r] : [])
+    if (!arr.length) return null
+    // самый свежий по timestamp
+    const d = arr.slice().sort((a, b) => (b?.timestamp || 0) > (a?.timestamp || 0) ? 1 : -1)[0]
+    if (d?.score == null) return null
+    return {
+      score: d.score,
+      level: d.level || null,
+      levelRu: TR_LEVEL_RU[d.level] || null,
+      feedback: d.feedbackLong || d.feedbackShort || null,
+      sleepScore: d.sleepScore ?? null,
+      recoveryTime: d.recoveryTime ?? null,      // минут до полного восстановления
+      hrvFactor: d.hrvFactorPercent ?? null,
+      acuteLoad: d.acuteLoad ?? null,
+      timestamp: d.timestamp ?? null
+    }
+  } catch { return null }
+}
+
+// ── Расширенные метрики Garmin (Training Status/Load, HRV, прогнозы, Endurance/Hill,
+//    лактатный порог, интенсивные минуты). Внутренние эндпоинты Garmin; поля могут
+//    отличаться между прошивками — всё парсим ТОЛЕРАНТНО (опциональные цепочки, на любой
+//    сбой конкретной метрики → null, остальные не страдают). Провалидируем при первом
+//    реальном синке Garmin владельца.
+const TS_STATUS_RU = { PRODUCTIVE: 'Продуктивно', MAINTAINING: 'Поддержание', PEAKING: 'Пик формы', RECOVERY: 'Восстановление', UNPRODUCTIVE: 'Непродуктивно', OVERREACHING: 'Перегрузка', DETRAINING: 'Детренинг', STRAINED: 'Перенапряжение', NO_STATUS: 'Нет данных' }
+const TL_BALANCE_RU = { OPTIMAL: 'Оптимально', LOW: 'Ниже нормы', HIGH: 'Выше нормы', VERY_LOW: 'Сильно ниже', VERY_HIGH: 'Сильно выше' }
+const HRV_STATUS_RU = { BALANCED: 'Сбалансировано', UNBALANCED: 'Разбалансировано', LOW: 'Низкое', POOR: 'Плохое', NONE: 'Нет данных' }
+const fmtRace = s => { if (!s || s <= 0) return null; s = Math.round(s); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60; return h ? `${h}:${String(m).padStart(2, '0')}:${String(ss).padStart(2, '0')}` : `${m}:${String(ss).padStart(2, '0')}` }
+const firstDev = map => (map && typeof map === 'object') ? Object.values(map)[0] : null
+
+async function getDisplayName(c) {
+  try { const r = await c.client.get(`${CONNECT}/userprofile-service/socialProfile`); return r?.displayName || null } catch { return null }
+}
+
+async function getTrainingStatusLoad(c, dateStr) {
+  try {
+    const r = await c.client.get(`${CONNECT}/metrics-service/metrics/trainingstatus/aggregated/${dateStr}`)
+    if (!r) return { trainingStatus: null, trainingLoad: null }
+    // Training Status (последнее устройство)
+    const tsDev = firstDev(r.mostRecentTrainingStatus?.latestTrainingStatusData)
+    let trainingStatus = null
+    if (tsDev) {
+      const key = tsDev.trainingStatusFeedbackPhrase?.split('_')?.[0] || (typeof tsDev.trainingStatus === 'string' ? tsDev.trainingStatus : null)
+      trainingStatus = {
+        status: key || null,
+        statusRu: (key && TS_STATUS_RU[key]) || null,
+        feedback: tsDev.trainingStatusFeedbackPhrase ? null : null,   // фраза-подсказка приходит кодом; текст задаём на фронте по статусу
+        vo2Max: tsDev.vo2Max ?? tsDev.maxMetCategoryValue ?? null
+      }
+    }
+    // Training Load balance + острая/хроническая
+    const balDev = firstDev(r.mostRecentTrainingLoadBalance?.metricsTrainingLoadBalanceDTOMap)
+    const acuteDev = firstDev(r.mostRecentTrainingStatus?.latestTrainingStatusData)
+    let trainingLoad = null
+    if (balDev || acuteDev) {
+      const low = balDev?.monthlyLoadAerobicLow, high = balDev?.monthlyLoadAerobicHigh, an = balDev?.monthlyLoadAnaerobic
+      const sum = (low || 0) + (high || 0) + (an || 0)
+      const pct = v => sum > 0 ? Math.round((v || 0) / sum * 100) : 0
+      const acute = acuteDev?.acuteTrainingLoadDTO?.dailyTrainingLoadAcute ?? acuteDev?.dailyTrainingLoadAcute ?? null
+      const chronic = acuteDev?.acuteTrainingLoadDTO?.dailyTrainingLoadChronic ?? acuteDev?.dailyTrainingLoadChronic ?? null
+      const acwr = acuteDev?.acuteTrainingLoadDTO?.dailyAcuteChronicWorkloadRatio ?? null
+      const balKey = balDev?.trainingBalanceFeedbackPhrase?.split('_')?.[0] || null
+      trainingLoad = {
+        acute: acute != null ? Math.round(acute) : null,
+        chronic: chronic != null ? Math.round(chronic) : null,
+        ratio: acwr != null ? Math.round(acwr * 100) / 100 : null,
+        balanceKey: balKey, balanceRu: (balKey && TL_BALANCE_RU[balKey]) || null,
+        focus: sum > 0 ? { low: pct(low), high: pct(high), anaerobic: pct(an) } : null
+      }
+    }
+    return { trainingStatus, trainingLoad }
+  } catch { return { trainingStatus: null, trainingLoad: null } }
+}
+
+async function getHrvStatus(c, dateStr) {
+  try {
+    const r = await c.client.get(`${CONNECT}/hrv-service/hrv/${dateStr}`)
+    const h = r?.hrvSummary
+    if (!h || h.lastNightAvg == null) return null
+    const key = h.status || null
+    return {
+      lastNight: h.lastNightAvg, weeklyAvg: h.weeklyAvg ?? null,
+      statusKey: key, statusRu: (key && HRV_STATUS_RU[key]) || null,
+      low: h.baseline?.balancedLow ?? h.baseline?.lowUpper ?? null,
+      high: h.baseline?.balancedUpper ?? h.baseline?.markerValue ?? null
+    }
+  } catch { return null }
+}
+
+async function getRacePredictions(c, displayName) {
+  if (!displayName) return null
+  try {
+    const r = await c.client.get(`${CONNECT}/metrics-service/metrics/racepredictions/latest/${displayName}`)
+    const d = Array.isArray(r) ? r[0] : r
+    if (!d) return null
+    const out = { fiveK: fmtRace(d.time5K), tenK: fmtRace(d.time10K), half: fmtRace(d.timeHalfMarathon), marathon: fmtRace(d.timeMarathon) }
+    return (out.fiveK || out.tenK || out.half || out.marathon) ? out : null
+  } catch { return null }
+}
+
+async function getEnduranceScore(c, dateStr) {
+  try {
+    const r = await c.client.get(`${CONNECT}/metrics-service/metrics/endurancescore?calendarDate=${dateStr}`)
+    const score = r?.overallScore ?? r?.avg ?? null
+    return score != null ? { score: Math.round(score), levelRu: null } : null
+  } catch { return null }
+}
+
+async function getHillScore(c, dateStr) {
+  try {
+    const r = await c.client.get(`${CONNECT}/metrics-service/metrics/hillscore?startDate=${dateStr}&endDate=${dateStr}`)
+    const d = Array.isArray(r?.hillScoreDTOList) ? r.hillScoreDTOList[0] : (Array.isArray(r) ? r[0] : r)
+    const score = d?.overallScore ?? d?.hillScore ?? null
+    return score != null ? { score: Math.round(score), levelRu: null } : null
+  } catch { return null }
+}
+
+async function getIntensityMinutes(c, displayName, dateStr) {
+  if (!displayName) return null
+  try {
+    const r = await c.client.get(`${CONNECT}/usersummary-service/usersummary/daily/${displayName}?calendarDate=${dateStr}`)
+    const mod = r?.moderateIntensityMinutes ?? 0, vig = r?.vigorousIntensityMinutes ?? 0
+    const goal = r?.intensityMinutesGoal ?? 150
+    const weekly = mod + vig * 2   // Garmin считает интенсивные вдвойне
+    return (mod || vig) ? { weekly, goal } : null
+  } catch { return null }
+}
+
+// Собрать все расширенные метрики параллельно (каждая защищена по отдельности)
+async function getAdvancedMetrics(c, dateStr) {
+  const displayName = await getDisplayName(c)
+  const [tsl, hrvStatus, racePredictions, enduranceScore, hillScore, intensityMinutes] = await Promise.all([
+    getTrainingStatusLoad(c, dateStr), getHrvStatus(c, dateStr), getRacePredictions(c, displayName),
+    getEnduranceScore(c, dateStr), getHillScore(c, dateStr), getIntensityMinutes(c, displayName, dateStr)
+  ])
+  return { trainingStatus: tsl.trainingStatus, trainingLoad: tsl.trainingLoad, hrvStatus, racePredictions, enduranceScore, hillScore, intensityMinutes }
+}
+
 // Темп бега из средней скорости (м/с) → строка «мин:сек / км»
 function paceFromSpeed(mps) {
   if (!mps || mps <= 0) return null
@@ -212,9 +358,9 @@ router.get('/data', requireAuth, async (_req, res) => {
     try { const s = await c.getSteps(new Date()); steps = typeof s === 'number' ? s : (s?.totalSteps ?? null) } catch { /* ignore */ }
     try { const hr = await c.getHeartRate(new Date()); restingHr = hr?.restingHeartRate ?? null } catch { /* ignore */ }
 
-    // Body Battery (остаток заряда дня) и стресс — по московской дате
+    // Body Battery (остаток заряда дня), стресс и готовность к тренировкам — по московской дате
     const today = mskDateStr()
-    const [bodyBattery, stress] = await Promise.all([getBodyBattery(c, today), getStress(c, today)])
+    const [bodyBattery, stress, readiness, advanced] = await Promise.all([getBodyBattery(c, today), getStress(c, today), getTrainingReadiness(c, today), getAdvancedMetrics(c, today)])
 
     // VO2max — берём из свежайшей тренировки, где он есть
     const vo2Max = mapped.find(w => w.vo2Max)?.vo2Max ?? null
@@ -232,6 +378,8 @@ router.get('/data', requireAuth, async (_req, res) => {
         vo2Max,
         bodyBattery,
         stress,
+        readiness,
+        ...advanced,
         weekKm,
         weekCount,
         lastWorkout: mapped[0] || null,
