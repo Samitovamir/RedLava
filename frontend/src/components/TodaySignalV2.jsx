@@ -217,7 +217,7 @@ export default function TodaySignalV2() {
   const str = garmin?.stress
   const value = str ? (str.recent ?? str.current ?? str.avg ?? null) : null
   const word = value != null ? stressWord(value) : null
-  const fresh = 'за последний час'   // без метки времени — иначе подпись шире гейджа и всё съезжает
+  const fresh = 'Garmin · за час'   // стресс приходит из Garmin (у Whoop шкалы стресса нет)
 
   // ── Персональные ИИ-советы по доменам (что делать), с детерминированным фолбэком ──
   const { facts } = useMemoryFacts()
