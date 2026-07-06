@@ -80,7 +80,7 @@ function scheduleData(events) {
     daySentence = `Сегодня ${count} ${plural(count, 'событие', 'события', 'событий')}, ${chr}`
   }
 
-  const color = loadPct >= 66 ? 'var(--status-warn)' : loadPct >= 33 ? 'var(--accent)' : 'var(--text-secondary)'
+  const color = loadPct >= 66 ? 'var(--status-crit)' : loadPct >= 33 ? 'var(--status-warn)' : 'var(--status-ok)'
   return { count, passed, loadPct, lead, word, color, todays, next, nowMin, nextLine, daySentence }
 }
 
@@ -101,6 +101,8 @@ function stressText(v, word) {
 }
 
 const r1 = x => Math.round(x * 10) / 10
+// Garmin иногда отдаёт код-энум вместо текста (напр. LOW_RT_MOD_OR_HIGH) — не показываем его
+const isEnum = s => typeof s === 'string' && /^[A-Z0-9][A-Z0-9_]{3,}$/.test(s.trim())
 
 // План/факт тренировки: план из TrainingPeaks/Garmin на сегодня + факт выполнения.
 // Нет плановой тренировки на сегодня → null (строка не показывается).
@@ -201,7 +203,8 @@ export default function TodaySignalV2() {
   const readyScore = rd?.score ?? whoop?.recovery ?? null
   const readySource = rd ? 'Garmin · готовность' : (whoop?.recovery != null ? 'Whoop · восстановление' : null)
   const rm = readyMeta(readyScore)
-  const readySub = rd?.feedback
+  const rdFeedback = rd?.feedback && !isEnum(rd.feedback) ? rd.feedback : null   // не показываем код-энум
+  const readySub = rdFeedback
     || (readyScore == null ? 'Готовность пока не известна'
       : readyScore >= 66 ? 'Тело восстановилось — можно давать нагрузку'
       : readyScore >= 33 ? 'Восстановление ещё идёт — умеренная нагрузка'
@@ -209,10 +212,7 @@ export default function TodaySignalV2() {
   const str = garmin?.stress
   const value = str ? (str.recent ?? str.current ?? str.avg ?? null) : null
   const word = value != null ? stressWord(value) : null
-  const at = str?.currentTs ? new Date(str.currentTs) : null
-  const fresh = at
-    ? `за последний час · обновлено ${at.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Moscow' })}`
-    : 'за последний час'
+  const fresh = 'за последний час'   // без метки времени — иначе подпись шире гейджа и всё съезжает
 
   return (
     <motion.div
@@ -242,9 +242,9 @@ export default function TodaySignalV2() {
           <div className="sv2-dgauge">
             <ZoneArc value={sched.loadPct} max={100} center={sched.count} sub={sched.word} subColor={sched.color} size={gaugeSize}
               zones={[
-                { from: 0, to: 33, color: 'color-mix(in srgb, var(--text-faint) 34%, transparent)' },
-                { from: 33, to: 66, color: 'var(--accent)' },
-                { from: 66, to: 100, color: 'var(--status-warn)' },
+                { from: 0, to: 33, color: 'var(--status-ok)' },
+                { from: 33, to: 66, color: 'var(--status-warn)' },
+                { from: 66, to: 100, color: 'var(--status-crit)' },
               ]} />
           </div>
           <div className="sv2-dtext">

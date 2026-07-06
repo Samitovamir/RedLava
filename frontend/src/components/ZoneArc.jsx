@@ -8,10 +8,10 @@ export default function ZoneArc({ value = null, max = 100, zones = [], center, s
   const stroke = 8, gap = 0.045
   const r = (size - stroke) / 2 - 2, cx = size / 2, cy = size / 2
   const h = Math.round(size * 0.66)
-  // Слово в центре (не число) — мелкое и нежирное, как маленькие подписи в других гейджах
-  const isWord = typeof center === 'string' && center.length > 3
-  const numSize = isWord ? Math.max(11, Math.round(size * 0.1)) : Math.round(size * 0.22)
+  // Слово в центре (не число) — того же размера, что маленькие подписи-слова в других гейджах
   const wordSize = Math.max(11, Math.round(size * 0.082))
+  const isWord = typeof center === 'string' && center.length > 3
+  const numSize = isWord ? wordSize : Math.round(size * 0.22)
   const has = value != null
   const norm = v => Math.max(0, Math.min(1, v / max))
   const frac = has ? norm(value) : 0

@@ -9,6 +9,9 @@ function readGarmin() {
   try { const s = localStorage.getItem('albert-garmin-live'); return s ? JSON.parse(s) : null } catch { return null }
 }
 
+// Garmin иногда отдаёт код-энум (LOW_RT_MOD_OR_HIGH и т.п.) вместо человеческого текста —
+// такое не показываем.
+const clean = s => (s != null && !/^[A-Z0-9][A-Z0-9_]{3,}$/.test(String(s).trim())) ? s : null
 const statusColor = k => ({ PRODUCTIVE: 'var(--status-ok)', PEAKING: 'var(--status-ok)', MAINTAINING: 'var(--accent)', RECOVERY: 'var(--status-warn)', UNPRODUCTIVE: 'var(--status-warn)', OVERREACHING: 'var(--status-crit)', DETRAINING: 'var(--status-crit)' }[k] || 'var(--accent)')
 // Запасная фраза по статусу (если backend не прислал текст — приходит кодом)
 const statusFeedback = k => ({ PRODUCTIVE: 'Нагрузка растит форму — так держать', PEAKING: 'Пик формы — можно целиться в старт', MAINTAINING: 'Форма держится — объём стабилен', RECOVERY: 'Идёт восстановление — не спеши с объёмом', UNPRODUCTIVE: 'Форма не растёт — пересмотри восстановление', OVERREACHING: 'Нагрузка выше меры — нужен отдых', DETRAINING: 'Форма падает — пора добавить нагрузку', STRAINED: 'Перенапряжение — снизь интенсивность' }[k] || null)
@@ -40,8 +43,8 @@ export default function GarminInsights({ garmin }) {
         {ts && (
           <div className="gi-tile gi-span2">
             <div className="gi-cap">Тренировочный статус</div>
-            <div className="gi-status" style={{ color: statusColor(ts.status) }}>{ts.statusRu || ts.status}</div>
-            {(ts.feedback || statusFeedback(ts.status)) && <div className="gi-status-fb">{ts.feedback || statusFeedback(ts.status)}</div>}
+            <div className="gi-status" style={{ color: statusColor(ts.status) }}>{clean(ts.statusRu) || clean(ts.status) || '—'}</div>
+            {(clean(ts.feedback) || statusFeedback(ts.status)) && <div className="gi-status-fb">{clean(ts.feedback) || statusFeedback(ts.status)}</div>}
             {ts.vo2Max != null && <div className="gi-chip">VO₂max <b>{ts.vo2Max}</b></div>}
           </div>
         )}
@@ -53,7 +56,7 @@ export default function GarminInsights({ garmin }) {
             <div className="gi-load-top">
               <div className="gi-load-num"><span className="gi-big">{tl.acute}</span><span className="gi-mut">острая</span></div>
               <div className="gi-load-num"><span className="gi-big">{tl.chronic}</span><span className="gi-mut">хроническая</span></div>
-              {tl.balanceRu && <div className="gi-balance" style={{ color: balanceColor(tl.balanceKey) }}>{tl.balanceRu}{tl.ratio != null ? ` · ${tl.ratio.toFixed(2)}` : ''}</div>}
+              {clean(tl.balanceRu) && <div className="gi-balance" style={{ color: balanceColor(tl.balanceKey) }}>{clean(tl.balanceRu)}{tl.ratio != null ? ` · ${tl.ratio.toFixed(2)}` : ''}</div>}
             </div>
             {tl.focus && (
               <div className="gi-focus">
@@ -74,7 +77,7 @@ export default function GarminInsights({ garmin }) {
           <div className="gi-tile">
             <div className="gi-cap">Вариабельность пульса (ВЧП)</div>
             <div className="gi-hrv-num"><span className="gi-big">{hrv.lastNight}</span><span className="gi-mut">мс за ночь</span></div>
-            {hrv.statusRu && <div className="gi-status-sm" style={{ color: hrvColor(hrv.statusKey) }}>{hrv.statusRu}</div>}
+            {clean(hrv.statusRu) && <div className="gi-status-sm" style={{ color: hrvColor(hrv.statusKey) }}>{clean(hrv.statusRu)}</div>}
             {hrvPos != null && (
               <div className="gi-hrv-range">
                 <div className="gi-bar"><span className="gi-hrv-marker" style={{ left: `${hrvPos}%` }} /></div>
@@ -104,7 +107,7 @@ export default function GarminInsights({ garmin }) {
           <div className="gi-tile">
             <div className="gi-cap">Выносливость</div>
             <div className="gi-big">{endur.score.toLocaleString('ru-RU')}</div>
-            {endur.levelRu && <div className="gi-status-sm">{endur.levelRu}</div>}
+            {clean(endur.levelRu) && <div className="gi-status-sm">{clean(endur.levelRu)}</div>}
           </div>
         )}
 
@@ -113,7 +116,7 @@ export default function GarminInsights({ garmin }) {
           <div className="gi-tile">
             <div className="gi-cap">Сила на подъёмах</div>
             <div className="gi-big">{hill.score}</div>
-            {hill.levelRu && <div className="gi-status-sm">{hill.levelRu}</div>}
+            {clean(hill.levelRu) && <div className="gi-status-sm">{clean(hill.levelRu)}</div>}
           </div>
         )}
 
