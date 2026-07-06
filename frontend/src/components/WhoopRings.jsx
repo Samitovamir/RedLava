@@ -85,7 +85,7 @@ export default function WhoopRings({ w, garmin }) {
         />
         {bb?.current != null && (
           <CircularChart
-            value={bb.current} label={t.bodyBattery} color={bbColor(bb.current)} size={124}
+            value={bb.current} label={`${t.bodyBattery} · Garmin`} color={bbColor(bb.current)} size={124}
             sublabel={(bb.charged != null || bb.drained != null)
               ? `${bb.charged != null ? '+' + bb.charged : ''}${bb.drained != null ? ' −' + bb.drained : ''}`.trim()
               : t.remaining}
@@ -93,7 +93,7 @@ export default function WhoopRings({ w, garmin }) {
         )}
         {stressVal != null && (
           <CircularChart
-            value={stressVal} label={t.stress} color={stressColor(stressVal)} size={124}
+            value={stressVal} label={`${t.stress} · Garmin`} color={stressColor(stressVal)} size={124}
             centerText={`${stressVal}`} sublabel={stLabel[stressLevel(stressVal)]}
           />
         )}
