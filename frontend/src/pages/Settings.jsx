@@ -2,6 +2,7 @@ import { SectionHeader } from '../ui'
 import ThemeSwitcher from '../components/ThemeSwitcher.jsx'
 import LayoutSwitcher from '../components/LayoutSwitcher.jsx'
 import Connections from './Connections.jsx'
+import DebugDump from '../components/DebugDump.jsx'
 import { useLang, useT } from '../context/LanguageContext.jsx'
 
 // Настройки: язык + оформление (темы) + раскладка + подключения сервисов.
@@ -32,6 +33,8 @@ export default function Settings() {
   return (
     <div className="settings-page">
       <SectionHeader title={t.title} subtitle={t.subtitle} />
+
+      <DebugDump />
 
       <div className="card settings-card">
         <div className="settings-card-head">
