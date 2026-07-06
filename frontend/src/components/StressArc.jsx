@@ -20,7 +20,7 @@ function level(v) {
 
 export default function StressArc({ value = null, size = 156 }) {
   const stroke = 8               // «уже» заливка
-  const gap = 0.045              // крупный пробел между зонами
+  const gap = 0.06               // крупный пробел между зонами
   const r = (size - stroke) / 2 - 2, cx = size / 2, cy = size / 2
   const h = Math.round(size * 0.66)   // место под число+слово внутри полукруга
   const numSize = Math.round(size * 0.22)

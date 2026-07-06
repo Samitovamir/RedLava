@@ -5,7 +5,7 @@
   Только CSS-переменные.
 */
 export default function ZoneArc({ value = null, max = 100, zones = [], center, sub, subColor, centerColor, size = 156 }) {
-  const stroke = 8, gap = 0.045
+  const stroke = 8, gap = 0.06
   const r = (size - stroke) / 2 - 2, cx = size / 2, cy = size / 2
   const h = Math.round(size * 0.66)
   // Слово в центре (не число) — того же размера, что маленькие подписи-слова в других гейджах

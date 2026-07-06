@@ -183,20 +183,21 @@ export default function TodaySignalV2() {
   const kcalColor = nutOk && nut.eaten > (nut.target?.kcal || 0) ? 'var(--status-warn)' : 'var(--accent)'
   const fodEnabled = (() => { try { return loadPrefs().fodmap } catch { return false } })()
   const fod = (() => {
-    if (!fodEnabled) return null
+    if (!fodEnabled) return null   // диета выключена — гейджа нет
     try {
       const rec = loadIntake()?.[mskDateKey()]
       const entries = rec?.entries || []
-      if (!entries.length) return null
+      if (!entries.length) return { band: null, val: null, label: '—', color: 'var(--text-muted)' }  // включена, но еды нет
       let hi = 0, mo = 0, lo = 0
       for (const e of entries) { const bnd = entryFodmap(e)?.band; if (bnd === 'high') hi++; else if (bnd === 'mod') mo++; else lo++ }
       const band = hi ? 'high' : mo ? 'mod' : 'low'
       const val = band === 'high' ? 84 : band === 'mod' ? 50 : 16   // позиция маркера на шкале низкий→высокий
-      return { band, val, meta: fodmapMeta(band) }
+      const m = fodmapMeta(band)
+      return { band, val, label: m.label, color: m.color }
     } catch { return null }
   })()
   const nutLead = !nutOk ? 'Питание' : nut.eaten > (nut.target?.kcal || 0) ? 'Небольшой перебор' : nut.eaten < (nut.target?.kcal || 0) * 0.2 ? 'День только начался' : `Осталось ${nut.remaining} ккал`
-  const nutSub = !nutOk ? 'Дневник питания пуст' : `Съедено ${nut.eaten} из ${nut.target.kcal} ккал${fod ? ` · FODMAP ${fod.meta.label.toLowerCase()}` : ''}`
+  const nutSub = !nutOk ? 'Дневник питания пуст' : `Съедено ${nut.eaten} из ${nut.target.kcal} ккал${fod?.band ? ` · FODMAP ${fod.label.toLowerCase()}` : ''}`
 
   // Спорт · готовность
   const rd = garmin?.readiness
@@ -320,7 +321,7 @@ export default function TodaySignalV2() {
               </div>
               {fod && (
                 <div className="sv2-nut-g">
-                  <ZoneArc value={fod.val} max={100} center={fod.meta.label} centerColor={fod.meta.color} size={gaugeSize}
+                  <ZoneArc value={fod.val} max={100} center={fod.label} centerColor={fod.color} size={gaugeSize}
                     zones={[
                       { from: 0, to: 33, color: 'var(--status-ok)' },
                       { from: 33, to: 66, color: 'var(--status-warn)' },

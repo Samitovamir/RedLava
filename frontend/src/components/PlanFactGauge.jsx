@@ -19,7 +19,7 @@ const zoneColor = p => p > 100 ? 'var(--status-extra)' : p <= 40 ? 'var(--status
 
 export default function PlanFactGauge({ pct = 0, goalText, size = 156 }) {
   const stroke = 8               // как в остальных полусферах
-  const GAP = 4.5                // пробел между зонами (в % шкалы), как gap 0.045 в других
+  const GAP = 6                  // пробел между зонами (в % шкалы), как gap 0.06 в других
   const r = (size - stroke) / 2 - 2, cx = size / 2, cy = size / 2
   const h = Math.round(size * 0.82)
   const numSize = Math.round(size * 0.20)
