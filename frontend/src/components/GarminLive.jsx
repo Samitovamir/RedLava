@@ -117,7 +117,7 @@ export default function GarminLive({ embedded = false, listsOnly = false }) {
       header: 'Спорт', source: 'Garmin Connect',
       stepsToday: 'Шаги сегодня', stepsGoal: 'цель 10 000', restingHr: 'Пульс покоя', vo2max: 'VO₂max', week: 'За неделю',
       bpm: 'уд/мин', vo2unit: 'мл/кг/мин',
-      steps: 'Шаги', bodyBattery: 'Заряд тела', charge: 'заряд',
+      steps: 'Шаги', bodyBattery: 'Заряд тела', charge: 'заряд', stress: 'Стресс', stressSub: 'за час',
       fitTop: 'Превосходно', fitExc: 'Отлично', fitGood: 'Хорошо', fitAvg: 'Средне', fitLow: 'Ниже среднего',
       defaultWorkout: 'Тренировка', lastWorkout: 'последняя тренировка', more: 'подробнее →',
       // hero metric labels
@@ -143,7 +143,7 @@ export default function GarminLive({ embedded = false, listsOnly = false }) {
       header: 'Sport', source: 'Garmin Connect',
       stepsToday: 'Steps today', stepsGoal: 'goal 10,000', restingHr: 'Resting HR', vo2max: 'VO₂ Max', week: 'This week',
       bpm: 'bpm', vo2unit: 'ml/kg/min',
-      steps: 'Steps', bodyBattery: 'Body Battery', charge: 'charge',
+      steps: 'Steps', bodyBattery: 'Body Battery', charge: 'charge', stress: 'Stress', stressSub: 'last hour',
       fitTop: 'Superior', fitExc: 'Excellent', fitGood: 'Good', fitAvg: 'Fair', fitLow: 'Below average',
       defaultWorkout: 'Workout', lastWorkout: 'latest workout', more: 'details →',
       // hero metric labels
@@ -283,6 +283,9 @@ export default function GarminLive({ embedded = false, listsOnly = false }) {
   ]
   const bb = g?.bodyBattery?.current
   const bbColor = bb == null ? 'var(--accent)' : bb >= 50 ? 'var(--status-ok)' : bb >= 25 ? 'var(--status-warn)' : 'var(--status-crit)'
+  // Стресс Garmin (0–100, ниже — лучше) — покажем в 4-й плитке, если «Заряд тела» недоступен
+  const stressVal = g?.stress ? (g.stress.recent ?? g.stress.current ?? g.stress.avg ?? null) : null
+  const stressColor = v => v <= 25 ? 'var(--status-ok)' : v <= 50 ? 'var(--status-warn)' : v <= 75 ? 'var(--status-warn)' : 'var(--status-crit)'
   const gauges = [
     g?.steps != null && (
       <ArcGauge key="steps" value={g.steps} max={10000} color="var(--accent)"
@@ -296,9 +299,12 @@ export default function GarminLive({ embedded = false, listsOnly = false }) {
       <ArcGauge key="rhr" value={g.restingHr} min={40} max={90} color="var(--accent)"
         centerText={`${g.restingHr}`} sublabel={t.bpm} label={t.restingHr} />
     ),
-    bb != null && (
+    bb != null ? (
       <ArcGauge key="bb" value={bb} max={100} color={bbColor}
         centerText={`${bb}`} sublabel={t.charge} label={t.bodyBattery} />
+    ) : stressVal != null && (
+      <ArcGauge key="stress" value={stressVal} max={100} color={stressColor(stressVal)}
+        centerText={`${stressVal}`} sublabel={t.stressSub} label={t.stress} />
     )
   ].filter(Boolean)
 

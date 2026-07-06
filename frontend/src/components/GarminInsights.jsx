@@ -20,6 +20,9 @@ const statusColor = k => ({ PRODUCTIVE: 'var(--status-ok)', PEAKING: 'var(--stat
 const statusFeedback = k => ({ PRODUCTIVE: 'Нагрузка растит форму — так держать', PEAKING: 'Пик формы — можно целиться в старт', MAINTAINING: 'Форма держится — объём стабилен', RECOVERY: 'Идёт восстановление — не спеши с объёмом', UNPRODUCTIVE: 'Форма не растёт — пересмотри восстановление', OVERREACHING: 'Нагрузка выше меры — нужен отдых', DETRAINING: 'Форма падает — пора добавить нагрузку', STRAINED: 'Перенапряжение — снизь интенсивность' }[k] || null)
 const balanceColor = k => ({ OPTIMAL: 'var(--status-ok)', LOW: 'var(--status-warn)', HIGH: 'var(--status-crit)' }[k] || 'var(--accent)')
 const hrvColor = k => ({ BALANCED: 'var(--status-ok)', UNBALANCED: 'var(--status-warn)', LOW: 'var(--status-crit)', POOR: 'var(--status-crit)' }[k] || 'var(--accent)')
+// Уровень словом из числового значения (Garmin не всегда присылает levelRu)
+const enduranceLevel = s => s == null ? null : s >= 9000 ? 'элитный' : s >= 6000 ? 'высокий' : s >= 3000 ? 'средний' : 'базовый'
+const hillLevel = s => s == null ? null : s >= 75 ? 'сильный' : s >= 50 ? 'хороший' : s >= 25 ? 'средний' : 'начальный'
 
 export default function GarminInsights({ garmin }) {
   // Гость — расширенные метрики в демо (albert-garmin-live). Реальный — ленивый /insights,
@@ -126,7 +129,7 @@ export default function GarminInsights({ garmin }) {
           <div className="gi-tile">
             <div className="gi-cap">Выносливость</div>
             <div className="gi-big">{endur.score.toLocaleString('ru-RU')}</div>
-            {clean(endur.levelRu) && <div className="gi-status-sm">{clean(endur.levelRu)}</div>}
+            {(clean(endur.levelRu) || enduranceLevel(endur.score)) && <div className="gi-status-sm">{clean(endur.levelRu) || enduranceLevel(endur.score)}</div>}
           </div>
         )}
 
@@ -135,7 +138,7 @@ export default function GarminInsights({ garmin }) {
           <div className="gi-tile">
             <div className="gi-cap">Сила на подъёмах</div>
             <div className="gi-big">{hill.score}</div>
-            {clean(hill.levelRu) && <div className="gi-status-sm">{clean(hill.levelRu)}</div>}
+            {(clean(hill.levelRu) || hillLevel(hill.score)) && <div className="gi-status-sm">{clean(hill.levelRu) || hillLevel(hill.score)}</div>}
           </div>
         )}
 
