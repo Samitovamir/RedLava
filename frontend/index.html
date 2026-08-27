@@ -31,7 +31,7 @@
          помощника (/tasks/h) — личный манифест (start_url = его ссылка), иначе — дашборда.
          Раньше манифест подменялся из React (useEffect) слишком поздно: iOS успевал взять
          дашбордовский (start_url '/'), и установленное приложение помощника открывало вход
-         владельца вместо PIN-экрана. */
+         пользователя вместо PIN-экрана. */
       try {
         var isHelper = location.pathname.indexOf('/tasks/h') === 0;
         var mf = document.createElement('link');
@@ -55,7 +55,7 @@
     </script>
     <!-- Favicon: монограмма AS (как и иконка приложения) -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <!-- Иконка приложения на экране «Домой»: монограмма AS (владелец Самитов) -->
+    <!-- Иконка приложения на экране «Домой»: монограмма AS (пользователь Самитов) -->
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <!-- viewport-fit=cover: контент во весь экран, под Dynamic Island/«чёлку» (без полей-рамки) -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -91,8 +91,24 @@
       <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
         <rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/>
       </svg>
-      <p>Поверните телефон вертикально</p>
+      <!-- Статический HTML вне React: подпись ставится по языку браузера -->
+      <p data-rotate-msg>Please rotate your phone upright</p>
     </div>
+    <script>
+      // Подпись «поверните телефон» живёт вне React (показывается до загрузки бандла),
+      // поэтому язык берём из сохранённого выбора, иначе — из локали браузера.
+      (function () {
+        try {
+          var saved = localStorage.getItem('redlava-lang')
+          var langs = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || '']
+          var ru = saved ? saved === 'ru' : langs.some(function (l) { return String(l).toLowerCase().indexOf('ru') === 0 })
+          if (ru) {
+            var el = document.querySelector('[data-rotate-msg]')
+            if (el) el.textContent = 'Поверните телефон вертикально'
+          }
+        } catch (e) { /* оставляем английский вариант из разметки */ }
+      })()
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

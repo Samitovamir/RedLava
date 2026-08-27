@@ -4,10 +4,17 @@
   в стиле гейджей раздела «Здоровье». Только CSS-переменные.
 */
 
+import { useT } from '../../context/LanguageContext.jsx'
+
+const STR = {
+  en: { low: 'Low', mod: 'Moderate', high: 'High', breakdown: 'What I ate today', byDish: ' · FODMAP by dish' },
+  ru: { low: 'Низкий', mod: 'Умеренный', high: 'Высокий', breakdown: 'Что съедено сегодня', byDish: ' · FODMAP по блюдам' },
+}
+
 const FOD = {
-  low: { c: 'var(--status-ok)', w: 'Низкий', frac: 0.16 },
-  mod: { c: 'var(--status-warn)', w: 'Умеренный', frac: 0.5 },
-  high: { c: 'var(--status-crit)', w: 'Высокий', frac: 0.84 },
+  low: { c: 'var(--status-ok)', frac: 0.16 },
+  mod: { c: 'var(--status-warn)', frac: 0.5 },
+  high: { c: 'var(--status-crit)', frac: 0.84 },
 }
 
 // Полусфера-гейдж заполнения (калории)
@@ -35,6 +42,7 @@ function SemiGauge({ pct, centerText, unit, color, size = 148, label }) {
 
 // Светофор-циферблат FODMAP (3 зоны + стрелка). band=null → нейтральное состояние («—», без стрелки).
 function FodmapDial({ band, size = 120 }) {
+  const s = useT(STR)
   const stroke = 10, r = (size - stroke) / 2, cx = size / 2, cy = size / 2, h = size / 2 + stroke / 2 + 4
   const pt = (fr) => { const a = Math.PI - fr * Math.PI; return [cx + r * Math.cos(a), cy - r * Math.sin(a)] }
   const seg = (f0, f1) => { const [x0, y0] = pt(f0), [x1, y1] = pt(f1); return `M ${x0} ${y0} A ${r} ${r} 0 0 1 ${x1} ${y1}` }
@@ -57,13 +65,14 @@ function FodmapDial({ band, size = 120 }) {
           </>}
         </svg>
       </div>
-      <span className="ns-word" style={{ color: meta ? meta.c : 'var(--text-muted)' }}>{meta ? meta.w : 'FODMAP'}</span>
+      <span className="ns-word" style={{ color: meta ? meta.c : 'var(--text-muted)' }}>{meta ? s[band] : 'FODMAP'}</span>
       {meta && <span className="ns-lbl">FODMAP</span>}
     </div>
   )
 }
 
 export default function NutriSummary({ eatenK, target, remK, over, pct, eatenP, eatenF, eatenC, fodmapOn, fodmapBand, fodmapReason, t, onOpenBreakdown }) {
+  const s = useT(STR)
   const macros = [
     { l: t.protein, e: eatenP, g: target.protein, c: 'var(--c-steel)' },
     { l: t.fat, e: eatenF, g: target.fat, c: 'var(--c-amber)' },
@@ -84,7 +93,7 @@ export default function NutriSummary({ eatenK, target, remK, over, pct, eatenP, 
       {showDial && fodmapReason && (
         <div className="ns-fodreason">
           <span className="ns-dot" style={{ background: (FOD[fodmapBand] || FOD.low).c }} />
-          <span style={{ color: (FOD[fodmapBand] || FOD.low).c, fontWeight: 700 }}>{(FOD[fodmapBand] || FOD.low).w} FODMAP</span>
+          <span style={{ color: (FOD[fodmapBand] || FOD.low).c, fontWeight: 700 }}>{s[fodmapBand] || s.low} FODMAP</span>
           <span className="muted"> — {fodmapReason}</span>
         </div>
       )}
@@ -103,7 +112,7 @@ export default function NutriSummary({ eatenK, target, remK, over, pct, eatenP, 
 
       {onOpenBreakdown && eatenK > 0 && (
         <button className="ns-details" onClick={onOpenBreakdown} type="button">
-          Что съедено сегодня{fodmapOn ? ' · FODMAP по блюдам' : ''} →
+          {s.breakdown}{fodmapOn ? s.byDish : ''} →
         </button>
       )}
 

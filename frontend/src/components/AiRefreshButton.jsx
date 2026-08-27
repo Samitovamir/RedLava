@@ -1,7 +1,10 @@
 // Маленькая кнопка «сгенерировать ИИ-текст заново»
+import { useT } from '../context/LanguageContext.jsx'
+
 export default function AiRefreshButton({ onClick, loading }) {
+  const t = useT({ en: { regenerate: 'Regenerate' }, ru: { regenerate: 'Сгенерировать заново' } })
   return (
-    <button className="ai-refresh" onClick={onClick} disabled={loading} title="Сгенерировать заново">
+    <button className="ai-refresh" onClick={onClick} disabled={loading} title={t.regenerate}>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
         strokeLinecap="round" strokeLinejoin="round"
         style={{ animation: loading ? 'ai-spin 0.8s linear infinite' : 'none' }}>

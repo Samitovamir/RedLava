@@ -13,7 +13,6 @@ import historyRoutes from './routes/history.js'
 import labsRoutes from './routes/labs.js'
 import nutritionRoutes from './routes/nutrition.js'
 import syncRoutes from './routes/sync.js'
-import tasksRoutes from './routes/tasks.js'
 import authRoutes from './routes/auth.js'
 import { requireAuth, roleFromReq } from './authGuard.js'
 
@@ -35,7 +34,7 @@ app.use((req, _res, next) => {
   next()
 })
 
-// ГОСТЬ: реальные данные владельца недоступны в принципе. Любой запрос к эндпоинтам
+// ГОСТЬ: реальные данные пользователя недоступны в принципе. Любой запрос к эндпоинтам
 // интеграций под гостевым токеном перехватывается ЗДЕСЬ и отдаёт демо/пусто, не доходя
 // до реальных Google/Whoop/Garmin/Gmail. Так гость физически не может увидеть данные владельца.
 const GUEST_BLOCK = new Set([
@@ -50,8 +49,6 @@ app.use((req, res, next) => {
   if (roleFromReq(req) !== 'guest') return next()
   const p = req.path
   if (p.startsWith('/api/garmin/activity')) return res.json({ connected: false, demo: true })
-  // Задачи по дому — только владельца. Гость видит пусто, мутации — заглушка (манифест PWA публичен).
-  if (p.startsWith('/api/tasks') && p !== '/api/tasks/manifest') return res.json({ tasks: [], links: [], demo: true, ok: true })
   if (!GUEST_BLOCK.has(p)) return next()
   if (p === '/api/gmail/send') return res.json({ ok: true, demo: true })        // делаем вид — реально не отправляем
   if (p === '/api/calendar/create' || p === '/api/calendar/update' || p === '/api/calendar/delete') return res.json({ success: true, demo: true })
@@ -69,9 +66,6 @@ app.use('/api/history', requireAuth, historyRoutes)
 app.use('/api/labs', labsRoutes)
 app.use('/api/nutrition', requireAuth, nutritionRoutes)
 app.use('/api/sync', requireAuth, syncRoutes)
-// Задачи по дому: авторизация внутри роутера (владелец по токену + помощник по PIN-сессии),
-// поэтому без внешнего requireAuth — как /api/labs и /api/calendar.
-app.use('/api/tasks', tasksRoutes)
 
 // Интеграции: внутри есть публичный OAuth-callback (переход в браузере),
 // поэтому требование входа применяется точечно внутри роутов.

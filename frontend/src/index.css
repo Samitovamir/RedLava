@@ -214,11 +214,6 @@ h1, h2, h3 { letter-spacing: -0.015em; }
   overflow: hidden;
 }
 
-/* Приложение помощника (/tasks/h) рендерится прямо в #root, без дашбордовского
-   .page-content со своим скроллом. Базовые overflow:hidden + фикс-высота обрезали бы
-   длинный список задач — поэтому возвращаем прокрутку самому документу на любой ширине. */
-html[data-helper], html[data-helper] body { height: auto; min-height: 100%; overflow: visible; }
-html[data-helper] #root { display: block; height: auto; min-height: 100dvh; overflow: visible; }
 
 .main-layout {
   display: flex;
@@ -645,7 +640,6 @@ body::after {
   /* приёмы пищи */
   --cat-meal-breakfast: var(--c-amber); --cat-meal-lunch: var(--c-sage); --cat-meal-snack: var(--c-rose); --cat-meal-dinner: var(--c-steel);
   /* помощники (задачи по дому) — цвет адаптируется к теме через общую палитру */
-  --cat-helper-vika: var(--c-rose); --cat-helper-yan: var(--c-steel); --cat-helper-sergey: var(--c-sage); --cat-helper-farhad: var(--c-amber);
 }
 
 /* ===== БЛОК ИИ-СОВЕТА — рамка «цвета ИИ» (--ai) + бегущая волна свечения =====

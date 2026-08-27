@@ -157,7 +157,7 @@ async function getTrainingReadiness(c, dateStr) {
 //    лактатный порог, интенсивные минуты). Внутренние эндпоинты Garmin; поля могут
 //    отличаться между прошивками — всё парсим ТОЛЕРАНТНО (опциональные цепочки, на любой
 //    сбой конкретной метрики → null, остальные не страдают). Провалидируем при первом
-//    реальном синке Garmin владельца.
+//    реальном синке Garmin пользователя.
 const TS_STATUS_RU = { PRODUCTIVE: 'Продуктивно', MAINTAINING: 'Поддержание', PEAKING: 'Пик формы', RECOVERY: 'Восстановление', UNPRODUCTIVE: 'Непродуктивно', OVERREACHING: 'Перегрузка', DETRAINING: 'Детренинг', STRAINED: 'Перенапряжение', NO_STATUS: 'Нет данных' }
 const TL_BALANCE_RU = { OPTIMAL: 'Оптимально', LOW: 'Ниже нормы', HIGH: 'Выше нормы', VERY_LOW: 'Сильно ниже', VERY_HIGH: 'Сильно выше' }
 const HRV_STATUS_RU = { BALANCED: 'Сбалансировано', UNBALANCED: 'Разбалансировано', LOW: 'Низкое', POOR: 'Плохое', NONE: 'Нет данных' }

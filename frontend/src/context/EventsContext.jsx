@@ -84,9 +84,9 @@ export function EventsProvider({ children }) {
       return p && sig(p) !== sig(e)
     })
     if (added.length) {
-      added.forEach(e => logAction({ actor: 'user', type: 'event', title: `Добавил событие «${e.title}»`, detail: detailOf(e) }))
+      added.forEach(e => logAction({ actor: 'user', type: 'event', title: `Added event «${e.title}»`, detail: detailOf(e) }))
     } else if (removed.length) {
-      removed.forEach(e => logAction({ actor: 'user', type: 'event', title: `Удалил событие «${e.title}»`, detail: detailOf(e) }))
+      removed.forEach(e => logAction({ actor: 'user', type: 'event', title: `Removed event «${e.title}»`, detail: detailOf(e) }))
     } else if (moved.length === 1) {
       logAction({ actor: 'user', type: 'event', title: `Перенёс «${moved[0].title}»`, detail: detailOf(moved[0]) })
     } else if (moved.length > 1) {

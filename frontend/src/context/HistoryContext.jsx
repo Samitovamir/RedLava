@@ -14,7 +14,7 @@ export function HistoryProvider({ children }) {
   const [entries, setEntries] = useState(() => {
     try {
       // Гость: если версия демо-журнала устарела — пересеять свежим демо.
-      // Только для гостей — журнал реального владельца не трогаем.
+      // Только для гостей — журнал реального пользователя не трогаем.
       if (isGuest()) {
         const storedVer = localStorage.getItem(GUEST_HIST_VER_KEY)
         if (storedVer !== GUEST_HIST_VER) {

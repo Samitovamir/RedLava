@@ -1,16 +1,24 @@
 /*
   Здоровье: восстановление (Whoop recovery 0–100) + нагрузка (strain 0–21) в ОДНОМ полукруге.
-  Три варианта совмещения (выбор владельца):
+  Три варианта совмещения (выбор пользователя):
    • variant 1 — две концентрические дуги (внешняя восст., внутренняя нагрузка)
    • variant 2 — две половины (левая нагрузка, правая восстановление)
    • variant 3 — баланс: один маркер на шкале «перегруз ↔ запас»
   Только CSS-переменные, тёмная тема.
   props: variant(1|2|3), recovery, strain, strainMax=21, size
 */
+import { useT } from '../context/LanguageContext.jsx'
+
+const STR = {
+  en: { recShort: 'rec.', loadShort: 'load', rec: 'rec', load: 'load', surplus: 'surplus', overload: 'overload', balance: 'balance' },
+  ru: { recShort: 'восст.', loadShort: 'нагр.', rec: 'восст', load: 'нагр', surplus: 'запас', overload: 'перегруз', balance: 'баланс' },
+}
+
 const recColor = v => v == null ? 'var(--accent)' : v >= 67 ? 'var(--status-ok)' : v >= 34 ? 'var(--status-warn)' : 'var(--status-crit)'
 const FAINT = 'color-mix(in srgb, var(--text-faint) 28%, transparent)'
 
 export default function HealthGauge({ variant = 1, recovery = null, strain = null, strainMax = 21, size = 156 }) {
+  const s = useT(STR)
   const stroke = 8
   const cx = size / 2, cy = size / 2
   const rOuter = (size - stroke) / 2 - 2
@@ -38,8 +46,8 @@ export default function HealthGauge({ variant = 1, recovery = null, strain = nul
     )
     center = (
       <div className="hg-center hg-center-stack" style={{ top: size * 0.42, fontSize: subSize }}>
-        <span className="hg-line"><b style={{ color: recColor(recovery) }}>{recovery ?? '—'}%</b> восст.</span>
-        <span className="hg-line"><b style={{ color: 'var(--accent)' }}>{strain ?? '—'}</b> нагр.</span>
+        <span className="hg-line"><b style={{ color: recColor(recovery) }}>{recovery ?? '—'}%</b> {s.recShort}</span>
+        <span className="hg-line"><b style={{ color: 'var(--accent)' }}>{strain ?? '—'}</b> {s.loadShort}</span>
       </div>
     )
   } else if (variant === 2) {
@@ -56,11 +64,11 @@ export default function HealthGauge({ variant = 1, recovery = null, strain = nul
       <div className="hg-center hg-center-split" style={{ top: size * 0.34 }}>
         <span className="hg-half">
           <span className="hg-half-v" style={{ color: 'var(--accent)', fontSize: subSize * 1.5 }}>{strain ?? '—'}</span>
-          <span className="hg-half-l" style={{ fontSize: subSize }}>нагр</span>
+          <span className="hg-half-l" style={{ fontSize: subSize }}>{s.load}</span>
         </span>
         <span className="hg-half">
           <span className="hg-half-v" style={{ color: recColor(recovery), fontSize: subSize * 1.5 }}>{recovery ?? '—'}<span className="hg-u">%</span></span>
-          <span className="hg-half-l" style={{ fontSize: subSize }}>восст</span>
+          <span className="hg-half-l" style={{ fontSize: subSize }}>{s.rec}</span>
         </span>
       </div>
     )
@@ -68,7 +76,7 @@ export default function HealthGauge({ variant = 1, recovery = null, strain = nul
     // Баланс: маркер на шкале перегруз ↔ запас
     const balDiff = (recovery != null && loadPct != null) ? recovery - loadPct : 0
     const pos = Math.max(0, Math.min(1, (balDiff + 100) / 200))
-    const verdict = balDiff >= 15 ? 'запас' : balDiff <= -15 ? 'перегруз' : 'баланс'
+    const verdict = balDiff >= 15 ? s.surplus : balDiff <= -15 ? s.overload : s.balance
     const vColor = balDiff >= 15 ? 'var(--status-ok)' : balDiff <= -15 ? 'var(--status-crit)' : 'var(--status-warn)'
     const [mx, my] = pt(pos, rOuter)
     const zones = [{ f0: 0, f1: 0.4, c: 'var(--status-crit)' }, { f0: 0.4, f1: 0.6, c: 'var(--status-warn)' }, { f0: 0.6, f1: 1, c: 'var(--status-ok)' }]
@@ -86,7 +94,7 @@ export default function HealthGauge({ variant = 1, recovery = null, strain = nul
     center = (
       <div className="hg-center" style={{ top: size * 0.32 }}>
         <span className="hg-word" style={{ color: vColor, fontSize: Math.round(size * 0.13) }}>{verdict}</span>
-        <span className="hg-sub" style={{ fontSize: subSize }}>восст {recovery ?? '—'} · нагр {strain ?? '—'}</span>
+        <span className="hg-sub" style={{ fontSize: subSize }}>{s.rec} {recovery ?? '—'} · {s.load} {strain ?? '—'}</span>
       </div>
     )
   }

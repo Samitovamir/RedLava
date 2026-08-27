@@ -3,8 +3,15 @@
   красный (0–40) → оранжевый (40–70) → зелёный (70–100). Отметка «цель» на 100% (правый
   край). Перевыполнение (>100%) продолжается ВНИЗ за правый край и горит фиолетовым.
   Центр: процент. Снизу — цель тренировки (км/мин). Только CSS-переменные.
-  props: pct (0..N), goalText ('9 км' / '50 мин'), size
+  props: pct (0..N), goalText ('9 km' / '50 min'), size
 */
+import { useT } from '../context/LanguageContext.jsx'
+
+const STR = {
+  en: { ahead: 'ahead', over: 'over', done: 'done', goal: 'goal' },
+  ru: { ahead: 'впереди', over: 'перевып.', done: 'выполнено', goal: 'цель' },
+}
+
 const A0 = Math.PI                 // 0% — слева
 const EXTRA_MAX = 40               // сколько % сверх 100 визуализируем
 const EXTRA_DEG = 38               // на сколько градусов «уходит вниз» перевыполнение
@@ -18,6 +25,7 @@ const ZONES = [
 const zoneColor = p => p > 100 ? 'var(--status-extra)' : p <= 40 ? 'var(--status-crit)' : p <= 70 ? 'var(--status-warn)' : 'var(--status-ok)'
 
 export default function PlanFactGauge({ pct = 0, goalText, size = 156 }) {
+  const s = useT(STR)
   const stroke = 8               // как в остальных полусферах
   const GAP = 6                  // пробел между зонами (в % шкалы), как gap 0.06 в других
   const r = (size - stroke) / 2 - 2, cx = size / 2, cy = size / 2
@@ -31,7 +39,7 @@ export default function PlanFactGauge({ pct = 0, goalText, size = 156 }) {
   const arc = (p0, p1) => { const [x0, y0] = pt(p0), [x1, y1] = pt(p1); const large = Math.abs(angleFor(p0) - angleFor(p1)) > Math.PI ? 1 : 0; return `M ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1}` }
   const [mx, my] = pt(clamped)     // маркер прогресса (при 0% — слева, у цели — справа)
 
-  const word = pct <= 0 ? 'впереди' : pct > 100 ? 'перевып.' : pct >= 100 ? 'выполнено' : 'выполнено'
+  const word = pct <= 0 ? s.ahead : pct > 100 ? s.over : s.done
 
   return (
     <div className="pf">
@@ -54,7 +62,7 @@ export default function PlanFactGauge({ pct = 0, goalText, size = 156 }) {
           <span className="pf-val" style={{ fontSize: numSize, color: zoneColor(pct) }}>{Math.round(pct)}<span className="pf-pct">%</span></span>
           <span className="pf-word" style={{ fontSize: wordSize }}>{word}</span>
         </div>
-        {goalText && <span className="pf-goal" style={{ top: size * 0.56 }}>цель · {goalText}</span>}
+        {goalText && <span className="pf-goal" style={{ top: size * 0.56 }}>{s.goal} · {goalText}</span>}
       </div>
 
       <style>{`

@@ -3,14 +3,13 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { motion, AnimatePresence } from 'framer-motion'
 import { variants } from './motion.js'
 import FluidMenu from './components/FluidMenu.jsx'
-import BrandWatermark from './components/BrandWatermark.jsx'
 import MailModal from './components/MailModal.jsx'
 import DemoBanner from './components/DemoBanner.jsx'
 import CommandShell from './shells/CommandShell.jsx'
 import { useLayout, useIsMobile } from './layout.js'
 import { useThemeSync } from './theme.js'
 import { isGuest } from './api/authFetch.js'
-import { MAIL_ENABLED, HISTORY_ENABLED, TASKS_ENABLED } from './config/features.js'
+import { MAIL_ENABLED, HISTORY_ENABLED } from './config/features.js'
 import { pullSync, startSync } from './utils/sync.js'
 import { EventsProvider } from './context/EventsContext.jsx'
 import { HistoryProvider } from './context/HistoryContext.jsx'
@@ -25,7 +24,6 @@ import Health from './pages/Health.jsx'
 import Nutrition from './pages/Nutrition.jsx'
 import Mail from './pages/Mail.jsx'
 import History from './pages/History.jsx'
-import Tasks from './pages/Tasks.jsx'
 import Settings from './pages/Settings.jsx'
 
 // Переходы между разделами: fade + лёгкий подъём (variants.pageEnter из motion.js).
@@ -57,7 +55,6 @@ function AnimatedRoutes() {
           <Route path="/history" element={HISTORY_ENABLED ? <History /> : <Navigate to="/" replace />} />
           {/* «Подключения» влиты в Настройки — старые ссылки ведут туда */}
           <Route path="/connections" element={<Navigate to="/settings" replace />} />
-          <Route path="/tasks" element={TASKS_ENABLED ? <Tasks /> : <Navigate to="/" replace />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
@@ -85,7 +82,6 @@ function ShellRouter() {
   return (
     <>
       <FluidMenu />
-      <BrandWatermark />
       <AnimatedRoutes />
     </>
   )

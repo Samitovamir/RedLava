@@ -2,7 +2,7 @@ import { useState, useRef, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   INITIAL_REPORTS, buildHistory, markerStatus, STATUS_INFO,
-  rangeText, barGeom, fmtDate, LABS_STORE_KEY, LABS_STORE_VERSION, buildGroups
+  rangeText, barGeom, fmtDate, unitLabel, LABS_STORE_KEY, LABS_STORE_VERSION, buildGroups
 } from '../utils/labs.js'
 import { isGuest } from '../api/authFetch.js'
 import { useLang, useT } from '../context/LanguageContext.jsx'
@@ -161,6 +161,8 @@ function MiniSpark({ points, color }) {
 export default function LabResults() {
   const { lang } = useLang()
   const t = useT(STR)
+  // Англ. название маркера/группы, если оно есть (name — русский ключ разбора PDF)
+  const dn = d => (lang === 'en' && d?.nameEn) || d?.name
   const [reports, setReports] = useState(() => {
     try {
       // Старые демо-данные уже вычищены централизованно при импорте labs.js (по версии).
@@ -260,22 +262,22 @@ export default function LabResults() {
     return (
       <div key={key} className="lab-marker">
         <div className="lm-top">
-          <span className="lm-name">{def.name}</span>
-          <span className="lm-value" style={{ color: c }}>{last.value} <span className="lm-unit muted">{def.unit}</span></span>
+          <span className="lm-name">{dn(def)}</span>
+          <span className="lm-value" style={{ color: c }}>{last.value} <span className="lm-unit muted">{unitLabel(def.unit, lang)}</span></span>
         </div>
         <div className="lm-bar">
           {st !== 'unknown' && <div className="lm-band" style={{ left: `${g.bandLeft}%`, width: `${g.bandRight - g.bandLeft}%` }} />}
           <div className="lm-marker-dot" style={{ left: `${st === 'unknown' ? 50 : g.valuePos}%`, background: c }} />
         </div>
         <div className="lm-bottom">
-          <span className="lm-range muted">{st === 'unknown' ? t.noNorm : `${t.norm} ${rangeText(def.min, def.max)}`}</span>
+          <span className="lm-range muted">{st === 'unknown' ? t.noNorm : `${t.norm} ${rangeText(def.min, def.max, lang)}`}</span>
           <span className="lm-status" style={{ color: c }}>{t.status[st]}</span>
         </div>
         {prev && (
           <div className="lm-trend">
             <MiniSpark points={h} color="var(--muted-foreground)" />
             <span className="lm-trend-txt muted">
-              {last.value > prev.value ? '↑' : last.value < prev.value ? '↓' : '→'} {t.was} {prev.value} · {fmtDate(prev.date)}
+              {last.value > prev.value ? '↑' : last.value < prev.value ? '↓' : '→'} {t.was} {prev.value} · {fmtDate(prev.date, lang)}
             </span>
           </div>
         )}
@@ -289,9 +291,9 @@ export default function LabResults() {
     const c = STATUS_INFO[st].color
     return (
       <div key={key} className="lab-mini">
-        <span className="lab-mini-name">{def.name}</span>
-        <span className="lab-mini-val" style={{ color: c }}>{last.value}<span className="muted"> {def.unit}</span></span>
-        <span className="lab-mini-norm muted">{st === 'unknown' ? t.noNormShort : rangeText(def.min, def.max)}</span>
+        <span className="lab-mini-name">{dn(def)}</span>
+        <span className="lab-mini-val" style={{ color: c }}>{last.value}<span className="muted"> {unitLabel(def.unit, lang)}</span></span>
+        <span className="lab-mini-norm muted">{st === 'unknown' ? t.noNormShort : rangeText(def.min, def.max, lang)}</span>
         <span className="lab-mini-dot" style={{ background: c }} title={t.status[st]} />
       </div>
     )
@@ -305,7 +307,7 @@ export default function LabResults() {
     return buildGroups(hist).map(g => {
       const lines = [...g.major, ...g.minor].map(({ def, last }) => {
         const st = markerStatus(last.value, def.min, def.max)
-        const norm = (def.min == null && def.max == null) ? 'норма не указана' : `норма ${rangeText(def.min, def.max)}`
+        const norm = (def.min == null && def.max == null) ? 'норма не указана' : `норма ${rangeText(def.min, def.max, lang)}`
         const flag = (st === 'low' || st === 'high') ? ` — ${STATUS_INFO[st].label}` : ''
         return `${def.name} ${last.value} ${def.unit || ''} (${norm})${flag}`
       })
@@ -315,7 +317,7 @@ export default function LabResults() {
 
   function doctorContext(snapshotReports) {
     return (
-      `Ты — внимательный врач-терапевт, который объясняет анализы крови владельцу, пожилому человеку без медицинского образования. ` +
+      `Ты — внимательный врач-терапевт, который объясняет анализы крови пользователю, пожилому человеку без медицинского образования. ` +
       `Вот его последние результаты: ${labSummaryText(snapshotReports)}. ` +
       `Отвечай простыми словами, спокойно и поддерживающе. Опирайся на эти цифры и их динамику. ` +
       `Не ставь диагноз и не назначай лекарства — при отклонениях мягко советуй обратиться к врачу.` +
@@ -459,7 +461,7 @@ export default function LabResults() {
                   const fname = (lang === 'en' && GUEST_DEMO_FILE_EN[r.fileName]) || r.fileName
                   return (
                   <div key={r.id} className="lab-tl-item" title={fname}>
-                    <span className="lab-tl-date">{fmtDate(r.date)}</span>
+                    <span className="lab-tl-date">{fmtDate(r.date, lang)}</span>
                     <span className="lab-tl-name">{fname}</span>
                     <span className="lab-tl-count muted">{Object.keys(r.values).length} {t.markersCount}</span>
                   </div>
@@ -495,7 +497,7 @@ export default function LabResults() {
             const st = markerStatus(last.value, def.min, def.max)
             return (
               <span key={def.name} className="lab-flag" style={{ color: STATUS_INFO[st].color, borderColor: STATUS_INFO[st].color }}>
-                {def.name} {st === 'high' ? '↑' : '↓'}
+                {dn(def)} {st === 'high' ? '↑' : '↓'}
               </span>
             )
           })}

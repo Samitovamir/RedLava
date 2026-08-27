@@ -1,5 +1,5 @@
 #!/bin/zsh
-# Запуск дашборда: backend (:3001) + frontend (:5173) одной командой.
+# Запуск User Dashboard: backend (:3001) + frontend (:5173) одной командой.
 # Использование:  ./start.sh   (останавливается по Ctrl+C)
 
 cd "$(dirname "$0")"

@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { variants, Z } from '../motion.js'
 import Icon from './Icon.jsx'
+import { useT } from '../context/LanguageContext.jsx'
 
 // Единая модалка для всех оверлеев. size: sm(440)|md(540)|lg(760)|reading(820).
 // Закрытие по Esc и клику вне; lockScroll блокирует прокрутку фона.
@@ -11,6 +12,7 @@ export default function Modal({
   open, onClose, size = 'md', title, badge, align = 'center', lockScroll = true,
   fullscreenOnMobile = true, className = '', children,
 }) {
+  const t = useT({ en: { close: 'Close' }, ru: { close: 'Закрыть' } })
   useEffect(() => {
     if (!open) return
     const onKey = (e) => { if (e.key === 'Escape') onClose?.() }
@@ -50,7 +52,7 @@ export default function Modal({
                   {badge && <span className="ds-modal__badge">{badge}</span>}
                   {title && <h3 className="ds-modal__title">{title}</h3>}
                 </div>
-                <button className="ds-btn ds-btn--ghost ds-btn--icon ds-btn--sm" onClick={onClose} aria-label="Закрыть" type="button">
+                <button className="ds-btn ds-btn--ghost ds-btn--icon ds-btn--sm" onClick={onClose} aria-label={t.close} type="button">
                   <Icon name="close" size={18} />
                 </button>
               </div>

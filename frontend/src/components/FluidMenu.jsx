@@ -3,10 +3,10 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Home, CalendarDays, HeartPulse, UtensilsCrossed, Mail, History as HistoryIcon,
-  Settings, MoreHorizontal, CheckSquare, Activity,
+  Settings, MoreHorizontal, Activity,
 } from 'lucide-react'
 import { useLang } from '../context/LanguageContext.jsx'
-import { MAIL_ENABLED, HISTORY_ENABLED, TASKS_ENABLED } from '../config/features.js'
+import { MAIL_ENABLED, HISTORY_ENABLED } from '../config/features.js'
 
 /*
   Навигация (CarPlay-рельс):
@@ -26,7 +26,6 @@ const ITEMS = [
   { path: '/sport', ru: 'Спорт', en: 'Sport', Ico: Activity },
   { path: '/health', ru: 'Здоровье', en: 'Health', Ico: HeartPulse },
   { path: '/nutrition', ru: 'Питание', en: 'Nutrition', Ico: UtensilsCrossed },
-  ...(TASKS_ENABLED ? [{ path: '/tasks', ru: 'Задачи', en: 'Tasks', Ico: CheckSquare }] : []),
   ...(MAIL_ENABLED ? [{ path: '/mail', ru: 'Письма', en: 'Mail', Ico: Mail }] : []),
   ...(HISTORY_ENABLED ? [{ path: '/history', ru: 'История', en: 'History', Ico: HistoryIcon }] : []),
 ]
@@ -137,7 +136,7 @@ export default function FluidMenu() {
             ? (lang === 'en' ? 'Unpin menu' : 'Открепить меню')
             : (lang === 'en' ? 'Pin menu' : 'Закрепить меню')}
         >
-          <span className="fluid-logo-mark">А</span>
+          <span className="fluid-logo-mark">R</span>
           <AnimatePresence>
             {expanded && (
               <motion.span
@@ -147,7 +146,7 @@ export default function FluidMenu() {
                 exit={{ opacity: 0, x: -4 }}
                 transition={{ duration: 0.16 }}
               >
-                владелец
+                пользователь
               </motion.span>
             )}
           </AnimatePresence>

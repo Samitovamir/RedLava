@@ -11,7 +11,7 @@ import { mskNow } from './time.js'
 // Справочник показателей с нормами, сгруппированный по панелям.
 export const PANELS = [
   {
-    name: 'Общий анализ крови', iconKey: 'lab-blood',
+    name: 'Общий анализ крови', nameEn: 'Complete blood count', iconKey: 'lab-blood',
     markers: [
       { name: 'Гемоглобин',  unit: 'г/л',     min: 130, max: 170 },
       { name: 'Эритроциты',  unit: '×10¹²/л', min: 4.0, max: 5.5 },
@@ -34,7 +34,7 @@ export const PANELS = [
     ]
   },
   {
-    name: 'Гормоны', iconKey: 'lab-hormones',
+    name: 'Гормоны', nameEn: 'Hormones', iconKey: 'lab-hormones',
     markers: [
       { name: 'ТТГ',         unit: 'мЕд/л',   min: 0.4, max: 4.0 },
       { name: 'Тестостерон', unit: 'нмоль/л', min: 8.6, max: 29 },
@@ -117,113 +117,115 @@ export function extraMarkers(history) {
 // ────────────────────────────────────────────────────────────────────────────
 
 export const MARKER_GROUPS = [
-  { key: 'blood',        name: 'Общий анализ крови',     iconKey: 'lab-blood' },
-  { key: 'lipids',       name: 'Липиды и сердце',         iconKey: 'lab-lipids' },
-  { key: 'metabolic',    name: 'Сахар и обмен',           iconKey: 'lab-metabolic' },
-  { key: 'liver',        name: 'Печень',                  iconKey: 'lab-liver' },
-  { key: 'kidney',       name: 'Почки',                   iconKey: 'lab-kidney' },
-  { key: 'iron',         name: 'Обмен железа',            iconKey: 'lab-iron' },
-  { key: 'vitamins',     name: 'Витамины',                iconKey: 'lab-vitamins' },
-  { key: 'electrolytes', name: 'Электролиты и минералы',  iconKey: 'lab-electrolytes' },
-  { key: 'thyroid',      name: 'Щитовидная железа',       iconKey: 'lab-thyroid' },
-  { key: 'hormones',     name: 'Гормоны',                 iconKey: 'lab-hormones' },
-  { key: 'inflammation', name: 'Воспаление и иммунитет',  iconKey: 'lab-inflammation' },
-  { key: 'coagulation',  name: 'Свёртываемость',          iconKey: 'lab-coagulation' },
-  { key: 'infections',   name: 'Инфекции и антитела',     iconKey: 'lab-infections' },
-  { key: 'other',        name: 'Другие показатели',       iconKey: 'lab-other' }
+  { key: 'blood',        name: 'Общий анализ крови', nameEn: 'Complete blood count', iconKey: 'lab-blood' },
+  { key: 'lipids',       name: 'Липиды и сердце', nameEn: 'Lipids & heart',         iconKey: 'lab-lipids' },
+  { key: 'metabolic',    name: 'Сахар и обмен', nameEn: 'Glucose & metabolism',           iconKey: 'lab-metabolic' },
+  { key: 'liver',        name: 'Печень', nameEn: 'Liver',                  iconKey: 'lab-liver' },
+  { key: 'kidney',       name: 'Почки', nameEn: 'Kidneys',                   iconKey: 'lab-kidney' },
+  { key: 'iron',         name: 'Обмен железа', nameEn: 'Iron metabolism',            iconKey: 'lab-iron' },
+  { key: 'vitamins',     name: 'Витамины', nameEn: 'Vitamins',                iconKey: 'lab-vitamins' },
+  { key: 'electrolytes', name: 'Электролиты и минералы', nameEn: 'Electrolytes & minerals',  iconKey: 'lab-electrolytes' },
+  { key: 'thyroid',      name: 'Щитовидная железа', nameEn: 'Thyroid',       iconKey: 'lab-thyroid' },
+  { key: 'hormones',     name: 'Гормоны', nameEn: 'Hormones', iconKey: 'lab-hormones' },
+  { key: 'inflammation', name: 'Воспаление и иммунитет', nameEn: 'Inflammation & immunity',  iconKey: 'lab-inflammation' },
+  { key: 'coagulation',  name: 'Свёртываемость', nameEn: 'Coagulation',          iconKey: 'lab-coagulation' },
+  { key: 'infections',   name: 'Инфекции и антитела', nameEn: 'Infections & antibodies',     iconKey: 'lab-infections' },
+  { key: 'other',        name: 'Другие показатели', nameEn: 'Other markers',       iconKey: 'lab-other' }
 ]
 
 // def: [name, group, unit, min, max, priority, ...aliases]
-const L = (name, group, unit, min, max, priority, aliases = []) => ({ name, group, unit, min, max, priority, aliases })
+// name — русское название, оно же ключ сопоставления при разборе PDF анализов (не переводить).
+// nameEn — только для показа в английском UI.
+const L = (name, group, unit, min, max, priority, aliases = [], nameEn = null) => ({ name, group, unit, min, max, priority, aliases, nameEn })
 export const MARKER_LIBRARY = [
   // Общий анализ крови
-  L('Гемоглобин', 'blood', 'г/л', 130, 170, 'key', ['hb', 'hgb']),
-  L('Эритроциты', 'blood', '×10¹²/л', 4.0, 5.5, 'key', ['rbc']),
-  L('Лейкоциты', 'blood', '×10⁹/л', 4.0, 9.0, 'key', ['wbc']),
-  L('Тромбоциты', 'blood', '×10⁹/л', 150, 400, 'key', ['plt']),
-  L('Гематокрит', 'blood', '%', 39, 49, 'minor', ['hct']),
-  L('MCV (средний объём эритроцита)', 'blood', 'фл', 80, 100, 'minor', ['mcv', 'средний объем эритроцитов']),
-  L('MCH (среднее содержание Hb)', 'blood', 'пг', 27, 34, 'minor', ['mch']),
-  L('MCHC', 'blood', 'г/л', 320, 360, 'minor', []),
-  L('Цветовой показатель', 'blood', '', 0.85, 1.05, 'minor', []),
-  L('СОЭ', 'blood', 'мм/ч', 1, 20, 'minor', ['esr']),
-  L('Ретикулоциты', 'blood', '‰', 2, 12, 'minor', []),
-  L('Нейтрофилы', 'blood', '%', 47, 72, 'minor', []),
-  L('Лимфоциты', 'blood', '%', 19, 37, 'minor', []),
-  L('Моноциты', 'blood', '%', 3, 11, 'minor', []),
-  L('Эозинофилы', 'blood', '%', 0.5, 5, 'minor', []),
-  L('Базофилы', 'blood', '%', 0, 1, 'minor', []),
+  L('Гемоглобин', 'blood', 'г/л', 130, 170, 'key', ['hb', 'hgb'], 'Hemoglobin'),
+  L('Эритроциты', 'blood', '×10¹²/л', 4.0, 5.5, 'key', ['rbc'], 'Red blood cells'),
+  L('Лейкоциты', 'blood', '×10⁹/л', 4.0, 9.0, 'key', ['wbc'], 'White blood cells'),
+  L('Тромбоциты', 'blood', '×10⁹/л', 150, 400, 'key', ['plt'], 'Platelets'),
+  L('Гематокрит', 'blood', '%', 39, 49, 'minor', ['hct'], 'Hematocrit'),
+  L('MCV (средний объём эритроцита)', 'blood', 'фл', 80, 100, 'minor', ['mcv', 'средний объем эритроцитов'], 'MCV (mean corpuscular volume)'),
+  L('MCH (среднее содержание Hb)', 'blood', 'пг', 27, 34, 'minor', ['mch'], 'MCH (mean corpuscular hemoglobin)'),
+  L('MCHC', 'blood', 'г/л', 320, 360, 'minor', [], 'MCHC'),
+  L('Цветовой показатель', 'blood', '', 0.85, 1.05, 'minor', [], 'Color index'),
+  L('СОЭ', 'blood', 'мм/ч', 1, 20, 'minor', ['esr'], 'ESR'),
+  L('Ретикулоциты', 'blood', '‰', 2, 12, 'minor', [], 'Reticulocytes'),
+  L('Нейтрофилы', 'blood', '%', 47, 72, 'minor', [], 'Neutrophils'),
+  L('Лимфоциты', 'blood', '%', 19, 37, 'minor', [], 'Lymphocytes'),
+  L('Моноциты', 'blood', '%', 3, 11, 'minor', [], 'Monocytes'),
+  L('Эозинофилы', 'blood', '%', 0.5, 5, 'minor', [], 'Eosinophils'),
+  L('Базофилы', 'blood', '%', 0, 1, 'minor', [], 'Basophils'),
   // Липиды
-  L('Холестерин общий', 'lipids', 'ммоль/л', 3.0, 5.2, 'key', ['холестерин', 'общий холестерин']),
-  L('ЛПНП («плохой»)', 'lipids', 'ммоль/л', null, 3.0, 'key', ['лпнп', 'ldl', 'холестерин лпнп', 'плохой холестерин']),
-  L('ЛПВП («хороший»)', 'lipids', 'ммоль/л', 1.0, null, 'key', ['лпвп', 'hdl', 'хороший холестерин']),
-  L('Триглицериды', 'lipids', 'ммоль/л', null, 1.7, 'key', ['тг', 'triglycerides']),
-  L('ЛПОНП', 'lipids', 'ммоль/л', 0.1, 1.0, 'minor', ['vldl']),
-  L('Коэффициент атерогенности', 'lipids', '', null, 3.0, 'minor', ['индекс атерогенности', 'ка']),
+  L('Холестерин общий', 'lipids', 'ммоль/л', 3.0, 5.2, 'key', ['холестерин', 'общий холестерин'], 'Total cholesterol'),
+  L('ЛПНП («плохой»)', 'lipids', 'ммоль/л', null, 3.0, 'key', ['лпнп', 'ldl', 'холестерин лпнп', 'плохой холестерин'], 'LDL (bad)'),
+  L('ЛПВП («хороший»)', 'lipids', 'ммоль/л', 1.0, null, 'key', ['лпвп', 'hdl', 'хороший холестерин'], 'HDL (good)'),
+  L('Триглицериды', 'lipids', 'ммоль/л', null, 1.7, 'key', ['тг', 'triglycerides'], 'Triglycerides'),
+  L('ЛПОНП', 'lipids', 'ммоль/л', 0.1, 1.0, 'minor', ['vldl'], 'VLDL'),
+  L('Коэффициент атерогенности', 'lipids', '', null, 3.0, 'minor', ['индекс атерогенности', 'ка'], 'Atherogenic index'),
   // Сахар и обмен
-  L('Глюкоза', 'metabolic', 'ммоль/л', 3.9, 5.6, 'key', ['сахар', 'глюкоза крови']),
-  L('Гликированный гемоглобин', 'metabolic', '%', 4.0, 6.0, 'key', ['hba1c', 'гликогемоглобин', 'гликированный гемоглобин a1c']),
-  L('Инсулин', 'metabolic', 'мкЕд/мл', 2.6, 24.9, 'minor', []),
-  L('С-пептид', 'metabolic', 'нг/мл', 1.1, 4.4, 'minor', ['c-пептид']),
-  L('Мочевая кислота', 'metabolic', 'мкмоль/л', 200, 420, 'minor', ['urate']),
+  L('Глюкоза', 'metabolic', 'ммоль/л', 3.9, 5.6, 'key', ['сахар', 'глюкоза крови'], 'Glucose'),
+  L('Гликированный гемоглобин', 'metabolic', '%', 4.0, 6.0, 'key', ['hba1c', 'гликогемоглобин', 'гликированный гемоглобин a1c'], 'HbA1c'),
+  L('Инсулин', 'metabolic', 'мкЕд/мл', 2.6, 24.9, 'minor', [], 'Insulin'),
+  L('С-пептид', 'metabolic', 'нг/мл', 1.1, 4.4, 'minor', ['c-пептид'], 'C-peptide'),
+  L('Мочевая кислота', 'metabolic', 'мкмоль/л', 200, 420, 'minor', ['urate'], 'Uric acid'),
   // Печень
-  L('АЛТ', 'liver', 'Ед/л', null, 41, 'key', ['alt', 'аланинаминотрансфераза']),
-  L('АСТ', 'liver', 'Ед/л', null, 40, 'key', ['ast', 'аспартатаминотрансфераза']),
-  L('Билирубин общий', 'liver', 'мкмоль/л', 3.4, 20.5, 'key', ['билирубин']),
-  L('ГГТ', 'liver', 'Ед/л', null, 60, 'minor', ['ггтп', 'гамма-гт', 'gamma-gt']),
-  L('Билирубин прямой', 'liver', 'мкмоль/л', null, 5.1, 'minor', ['прямой билирубин']),
-  L('Щелочная фосфатаза', 'liver', 'Ед/л', 40, 130, 'minor', ['щф', 'alp']),
-  L('Общий белок', 'liver', 'г/л', 64, 83, 'minor', ['белок общий']),
-  L('Альбумин', 'liver', 'г/л', 35, 52, 'minor', []),
-  L('ЛДГ', 'liver', 'Ед/л', 125, 220, 'minor', ['ldh']),
+  L('АЛТ', 'liver', 'Ед/л', null, 41, 'key', ['alt', 'аланинаминотрансфераза'], 'ALT'),
+  L('АСТ', 'liver', 'Ед/л', null, 40, 'key', ['ast', 'аспартатаминотрансфераза'], 'AST'),
+  L('Билирубин общий', 'liver', 'мкмоль/л', 3.4, 20.5, 'key', ['билирубин'], 'Total bilirubin'),
+  L('ГГТ', 'liver', 'Ед/л', null, 60, 'minor', ['ггтп', 'гамма-гт', 'gamma-gt'], 'GGT'),
+  L('Билирубин прямой', 'liver', 'мкмоль/л', null, 5.1, 'minor', ['прямой билирубин'], 'Direct bilirubin'),
+  L('Щелочная фосфатаза', 'liver', 'Ед/л', 40, 130, 'minor', ['щф', 'alp'], 'Alkaline phosphatase'),
+  L('Общий белок', 'liver', 'г/л', 64, 83, 'minor', ['белок общий'], 'Total protein'),
+  L('Альбумин', 'liver', 'г/л', 35, 52, 'minor', [], 'Albumin'),
+  L('ЛДГ', 'liver', 'Ед/л', 125, 220, 'minor', ['ldh'], 'LDH'),
   // Почки
-  L('Креатинин', 'kidney', 'мкмоль/л', 62, 106, 'key', []),
-  L('Мочевина', 'kidney', 'ммоль/л', 2.5, 8.3, 'key', ['urea']),
-  L('СКФ', 'kidney', 'мл/мин', 90, null, 'minor', ['скорость клубочковой фильтрации', 'egfr', 'gfr']),
-  L('Цистатин C', 'kidney', 'мг/л', 0.5, 1.0, 'minor', []),
+  L('Креатинин', 'kidney', 'мкмоль/л', 62, 106, 'key', [], 'Creatinine'),
+  L('Мочевина', 'kidney', 'ммоль/л', 2.5, 8.3, 'key', ['urea'], 'Urea'),
+  L('СКФ', 'kidney', 'мл/мин', 90, null, 'minor', ['скорость клубочковой фильтрации', 'egfr', 'gfr'], 'eGFR'),
+  L('Цистатин C', 'kidney', 'мг/л', 0.5, 1.0, 'minor', [], 'Cystatin C'),
   // Обмен железа
-  L('Железо', 'iron', 'мкмоль/л', 11, 28, 'key', ['сывороточное железо', 'iron']),
-  L('Ферритин', 'iron', 'нг/мл', 30, 400, 'key', []),
-  L('Трансферрин', 'iron', 'г/л', 2.0, 3.6, 'minor', []),
-  L('ОЖСС', 'iron', 'мкмоль/л', 45, 77, 'minor', ['общая железосвязывающая способность', 'tibc']),
-  L('Насыщение трансферрина', 'iron', '%', 20, 50, 'minor', []),
+  L('Железо', 'iron', 'мкмоль/л', 11, 28, 'key', ['сывороточное железо', 'iron'], 'Iron'),
+  L('Ферритин', 'iron', 'нг/мл', 30, 400, 'key', [], 'Ferritin'),
+  L('Трансферрин', 'iron', 'г/л', 2.0, 3.6, 'minor', [], 'Transferrin'),
+  L('ОЖСС', 'iron', 'мкмоль/л', 45, 77, 'minor', ['общая железосвязывающая способность', 'tibc'], 'TIBC'),
+  L('Насыщение трансферрина', 'iron', '%', 20, 50, 'minor', [], 'Transferrin saturation'),
   // Витамины
-  L('Витамин D', 'vitamins', 'нг/мл', 30, 100, 'key', ['25-oh витамин d', 'витамин д', '25(oh)d', '25-он витамин d']),
-  L('Витамин B12', 'vitamins', 'пг/мл', 200, 900, 'key', ['b12', 'цианокобаламин', 'витамин в12']),
-  L('Фолиевая кислота', 'vitamins', 'нг/мл', 3.0, 17.0, 'minor', ['фолаты', 'b9', 'витамин b9']),
+  L('Витамин D', 'vitamins', 'нг/мл', 30, 100, 'key', ['25-oh витамин d', 'витамин д', '25(oh)d', '25-он витамин d'], 'Vitamin D'),
+  L('Витамин B12', 'vitamins', 'пг/мл', 200, 900, 'key', ['b12', 'цианокобаламин', 'витамин в12'], 'Vitamin B12'),
+  L('Фолиевая кислота', 'vitamins', 'нг/мл', 3.0, 17.0, 'minor', ['фолаты', 'b9', 'витамин b9'], 'Folate'),
   // Электролиты
-  L('Калий', 'electrolytes', 'ммоль/л', 3.5, 5.1, 'key', ['k']),
-  L('Натрий', 'electrolytes', 'ммоль/л', 136, 145, 'minor', ['na']),
-  L('Кальций', 'electrolytes', 'ммоль/л', 2.15, 2.55, 'minor', ['ca', 'кальций общий']),
-  L('Кальций ионизированный', 'electrolytes', 'ммоль/л', 1.12, 1.32, 'minor', []),
-  L('Магний', 'electrolytes', 'ммоль/л', 0.66, 1.07, 'minor', ['mg']),
-  L('Фосфор', 'electrolytes', 'ммоль/л', 0.81, 1.45, 'minor', ['фосфор неорганический']),
-  L('Хлор', 'electrolytes', 'ммоль/л', 98, 107, 'minor', ['cl', 'хлориды']),
+  L('Калий', 'electrolytes', 'ммоль/л', 3.5, 5.1, 'key', ['k'], 'Potassium'),
+  L('Натрий', 'electrolytes', 'ммоль/л', 136, 145, 'minor', ['na'], 'Sodium'),
+  L('Кальций', 'electrolytes', 'ммоль/л', 2.15, 2.55, 'minor', ['ca', 'кальций общий'], 'Calcium'),
+  L('Кальций ионизированный', 'electrolytes', 'ммоль/л', 1.12, 1.32, 'minor', [], 'Ionized calcium'),
+  L('Магний', 'electrolytes', 'ммоль/л', 0.66, 1.07, 'minor', ['mg'], 'Magnesium'),
+  L('Фосфор', 'electrolytes', 'ммоль/л', 0.81, 1.45, 'minor', ['фосфор неорганический'], 'Phosphorus'),
+  L('Хлор', 'electrolytes', 'ммоль/л', 98, 107, 'minor', ['cl', 'хлориды'], 'Chloride'),
   // Щитовидная железа
-  L('ТТГ', 'thyroid', 'мЕд/л', 0.4, 4.0, 'key', ['tsh']),
-  L('Т4 свободный', 'thyroid', 'пмоль/л', 9.0, 22.0, 'minor', ['ft4', 'свободный т4', 'т4 св']),
-  L('Т3 свободный', 'thyroid', 'пмоль/л', 2.6, 5.7, 'minor', ['ft3', 'свободный т3', 'т3 св']),
-  L('Антитела к ТПО', 'thyroid', 'Ед/мл', null, 34, 'minor', ['анти-тпо', 'ат-тпо', 'антитела к тиреопероксидазе']),
+  L('ТТГ', 'thyroid', 'мЕд/л', 0.4, 4.0, 'key', ['tsh'], 'TSH'),
+  L('Т4 свободный', 'thyroid', 'пмоль/л', 9.0, 22.0, 'minor', ['ft4', 'свободный т4', 'т4 св'], 'Free T4'),
+  L('Т3 свободный', 'thyroid', 'пмоль/л', 2.6, 5.7, 'minor', ['ft3', 'свободный т3', 'т3 св'], 'Free T3'),
+  L('Антитела к ТПО', 'thyroid', 'Ед/мл', null, 34, 'minor', ['анти-тпо', 'ат-тпо', 'антитела к тиреопероксидазе'], 'Anti-TPO antibodies'),
   // Гормоны
-  L('Тестостерон', 'hormones', 'нмоль/л', 8.6, 29, 'key', ['тестостерон общий', 'общий тестостерон']),
-  L('ПСА общий', 'hormones', 'нг/мл', null, 4.0, 'key', ['пса', 'psa', 'простатический специфический антиген']),
-  L('Кортизол', 'hormones', 'нмоль/л', 171, 536, 'key', []),
-  L('Тестостерон свободный', 'hormones', 'пг/мл', 4.5, 42, 'minor', ['свободный тестостерон']),
-  L('ГСПГ', 'hormones', 'нмоль/л', 18.3, 54.1, 'minor', ['глобулин связывающий половые гормоны', 'shbg']),
-  L('ЛГ', 'hormones', 'мЕд/мл', 1.7, 8.6, 'minor', ['лютеинизирующий гормон', 'lh']),
-  L('ФСГ', 'hormones', 'мЕд/мл', 1.5, 12.4, 'minor', ['фолликулостимулирующий гормон', 'fsh']),
-  L('Пролактин', 'hormones', 'мЕд/л', 73, 407, 'minor', []),
-  L('ДГЭА-С', 'hormones', 'мкмоль/л', 1.0, 11.7, 'minor', ['dheas', 'дгэа сульфат']),
+  L('Тестостерон', 'hormones', 'нмоль/л', 8.6, 29, 'key', ['тестостерон общий', 'общий тестостерон'], 'Testosterone'),
+  L('ПСА общий', 'hormones', 'нг/мл', null, 4.0, 'key', ['пса', 'psa', 'простатический специфический антиген'], 'Total PSA'),
+  L('Кортизол', 'hormones', 'нмоль/л', 171, 536, 'key', [], 'Cortisol'),
+  L('Тестостерон свободный', 'hormones', 'пг/мл', 4.5, 42, 'minor', ['свободный тестостерон'], 'Free testosterone'),
+  L('ГСПГ', 'hormones', 'нмоль/л', 18.3, 54.1, 'minor', ['глобулин связывающий половые гормоны', 'shbg'], 'SHBG'),
+  L('ЛГ', 'hormones', 'мЕд/мл', 1.7, 8.6, 'minor', ['лютеинизирующий гормон', 'lh'], 'LH'),
+  L('ФСГ', 'hormones', 'мЕд/мл', 1.5, 12.4, 'minor', ['фолликулостимулирующий гормон', 'fsh'], 'FSH'),
+  L('Пролактин', 'hormones', 'мЕд/л', 73, 407, 'minor', [], 'Prolactin'),
+  L('ДГЭА-С', 'hormones', 'мкмоль/л', 1.0, 11.7, 'minor', ['dheas', 'дгэа сульфат'], 'DHEA-S'),
   // Воспаление
-  L('СРБ', 'inflammation', 'мг/л', null, 5.0, 'key', ['с-реактивный белок', 'црб', 'crp', 'c реактивный белок']),
-  L('Ревматоидный фактор', 'inflammation', 'Ед/мл', null, 14, 'minor', ['рф', 'rf']),
-  L('Гомоцистеин', 'inflammation', 'мкмоль/л', null, 15, 'minor', []),
+  L('СРБ', 'inflammation', 'мг/л', null, 5.0, 'key', ['с-реактивный белок', 'црб', 'crp', 'c реактивный белок'], 'CRP'),
+  L('Ревматоидный фактор', 'inflammation', 'Ед/мл', null, 14, 'minor', ['рф', 'rf'], 'Rheumatoid factor'),
+  L('Гомоцистеин', 'inflammation', 'мкмоль/л', null, 15, 'minor', [], 'Homocysteine'),
   // Свёртываемость
-  L('МНО', 'coagulation', '', 0.8, 1.2, 'minor', ['inr']),
-  L('Протромбин по Квику', 'coagulation', '%', 70, 130, 'minor', ['пти', 'протромбиновый индекс']),
-  L('АЧТВ', 'coagulation', 'сек', 25, 38, 'minor', ['aptt']),
-  L('Фибриноген', 'coagulation', 'г/л', 2.0, 4.0, 'minor', []),
-  L('Д-димер', 'coagulation', 'нг/мл', null, 500, 'minor', ['d-dimer', 'д димер'])
+  L('МНО', 'coagulation', '', 0.8, 1.2, 'minor', ['inr'], 'INR'),
+  L('Протромбин по Квику', 'coagulation', '%', 70, 130, 'minor', ['пти', 'протромбиновый индекс'], 'Prothrombin (Quick)'),
+  L('АЧТВ', 'coagulation', 'сек', 25, 38, 'minor', ['aptt'], 'aPTT'),
+  L('Фибриноген', 'coagulation', 'г/л', 2.0, 4.0, 'minor', [], 'Fibrinogen'),
+  L('Д-димер', 'coagulation', 'нг/мл', null, 500, 'minor', ['d-dimer', 'д димер'], 'D-dimer')
 ]
 
 // Нормализация имени для сопоставления (регистр, ё, скобки, пунктуация, пробелы)
@@ -264,6 +266,7 @@ export function resolveMarker(rawName, last) {
     const useLib = !docHasRange && unitsMatch(docUnit, exact.unit)
     return {
       name: exact.name,
+      nameEn: exact.nameEn || null,     // для показа в английском UI (name — ключ разбора)
       group: exact.group,
       unit: docUnit || exact.unit || '',
       min: docHasRange ? (last.min ?? null) : (useLib ? exact.min : null),
@@ -316,10 +319,11 @@ export function buildGroups(history) {
   })
 }
 
-export function rangeText(min, max) {
+export function rangeText(min, max, lang = 'ru') {
+  const en = lang === 'en'
   if (min != null && max != null) return `${min}–${max}`
-  if (max != null) return `до ${max}`
-  if (min != null) return `от ${min}`
+  if (max != null) return en ? `up to ${max}` : `до ${max}`
+  if (min != null) return en ? `from ${min}` : `от ${min}`
   return '—'
 }
 
@@ -343,11 +347,29 @@ export function barGeom(value, min, max) {
 }
 
 const MONTHS = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек']
-export function fmtDate(iso) {
+const MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+export function fmtDate(iso, lang = 'ru') {
   const [y, m, d] = iso.split('-').map(Number)
-  return `${d} ${MONTHS[m - 1]}`
+  return lang === 'en' ? `${MONTHS_EN[m - 1]} ${d}` : `${d} ${MONTHS[m - 1]}`
 }
 export function todayIso() {
   const d = mskNow()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+// Единицы в справочнике и в русских бланках записаны кириллицей. Для английского UI
+// показываем международную запись; сами значения и нормы не трогаем.
+const UNITS_EN = {
+  'г/л': 'g/L', 'мг/л': 'mg/L', 'ммоль/л': 'mmol/L', 'мкмоль/л': 'µmol/L',
+  'нмоль/л': 'nmol/L', 'пмоль/л': 'pmol/L', 'Ед/л': 'U/L', 'ед/л': 'U/L',
+  'мЕд/л': 'mIU/L', 'мЕд/мл': 'mIU/mL', 'мкЕд/мл': 'µIU/mL',
+  'нг/мл': 'ng/mL', 'пг/мл': 'pg/mL', 'мкг/л': 'µg/L', 'мкг/дл': 'µg/dL',
+  'мм/ч': 'mm/h', 'мл/мин': 'mL/min', 'мл/мин/1.73м²': 'mL/min/1.73m²',
+  '×10⁹/л': '×10⁹/L', '×10¹²/л': '×10¹²/L', 'г/дл': 'g/dL', 'фл': 'fL', 'пг': 'pg',
+  'нг/дл': 'ng/dL', 'мкмоль/сут': 'µmol/day', 'сек': 's', 'с': 's',
+}
+
+export function unitLabel(unit, lang = 'ru') {
+  if (!unit || lang !== 'en') return unit || ''
+  return UNITS_EN[unit] || unit
 }

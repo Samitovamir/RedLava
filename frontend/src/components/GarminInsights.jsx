@@ -2,11 +2,59 @@
   Показатели Garmin — расширенные тренировочные метрики (Training Status/Load, HRV,
   прогнозы забегов, Endurance/Hill Score, лактатный порог, интенсивные минуты).
   Показывается во вкладке «Спорт» (данные Garmin). Каждая плитка рендерится, только
-  если данные есть. Только CSS-переменные, тёмная тема, тексты на русском.
+  если данные есть. Только CSS-переменные, тёмная тема.
   props: garmin (объект albert-garmin-live). Иначе читает из localStorage.
 */
 import { useState, useEffect } from 'react'
 import { isGuest } from '../api/authFetch.js'
+import { useT, useLang } from '../context/LanguageContext.jsx'
+
+const STR = {
+  en: {
+    title: 'Garmin metrics', sub: 'Advanced training metrics',
+    trainingStatus: 'Training status', trainingLoad: 'Training load',
+    acute: 'acute', chronic: 'chronic',
+    lowAerobic: 'Low aerobic', highAerobic: 'High aerobic', anaerobic: 'Anaerobic',
+    hrv: 'Heart rate variability (HRV)', msPerNight: 'ms last night', hrvBaseline: 'HRV baseline',
+    racePredictions: 'Race predictions', endurance: 'Endurance', hillStrength: 'Hill strength',
+    lactateThreshold: 'Lactate threshold', bpm: 'bpm', minPerKm: 'min/km',
+    intensityMinutes: 'Intensity minutes · week', outOf: 'of',
+    k5: '5K', k10: '10K',
+    lowVolume: 'low volume', optimal: 'optimal', bitHigh: 'a bit high', overload: 'overload',
+    elite: 'elite', high: 'high', medium: 'medium', base: 'base',
+    strong: 'strong', good: 'good', beginner: 'beginner',
+    fbProductive: 'Load is building fitness — keep it up',
+    fbPeaking: 'Peak fitness — you can target a race',
+    fbMaintaining: 'Fitness is holding — volume is steady',
+    fbRecovery: 'Recovery in progress — don’t rush the volume',
+    fbUnproductive: 'Fitness isn’t growing — revisit recovery',
+    fbOverreaching: 'Load is above your limit — rest needed',
+    fbDetraining: 'Fitness is dropping — time to add load',
+    fbStrained: 'Overstrain — dial back the intensity',
+  },
+  ru: {
+    title: 'Показатели Garmin', sub: 'Расширенные метрики тренировок',
+    trainingStatus: 'Тренировочный статус', trainingLoad: 'Тренировочная нагрузка',
+    acute: 'острая', chronic: 'хроническая',
+    lowAerobic: 'Низкий аэроб', highAerobic: 'Высокий аэроб', anaerobic: 'Анаэроб',
+    hrv: 'Вариабельность пульса (ВЧП)', msPerNight: 'мс за ночь', hrvBaseline: 'норма ВЧП',
+    racePredictions: 'Прогноз забегов', endurance: 'Выносливость', hillStrength: 'Сила на подъёмах',
+    lactateThreshold: 'Лактатный порог', bpm: 'уд/мин', minPerKm: 'мин/км',
+    intensityMinutes: 'Интенсивные минуты · неделя', outOf: 'из',
+    k5: '5 км', k10: '10 км',
+    lowVolume: 'малый объём', optimal: 'оптимально', bitHigh: 'высоковато', overload: 'перегруз',
+    elite: 'элитный', high: 'высокий', medium: 'средний', base: 'базовый',
+    strong: 'сильный', good: 'хороший', beginner: 'начальный',
+    fbProductive: 'Нагрузка растит форму — так держать',
+    fbPeaking: 'Пик формы — можно целиться в старт',
+    fbMaintaining: 'Форма держится — объём стабилен',
+    fbRecovery: 'Идёт восстановление — не спеши с объёмом',
+    fbUnproductive: 'Форма не растёт — пересмотри восстановление',
+    fbOverreaching: 'Нагрузка выше меры — нужен отдых',
+    fbDetraining: 'Форма падает — пора добавить нагрузку',
+    fbStrained: 'Перенапряжение — снизь интенсивность',
+  },
+}
 
 function readGarmin() {
   try { const s = localStorage.getItem('albert-garmin-live'); return s ? JSON.parse(s) : null } catch { return null }
@@ -17,14 +65,18 @@ function readGarmin() {
 const clean = s => (s != null && !/^[A-Z0-9][A-Z0-9_]{3,}$/.test(String(s).trim())) ? s : null
 const statusColor = k => ({ PRODUCTIVE: 'var(--status-ok)', PEAKING: 'var(--status-ok)', MAINTAINING: 'var(--accent)', RECOVERY: 'var(--status-warn)', UNPRODUCTIVE: 'var(--status-warn)', OVERREACHING: 'var(--status-crit)', DETRAINING: 'var(--status-crit)' }[k] || 'var(--accent)')
 // Запасная фраза по статусу (если backend не прислал текст — приходит кодом)
-const statusFeedback = k => ({ PRODUCTIVE: 'Нагрузка растит форму — так держать', PEAKING: 'Пик формы — можно целиться в старт', MAINTAINING: 'Форма держится — объём стабилен', RECOVERY: 'Идёт восстановление — не спеши с объёмом', UNPRODUCTIVE: 'Форма не растёт — пересмотри восстановление', OVERREACHING: 'Нагрузка выше меры — нужен отдых', DETRAINING: 'Форма падает — пора добавить нагрузку', STRAINED: 'Перенапряжение — снизь интенсивность' }[k] || null)
+const statusFeedback = (k, s) => ({ PRODUCTIVE: s.fbProductive, PEAKING: s.fbPeaking, MAINTAINING: s.fbMaintaining, RECOVERY: s.fbRecovery, UNPRODUCTIVE: s.fbUnproductive, OVERREACHING: s.fbOverreaching, DETRAINING: s.fbDetraining, STRAINED: s.fbStrained }[k] || null)
 const balanceColor = k => ({ OPTIMAL: 'var(--status-ok)', LOW: 'var(--status-warn)', HIGH: 'var(--status-crit)' }[k] || 'var(--accent)')
 const hrvColor = k => ({ BALANCED: 'var(--status-ok)', UNBALANCED: 'var(--status-warn)', LOW: 'var(--status-crit)', POOR: 'var(--status-crit)' }[k] || 'var(--accent)')
-// Уровень словом из числового значения (Garmin не всегда присылает levelRu)
-const enduranceLevel = s => s == null ? null : s >= 9000 ? 'элитный' : s >= 6000 ? 'высокий' : s >= 3000 ? 'средний' : 'базовый'
-const hillLevel = s => s == null ? null : s >= 75 ? 'сильный' : s >= 50 ? 'хороший' : s >= 25 ? 'средний' : 'начальный'
+// Уровень словом из числового значения (Garmin не всегда присылает готовый текст)
+const enduranceLevel = (v, s) => v == null ? null : v >= 9000 ? s.elite : v >= 6000 ? s.high : v >= 3000 ? s.medium : s.base
+const hillLevel = (v, s) => v == null ? null : v >= 75 ? s.strong : v >= 50 ? s.good : v >= 25 ? s.medium : s.beginner
 
 export default function GarminInsights({ garmin }) {
+  const s = useT(STR)
+  const { lang } = useLang()
+  // Готовые русские подписи с бэкенда (statusRu/levelRu) показываем только в русском UI
+  const ruOnly = v => (lang === 'ru' ? clean(v) : null)
   // Гость — расширенные метрики в демо (albert-garmin-live). Реальный — ленивый /insights,
   // чтобы не блокировать основную загрузку заряда тела / стресса.
   const [fetched, setFetched] = useState(null)
@@ -48,25 +100,25 @@ export default function GarminInsights({ garmin }) {
   // Баланс нагрузки по ACWR (острая/хроническая): 0.8–1.3 — оптимальное окно
   const acwr = tl?.ratio
   const loadBal = acwr == null ? null
-    : acwr < 0.8 ? { w: 'малый объём', c: 'var(--status-warn)' }
-    : acwr <= 1.3 ? { w: 'оптимально', c: 'var(--status-ok)' }
-    : acwr <= 1.5 ? { w: 'высоковато', c: 'var(--status-warn)' }
-    : { w: 'перегруз', c: 'var(--status-crit)' }
+    : acwr < 0.8 ? { w: s.lowVolume, c: 'var(--status-warn)' }
+    : acwr <= 1.3 ? { w: s.optimal, c: 'var(--status-ok)' }
+    : acwr <= 1.5 ? { w: s.bitHigh, c: 'var(--status-warn)' }
+    : { w: s.overload, c: 'var(--status-crit)' }
 
   return (
     <div className="gi">
       <div className="gi-head">
-        <span className="gi-title">Показатели Garmin</span>
-        <span className="gi-sub">Расширенные метрики тренировок</span>
+        <span className="gi-title">{s.title}</span>
+        <span className="gi-sub">{s.sub}</span>
       </div>
 
       <div className="gi-grid">
         {/* Training Status — герой */}
         {ts && (
           <div className="gi-tile gi-span2">
-            <div className="gi-cap">Тренировочный статус</div>
-            <div className="gi-status" style={{ color: statusColor(ts.status) }}>{clean(ts.statusRu) || clean(ts.status) || '—'}</div>
-            {(clean(ts.feedback) || statusFeedback(ts.status)) && <div className="gi-status-fb">{clean(ts.feedback) || statusFeedback(ts.status)}</div>}
+            <div className="gi-cap">{s.trainingStatus}</div>
+            <div className="gi-status" style={{ color: statusColor(ts.status) }}>{ruOnly(ts.statusRu) || clean(ts.status) || '—'}</div>
+            {(clean(ts.feedback) || statusFeedback(ts.status, s)) && <div className="gi-status-fb">{clean(ts.feedback) || statusFeedback(ts.status, s)}</div>}
             {ts.vo2Max != null && <div className="gi-chip">VO₂max <b>{ts.vo2Max}</b></div>}
           </div>
         )}
@@ -74,15 +126,15 @@ export default function GarminInsights({ garmin }) {
         {/* Training Load */}
         {tl && (
           <div className="gi-tile gi-span2">
-            <div className="gi-cap">Тренировочная нагрузка</div>
+            <div className="gi-cap">{s.trainingLoad}</div>
             <div className="gi-load-top">
-              <div className="gi-load-num"><span className="gi-big">{tl.acute}</span><span className="gi-mut">острая</span></div>
-              <div className="gi-load-num"><span className="gi-big">{tl.chronic}</span><span className="gi-mut">хроническая</span></div>
+              <div className="gi-load-num"><span className="gi-big">{tl.acute}</span><span className="gi-mut">{s.acute}</span></div>
+              <div className="gi-load-num"><span className="gi-big">{tl.chronic}</span><span className="gi-mut">{s.chronic}</span></div>
               {loadBal && <div className="gi-balance" style={{ color: loadBal.c }}>{loadBal.w}{acwr != null ? ` · ${acwr.toFixed(2)}` : ''}</div>}
             </div>
             {tl.focus && (
               <div className="gi-focus">
-                {[['Низкий аэроб', tl.focus.low, 'var(--status-ok)'], ['Высокий аэроб', tl.focus.high, 'var(--accent)'], ['Анаэроб', tl.focus.anaerobic, 'var(--status-warn)']].map(([lbl, v, c]) => (
+                {[[s.lowAerobic, tl.focus.low, 'var(--status-ok)'], [s.highAerobic, tl.focus.high, 'var(--accent)'], [s.anaerobic, tl.focus.anaerobic, 'var(--status-warn)']].map(([lbl, v, c]) => (
                   <div className="gi-focus-row" key={lbl}>
                     <span className="gi-focus-lbl">{lbl}</span>
                     <div className="gi-bar"><div className="gi-bar-fill" style={{ width: `${v}%`, background: c }} /></div>
@@ -97,13 +149,13 @@ export default function GarminInsights({ garmin }) {
         {/* HRV Status */}
         {hrv && (
           <div className="gi-tile">
-            <div className="gi-cap">Вариабельность пульса (ВЧП)</div>
-            <div className="gi-hrv-num"><span className="gi-big">{hrv.lastNight}</span><span className="gi-mut">мс за ночь</span></div>
-            {clean(hrv.statusRu) && <div className="gi-status-sm" style={{ color: hrvColor(hrv.statusKey) }}>{clean(hrv.statusRu)}</div>}
+            <div className="gi-cap">{s.hrv}</div>
+            <div className="gi-hrv-num"><span className="gi-big">{hrv.lastNight}</span><span className="gi-mut">{s.msPerNight}</span></div>
+            {ruOnly(hrv.statusRu) && <div className="gi-status-sm" style={{ color: hrvColor(hrv.statusKey) }}>{ruOnly(hrv.statusRu)}</div>}
             {hrvPos != null && (
               <div className="gi-hrv-range">
                 <div className="gi-bar"><span className="gi-hrv-marker" style={{ left: `${hrvPos}%` }} /></div>
-                <div className="gi-hrv-cap"><span>{hrv.low}</span><span className="gi-mut">норма ВЧП</span><span>{hrv.high}</span></div>
+                <div className="gi-hrv-cap"><span>{hrv.low}</span><span className="gi-mut">{s.hrvBaseline}</span><span>{hrv.high}</span></div>
               </div>
             )}
           </div>
@@ -112,9 +164,9 @@ export default function GarminInsights({ garmin }) {
         {/* Прогноз забегов */}
         {race && (
           <div className="gi-tile gi-span2">
-            <div className="gi-cap">Прогноз забегов</div>
+            <div className="gi-cap">{s.racePredictions}</div>
             <div className="gi-race">
-              {[['5 км', race.fiveK], ['10 км', race.tenK], ['21.1', race.half], ['42.2', race.marathon]].filter(([, v]) => v).map(([lbl, v]) => (
+              {[[s.k5, race.fiveK], [s.k10, race.tenK], ['21.1', race.half], ['42.2', race.marathon]].filter(([, v]) => v).map(([lbl, v]) => (
                 <div className="gi-race-col" key={lbl}>
                   <span className="gi-race-val">{v}</span>
                   <span className="gi-race-lbl">{lbl}</span>
@@ -127,28 +179,28 @@ export default function GarminInsights({ garmin }) {
         {/* Endurance Score */}
         {endur && (
           <div className="gi-tile">
-            <div className="gi-cap">Выносливость</div>
+            <div className="gi-cap">{s.endurance}</div>
             <div className="gi-big">{endur.score.toLocaleString('ru-RU')}</div>
-            {(clean(endur.levelRu) || enduranceLevel(endur.score)) && <div className="gi-status-sm">{clean(endur.levelRu) || enduranceLevel(endur.score)}</div>}
+            {(ruOnly(endur.levelRu) || enduranceLevel(endur.score, s)) && <div className="gi-status-sm">{ruOnly(endur.levelRu) || enduranceLevel(endur.score, s)}</div>}
           </div>
         )}
 
         {/* Hill Score */}
         {hill && (
           <div className="gi-tile">
-            <div className="gi-cap">Сила на подъёмах</div>
+            <div className="gi-cap">{s.hillStrength}</div>
             <div className="gi-big">{hill.score}</div>
-            {(clean(hill.levelRu) || hillLevel(hill.score)) && <div className="gi-status-sm">{clean(hill.levelRu) || hillLevel(hill.score)}</div>}
+            {(ruOnly(hill.levelRu) || hillLevel(hill.score, s)) && <div className="gi-status-sm">{ruOnly(hill.levelRu) || hillLevel(hill.score, s)}</div>}
           </div>
         )}
 
         {/* Лактатный порог */}
         {lt && (
           <div className="gi-tile">
-            <div className="gi-cap">Лактатный порог</div>
+            <div className="gi-cap">{s.lactateThreshold}</div>
             <div className="gi-lt">
-              {lt.hr != null && <div className="gi-lt-col"><span className="gi-big">{lt.hr}</span><span className="gi-mut">уд/мин</span></div>}
-              {lt.pace && <div className="gi-lt-col"><span className="gi-big">{lt.pace}</span><span className="gi-mut">мин/км</span></div>}
+              {lt.hr != null && <div className="gi-lt-col"><span className="gi-big">{lt.hr}</span><span className="gi-mut">{s.bpm}</span></div>}
+              {lt.pace && <div className="gi-lt-col"><span className="gi-big">{lt.pace}</span><span className="gi-mut">{s.minPerKm}</span></div>}
             </div>
           </div>
         )}
@@ -156,8 +208,8 @@ export default function GarminInsights({ garmin }) {
         {/* Интенсивные минуты */}
         {im && (
           <div className="gi-tile">
-            <div className="gi-cap">Интенсивные минуты · неделя</div>
-            <div className="gi-im"><span className="gi-big">{im.weekly}</span><span className="gi-mut">из {im.goal}</span></div>
+            <div className="gi-cap">{s.intensityMinutes}</div>
+            <div className="gi-im"><span className="gi-big">{im.weekly}</span><span className="gi-mut">{s.outOf} {im.goal}</span></div>
             {imPct != null && <div className="gi-bar gi-bar-lg"><div className="gi-bar-fill" style={{ width: `${imPct}%`, background: imPct >= 100 ? 'var(--status-ok)' : 'var(--accent)' }} /></div>}
           </div>
         )}

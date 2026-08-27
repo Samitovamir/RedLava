@@ -53,7 +53,7 @@ export const SLEEP_STAGES = [
 ]
 
 // Часы:минуты из минут
-export function fmtHm(min) {
+export function fmtHm(min, lang = 'ru') {
   const h = Math.floor(min / 60), m = Math.round(min % 60)
-  return `${h} ч ${m} мин`
+  return lang === 'en' ? `${h}h ${m}m` : `${h} ч ${m} мин`
 }

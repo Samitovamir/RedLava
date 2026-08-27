@@ -3,7 +3,7 @@ import { Brain, X, Sparkles } from 'lucide-react'
 import { useMemoryFacts } from '../context/MemoryContext.jsx'
 import { useT } from '../context/LanguageContext.jsx'
 
-// «Память помощника»: факты и предпочтения об владельце, которые ИИ учитывает всегда.
+// «Память помощника»: факты и предпочтения об пользователе, которые ИИ учитывает всегда.
 // Пополняется вручную здесь или самим ИИ (через команду в чате).
 export default function AssistantMemory() {
   const { facts, addFact, removeFact } = useMemoryFacts()

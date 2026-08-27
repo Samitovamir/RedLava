@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useT } from '../context/LanguageContext.jsx'
+
+const STR = {
+  en: { ai: 'AI', readingMode: 'Reading mode', close: 'Close', findingImages: 'Finding illustrations…', thinking: 'Thinking…', askPlaceholder: 'Ask more about this…', ask: 'Ask' },
+  ru: { ai: 'ИИ', readingMode: 'Режим чтения', close: 'Закрыть', findingImages: 'Подбираю иллюстрации…', thinking: 'Думаю…', askPlaceholder: 'Спросить дальше по этой теме…', ask: 'Спросить' },
+}
 
 /*
   Режим чтения. Отдельное окно поверх сайта (не на весь экран),
@@ -26,6 +32,7 @@ function buildBlocks(text, images = []) {
 }
 
 export default function ReadingOverlay({ open, entries = [], loading, onClose, onAsk }) {
+  const s = useT(STR)
   const [q, setQ] = useState('')
   const scrollRef = useRef(null)
 
@@ -69,10 +76,10 @@ export default function ReadingOverlay({ open, entries = [], loading, onClose, o
           >
             <div className="ro-head">
               <div className="ro-head-left">
-                <span className="ro-badge">ИИ</span>
-                <span className="ro-mode">Режим чтения</span>
+                <span className="ro-badge">{s.ai}</span>
+                <span className="ro-mode">{s.readingMode}</span>
               </div>
-              <button className="ro-close" onClick={onClose} aria-label="Закрыть">
+              <button className="ro-close" onClick={onClose} aria-label={s.close}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                 </svg>
@@ -88,7 +95,7 @@ export default function ReadingOverlay({ open, entries = [], loading, onClose, o
                       ? <h2 className="ro-title">{e.q}</h2>
                       : <div className="ro-followq"><span>{e.q}</span></div>}
                     {e.loadingImages && (
-                      <div className="ro-img-loading"><span className="ro-img-spin" /> Подбираю иллюстрации…</div>
+                      <div className="ro-img-loading"><span className="ro-img-spin" /> {s.findingImages}</div>
                     )}
                     <div className="ro-body">
                       {blocks.map((b, i) =>
@@ -106,18 +113,18 @@ export default function ReadingOverlay({ open, entries = [], loading, onClose, o
                   </article>
                 )
               })}
-              {loading && <div className="ro-thinking"><span className="ro-img-spin" /> Думаю…</div>}
+              {loading && <div className="ro-thinking"><span className="ro-img-spin" /> {s.thinking}</div>}
             </div>
 
             <form className="ro-ask" onSubmit={submit}>
               <input
                 className="ro-ask-input"
-                placeholder="Спросить дальше по этой теме…"
+                placeholder={s.askPlaceholder}
                 value={q}
                 onChange={ev => setQ(ev.target.value)}
                 disabled={loading}
               />
-              <button className="ro-ask-send" type="submit" disabled={!q.trim() || loading} aria-label="Спросить">
+              <button className="ro-ask-send" type="submit" disabled={!q.trim() || loading} aria-label={s.ask}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
                 </svg>

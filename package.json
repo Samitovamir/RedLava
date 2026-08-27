@@ -1,9 +1,9 @@
 {
-  "name": "albert-dashboard",
+  "name": "redlava",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Личный дашборд владельца — расписание, спорт, здоровье, ИИ-помощник",
+  "description": "Personal training and health dashboard — schedule, sport, health, AI assistant",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.37.0",
     "cors": "^2.8.5",

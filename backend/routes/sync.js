@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { kvGet, kvSet } from '../store.js'
 
 /*
-  Синхронизация пользовательских данных между устройствами владельца.
+  Синхронизация пользовательских данных между устройствами пользователя.
   Модель — ОДНОПОЛЬЗОВАТЕЛЬСКАЯ: один общий блоб в KV (`sync:albert:state`), чтобы все
   устройства видели одно и то же. Last-write-wins по updatedAt (без сложного мёржа).
   Гость на демо-данных не синхронизируется.
@@ -12,7 +12,7 @@ const router = Router()
 const KEY = 'sync:albert:state'
 
 router.get('/state', async (req, res) => {
-  if (req.role !== 'albert') return res.json({ ok: true, state: null, updatedAt: 0 })
+  if (req.role !== 'owner') return res.json({ ok: true, state: null, updatedAt: 0 })
   try {
     const blob = await kvGet(KEY)
     res.json({ ok: true, state: blob?.state || null, updatedAt: blob?.updatedAt || 0 })
@@ -22,7 +22,7 @@ router.get('/state', async (req, res) => {
 })
 
 router.put('/state', async (req, res) => {
-  if (req.role !== 'albert') return res.json({ ok: true, skipped: 'guest' })
+  if (req.role !== 'owner') return res.json({ ok: true, skipped: 'guest' })
   const { state, updatedAt } = req.body || {}
   if (!state || typeof state !== 'object') return res.status(400).json({ ok: false, message: 'state required' })
   try {

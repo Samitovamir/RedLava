@@ -2,6 +2,33 @@ import { useState, useEffect } from 'react'
 import { Heart } from 'lucide-react'
 import { Modal } from '../ui'
 import { categoryColor } from '../utils/categoryColor.js'
+import { useT } from '../context/LanguageContext.jsx'
+
+// `L` (labels), не `s` — в этом файле `s` уже занято под сплит
+const STR = {
+  en: {
+    months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+    distance: 'Distance', time: 'Time', pace: 'Pace', speed: 'Speed',
+    avgHr: 'Avg HR', maxHr: 'Max HR', calories: 'Calories', elevation: 'Elevation gain',
+    cadence: 'Cadence', power: 'Power', effect: 'Effect',
+    km: 'km', min: 'min', perKm: '/km', kmh: 'km/h', bpm: 'bpm', kcal: 'kcal', m: 'm',
+    spm: 'spm', watt: 'W', mlKgMin: 'ml/kg/min',
+    avg: 'avg', route: 'Route', loading: 'Loading workout details…',
+    dynamics: 'Distance dynamics', kilometers: 'Kilometers', segments: 'Segments',
+    noCharts: 'No detailed charts in Garmin for this workout.',
+  },
+  ru: {
+    months: ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'],
+    distance: 'Дистанция', time: 'Время', pace: 'Темп', speed: 'Скорость',
+    avgHr: 'Ср. пульс', maxHr: 'Макс. пульс', calories: 'Калории', elevation: 'Набор высоты',
+    cadence: 'Каденс', power: 'Мощность', effect: 'Эффект',
+    km: 'км', min: 'мин', perKm: '/км', kmh: 'км/ч', bpm: 'уд/мин', kcal: 'ккал', m: 'м',
+    spm: 'шаг/мин', watt: 'Вт', mlKgMin: 'мл/кг/мин',
+    avg: 'ср.', route: 'Маршрут', loading: 'Загружаю подробности тренировки…',
+    dynamics: 'Динамика по дистанции', kilometers: 'Километры', segments: 'Отрезки',
+    noCharts: 'Для этой тренировки нет детальных графиков в Garmin.',
+  },
+}
 
 /*
   Подробное окно тренировки (как в Garmin): сводка, карта маршрута,
@@ -10,11 +37,10 @@ import { categoryColor } from '../utils/categoryColor.js'
   Работает для любой тренировки из ленты — нужен workout.id.
 */
 
-function fmtDate(d) {
+function fmtDate(d, L) {
   if (!d) return ''
   const [, m, day] = d.split('-')
-  const months = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек']
-  return `${Number(day)} ${months[Number(m) - 1]}`
+  return `${Number(day)} ${L.months[Number(m) - 1]}`
 }
 
 // Цвет типа тренировки — из палитры категорий темы (--cat-sport-*),
@@ -29,20 +55,20 @@ function typeColor(type = '') {
 }
 
 // Сводные метрики верхней сетки
-function summaryMetrics(w) {
+function summaryMetrics(w, L) {
   const out = []
-  if (w.distanceKm != null) out.push({ k: 'Дистанция', v: w.distanceKm, u: 'км' })
-  if (w.durationMin != null) out.push({ k: 'Время', v: w.durationMin, u: 'мин' })
-  if (w.pace) out.push({ k: 'Темп', v: w.pace, u: '/км' })
-  else if (w.speedKmh != null) out.push({ k: 'Скорость', v: w.speedKmh, u: 'км/ч' })
-  if (w.avgHr != null) out.push({ k: 'Ср. пульс', v: w.avgHr, u: 'уд/мин' })
-  if (w.maxHr != null) out.push({ k: 'Макс. пульс', v: w.maxHr, u: 'уд/мин' })
-  if (w.calories != null) out.push({ k: 'Калории', v: w.calories, u: 'ккал' })
-  if (w.elevationGain != null) out.push({ k: 'Набор высоты', v: w.elevationGain, u: 'м' })
-  if (w.cadence != null) out.push({ k: 'Каденс', v: w.cadence, u: 'шаг/мин' })
-  if (w.avgPower != null) out.push({ k: 'Мощность', v: w.avgPower, u: 'Вт' })
-  if (w.vo2Max != null) out.push({ k: 'VO₂max', v: w.vo2Max, u: 'мл/кг/мин', c: 'var(--accent)' })
-  if (w.trainingEffect != null) out.push({ k: 'Эффект', v: w.trainingEffect, u: w.trainingLabel || '', c: 'var(--accent)' })
+  if (w.distanceKm != null) out.push({ k: L.distance, v: w.distanceKm, u: L.km })
+  if (w.durationMin != null) out.push({ k: L.time, v: w.durationMin, u: L.min })
+  if (w.pace) out.push({ k: L.pace, v: w.pace, u: L.perKm })
+  else if (w.speedKmh != null) out.push({ k: L.speed, v: w.speedKmh, u: L.kmh })
+  if (w.avgHr != null) out.push({ k: L.avgHr, v: w.avgHr, u: L.bpm })
+  if (w.maxHr != null) out.push({ k: L.maxHr, v: w.maxHr, u: L.bpm })
+  if (w.calories != null) out.push({ k: L.calories, v: w.calories, u: L.kcal })
+  if (w.elevationGain != null) out.push({ k: L.elevation, v: w.elevationGain, u: L.m })
+  if (w.cadence != null) out.push({ k: L.cadence, v: w.cadence, u: L.spm })
+  if (w.avgPower != null) out.push({ k: L.power, v: w.avgPower, u: L.watt })
+  if (w.vo2Max != null) out.push({ k: 'VO₂max', v: w.vo2Max, u: L.mlKgMin, c: 'var(--accent)' })
+  if (w.trainingEffect != null) out.push({ k: L.effect, v: w.trainingEffect, u: w.trainingLabel || '', c: 'var(--accent)' })
   return out
 }
 
@@ -53,6 +79,7 @@ function avgOf(arr) {
 }
 
 function LineChart({ xs, ys, color, area = true, unit = '', label, height = 120, yFormat = v => Math.round(v) }) {
+  const L = useT(STR)
   const W = 600, H = height, pad = 6
   const valid = ys.filter(v => v != null && !Number.isNaN(v))
   if (!valid.length) return null
@@ -90,7 +117,7 @@ function LineChart({ xs, ys, color, area = true, unit = '', label, height = 120,
       <div className="wm-chart-head">
         <span className="wm-chart-label" style={{ color }}>{label}</span>
         <span className="wm-chart-range muted">
-          {avg != null && <>ср. <b style={{ color: 'var(--foreground)' }}>{yFormat(avg)}</b> · </>}
+          {avg != null && <>{L.avg} <b style={{ color: 'var(--foreground)' }}>{yFormat(avg)}</b> · </>}
           {yFormat(yMin)}–{yFormat(yMax)} {unit}
         </span>
       </div>
@@ -107,14 +134,14 @@ function LineChart({ xs, ys, color, area = true, unit = '', label, height = 120,
         </svg>
         {avgPct != null && (
           <div className="wm-avgline" style={{ top: `${avgPct}%` }}>
-            <span className="wm-avgline-tag">ср. {yFormat(avg)}</span>
+            <span className="wm-avgline-tag">{L.avg} {yFormat(avg)}</span>
           </div>
         )}
         <span className="wm-y wm-y-max muted">{yFormat(yMax)}</span>
         <span className="wm-y wm-y-min muted">{yFormat(yMin)}</span>
       </div>
       {totalKm != null && (
-        <div className="wm-xaxis muted"><span>0 км</span><span>{totalKm.toFixed(1)} км</span></div>
+        <div className="wm-xaxis muted"><span>0 {L.km}</span><span>{totalKm.toFixed(1)} {L.km}</span></div>
       )}
     </div>
   )
@@ -124,6 +151,7 @@ function LineChart({ xs, ys, color, area = true, unit = '', label, height = 120,
 const fmtDur = sec => `${Math.floor(sec / 60)}:${String(Math.round(sec % 60)).padStart(2, '0')}`
 
 function SplitsChart({ splits, color }) {
+  const L = useT(STR)
   if (!splits.length) return null
   const speeds = splits.map(s => s.speedKmh || 0)
   const durs = splits.map(s => s.durationSec || 0)
@@ -145,7 +173,7 @@ function SplitsChart({ splits, color }) {
               <span className="wm-split-pace">{main}</span>
             </div>
             {s.avgHr != null && <span className="wm-split-hr"><Heart size={11} strokeWidth={2} /> {s.avgHr}</span>}
-            {s.elevationGain != null && <span className="wm-split-el muted">{s.elevationGain > 0 ? '+' : ''}{s.elevationGain} м</span>}
+            {s.elevationGain != null && <span className="wm-split-el muted">{s.elevationGain > 0 ? '+' : ''}{s.elevationGain} {L.m}</span>}
           </div>
         )
       })}
@@ -155,6 +183,7 @@ function SplitsChart({ splits, color }) {
 
 // ── Карта маршрута из GPS ───────────────────────────────────────────
 function RouteMap({ route, color }) {
+  const L = useT(STR)
   if (!route?.length) return null
   const lats = route.map(p => p[0]), lons = route.map(p => p[1])
   const minLat = Math.min(...lats), maxLat = Math.max(...lats)
@@ -173,7 +202,7 @@ function RouteMap({ route, color }) {
   const start = route[0], end = route[route.length - 1]
   return (
     <div className="card wm-map">
-      <div className="card-title">Маршрут</div>
+      <div className="card-title">{L.route}</div>
       <svg viewBox={`0 0 ${W} ${H}`} className="wm-map-svg">
         <path d={d} fill="none" stroke={color} strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
         <circle cx={x(start[1])} cy={y(start[0])} r="5" fill="var(--green)" stroke="var(--bg-card)" strokeWidth="2" />
@@ -184,6 +213,7 @@ function RouteMap({ route, color }) {
 }
 
 export default function WorkoutModal({ workout, onClose }) {
+  const L = useT(STR)
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const accent = typeColor(workout?.type)
@@ -222,11 +252,11 @@ export default function WorkoutModal({ workout, onClose }) {
           <div className="wm-header">
             <div className="wm-badge" style={{ color: accent, background: `color-mix(in srgb, ${accent} 16%, transparent)` }}>{workout.label}</div>
             <h2 className="wm-title">{workout.title}</h2>
-            <span className="wm-date muted">{fmtDate(workout.date)}</span>
+            <span className="wm-date muted">{fmtDate(workout.date, L)}</span>
           </div>
 
           <div className="wm-summary">
-            {summaryMetrics(workout).map(m => (
+            {summaryMetrics(workout, L).map(m => (
               <div key={m.k} className="wm-metric">
                 <span className="wm-metric-value" style={m.c ? { color: m.c } : undefined}>{m.v}</span>
                 <span className="wm-metric-unit muted">{m.u}</span>
@@ -235,7 +265,7 @@ export default function WorkoutModal({ workout, onClose }) {
             ))}
           </div>
 
-          {loading && <div className="wm-loading muted">Загружаю подробности тренировки…</div>}
+          {loading && <div className="wm-loading muted">{L.loading}</div>}
 
           {!loading && (
             <>
@@ -243,7 +273,7 @@ export default function WorkoutModal({ workout, onClose }) {
 
               {(series?.hr || series?.elevation || series?.power || series?.cadence) && (
                 <div className="card wm-charts">
-                  <div className="card-title">Динамика по дистанции</div>
+                  <div className="card-title">{L.dynamics}</div>
                   {series.hr && <LineChart xs={kmAxis} ys={series.hr} color="var(--red)" unit="уд/мин" label="Пульс" />}
                   {series.elevation && <LineChart xs={kmAxis} ys={series.elevation} color="var(--green)" unit="м" label="Высота" />}
                   {series.power && <LineChart xs={kmAxis} ys={series.power} color="var(--orange)" unit="Вт" label="Мощность" />}
@@ -253,13 +283,13 @@ export default function WorkoutModal({ workout, onClose }) {
 
               {splits.length > 0 && splits.some(s => s.pace || s.speedKmh || s.durationSec) && (
                 <div className="card wm-splits-card">
-                  <div className="card-title">{splits.some(s => s.distanceKm) ? 'Километры' : 'Отрезки'}</div>
+                  <div className="card-title">{splits.some(s => s.distanceKm) ? L.kilometers : L.segments}</div>
                   <SplitsChart splits={splits} color={paceColor} />
                 </div>
               )}
 
               {!route && !series && splits.length === 0 && (
-                <div className="wm-loading muted">Для этой тренировки нет детальных графиков в Garmin.</div>
+                <div className="wm-loading muted">{L.noCharts}</div>
               )}
             </>
           )}

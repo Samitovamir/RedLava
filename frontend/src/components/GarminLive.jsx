@@ -237,7 +237,7 @@ export default function GarminLive({ embedded = false, listsOnly = false }) {
   // Плановые тренировки: грузим и СРАЗУ добавляем те, у которых уже есть время.
   // Гостю бэкенд планы не отдаёт — показываем демо-планы.
   useEffect(() => {
-    if (isGuest()) { setPlanned(demoPlanned()); return }
+    if (isGuest()) { setPlanned(demoPlanned(lang)); return }
     fetch('/api/garmin/planned').then(r => r.json()).then(d => {
       const list = d?.planned || []
       setPlanned(list)
@@ -324,7 +324,7 @@ export default function GarminLive({ embedded = false, listsOnly = false }) {
         </motion.div>
       )}
 
-      {/* Виджеты «Калории» и «План/факт» (просьба владельца) */}
+      {/* Виджеты «Калории» и «План/факт» (просьба пользователя) */}
       {!listsOnly && (hasCalData || hasPlanFact) && (
         <div className="gl-summary">
           {hasCalData && (

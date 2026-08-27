@@ -255,7 +255,7 @@ export default function MetricsView() {
             <div className="sleep-stages">
               <div className="stage-bar">
                 {stages.map(s => s.min > 0 && (
-                  <div key={s.key} className="stage-seg" style={{ width: `${s.min / totalSleepMin * 100}%`, background: s.color }} title={`${s.label} — ${fmtHm(s.min)}`} />
+                  <div key={s.key} className="stage-seg" style={{ width: `${s.min / totalSleepMin * 100}%`, background: s.color }} title={`${s.label} — ${fmtHm(s.min, lang)}`} />
                 ))}
               </div>
               <div className="stage-legend">
@@ -263,7 +263,7 @@ export default function MetricsView() {
                   <div key={s.key} className="stage-leg">
                     <span className="stage-dot" style={{ background: s.color }} />
                     <span className="stage-leg-lbl">{s.label}</span>
-                    <span className="stage-leg-val">{fmtHm(s.min)}</span>
+                    <span className="stage-leg-val">{fmtHm(s.min, lang)}</span>
                   </div>
                 ))}
               </div>

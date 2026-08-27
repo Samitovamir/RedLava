@@ -2,43 +2,23 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import AuthGate from './components/AuthGate.jsx'
-import TasksHelper from './pages/TasksHelper.jsx'
 import { LanguageProvider } from './context/LanguageContext.jsx'
 import { installAuthFetch } from './api/authFetch.js'
 import { applyTheme } from './theme.js'
-import { TASKS_ENABLED } from './config/features.js'
 import './index.css'
 
 // Применяем эффективную тему до рендера (учитывает мобильный + системную тему телефона)
 applyTheme()
 
-// Личное приложение помощника (/tasks/h) — публичная страница БЕЗ AuthGate и без тяжёлого
-// App (шеллы/sync/провайдеры): помощник входит своим PIN, а не паролем владельца.
-// Архивировано флагом TASKS_ENABLED вместе с разделом «Задачи»: при false страница
-// недоступна (редирект на /), код TasksHelper остаётся на месте — возврат флагом.
-const wantsHelper = window.location.pathname.startsWith('/tasks/h')
-const helperArchived = wantsHelper && !TASKS_ENABLED
-if (helperArchived) window.location.replace('/')
-const isHelperApp = wantsHelper && TASKS_ENABLED
-
-// Глобальный инжектор токена дашборда — ТОЛЬКО для приложения владельца. В приложении
-// помощника НЕ ставим его: у помощника своя PIN-авторизация, а подмешанный из localStorage
-// токен владельца/гостя ломает вход (гостевой токен → бэкенд отдаёт demo-заглушку без token →
-// «Не удалось сохранить пароль»). Помощник сам шлёт Bearer со своей PIN-сессией где нужно.
-if (!isHelperApp) installAuthFetch()
-
-// Приложение помощника — самостоятельная прокручиваемая страница (не дашборд со своим
-// внутренним скролл-контейнером). Помечаем html, чтобы вернуть прокрутку документу (см. index.css).
-if (isHelperApp) document.documentElement.setAttribute('data-helper', '')
+// Глобальный инжектор токена — добавляет Bearer к запросам /api/*
+installAuthFetch()
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <LanguageProvider>
-      {helperArchived ? null : isHelperApp ? <TasksHelper /> : (
-        <AuthGate>
-          <App />
-        </AuthGate>
-      )}
+      <AuthGate>
+        <App />
+      </AuthGate>
     </LanguageProvider>
   </React.StrictMode>
 )

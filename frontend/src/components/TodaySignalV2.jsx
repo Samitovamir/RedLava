@@ -1,11 +1,8 @@
 /*
-  «Статус» — НОВАЯ версия (в разработке). Заполняем вместе по порядку доменами:
-  график слева — текстовая ИИ-мысль справа.
-  Порядок (из наброска владельца): Стресс · Расписание · Спорт · Здоровье · Питание.
-
-  ГОТОВО: «Стресс» — полукруглый гейдж с зонами+маркером (StressArc) слева, короткая
-  мысль (Т1) справа. Дальше добавляем «Расписание».
-  Только CSS-переменные, тёмная тема, тексты на русском.
+  «Статус» — сводка дня по доменам: гейдж слева, персональный ИИ-совет справа.
+  Порядок доменов: Стресс · Расписание · Спорт · Здоровье · Питание.
+  Совет по каждому домену приходит от ИИ (useAiSummary), с детерминированным
+  фолбэком на пороги, если ИИ недоступен. Только CSS-переменные, тёмная тема.
 */
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
@@ -24,19 +21,78 @@ import { demoPlanned } from '../utils/demo.js'
 import { loadSourcePref, resolveSource } from '../utils/healthSource.js'
 import { useAiSummary } from '../hooks/useAiSummary.js'
 import { useMemoryFacts } from '../context/MemoryContext.jsx'
-import { useLang } from '../context/LanguageContext.jsx'
+import { useLang, useT } from '../context/LanguageContext.jsx'
 import { buildSignalData, DOMAIN_ADVICE_CONTEXT, parseAdvice } from '../utils/daySignal.js'
+
+// Строки компонента. Чистые функции ниже принимают нужную половину словаря (`s`),
+// потому что они объявлены вне компонента и до хуков не дотягиваются.
+const STR = {
+  en: {
+    eyebrow: 'Status',
+    stress: 'Stress', schedule: 'Schedule', health: 'Health', nutrition: 'Nutrition',
+    sportReady: 'Sport · training readiness', sportPlan: 'Sport · plan vs actual',
+    calories: 'calories', stressSource: 'Garmin · past hour', bodyBattery: 'Garmin · body battery',
+    dayFree: 'free', dayBusier: 'busier', dayCalmer: 'calmer', dayUsual: 'as usual',
+    allEventsPassed: 'All events done', next: 'Next',
+    readyHigh: 'high', readyMid: 'moderate', readyLow: 'low',
+    km: 'km', min: 'min', workout: 'Workout',
+    stressNoData: 'No stress data yet.',
+    stressLow: 'Stress is low — a good window for focused work or a quality session.',
+    stressHigh: 'Stress is elevated — ease off and take a break before training.',
+    schedFree: 'The day is open — clear a backlog item or add training volume.',
+    schedBusy: 'Packed day — leave buffers between items and don’t squeeze in a hard session.',
+    schedNormal: 'Steady day — you have room without rushing.',
+    readyNoData: 'No readiness data yet.',
+    readyHighAdv: 'Readiness is high — a key session is on the table.',
+    readyMidAdv: 'Readiness is moderate — a steady load is fine, skip the maximum.',
+    readyLowAdv: 'Readiness is low — go easy aerobic or rest today.',
+    healthNoData: 'Recovery data not collected yet.',
+    healthSurplus: 'You have recovery in reserve — you can take load without overreaching.',
+    healthDeficit: 'Load is outrunning recovery — unload today and catch up on sleep.',
+    healthBalanced: 'Recovery and load are level — hold your usual pace.',
+    nutEmpty: 'Log your meals to see the day’s balance.',
+    nutOver: 'Target is met — keep the evening meal light and protein-led.',
+    nutLeft: (n) => `${n} kcal left — lean on protein for the remaining meals.`,
+    planAhead: 'Session still ahead — hold the target, don’t burn it early.',
+    planOver: 'Plan exceeded — don’t add more, let the body recover.',
+    planDone: 'Plan closed — recovery from here.',
+    planShort: 'A little short of plan — top up later or call it done.',
+  },
+  ru: {
+    eyebrow: 'Статус',
+    stress: 'Стресс', schedule: 'Расписание', health: 'Здоровье', nutrition: 'Питание',
+    sportReady: 'Спорт · готовность к тренировкам', sportPlan: 'Спорт · план/факт',
+    calories: 'калории', stressSource: 'Garmin · за час', bodyBattery: 'Garmin · заряд тела',
+    dayFree: 'свободно', dayBusier: 'плотнее', dayCalmer: 'спокойнее', dayUsual: 'как обычно',
+    allEventsPassed: 'События позади', next: 'Дальше',
+    readyHigh: 'высокая', readyMid: 'средняя', readyLow: 'низкая',
+    km: 'км', min: 'мин', workout: 'Тренировка',
+    stressNoData: 'Данных о стрессе пока нет.',
+    stressLow: 'Стресс низкий — удачное окно для дел на концентрацию или качественной тренировки.',
+    stressHigh: 'Стресс повышен — сбавь темп и сделай паузу перед нагрузкой.',
+    schedFree: 'День свободный — закрой отложенное или добавь тренировочный объём.',
+    schedBusy: 'День плотный — заложи буфер между делами, тяжёлую тренировку не ставь впритык.',
+    schedNormal: 'День размеренный — успеваешь без спешки.',
+    readyNoData: 'Данных о готовности пока нет.',
+    readyHighAdv: 'Готовность высокая — можно провести ключевую тренировку.',
+    readyMidAdv: 'Готовность средняя — умеренная нагрузка по силам, без максимума.',
+    readyLowAdv: 'Готовность низкая — сегодня лучше лёгкая аэробная или отдых.',
+    healthNoData: 'Данные восстановления пока не собраны.',
+    healthSurplus: 'Есть запас восстановления — можно взять нагрузку без риска перебора.',
+    healthDeficit: 'Нагрузка обгоняет восстановление — сегодня разгрузись и добери сон.',
+    healthBalanced: 'Восстановление и нагрузка вровень — держи привычный темп.',
+    nutEmpty: 'Залогируй приёмы, чтобы видеть баланс дня.',
+    nutOver: 'Норма закрыта — вечером лучше лёгкий белковый приём.',
+    nutLeft: (n) => `Осталось ${n} ккал — сделай упор на белок в оставшихся приёмах.`,
+    planAhead: 'Тренировка впереди — держи цель, но не выкладывайся заранее.',
+    planOver: 'План перевыполнен — не добавляй лишнего, дай телу восстановиться.',
+    planDone: 'План закрыт — дальше восстановление.',
+    planShort: 'До плана немного осталось — добери объём позже или засчитай как есть.',
+  },
+}
 
 function readLS(key) {
   try { const s = localStorage.getItem(key); return s ? JSON.parse(s) : null } catch { return null }
-}
-
-// Русское склонение по числу (1 событие / 2 события / 5 событий)
-function plural(n, one, few, many) {
-  const m10 = n % 10, m100 = n % 100
-  if (m10 === 1 && m100 !== 11) return one
-  if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return few
-  return many
 }
 
 const toMin = h => { const m = /^(\d{1,2}):(\d{2})/.exec(h || ''); return m ? +m[1] * 60 + +m[2] : null }
@@ -45,121 +101,86 @@ const toMin = h => { const m = /^(\d{1,2}):(\d{2})/.exec(h || ''); return m ? +m
 // Базовая линия — среднее число событий в день по ПРОШЛЫМ дням из календаря (реальная
 // история). Шкала калибруется так, что обычный день ≈ середина (50): маркер левее —
 // спокойнее обычного, правее — плотнее. Чем больше истории, тем точнее база.
-function scheduleData(events) {
+function scheduleData(events, s) {
   const now = mskNow()
   const p = n => String(n).padStart(2, '0')
   const today = `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`
   const nowMin = now.getHours() * 60 + now.getMinutes()
   const todays = events.filter(e => e.date === today).map(e => ({ start: e.start, title: e.title, m: toMin(e.start) }))
   const count = todays.length
-  const passed = todays.filter(e => e.m != null && e.m <= nowMin).length
   const next = todays.filter(e => e.m != null && e.m > nowMin).sort((a, b) => a.m - b.m)[0] || null
 
   // База: среднее событий/день по ПРОШЛЫМ дням (исключаем сегодня и будущее)
   const counts = {}
   for (const e of events) if (e.date && e.date < today) counts[e.date] = (counts[e.date] || 0) + 1
   const pastDays = Object.keys(counts)
-  const baseline = pastDays.length >= 3 ? pastDays.reduce((s, d) => s + counts[d], 0) / pastDays.length : 2
+  const baseline = pastDays.length >= 3 ? pastDays.reduce((acc, d) => acc + counts[d], 0) / pastDays.length : 2
   // Обычный день (=baseline) попадает на 50; 0 → 0; 2×baseline и выше → 100
   const loadPct = Math.min(100, Math.round(count / (Math.max(1, baseline) * 2) * 100))
   const ratio = baseline > 0 ? count / baseline : (count ? 2 : 0)
 
-  let lead, word
-  if (count === 0) { lead = 'Свободный день'; word = 'свободно' }
-  else if (ratio > 1.4) { lead = 'Насыщенный день'; word = 'плотнее' }
-  else if (ratio < 0.6) { lead = 'Разгруженный день'; word = 'спокойнее' }
-  else { lead = 'Размеренный день'; word = 'как обычно' }
+  // Одно слово под числом на гейдже: насколько день плотнее/свободнее обычного
+  const word = count === 0 ? s.dayFree
+    : ratio > 1.4 ? s.dayBusier
+    : ratio < 0.6 ? s.dayCalmer
+    : s.dayUsual
 
   const title = next?.title ? (next.title.length > 26 ? next.title.slice(0, 25) + '…' : next.title) : null
   let nextLine
   if (count === 0) nextLine = null
   else if (next) nextLine = { time: next.start, title }
-  else nextLine = 'События позади'
-
-  // Описательная фраза дня (без следующего события — оно отдельной строкой снизу)
-  let daySentence
-  if (count === 0) daySentence = 'Сегодня событий нет — день свободен'
-  else {
-    const chr = ratio > 1.4 ? 'день довольно плотный' : ratio < 0.6 ? 'день относительно свободный' : 'в привычном ритме'
-    daySentence = `Сегодня ${count} ${plural(count, 'событие', 'события', 'событий')}, ${chr}`
-  }
+  else nextLine = s.allEventsPassed
 
   const color = loadPct >= 66 ? 'var(--status-crit)' : loadPct >= 33 ? 'var(--status-warn)' : 'var(--status-ok)'
-  return { count, passed, loadPct, lead, word, color, todays, next, nowMin, nextLine, daySentence }
-}
-
-function stressWord(v) {
-  if (v <= 25) return 'покой'
-  if (v <= 50) return 'низкий'
-  if (v <= 75) return 'средний'
-  return 'высокий'
-}
-
-// Т1 — короткая мысль: выразительная главная фраза + поддержка
-function stressText(v, word) {
-  if (v == null) return { lead: 'Стресс пока не известен', sub: 'Garmin ещё не прислал замеры за последний час.' }
-  const calm = v <= 50
-  return calm
-    ? { lead: 'Фон спокойный', sub: `${v} из 100 — ${word}. День можно вести в обычном темпе.` }
-    : { lead: 'Есть напряжение', sub: `${v} из 100 — ${word}. Стоит сбавить обороты.` }
+  return { count, loadPct, word, color, todays, next, nowMin, nextLine }
 }
 
 const r1 = x => Math.round(x * 10) / 10
-// Garmin иногда отдаёт код-энум вместо текста (напр. LOW_RT_MOD_OR_HIGH) — не показываем его
-const isEnum = s => typeof s === 'string' && /^[A-Z0-9][A-Z0-9_]{3,}$/.test(s.trim())
 
 // План/факт тренировки: план из TrainingPeaks/Garmin на сегодня + факт выполнения.
 // Нет плановой тренировки на сегодня → null (строка не показывается).
-function sportPlanFact(planned, garmin, todayKey) {
+function sportPlanFact(planned, garmin, todayKey, s) {
   const pToday = (planned || []).filter(w => w.date === todayKey)
   if (!pToday.length) return null
   const useDist = pToday.some(w => w.distanceKm > 0)
-  const planVal = pToday.reduce((s, w) => s + (useDist ? (w.distanceKm || 0) : (w.durationMin || 0)), 0)
+  const planVal = pToday.reduce((acc, w) => acc + (useDist ? (w.distanceKm || 0) : (w.durationMin || 0)), 0)
   if (planVal <= 0) return null
   const dToday = (garmin?.workouts || []).filter(w => w.date === todayKey)
-  const factVal = dToday.reduce((s, w) => s + (useDist ? (w.distanceKm || 0) : (w.durationMin || 0)), 0)
+  const factVal = dToday.reduce((acc, w) => acc + (useDist ? (w.distanceKm || 0) : (w.durationMin || 0)), 0)
   const pct = Math.round(factVal / planVal * 100)
-  const unit = useDist ? 'км' : 'мин'
+  const unit = useDist ? s.km : s.min
   const goalText = `${r1(planVal)} ${unit}`
-  const title = pToday[0].title || 'Тренировка'
-  const time = pToday[0].time || null
-  let lead
-  if (pct <= 0) lead = 'Тренировка впереди'
-  else if (pct > 100) lead = `Перевыполнено ${pct}%`
-  else if (pct >= 100) lead = 'План выполнен'
-  else lead = `Выполнено ${pct}%`
-  const sub = pct <= 0
-    ? `${title} · цель ${goalText}${time ? ` к ${time}` : ''}`
-    : `${title} · ${r1(factVal)} из ${r1(planVal)} ${unit}`
-  return { pct, goalText, lead, sub }
+  return { pct, goalText }
 }
 
 // Готовность к тренировкам: Garmin Training Readiness (0–100), иначе — Whoop recovery.
-// Выше — лучше (в отличие от стресса). Уровень/цвет/лид по порогам.
-function readyMeta(v) {
+// Выше — лучше (в отличие от стресса). Уровень и цвет по порогам.
+function readyMeta(v, s) {
   if (v == null) return null
-  if (v >= 75) return { w: 'высокая', c: 'var(--status-ok)', lead: 'Готов к нагрузке' }
-  if (v >= 50) return { w: 'средняя', c: 'var(--status-warn)', lead: 'Умеренная готовность' }
-  return { w: 'низкая', c: 'var(--status-crit)', lead: 'Нужно восстановление' }
+  if (v >= 75) return { w: s.readyHigh, c: 'var(--status-ok)' }
+  if (v >= 50) return { w: s.readyMid, c: 'var(--status-warn)' }
+  return { w: s.readyLow, c: 'var(--status-crit)' }
 }
 
 export default function TodaySignalV2() {
   const isMobile = useIsMobile()
   const gaugeSize = isMobile ? 132 : 156
+  const s = useT(STR)
+  const { lang } = useLang()
   const { events } = useEvents()
-  const sched = scheduleData(events)
+  const sched = scheduleData(events, s)
   const garmin = readLS('albert-garmin-live')
   const whoop = readLS('albert-whoop-live')
 
   // План тренировок (TrainingPeaks/Garmin): гость → демо, иначе — с бэкенда
-  const [planned, setPlanned] = useState(() => (isGuest() ? demoPlanned() : []))
+  const [planned, setPlanned] = useState(() => (isGuest() ? demoPlanned(lang) : []))
   useEffect(() => {
-    if (isGuest()) { setPlanned(demoPlanned()); return }
+    if (isGuest()) { setPlanned(demoPlanned(lang)); return }
     let ok = true
     fetch('/api/garmin/planned').then(r => r.json()).then(d => { if (ok) setPlanned(d?.planned || []) }).catch(() => {})
     return () => { ok = false }
   }, [])
-  const planFact = sportPlanFact(planned, garmin, mskDateKey())
+  const planFact = sportPlanFact(planned, garmin, mskDateKey(), s)
 
   // Здоровье: восстановление + нагрузка. Источник авто (Whoop→Garmin), как на вкладке.
   // Whoop → recovery + strain(0–21). Garmin (без Whoop) → Body Battery: заряд(восст.) + потрачено(нагрузка), 0–100.
@@ -169,16 +190,11 @@ export default function TodaySignalV2() {
     recovery = whoop.recovery ?? null; strain = whoop.strain ?? null; strainMax = whoop.strainMax || 21; hSourceLabel = 'Whoop'
   } else if (hSource === 'garmin') {
     const bb = garmin?.bodyBattery
-    recovery = bb?.current ?? null; strain = bb?.drained ?? null; strainMax = 100; hSourceLabel = 'Garmin · заряд тела'
+    recovery = bb?.current ?? null; strain = bb?.drained ?? null; strainMax = 100; hSourceLabel = s.bodyBattery
   }
   const hasHealth = recovery != null || strain != null
   const loadPct = strain != null ? strain / strainMax * 100 : null
   const balDiff = (recovery != null && loadPct != null) ? recovery - loadPct : null
-  const healthLead = balDiff == null ? 'Данные Whoop' : balDiff >= 15 ? 'Есть запас' : balDiff <= -15 ? 'Организм под нагрузкой' : 'В балансе'
-  const healthSub = balDiff == null ? 'Восстановление и нагрузка пока не собраны'
-    : balDiff >= 15 ? 'Восстановление выше нагрузки — тело готово к объёму'
-    : balDiff <= -15 ? 'Нагрузка выше восстановления — стоит разгрузиться'
-    : 'Восстановление и нагрузка примерно вровень'
 
   // Питание: калории (съедено/цель) + FODMAP дня (только если диета включена)
   const nut = (() => { try { return nutritionToday() } catch { return null } })()
@@ -196,32 +212,20 @@ export default function TodaySignalV2() {
       for (const e of entries) { const bnd = entryFodmap(e)?.band; if (bnd === 'high') hi++; else if (bnd === 'mod') mo++; else lo++ }
       const band = hi ? 'high' : mo ? 'mod' : 'low'
       const val = band === 'high' ? 84 : band === 'mod' ? 50 : 16   // позиция маркера на шкале низкий→высокий
-      const m = fodmapMeta(band)
+      const m = fodmapMeta(band, lang)
       return { band, val, label: m.label, color: m.color }
     } catch { return null }
   })()
-  const nutLead = !nutOk ? 'Питание' : nut.eaten > (nut.target?.kcal || 0) ? 'Небольшой перебор' : nut.eaten < (nut.target?.kcal || 0) * 0.2 ? 'День только начался' : `Осталось ${nut.remaining} ккал`
-  const nutSub = !nutOk ? 'Дневник питания пуст' : `Съедено ${nut.eaten} из ${nut.target.kcal} ккал${fod?.band ? ` · FODMAP ${fod.label.toLowerCase()}` : ''}`
-
   // Спорт · готовность
   const rd = garmin?.readiness
   const readyScore = rd?.score ?? whoop?.recovery ?? null
-  const readySource = rd ? 'Garmin · готовность' : (whoop?.recovery != null ? 'Whoop · восстановление' : null)
-  const rm = readyMeta(readyScore)
-  const rdFeedback = rd?.feedback && !isEnum(rd.feedback) ? rd.feedback : null   // не показываем код-энум
-  const readySub = rdFeedback
-    || (readyScore == null ? 'Готовность пока не известна'
-      : readyScore >= 66 ? 'Тело восстановилось — можно давать нагрузку'
-      : readyScore >= 33 ? 'Восстановление ещё идёт — умеренная нагрузка'
-      : 'Организму нужен отдых, нагрузку лучше отложить')
+  const rm = readyMeta(readyScore, s)
   const str = garmin?.stress
   const value = str ? (str.recent ?? str.current ?? str.avg ?? null) : null
-  const word = value != null ? stressWord(value) : null
-  const fresh = 'Garmin · за час'   // стресс приходит из Garmin (у Whoop шкалы стресса нет)
+  const fresh = s.stressSource   // стресс приходит из Garmin (у Whoop шкалы стресса нет)
 
   // ── Персональные ИИ-советы по доменам (что делать), с детерминированным фолбэком ──
   const { facts } = useMemoryFacts()
-  const { lang } = useLang()
   const adviceSummary = useAiSummary({
     id: 'status-advice-v2',
     context: DOMAIN_ADVICE_CONTEXT + (lang === 'en' ? '\nReply in English; keep field labels in Russian (Стресс/Расписание/Спорт/Здоровье/Питание).' : ''),
@@ -230,12 +234,12 @@ export default function TodaySignalV2() {
     fallback: ''
   })
   const ai = adviceSummary.text ? parseAdvice(adviceSummary.text) : {}
-  const stressAdvice = ai.стресс || (value == null ? 'Данных о стрессе пока нет.' : value <= 50 ? 'Стресс низкий — удачное окно для дел на концентрацию или качественной тренировки.' : 'Стресс повышен — сбавь темп и сделай паузу перед нагрузкой.')
-  const schedAdvice = ai.расписание || (sched.count === 0 ? 'День свободный — закрой отложенное или добавь тренировочный объём.' : sched.loadPct >= 66 ? 'День плотный — заложи буфер между делами, тяжёлую тренировку не ставь впритык.' : 'День размеренный — успеваешь без спешки.')
-  const readyAdvice = ai.спорт || (readyScore == null ? 'Данных о готовности пока нет.' : readyScore >= 75 ? 'Готовность высокая — можно провести ключевую тренировку.' : readyScore >= 50 ? 'Готовность средняя — умеренная нагрузка по силам, без максимума.' : 'Готовность низкая — сегодня лучше лёгкая аэробная или отдых.')
-  const healthAdvice = ai.здоровье || (balDiff == null ? 'Данные восстановления пока не собраны.' : balDiff >= 15 ? 'Есть запас восстановления — можно взять нагрузку без риска перебора.' : balDiff <= -15 ? 'Нагрузка обгоняет восстановление — сегодня разгрузись и добери сон.' : 'Восстановление и нагрузка вровень — держи привычный темп.')
-  const nutAdvice = ai.питание || (!nutOk ? 'Залогируй приёмы, чтобы видеть баланс дня.' : nut.eaten > (nut.target?.kcal || 0) ? 'Норма закрыта — вечером лучше лёгкий белковый приём.' : `Осталось ${nut.remaining} ккал — сделай упор на белок в оставшихся приёмах.`)
-  const planAdvice = planFact && (planFact.pct <= 0 ? 'Тренировка впереди — держи цель, но не выкладывайся заранее.' : planFact.pct > 100 ? 'План перевыполнен — не добавляй лишнего, дай телу восстановиться.' : planFact.pct >= 100 ? 'План закрыт — дальше восстановление.' : 'До плана немного осталось — добери объём позже или засчитай как есть.')
+  const stressAdvice = ai.стресс || (value == null ? s.stressNoData : value <= 50 ? s.stressLow : s.stressHigh)
+  const schedAdvice = ai.расписание || (sched.count === 0 ? s.schedFree : sched.loadPct >= 66 ? s.schedBusy : s.schedNormal)
+  const readyAdvice = ai.спорт || (readyScore == null ? s.readyNoData : readyScore >= 75 ? s.readyHighAdv : readyScore >= 50 ? s.readyMidAdv : s.readyLowAdv)
+  const healthAdvice = ai.здоровье || (balDiff == null ? s.healthNoData : balDiff >= 15 ? s.healthSurplus : balDiff <= -15 ? s.healthDeficit : s.healthBalanced)
+  const nutAdvice = ai.питание || (!nutOk ? s.nutEmpty : nut.eaten > (nut.target?.kcal || 0) ? s.nutOver : s.nutLeft(nut.remaining))
+  const planAdvice = planFact && (planFact.pct <= 0 ? s.planAhead : planFact.pct > 100 ? s.planOver : planFact.pct >= 100 ? s.planDone : s.planShort)
 
   return (
     <motion.div
@@ -244,7 +248,7 @@ export default function TodaySignalV2() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
     >
-      <span className="sv2-eyebrow">Статус</span>
+      <span className="sv2-eyebrow">{s.eyebrow}</span>
 
       <div className="sv2-domains">
         {/* ───────── Стресс ───────── */}
@@ -254,7 +258,7 @@ export default function TodaySignalV2() {
             <span className="sv2-note">{fresh}</span>
           </div>
           <div className="sv2-dtext">
-            <span className="sv2-dtitle">Стресс</span>
+            <span className="sv2-dtitle">{s.stress}</span>
             <p className="sv2-advice">{stressAdvice}</p>
           </div>
         </div>
@@ -270,7 +274,7 @@ export default function TodaySignalV2() {
               ]} />
           </div>
           <div className="sv2-dtext">
-            <span className="sv2-dtitle">Расписание</span>
+            <span className="sv2-dtitle">{s.schedule}</span>
             <p className="sv2-advice">{schedAdvice}</p>
           </div>
           <div className="sv2-sched-bar">
@@ -279,7 +283,7 @@ export default function TodaySignalV2() {
           <div className="sv2-sched-next">
             {sched.nextLine && (typeof sched.nextLine === 'string'
               ? sched.nextLine
-              : <>Дальше · <span className="sv2-next-t">{sched.nextLine.time}</span> · {sched.nextLine.title}</>)}
+              : <>{s.next} · <span className="sv2-next-t">{sched.nextLine.time}</span> · {sched.nextLine.title}</>)}
           </div>
         </div>
 
@@ -295,7 +299,7 @@ export default function TodaySignalV2() {
                 ]} />
             </div>
             <div className="sv2-dtext">
-              <span className="sv2-dtitle">Спорт · готовность к тренировкам</span>
+              <span className="sv2-dtitle">{s.sportReady}</span>
               <p className="sv2-advice">{readyAdvice}</p>
             </div>
           </div>
@@ -308,7 +312,7 @@ export default function TodaySignalV2() {
               <PlanFactGauge pct={planFact.pct} goalText={planFact.goalText} size={gaugeSize} />
             </div>
             <div className="sv2-dtext">
-              <span className="sv2-dtitle">Спорт · план/факт</span>
+              <span className="sv2-dtitle">{s.sportPlan}</span>
               <p className="sv2-advice">{planAdvice}</p>
             </div>
           </div>
@@ -322,7 +326,7 @@ export default function TodaySignalV2() {
               {hSourceLabel && <span className="sv2-note">{hSourceLabel}</span>}
             </div>
             <div className="sv2-dtext">
-              <span className="sv2-dtitle">Здоровье</span>
+              <span className="sv2-dtitle">{s.health}</span>
               <p className="sv2-advice">{healthAdvice}</p>
             </div>
           </div>
@@ -334,7 +338,7 @@ export default function TodaySignalV2() {
             <div className="sv2-dgauge sv2-nut">
               <div className="sv2-nut-g">
                 <MiniGauge value={kcalPct} color={kcalColor} center={nut.eaten} size={gaugeSize} />
-                <span className="sv2-note">калории</span>
+                <span className="sv2-note">{s.calories}</span>
               </div>
               {fod && (
                 <div className="sv2-nut-g">
@@ -349,7 +353,7 @@ export default function TodaySignalV2() {
               )}
             </div>
             <div className="sv2-dtext">
-              <span className="sv2-dtitle">Питание</span>
+              <span className="sv2-dtitle">{s.nutrition}</span>
               <p className="sv2-advice">{nutAdvice}</p>
             </div>
           </div>

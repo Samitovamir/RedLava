@@ -7,7 +7,7 @@ import { useLang, useT } from '../context/LanguageContext.jsx'
 import MicButton from './MicButton.jsx'
 import AiAdvice from './AiAdvice.jsx'
 import {
-  INITIAL_REPORTS, buildHistory, markerStatus, STATUS_INFO, rangeText, barGeom, fmtDate, resolveMarker
+  INITIAL_REPORTS, buildHistory, markerStatus, STATUS_INFO, rangeText, barGeom, fmtDate, unitLabel, resolveMarker
 } from '../utils/labs.js'
 
 const STR = {
@@ -66,6 +66,7 @@ function buildHealthData(reports, whoop, garmin) {
     const def = resolveMarker(name, last)
     const st = markerStatus(last.value, def.min, def.max)
     const norm = (def.min == null && def.max == null) ? 'норма не указана' : `норма ${rangeText(def.min, def.max)}`
+    // Это текст КОНТЕКСТА ДЛЯ ИИ (не UI), промпт русский — язык интерфейса тут не при чём
     const line = `${def.name} ${last.value} ${def.unit || ''} (${norm}, сдан ${fmtDate(last.date)})`
     if (st === 'low' || st === 'high') flagged.push(`${line} — ${STATUS_INFO[st].label}`)
     else normal.push(def.name)
@@ -88,12 +89,12 @@ function buildHealthData(reports, whoop, garmin) {
 }
 
 const CONTEXT =
-  'Ты — внимательный помощник владельца по здоровью (он пожилой человек без мед. образования). ' +
+  'Ты — внимательный помощник пользователя по здоровью (он пожилой человек без мед. образования). ' +
   'По его анализам крови и данным Whoop дай ОЧЕНЬ короткую выжимку: 2–4 коротких предложения, только важное. ' +
   'Назови показатели вне нормы простыми словами и дай конкретный практичный совет: какой витамин или добавку обсудить с врачом, какой доп. анализ имеет смысл. ' +
   'УЧИТЫВАЙ ДАТЫ анализов: если данные старые, скажи об этом. Если показатель корректируется приёмом (витамин D, железо, B12) — посоветуй пересдать через 2–3 месяца. Если показатель стабильный и не критичный — не гони пересдавать, достаточно планово. ' +
   'НЕ БУДЬ ПАНИКЁРОМ. Если отклонение небольшое, показатель не критичный или мало меняется со временем — спокойно скажи, что это не повод для волнения. Тревожный тон уместен только когда действительно важно. ' +
-  'ВАЖНО ПРО ТРЕНИРОВКИ: владелец — триатлет, тренируется интенсивно и очень дорожит спортом. ' +
+  'ВАЖНО ПРО ТРЕНИРОВКИ: пользователь — триатлет, тренируется интенсивно и очень дорожит спортом. ' +
   'Если показатель влияет на тренировки — дай совет по нагрузке и насколько настоятельно его соблюдать. ' +
   'Из-за мелких или некритичных отклонений менять режим НЕ надо, не паникуй и не отговаривай его от спорта по пустякам. ' +
   'Но если очевидно, что тренировки могут УХУДШИТЬ состояние (например, отклонения по сердцу, сильная анемия, явное воспаление) — прямо и чётко скажи снизить нагрузку или временно прекратить и обратиться к врачу. Калибруй настойчивость по реальной серьёзности. ' +
@@ -125,7 +126,7 @@ function MiniSpark({ values, color }) {
   return <svg width={w} height={h} className="hb-spark"><polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
 }
 
-function MarkerMini({ marker, hist, t }) {
+function MarkerMini({ marker, hist, t, lang }) {
   const h = hist?.[marker._key]
   if (!h?.length) return null
   const last = h[h.length - 1]
@@ -137,20 +138,20 @@ function MarkerMini({ marker, hist, t }) {
     <div className="hb-marker">
       <div className="hb-mk-top">
         <span className="hb-mk-name">{marker.name}</span>
-        <span className="hb-mk-value" style={{ color: c }}>{last.value} <span className="hb-mk-unit muted">{marker.unit}</span></span>
+        <span className="hb-mk-value" style={{ color: c }}>{last.value} <span className="hb-mk-unit muted">{unitLabel(marker.unit, lang)}</span></span>
       </div>
       <div className="hb-mk-bar">
         {st !== 'unknown' && <div className="hb-mk-band" style={{ left: `${g.bandLeft}%`, width: `${g.bandRight - g.bandLeft}%` }} />}
         <div className="hb-mk-dot" style={{ left: `${st === 'unknown' ? 50 : g.valuePos}%`, background: c }} />
       </div>
       <div className="hb-mk-bottom">
-        <span className="muted">{st === 'unknown' ? t.noNorm : `${t.norm} ${rangeText(marker.min, marker.max)}`} · {t.taken} {fmtDate(last.date)}</span>
+        <span className="muted">{st === 'unknown' ? t.noNorm : `${t.norm} ${rangeText(marker.min, marker.max, lang)}`} · {t.taken} {fmtDate(last.date, lang)}</span>
         <span style={{ color: c }}>{t.status[st]}</span>
       </div>
       {prev && (
         <div className="hb-mk-trend">
           <MiniSpark values={h.map(x => x.value)} color="var(--muted-foreground)" />
-          <span className="muted">{last.value > prev.value ? '↑' : last.value < prev.value ? '↓' : '→'} {t.was} {prev.value} · {fmtDate(prev.date)}</span>
+          <span className="muted">{last.value > prev.value ? '↑' : last.value < prev.value ? '↓' : '→'} {t.was} {prev.value} · {fmtDate(prev.date, lang)}</span>
         </div>
       )}
     </div>
@@ -207,7 +208,7 @@ export default function HealthBrief() {
     const prior = chat
     setInput(''); setChat(prev => [...prev, { role: 'user', text: q }]); setBusy(true)
     const context =
-      'Ты — внимательный помощник владельца по здоровью, спокойный и без паники. владелец — триатлет, тренируется интенсивно. ' +
+      'Ты — внимательный помощник пользователя по здоровью, спокойный и без паники. пользователь — триатлет, тренируется интенсивно. ' +
       'Отвечай кратко и по делу на русском, простыми словами. Не ставь диагноз; при необходимости советуй обратиться к врачу. ' +
       'Если вопрос касается тренировок — учитывай его данные и здоровье: по мелочам не отговаривай от спорта, но при реально опасных отклонениях (сердце, сильная анемия, воспаление) чётко советуй снизить нагрузку. ' +
       'Не нагнетай: мелкие или некритичные отклонения объясняй спокойно. Опирайся на данные ниже.' +
@@ -248,7 +249,7 @@ export default function HealthBrief() {
 
       {!loading && text && markers.length > 0 && (
         <div className="hb-markers">
-          {markers.map(m => <MarkerMini key={m.name} marker={m} hist={hist} t={t} />)}
+          {markers.map(m => <MarkerMini key={m.name} marker={m} hist={hist} t={t} lang={lang} />)}
         </div>
       )}
 

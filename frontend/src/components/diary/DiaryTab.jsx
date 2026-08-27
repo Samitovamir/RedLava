@@ -19,7 +19,7 @@ const BarcodeScanner = lazy(() => import('./BarcodeScanner.jsx'))
 /*
   Вкладка «Дневник» — фотолог (свой CalAI). Кольцо «съедено/цель» + плитки Б/Ж/У +
   лента «съедено сегодня» с фото. Захват: «Сфотографировать еду» → ИИ оценивает КБЖУ
-  по позициям с ПЕРСОНАЛЬНОЙ оценкой полезности (по состоянию владельца) → экран правки →
+  по позициям с ПЕРСОНАЛЬНОЙ оценкой полезности (по состоянию пользователя) → экран правки →
   подтверждение прибавляет приём (несколько фото за день суммируются).
   Общее состояние (intake/plan/target/selectedDay) приходит пропсами — единый источник
   истины со вкладкой «Меню».
@@ -139,7 +139,7 @@ export default function DiaryTab({ target, intake, setIntake, selectedDay, flash
       const upload = await compressForUpload(dataUrl)
       const res = await fetch('/api/nutrition/intake-image', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: upload, mode: 'food', health: nutritionHealthBrief() + (loadPrefs().fodmap ? ' владелец на лечебной диете Low-FODMAP — учитывай уровень FODMAP блюда при оценке пользы (high FODMAP — это триггер, снижай пользу).' : '') })
+        body: JSON.stringify({ image: upload, mode: 'food', health: nutritionHealthBrief() + (loadPrefs().fodmap ? ' пользователь на лечебной диете Low-FODMAP — учитывай уровень FODMAP блюда при оценке пользы (high FODMAP — это триггер, снижай пользу).' : '') })
       })
       const data = await res.json()
       if (!data.ok || !data.intake) { flash(data.message || t.failRecognize); setEstBusy(false); return }

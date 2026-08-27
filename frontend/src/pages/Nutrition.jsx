@@ -605,7 +605,7 @@ export default function Nutrition() {
   }
   function savePrefsModal() { savePrefs(prefsDraft); setPrefs(prefsDraft); setPrefsOpen(false); flash(t.prefsSaved) }
 
-  // Быстрый тумблер индикатора FODMAP прямо в шапке (не всем нужен — владелец просил вынести на видное место)
+  // Быстрый тумблер индикатора FODMAP прямо в шапке (не всем нужен — пользователь просил вынести на видное место)
   function toggleFodmap() {
     const np = { ...prefs, fodmap: !prefs.fodmap }
     setPrefs(np); savePrefs(np)
@@ -650,7 +650,7 @@ export default function Nutrition() {
         subtitle={t.subtitle}
       />
 
-      {/* Тумблер индикатора FODMAP на видном месте — не всем нужен (просьба владельца) */}
+      {/* Тумблер индикатора FODMAP на видном месте — не всем нужен (просьба пользователя) */}
       <div className="nu-top-row">
         <button className={`nu-fodmap-toggle ${prefs.fodmap ? 'on' : ''}`} onClick={toggleFodmap} aria-pressed={prefs.fodmap}>
           <span className="nu-fodmap-dot" />

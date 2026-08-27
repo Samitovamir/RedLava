@@ -8,7 +8,7 @@ export const SHOPPING_KEY = 'albert-shopping-2'   // v2: копим в базо�
 export const TASTE_KEY = 'albert-taste'
 export const PLAN_KEY = 'albert-meal-plan'
 
-// Профиль по умолчанию — реальные данные владельца.
+// Профиль по умолчанию — реальные данные пользователя.
 // Уровень активности больше не выбирается: тренировки берём из Garmin (реальный расход).
 export const DEFAULT_PROFILE = {
   weight: 75, height: 175, age: 35, sex: 'male',
@@ -181,10 +181,11 @@ export const QUICK_ADD = [
 ]
 
 // FODMAP-светофор: уровень → подпись + цвет (токены статуса). null, если уровня нет.
-export function fodmapMeta(band) {
-  if (band === 'high') return { key: 'high', label: 'Высокий', color: 'var(--status-crit)' }
-  if (band === 'mod') return { key: 'mod', label: 'Умеренный', color: 'var(--status-warn)' }
-  if (band === 'low') return { key: 'low', label: 'Низкий', color: 'var(--status-ok)' }
+export function fodmapMeta(band, lang = 'ru') {
+  const en = lang === 'en'
+  if (band === 'high') return { key: 'high', label: en ? 'High' : 'Высокий', color: 'var(--status-crit)' }
+  if (band === 'mod') return { key: 'mod', label: en ? 'Moderate' : 'Умеренный', color: 'var(--status-warn)' }
+  if (band === 'low') return { key: 'low', label: en ? 'Low' : 'Низкий', color: 'var(--status-ok)' }
   return null
 }
 

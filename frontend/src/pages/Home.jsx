@@ -8,13 +8,11 @@ import HealthSignal from '../components/HealthSignal.jsx'
 import SportSignal from '../components/SportSignal.jsx'
 import DayAgenda from '../components/DayAgenda.jsx'
 import NutritionHomeCard from '../components/NutritionHomeCard.jsx'
-import TasksHomeCard from '../components/TasksHomeCard.jsx'
 import TodaySignal from '../components/TodaySignalV2.jsx'
 import { useLayout } from '../layout.js'
 import { getQuoteOfDay } from '../utils/quotes.js'
 import { useT, useLang } from '../context/LanguageContext.jsx'
 import { mskNow } from '../utils/time.js'
-import { TASKS_ENABLED } from '../config/features.js'
 
 function getGreeting(t) {
   const hour = mskNow().getHours()
@@ -45,20 +43,20 @@ export default function Home() {
   const t = useT({
     ru: {
       greetMorning: 'Доброе утро', greetDay: 'Добрый день', greetEvening: 'Добрый вечер', greetNight: 'Доброй ночи',
-      greetName: ', владелец',
+      greetName: '',
       days: ['воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота'],
       months: ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'],
     },
     en: {
       greetMorning: 'Good morning', greetDay: 'Good afternoon', greetEvening: 'Good evening', greetNight: 'Good night',
-      greetName: ', Owner',
+      greetName: '',
       days: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
       months: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
     },
   })
   const navigate = useNavigate()
   const { lang } = useLang()
-  const quote = getQuoteOfDay()
+  const quote = getQuoteOfDay(lang)
 
   const dateStr = formatDate(t)
   const greetStr = `${getGreeting(t)}${t.greetName}`
@@ -93,20 +91,13 @@ export default function Home() {
           <SportSignal />
           <HealthSignal />
           <NutritionHomeCard />
-          {TASKS_ENABLED && <TasksHomeCard />}
         </div>
       ) : (
         <>
-          {/* По просьбе владельца: под «Статусом» убраны блоки Расписание/Спорт/Здоровье/Питание —
+          {/* По просьбе пользователя: под «Статусом» убраны блоки Расписание/Спорт/Здоровье/Питание —
               оставлен только «Ваш помощник». Основная мысль по доменам теперь внутри «Статуса»
               (виджеты: спидометр стресса, ползунок событий). Компоненты сохранены (импорты ниже),
               их можно вернуть, если понадобится. */}
-          {TASKS_ENABLED && (
-            <div className="home-cards">
-              <TasksHomeCard />
-            </div>
-          )}
-
           <AIWorkZone />
         </>
       )}

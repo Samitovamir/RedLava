@@ -1,5 +1,5 @@
 // Журнал действий. Копит и то, что сделал ИИ-помощник (письма, события, поиск),
-// и то, что владелец сделал сам (добавил событие, отметил тренировку).
+// и то, что пользователь сделал сам (добавил событие, отметил тренировку).
 // actor: 'ai' — сделал помощник, 'user' — сделал сам.
 
 export const ACTION_TYPES = {
@@ -19,7 +19,7 @@ export const STATUS_INFO = {
 
 export const ACTOR_INFO = {
   ai:   { label: 'ИИ',      labelEn: 'AI',     color: 'var(--primary)' },
-  user: { label: 'владелец', labelEn: 'Owner', color: 'var(--muted-foreground)' }
+  user: { label: 'Вы', labelEn: 'You', color: 'var(--muted-foreground)' }
 }
 
 // Выбор подписи (label) с учётом языка интерфейса.

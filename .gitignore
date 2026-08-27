@@ -7,3 +7,17 @@ dist/
 .DS_Store
 *.log
 .localstore.json
+
+# Local working notes and AI tooling — kept on disk, never published
+CLAUDE.md
+AGENTS.md
+.claude/
+*.md.local
+НАСТРОЙКА_ИИ.md
+ПЛАН_*.md
+ЧТО_СДЕЛАНО.md
+ОТЧЁТ_*.md
+документы/
+mockup/
+mockups/
+presentation/

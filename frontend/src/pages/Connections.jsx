@@ -83,7 +83,7 @@ const SERVICES_EN = {
 export default function Connections() {
   const t = useT({
     ru: {
-      heading: 'Подключения', sub: 'Сервисы владельца',
+      heading: 'Подключения', sub: 'Ваши сервисы',
       intro: 'Подключите ваши сервисы — и дашборд будет показывать настоящие данные: расписание, тренировки и здоровье. Подключить можно прямо здесь.',
       connected: 'Подключено', notConnected: 'Не подключено', demo: 'демо',
       connectedFallback: 'Подключено',
@@ -97,8 +97,8 @@ export default function Connections() {
       garminNote: 'Пароль уходит на сервер по защищённому соединению и не хранится в браузере.',
       btnLoginConnect: 'Войти и подключить',
       foot: 'Все сервисы подключаются по-настоящему: данные появятся в разделах сразу после подключения.',
-      guestName: 'Гостевой вход', mainName: 'Аккаунт владельца', mainBadge: 'Основной',
-      guestDesc: 'Сейчас вы в гостевом режиме — показаны демо-данные. Войдите в основной аккаунт, чтобы видеть настоящие данные владельца.',
+      guestName: 'Гостевой вход', mainName: 'Основной аккаунт', mainBadge: 'Основной',
+      guestDesc: 'Сейчас вы в гостевом режиме — показаны демо-данные. Войдите в основной аккаунт, чтобы видеть настоящие данные.',
       mainDesc: 'Вы вошли в основной аккаунт с реальными данными. Можно выйти и войти под другим аккаунтом.',
       btnLoginMain: 'Войти в основной аккаунт', btnSwitch: 'Сменить аккаунт',
       resetBtn: 'Сбросить все данные', resetPwLabel: 'Пароль для сброса:', resetPwPh: 'Пароль',
@@ -115,7 +115,7 @@ export default function Connections() {
       googleName: 'Google Календарь', whoopName: 'Whoop'
     },
     en: {
-      heading: 'Connections', sub: 'Owner’s services',
+      heading: 'Connections', sub: 'Your services',
       intro: 'Connect your services and the dashboard will show real data: schedule, workouts and health. You can connect right here.',
       connected: 'Connected', notConnected: 'Not connected', demo: 'demo',
       connectedFallback: 'Connected',
@@ -129,8 +129,8 @@ export default function Connections() {
       garminNote: 'The password is sent to the server over a secure connection and is not stored in the browser.',
       btnLoginConnect: 'Sign in and connect',
       foot: 'All services connect for real: data appears in the sections right after connecting.',
-      guestName: 'Guest access', mainName: 'Owner’s account', mainBadge: 'Primary',
-      guestDesc: 'You are currently in guest mode — demo data is shown. Sign in to the primary account to see the owner’s real data.',
+      guestName: 'Guest access', mainName: 'Primary account', mainBadge: 'Primary',
+      guestDesc: 'You are currently in guest mode — demo data is shown. Sign in to the primary account to see real data.',
       mainDesc: 'You are signed in to the primary account with real data. You can sign out and sign in with another account.',
       btnLoginMain: 'Sign in to primary account', btnSwitch: 'Switch account',
       resetBtn: 'Reset all data', resetPwLabel: 'Reset password:', resetPwPh: 'Password',

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { getToken, setToken, clearToken, setRole } from '../api/authFetch.js'
 import { seedGuestDemo } from '../utils/demo.js'
-import { useT } from '../context/LanguageContext.jsx'
+import { useT, useLang } from '../context/LanguageContext.jsx'
 
 /*
   Ворота входа. Пока не введён правильный пароль — показываем экран входа,
@@ -9,6 +9,7 @@ import { useT } from '../context/LanguageContext.jsx'
   поэтому повторно вводить пароль не нужно.
 */
 export default function AuthGate({ children }) {
+  const { lang } = useLang()
   const [authed, setAuthed] = useState(false)
   const [checking, setChecking] = useState(true)
   const [username, setUsername] = useState('')
@@ -17,7 +18,7 @@ export default function AuthGate({ children }) {
   const [busy, setBusy] = useState(false)
   const t = useT({
     ru: {
-      title: 'Дашборд владельца',
+      title: 'RedLava',
       sub: 'Личный кабинет. Введите имя и пароль, чтобы войти.',
       name: 'Имя',
       password: 'Пароль',
@@ -31,7 +32,7 @@ export default function AuthGate({ children }) {
       guestPost: ' — увидите демо без личных данных.',
     },
     en: {
-      title: 'Owner’s Dashboard',
+      title: 'RedLava',
       sub: 'Personal account. Enter your name and password to sign in.',
       name: 'Name',
       password: 'Password',
@@ -59,7 +60,7 @@ export default function AuthGate({ children }) {
     if (!t) { setChecking(false); return }
     fetch('/api/auth/verify')
       .then(async r => {
-        if (r.ok) { const d = await r.json(); setRole(d.role); if (d.role === 'guest') seedGuestDemo(); setAuthed(true) }
+        if (r.ok) { const d = await r.json(); setRole(d.role); if (d.role === 'guest') seedGuestDemo({ lang }); setAuthed(true) }
         else clearToken()  // токен недействителен — остаёмся на экране входа
       })
       .catch(() => setAuthed(true)) // нет связи — доверяем токену, не блокируем
@@ -79,7 +80,7 @@ export default function AuthGate({ children }) {
         const d = await r.json()
         setToken(d.token)
         setRole(d.role)
-        if (d.role === 'guest') seedGuestDemo({ force: true })  // свежий демо при входе
+        if (d.role === 'guest') seedGuestDemo({ force: true, lang })  // свежий демо при входе
         setAuthed(true)
       } else if (r.status === 401) {
         setError(t.errCreds)
@@ -100,7 +101,7 @@ export default function AuthGate({ children }) {
   return (
     <div className="auth-screen">
       <form className="auth-card" onSubmit={submit}>
-        <div className="auth-logo">A</div>
+        <div className="auth-logo">R</div>
         <h1 className="auth-title">{t.title}</h1>
         <p className="auth-sub">{t.sub}</p>
         <input

@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 import CircularChart from './CircularChart.jsx'
 import { recoveryColor, fmtHm } from '../utils/whoop.js'
-import { useT } from '../context/LanguageContext.jsx'
+import { useT, useLang } from '../context/LanguageContext.jsx'
 
 /*
   Кольца готовности: Whoop (Сон / Восстановление / Нагрузка) + Garmin (Заряд тела / Стресс).
@@ -59,6 +59,7 @@ const STR = {
 
 export default function WhoopRings({ w, garmin }) {
   const t = useT(STR)
+  const { lang } = useLang()
   const recLabel = { high: t.recHigh, mid: t.recMid, low: t.recLow }
   const stLabel = { calm: t.stCalm, low: t.stLow, mid: t.stMid, high: t.stHigh }
   const sleepPerf = w.sleep?.performance ?? 0
@@ -73,7 +74,7 @@ export default function WhoopRings({ w, garmin }) {
       <div className="wr-rings">
         <CircularChart
           value={sleepPerf} label={t.sleep} color="var(--accent)" size={124}
-          sublabel={w.sleep?.hoursSlept != null ? fmtHm((w.sleep.hoursSlept || 0) * 60) : null}
+          sublabel={w.sleep?.hoursSlept != null ? fmtHm((w.sleep.hoursSlept || 0) * 60, lang) : null}
         />
         <CircularChart
           value={w.recovery} label={t.recovery} color={recoveryColor(w.recovery)} size={124}
