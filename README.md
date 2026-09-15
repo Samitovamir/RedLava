@@ -37,7 +37,7 @@ backend/   Express, deployed as a single Vercel serverless function (api/index.j
 
 - **Token rotation under concurrency.** WHOOP issues single-use refresh tokens. Parallel serverless invocations racing to refresh would invalidate each other, so refreshes are serialised behind a KV lock and the new token pair is written in one fenced operation.
 - **Google OAuth in "Testing" mode expires refresh tokens every 7 days.** The backend detects `invalid_grant`, marks the token dead instead of retrying forever, and surfaces a reconnect banner.
-- **Auth** is HMAC-SHA256 tokens compared with `crypto.timingSafeEqual`, with a guest role the backend serves demo data to — real data is never sent to a guest session.
+- **Auth** is signed, short-lived JWTs (renewed on every silent check, so an active session never expires but an abandoned/stolen token does) carrying a revocation epoch — bumping it instantly invalidates every outstanding token without a password change. A guest role gets demo data only; real data is never sent to a guest session. Login is rate-limited per IP. See [SECURITY.md](SECURITY.md) for the full threat model.
 - **AI cost guard**: per-minute/hour/day request limits and a message size cap, since one dashboard load fans out to ~10–15 AI cards.
 - **Design system**: four themes driven entirely by CSS custom properties; components never hardcode a colour.
 - **Bilingual** (EN/RU): first visit follows the browser locale, then the choice is remembered.
