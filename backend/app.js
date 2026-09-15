@@ -37,13 +37,17 @@ app.use((req, _res, next) => {
 // ГОСТЬ: реальные данные пользователя недоступны в принципе. Любой запрос к эндпоинтам
 // интеграций под гостевым токеном перехватывается ЗДЕСЬ и отдаёт демо/пусто, не доходя
 // до реальных Google/Whoop/Garmin/Gmail. Так гость физически не может увидеть данные владельца.
+// disconnect-эндпоинты — тоже сюда: они лишь проверяли requireAuth (валидный ЛЮБОЙ токен),
+// а guest/123 общеизвестен (написан прямо на экране входа и в README) — без этой строки гость
+// мог бы по-настоящему отключить владельцу Google/Whoop/Garmin/анализы. Роут-хендлеры теперь ТОЖЕ
+// проверяют req.role === 'owner' сами (защита не только тут, на случай будущего рефакторинга).
 const GUEST_BLOCK = new Set([
-  '/api/whoop/data', '/api/whoop/status', '/api/whoop/connect-url',
-  '/api/garmin/data', '/api/garmin/status', '/api/garmin/planned', '/api/garmin/connect', '/api/garmin/connect-url',
+  '/api/whoop/data', '/api/whoop/status', '/api/whoop/connect-url', '/api/whoop/disconnect',
+  '/api/garmin/data', '/api/garmin/status', '/api/garmin/planned', '/api/garmin/connect', '/api/garmin/connect-url', '/api/garmin/disconnect',
   '/api/calendar/status', '/api/calendar/events', '/api/calendar/connect-url',
-  '/api/calendar/create', '/api/calendar/update', '/api/calendar/delete',
+  '/api/calendar/create', '/api/calendar/update', '/api/calendar/delete', '/api/calendar/disconnect',
   '/api/gmail/status', '/api/gmail/send',
-  '/api/labs/status', '/api/labs/files', '/api/labs/reports', '/api/labs/parse', '/api/labs/upload'
+  '/api/labs/status', '/api/labs/files', '/api/labs/reports', '/api/labs/parse', '/api/labs/upload', '/api/labs/disconnect'
 ])
 app.use((req, res, next) => {
   if (roleFromReq(req) !== 'guest') return next()
@@ -52,6 +56,7 @@ app.use((req, res, next) => {
   if (!GUEST_BLOCK.has(p)) return next()
   if (p === '/api/gmail/send') return res.json({ ok: true, demo: true })        // делаем вид — реально не отправляем
   if (p === '/api/calendar/create' || p === '/api/calendar/update' || p === '/api/calendar/delete') return res.json({ success: true, demo: true })
+  if (p.endsWith('/disconnect')) return res.json({ ok: true, demo: true })      // делаем вид — реально не отключаем
   if (p === '/api/labs/parse' || p === '/api/labs/upload') return res.json({ ok: false, message: 'В демо-режиме загрузка анализов отключена' })
   return res.json({ connected: false, planned: [], reports: [], files: [], events: [], demo: true })
 })
