@@ -339,7 +339,10 @@ router.get('/status', requireAuth, async (_req, res) => {
   res.json({ connected: !!t?.oauth2 })
 })
 
-router.post('/disconnect', requireAuth, async (_req, res) => {
+// Только владелец — иначе гость по общеизвестному демо-паролю мог бы отключить
+// настоящую интеграцию владельца; см. GUEST_BLOCK в app.js — вторая линия защиты.
+router.post('/disconnect', requireAuth, async (req, res) => {
+  if (req.role !== 'owner') return res.status(403).json({ error: 'forbidden' })
   await kvDel(TOKEN_KEY)
   res.json({ ok: true })
 })

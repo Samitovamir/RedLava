@@ -60,7 +60,13 @@ export default function AuthGate({ children }) {
     if (!t) { setChecking(false); return }
     fetch('/api/auth/verify')
       .then(async r => {
-        if (r.ok) { const d = await r.json(); setRole(d.role); if (d.role === 'guest') seedGuestDemo({ lang }); setAuthed(true) }
+        if (r.ok) {
+          const d = await r.json()
+          if (d.token) setToken(d.token)  // сервер продлил сессию — сохраняем свежий токен
+          setRole(d.role)
+          if (d.role === 'guest') seedGuestDemo({ lang })
+          setAuthed(true)
+        }
         else clearToken()  // токен недействителен — остаёмся на экране входа
       })
       .catch(() => setAuthed(true)) // нет связи — доверяем токену, не блокируем

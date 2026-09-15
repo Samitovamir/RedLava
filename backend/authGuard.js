@@ -1,20 +1,32 @@
-import crypto from 'crypto'
+import jwt from 'jsonwebtoken'
+import { kvGet, kvSet } from './store.js'
 
 // Две роли: 'owner' (полный доступ к реальным данным) и 'guest' (демо, без реальных данных).
-// Токены детерминированы от APP_PASSWORD (секрет сервера) — гость не знает пароль владельца,
-// поэтому НЕ может вычислить его токен и добраться до реальных данных.
 const GUEST_PASSWORD = () => process.env.GUEST_PASSWORD || '123'
+const secret = () => process.env.APP_PASSWORD || ''
 
-const hmac = (payload) => crypto.createHmac('sha256', process.env.APP_PASSWORD || '').update(payload).digest('hex')
+// Токен — подписанный JWT (HMAC-SHA256 тем же секретом APP_PASSWORD), а не вечная константа:
+//  • живёт TOKEN_TTL и сам это проверяет (jwt.verify отклоняет просроченный),
+//  • несёт "эпоху" (auth:epoch в общем KV-сторе) — подняв её на 1 (bumpAuthEpoch), можно
+//    мгновенно разлогинить ВСЕ выданные раньше токены, не трогая пароль.
+// При активном использовании токен молча продлевается на /api/auth/verify (см. routes/auth.js),
+// поэтому обычный пользователь не разлогинивается сам по себе — только по-настоящему
+// заброшенный или украденный токен истечёт через TOKEN_TTL бездействия.
+const TOKEN_TTL = '30d'
 
-export function tokenFor(role) {
-  return hmac('albert-dashboard-v1:' + role)
+async function currentEpoch() {
+  return Number(await kvGet('auth:epoch')) || 0
 }
 
-// Токены прошлых версий принимаем как owner, чтобы деплой никого не разлогинивал:
-//  • 'albert-dashboard-v1'         — формат без роли
-//  • 'albert-dashboard-v1:albert'  — роль до переименования в 'owner'
-const legacyOwnerTokens = () => [hmac('albert-dashboard-v1'), hmac('albert-dashboard-v1:albert')]
+// Поднять эпоху на 1 → все ранее выданные токены (owner и guest) сразу перестают проходить.
+// Используется кнопкой «выйти со всех устройств».
+export async function bumpAuthEpoch() {
+  await kvSet('auth:epoch', (await currentEpoch()) + 1)
+}
+
+export async function signToken(role) {
+  return jwt.sign({ role, epoch: await currentEpoch() }, secret(), { expiresIn: TOKEN_TTL })
+}
 
 // Проверка пары имя+пароль при входе → роль или null.
 export function roleForLogin(username, password) {
@@ -26,39 +38,40 @@ export function roleForLogin(username, password) {
   return null
 }
 
-const safeEqual = (token, exp) => {
-  const a = Buffer.from(token), b = Buffer.from(exp)
-  return a.length === b.length && crypto.timingSafeEqual(a, b)
+function bearerToken(req) {
+  const hdr = req.headers.authorization || ''
+  return hdr.startsWith('Bearer ') ? hdr.slice(7) : ''
 }
 
-// Токен принадлежит владельцу? (текущий формат или один из старых)
-const isOwnerToken = (token) =>
-  safeEqual(token, tokenFor('owner')) || legacyOwnerTokens().some(t => safeEqual(token, t))
+// Разобрать и проверить токен запроса → роль ('owner' | 'guest') или null. Проверяет подпись,
+// срок действия (jwt.verify) И эпоху (не отозван ли массовым разлогином).
+async function roleFromToken(token) {
+  if (!token || !secret()) return null
+  let payload
+  try { payload = jwt.verify(token, secret()) } catch { return null }  // просрочен/подделан/старый формат
+  if (payload.role !== 'owner' && payload.role !== 'guest') return null
+  if ((Number(payload.epoch) || 0) < (await currentEpoch())) return null  // отозван
+  return payload.role
+}
 
 // Защита приватных маршрутов. Выставляет req.role ('owner' | 'guest').
-export function requireAuth(req, res, next) {
+export async function requireAuth(req, res, next) {
   if (!process.env.APP_PASSWORD) return res.status(503).json({ error: 'auth_not_configured' })
-  const hdr = req.headers.authorization || ''
-  const token = hdr.startsWith('Bearer ') ? hdr.slice(7) : ''
-  if (!token) return res.status(401).json({ error: 'unauthorized' })
-  if (isOwnerToken(token)) { req.role = 'owner'; return next() }
-  if (safeEqual(token, tokenFor('guest'))) { req.role = 'guest'; return next() }
-  return res.status(401).json({ error: 'unauthorized' })
+  try {
+    const role = await roleFromToken(bearerToken(req))
+    if (!role) return res.status(401).json({ error: 'unauthorized' })
+    req.role = role
+    next()
+  } catch {
+    res.status(401).json({ error: 'unauthorized' })
+  }
 }
 
 // Гость: реальные данные недоступны.
 export const isGuestReq = (req) => req.role === 'guest'
 
-// Определить роль по токену без отклонения запроса (для централизованного гард-мидлвара).
-export function roleFromReq(req) {
+// Определить роль по токену без отклонения запроса (для централизованного гард-мидлвара в app.js).
+export async function roleFromReq(req) {
   if (!process.env.APP_PASSWORD) return null
-  const hdr = req.headers.authorization || ''
-  const token = hdr.startsWith('Bearer ') ? hdr.slice(7) : ''
-  if (!token) return null
-  if (isOwnerToken(token)) return 'owner'
-  if (safeEqual(token, tokenFor('guest'))) return 'guest'
-  return null
+  try { return await roleFromToken(bearerToken(req)) } catch { return null }
 }
-
-// Совместимость: старый импорт expectedToken (= токен владельца)
-export const expectedToken = () => tokenFor('owner')
