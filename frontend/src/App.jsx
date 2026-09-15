@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { variants } from './motion.js'
 import FluidMenu from './components/FluidMenu.jsx'
 import MailModal from './components/MailModal.jsx'
+import ConfirmAiActionModal from './components/ConfirmAiActionModal.jsx'
 import DemoBanner from './components/DemoBanner.jsx'
 import CommandShell from './shells/CommandShell.jsx'
 import { useLayout, useIsMobile } from './layout.js'
@@ -132,6 +133,7 @@ export default function App() {
       <div className="main-layout">
         <DemoBanner />
         <MailModal />
+        <ConfirmAiActionModal />
         <ShellRouter />
       </div>
     </BrowserRouter>

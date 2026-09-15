@@ -103,6 +103,8 @@ export default function Connections() {
       btnLoginMain: 'Войти в основной аккаунт', btnSwitch: 'Сменить аккаунт',
       resetBtn: 'Сбросить все данные', resetPwLabel: 'Пароль для сброса:', resetPwPh: 'Пароль',
       resetGo: 'Сбросить всё', resetBusy: 'Сбрасываю…', resetCancel: 'Отмена', resetWrong: 'Неверный пароль',
+      logoutAllBtn: 'Выйти со всех устройств', logoutAllBusy: 'Выхожу…',
+      logoutAllHint: 'Мгновенно отзывает вход на всех телефонах и браузерах — на этом устройстве тоже, войдёте заново по паролю. Полезно, если телефон потерялся или пароль мог кому-то попасться на глаза.',
       noticeConnectedSuffix: 'подключён ✓',
       noticeErrPrefix: 'Не удалось подключить', noticeErrSuffix: 'Попробуйте ещё раз.',
       noticeNotConfigured: 'ещё не настроен на сервере (нужны ключи доступа).',
@@ -135,6 +137,8 @@ export default function Connections() {
       btnLoginMain: 'Sign in to primary account', btnSwitch: 'Switch account',
       resetBtn: 'Reset all data', resetPwLabel: 'Reset password:', resetPwPh: 'Password',
       resetGo: 'Reset everything', resetBusy: 'Resetting…', resetCancel: 'Cancel', resetWrong: 'Wrong password',
+      logoutAllBtn: 'Sign out everywhere', logoutAllBusy: 'Signing out…',
+      logoutAllHint: 'Instantly revokes sign-in on every phone and browser — including this one, you’ll sign back in with your password. Useful if a phone was lost or the password may have been seen.',
       noticeConnectedSuffix: 'connected ✓',
       noticeErrPrefix: 'Couldn’t connect', noticeErrSuffix: 'Please try again.',
       noticeNotConfigured: 'isn’t set up on the server yet (access keys required).',
@@ -164,6 +168,18 @@ export default function Connections() {
   const [resetPw, setResetPw] = useState('')
   const [resetErr, setResetErr] = useState('')
   const [resetBusy, setResetBusy] = useState(false)
+  const [logoutAllBusy, setLogoutAllBusy] = useState(false)
+
+  // «Выйти со всех устройств»: мгновенно отзывает ВСЕ выданные токены (свои и чужие) на
+  // сервере — если телефон потерялся или пароль мог кому-то попасться на глаза, не нужно
+  // менять сам пароль. Разлогинивает и это устройство — дальше вход по паролю заново.
+  async function logoutAll() {
+    if (logoutAllBusy) return
+    setLogoutAllBusy(true)
+    try { await fetch('/api/auth/logout-all', { method: 'POST' }) } catch { /* ignore */ }
+    clearToken()
+    window.location.reload()
+  }
 
   // Полный сброс данных (пароль 9986): отвязывает сервисы и стирает локальные данные
   async function submitReset(e) {
@@ -439,6 +455,15 @@ export default function Connections() {
         </div>
       </motion.div>
 
+      {!guest && (
+        <div className="conn-security">
+          <Button variant="ghost" size="sm" onClick={logoutAll} disabled={logoutAllBusy}>
+            {logoutAllBusy ? t.logoutAllBusy : t.logoutAllBtn}
+          </Button>
+          <span className="conn-security-hint muted">{t.logoutAllHint}</span>
+        </div>
+      )}
+
       <div className="conn-reset">
         {!resetOpen ? (
           <Button variant="ghost" size="sm" onClick={() => { setResetOpen(true); setResetErr('') }}>
@@ -490,6 +515,8 @@ export default function Connections() {
         .conn-row { display: flex; align-items: center; gap: 16px; }
         .conn-info { flex: 1; min-width: 0; }
         .conn-account-action { flex-shrink: 0; }
+        .conn-security { margin-top: 8px; padding-top: 18px; border-top: 1px solid var(--border-soft); display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+        .conn-security-hint { font-size: 12.5px; line-height: 1.5; max-width: 480px; }
         .conn-reset { margin-top: 8px; padding-top: 18px; border-top: 1px solid var(--border-soft); }
         .conn-reset-form { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
         .conn-reset-input { width: 140px; padding: 9px 14px; font-size: 14px; }

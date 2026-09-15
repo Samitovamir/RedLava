@@ -166,85 +166,43 @@ export function EventsProvider({ children }) {
     return i
   }
 
-  // Применить действия, которые предложил ИИ (create/move/delete). Пишутся в Историю как 'ai'.
-  async function applyAiActions(actions) {
-    if (!actions?.length) return
+  // Действия ИИ, ожидающие подтверждения (перенос/удаление) — см. ConfirmAiActionModal.
+  // Зачем: ассистент видит не только слова владельца, но и текст ИЗ ДАННЫХ (названия чужих
+  // событий, письма). Если туда попадёт подставная инструкция («удали всё» в описании
+  // чужой встречи), она не должна выполниться сама — нужно явное нажатие человека.
+  // create_event безопаснее (не стирает данные, легко отменить) — применяется сразу.
+  const [pendingAiActions, setPendingAiActions] = useState([])
 
-    // Google подключён → выполняем изменения прямо в календаре, затем пересинхронизируем
+  async function applyCreates(actions) {
+    if (!actions.length) return
     if (googleConnected) {
       let gFocus = null
-      const gLogs = []
       for (const a of actions) {
         const inp = a.input || {}
         try {
-          if (a.name === 'create_event') {
-            const ev = { type: inp.type || 'calendar', title: inp.title || 'Событие', date: inp.date || TODAY_KEY, start: inp.start || '09:00', end: inp.end || '10:00', who: inp.who || '' }
-            await fetch('/api/calendar/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(ev) })
-            gFocus = ev.date
-            gLogs.push({ actor: 'ai', type: 'event', title: `Создал событие «${ev.title}»`, detail: detailOf(ev) })
-          } else if (a.name === 'move_event') {
-            const idx = findByTitle(events, inp.title)
-            if (idx !== -1) {
-              const cur = events[idx]
-              const date = inp.new_date || cur.date, start = inp.new_start || cur.start, end = inp.new_end || cur.end
-              await fetch('/api/calendar/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ googleId: cur.googleId, title: cur.title, date, start, end, who: cur.who }) })
-              gFocus = date
-              gLogs.push({ actor: 'ai', type: 'event', title: `Перенёс «${cur.title}»`, detail: detailOf({ date, start, end }) })
-            }
-          } else if (a.name === 'delete_event') {
-            const idx = findByTitle(events, inp.title)
-            if (idx !== -1) {
-              const cur = events[idx]
-              await fetch('/api/calendar/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ googleId: cur.googleId }) })
-              gLogs.push({ actor: 'ai', type: 'event', title: `Удалил «${cur.title}»`, detail: detailOf(cur) })
-            }
-          }
+          const ev = { type: inp.type || 'calendar', title: inp.title || 'Событие', date: inp.date || TODAY_KEY, start: inp.start || '09:00', end: inp.end || '10:00', who: inp.who || '' }
+          await fetch('/api/calendar/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(ev) })
+          gFocus = ev.date
+          logAction({ actor: 'ai', type: 'event', title: `Создал событие «${ev.title}»`, detail: detailOf(ev) })
         } catch { /* пропускаем неудачное действие */ }
       }
       await syncFromGoogle()
-      gLogs.forEach(l => logAction(l))
       if (gFocus) setFocusSignal({ date: gFocus, n: Date.now() })
       return
     }
-
     let focusDate = null
     setEventsRaw(prev => {
-      let next = [...prev]
+      const next = [...prev]
       const logs = []
       for (const a of actions) {
         const inp = a.input || {}
-        if (a.name === 'create_event') {
-          const ev = {
-            type: inp.type || 'calendar',
-            title: inp.title || 'Событие',
-            date: inp.date || TODAY_KEY,
-            start: inp.start || '09:00',
-            end: inp.end || '10:00',
-            who: inp.who || '',
-            priority: inp.priority || 3
-          }
-          next.push(ev)
-          focusDate = ev.date
-          logs.push({ actor: 'ai', type: 'event', title: `Создал событие «${ev.title}»`, detail: detailOf(ev) })
-        } else if (a.name === 'move_event') {
-          const idx = findByTitle(next, inp.title)
-          if (idx !== -1) {
-            const ev = { ...next[idx] }
-            if (inp.new_date) ev.date = inp.new_date
-            if (inp.new_start) ev.start = inp.new_start
-            if (inp.new_end) ev.end = inp.new_end
-            next[idx] = ev
-            focusDate = ev.date
-            logs.push({ actor: 'ai', type: 'event', title: `Перенёс «${ev.title}»`, detail: detailOf(ev) })
-          }
-        } else if (a.name === 'delete_event') {
-          const idx = findByTitle(next, inp.title)
-          if (idx !== -1) {
-            const ev = next[idx]
-            next = next.filter((_, k) => k !== idx)
-            logs.push({ actor: 'ai', type: 'event', title: `Удалил «${ev.title}»`, detail: detailOf(ev) })
-          }
+        const ev = {
+          type: inp.type || 'calendar', title: inp.title || 'Событие', date: inp.date || TODAY_KEY,
+          start: inp.start || '09:00', end: inp.end || '10:00', who: inp.who || '', priority: inp.priority || 3
         }
+        next.push(ev)
+        focusDate = ev.date
+        logs.push({ actor: 'ai', type: 'event', title: `Создал событие «${ev.title}»`, detail: detailOf(ev) })
       }
       queueMicrotask(() => {
         logs.forEach(l => logAction(l))
@@ -254,8 +212,90 @@ export function EventsProvider({ children }) {
     })
   }
 
+  // Реально выполнить одно подтверждённое действие (move/delete) — та же логика,
+  // что раньше выполнялась сразу, просто по нажатию кнопки, а не автоматически.
+  async function runConfirmedAction(a) {
+    const inp = a.input || {}
+    if (googleConnected) {
+      try {
+        if (a.name === 'move_event') {
+          const idx = findByTitle(events, inp.title)
+          if (idx !== -1) {
+            const cur = events[idx]
+            const date = inp.new_date || cur.date, start = inp.new_start || cur.start, end = inp.new_end || cur.end
+            await fetch('/api/calendar/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ googleId: cur.googleId, title: cur.title, date, start, end, who: cur.who }) })
+            logAction({ actor: 'ai', type: 'event', title: `Перенёс «${cur.title}»`, detail: detailOf({ date, start, end }) })
+            setFocusSignal({ date, n: Date.now() })
+          }
+        } else if (a.name === 'delete_event') {
+          const idx = findByTitle(events, inp.title)
+          if (idx !== -1) {
+            const cur = events[idx]
+            await fetch('/api/calendar/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ googleId: cur.googleId }) })
+            logAction({ actor: 'ai', type: 'event', title: `Удалил «${cur.title}»`, detail: detailOf(cur) })
+          }
+        }
+        await syncFromGoogle()
+      } catch { /* пропускаем неудачное действие */ }
+      return
+    }
+    setEventsRaw(prev => {
+      let next = [...prev]
+      let log = null, focusDate = null
+      if (a.name === 'move_event') {
+        const idx = findByTitle(next, inp.title)
+        if (idx !== -1) {
+          const ev = { ...next[idx] }
+          if (inp.new_date) ev.date = inp.new_date
+          if (inp.new_start) ev.start = inp.new_start
+          if (inp.new_end) ev.end = inp.new_end
+          next[idx] = ev
+          focusDate = ev.date
+          log = { actor: 'ai', type: 'event', title: `Перенёс «${ev.title}»`, detail: detailOf(ev) }
+        }
+      } else if (a.name === 'delete_event') {
+        const idx = findByTitle(next, inp.title)
+        if (idx !== -1) {
+          const ev = next[idx]
+          next = next.filter((_, k) => k !== idx)
+          log = { actor: 'ai', type: 'event', title: `Удалил «${ev.title}»`, detail: detailOf(ev) }
+        }
+      }
+      if (log) queueMicrotask(() => { logAction(log); if (focusDate) setFocusSignal({ date: focusDate, n: Date.now() }) })
+      return next
+    })
+  }
+
+  // Применить действия, которые предложил ИИ. create — сразу; move/delete — в очередь
+  // на подтверждение (находим целевое событие СЕЙЧАС, чтобы окно показало точный снимок).
+  async function applyAiActions(actions) {
+    if (!actions?.length) return
+    const creates = actions.filter(a => a.name === 'create_event')
+    const destructive = actions.filter(a => a.name === 'move_event' || a.name === 'delete_event')
+    if (creates.length) await applyCreates(creates)
+    if (destructive.length) {
+      const withTarget = destructive
+        .map(a => ({ id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, name: a.name, input: a.input, target: events[findByTitle(events, a.input?.title)] || null }))
+        .filter(p => p.target)  // событие не нашлось — подтверждать нечего, как и раньше молча пропускаем
+      if (withTarget.length) setPendingAiActions(prev => [...prev, ...withTarget])
+    }
+  }
+
+  function confirmPendingAiAction(id) {
+    const item = pendingAiActions.find(p => p.id === id)
+    setPendingAiActions(prev => prev.filter(p => p.id !== id))
+    if (item) runConfirmedAction(item)
+  }
+  function rejectPendingAiAction(id) {
+    setPendingAiActions(prev => prev.filter(p => p.id !== id))
+  }
+
   return (
-    <EventsContext.Provider value={{ events, setEvents, resetEvents, applyAiActions, removeEvent, upsertEvent, applyBulk, focusSignal, setFocusSignal, syncFromGoogle, googleConnected, googleNeedsReconnect }}>
+    <EventsContext.Provider value={{
+      events, setEvents, resetEvents, applyAiActions, removeEvent, upsertEvent, applyBulk,
+      focusSignal, setFocusSignal, syncFromGoogle, googleConnected, googleNeedsReconnect,
+      pendingAiActions, confirmPendingAiAction, rejectPendingAiAction
+    }}>
       {children}
     </EventsContext.Provider>
   )

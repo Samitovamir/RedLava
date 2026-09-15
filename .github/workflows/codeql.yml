@@ -1,0 +1,26 @@
+name: CodeQL
+
+# Static analysis for the JS/TS across frontend + backend — SQL-injection-shaped
+# patterns, path traversal, unsafe regex, etc. Runs on every push/PR to main and
+# once a week on its own so a newly-published query pack still catches old code.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "17 3 * * 1"
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+      - uses: github/codeql-action/analyze@v3
