@@ -8,7 +8,7 @@ import {
 import Icon from '../ui/Icon.jsx'
 import MicButton from '../components/MicButton.jsx'
 import {
-  loadProfile, saveProfile, computeTarget, GOALS,
+  loadProfile, saveProfile, computeTarget, GOALS, ACTIVITY_LEVELS,
   MEALS, MEAL_KEYS, mealTarget, currentMeal,
   loadPrefs, savePrefs, DEFAULT_PREFS, CUISINES, rememberDish,
   loadPlan, savePlan, setPlanMeal, clearPlanMeal, rateMeal, weekDays, dayPlanned, pendingRating,
@@ -18,11 +18,12 @@ import {
   loadPantry, savePantry, archivePantry, recentlyBought, fodmapMeta
 } from '../utils/nutrition.js'
 import { mskDateKey } from '../utils/time.js'
-import { useT } from '../context/LanguageContext.jsx'
+import { useT, useLang } from '../context/LanguageContext.jsx'
 import { useLocation } from 'react-router-dom'
 import { nutritionHealthBrief } from '../utils/siteSnapshot.js'
 import Portal from '../ui/Portal.jsx'
 import DiaryTab from '../components/diary/DiaryTab.jsx'
+import NutritionSetup from '../components/NutritionSetup.jsx'
 import NutritionCoach from '../components/diary/NutritionCoach.jsx'
 
 const FOODS = [
@@ -84,6 +85,7 @@ export default function Nutrition() {
       fWeight: 'Вес, кг', fHeight: 'Рост, см', fAge: 'Возраст', fSex: 'Пол',
       male: 'Мужской', female: 'Женский',
       activity: 'Активность', goal: 'Цель',
+      activityGarminNote: 'Garmin подключён — тренировки считаются по реальным калориям с часов, поэтому ответ про частоту на норму не влияет.',
       // Меню недели
       weekMenu: 'Меню недели',
       todaySuffix: ' · сегодня',
@@ -193,6 +195,7 @@ export default function Nutrition() {
       fWeight: 'Weight, kg', fHeight: 'Height, cm', fAge: 'Age', fSex: 'Sex',
       male: 'Male', female: 'Female',
       activity: 'Activity', goal: 'Goal',
+      activityGarminNote: 'Garmin is connected — workouts are counted from real watch calories, so this answer doesn’t change your target.',
       weekMenu: 'Weekly menu',
       todaySuffix: ' · today',
       chosenOf: 'chosen ~', ofTarget: ' of ', target: 'goal ',
@@ -264,15 +267,8 @@ export default function Nutrition() {
       months: { 'янв': 'Jan', 'фев': 'Feb', 'мар': 'Mar', 'апр': 'Apr', 'мая': 'May', 'июн': 'Jun', 'июл': 'Jul', 'авг': 'Aug', 'сен': 'Sep', 'окт': 'Oct', 'ноя': 'Nov', 'дек': 'Dec' },
     },
   })
+  const { lang } = useLang()
   const [profile, setProfile] = useState(loadProfile)
-  const base = useMemo(() => computeTarget(profile), [profile])
-
-  const week = useMemo(() => weekDays(), [])
-  const [selectedDay, setSelectedDay] = useState(mskDateKey())
-  const [plan, setPlan] = useState(loadPlan)
-  const location = useLocation()
-  // Раздел «Питание» — единый экран: фото-дневник + советник + подбор блюд (без вкладок).
-  // С Главной приходит autoSuggest/openDish → подбираем нужный приём прямо здесь.
 
   // Живые данные Garmin/Whoop (App.jsx кладёт их в localStorage асинхронно — перечитываем чуть позже)
   const [garmin, setGarmin] = useState(loadGarmin)
@@ -281,6 +277,17 @@ export default function Nutrition() {
     const t = setTimeout(() => { setGarmin(loadGarmin()); setWhoop(loadWhoop()) }, 2000)
     return () => clearTimeout(t)
   }, [])
+
+  // С часами спорт приходит реальными калориями (dynamicTarget), без часов — учитываем
+  // его множителем активности из анкеты, иначе тренировки не попали бы в норму вовсе.
+  const base = useMemo(() => computeTarget(profile, { hasGarmin: !!garmin }), [profile, garmin])
+
+  const week = useMemo(() => weekDays(), [])
+  const [selectedDay, setSelectedDay] = useState(mskDateKey())
+  const [plan, setPlan] = useState(loadPlan)
+  const location = useLocation()
+  // Раздел «Питание» — единый экран: фото-дневник + советник + подбор блюд (без вкладок).
+  // С Главной приходит autoSuggest/openDish → подбираем нужный приём прямо здесь.
 
   const [prefs, setPrefs] = useState(loadPrefs)
   const [prefsOpen, setPrefsOpen] = useState(false)
@@ -643,6 +650,20 @@ export default function Nutrition() {
     catch { flash(t.recipeCopied) }
   }
 
+  // Первый заход: профиль ещё не заполнен — сначала анкета, иначе норма считалась бы
+  // по усреднённой заглушке и была бы не про этого человека.
+  if (profile.isPlaceholder) {
+    return (
+      <div className="nu-page">
+        <SectionHeader title={t.title} subtitle={t.subtitle} />
+        <NutritionSetup
+          hasGarmin={!!garmin}
+          onDone={next => { const saved = { ...next, isPlaceholder: false }; setProfile(saved); saveProfile(next) }}
+        />
+      </div>
+    )
+  }
+
   return (
     <div className="nu-page">
       <SectionHeader
@@ -866,6 +887,18 @@ export default function Nutrition() {
                   ))}
                 </div>
               </div>
+              {/* Сколько тренируется — влияет на норму только без Garmin (с часами спорт
+                  приходит реальными калориями, иначе посчитали бы его дважды). */}
+              <div className="nu-seg-row">
+                <span className="nu-seg-lbl muted">{t.activity}</span>
+                <div className="nu-seg">
+                  {ACTIVITY_LEVELS.map(a => (
+                    <button key={a.key} className={`nu-seg-btn ${(profile.activity || 'light') === a.key ? 'active' : ''}`}
+                      onClick={() => updateProfile('activity', a.key)}>{lang === 'en' ? a.labelEn : a.label}</button>
+                  ))}
+                </div>
+              </div>
+              {!!garmin && <div className="nu-modal-sub muted">{t.activityGarminNote}</div>}
 
               <div className="nu-sec-title">{t.spicy}</div>
               <div className="nu-slider-row">

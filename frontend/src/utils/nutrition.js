@@ -22,6 +22,19 @@ export const DEFAULT_PROFILE = {
 // Сами тренировки НЕ зашиты сюда — они приходят отдельно из Garmin (реальные калории).
 const NEAT_MULT = 1.35
 
+// Сколько человек тренируется — спрашиваем в анкете при первом заходе.
+// ВАЖНО: этот множитель применяется ТОЛЬКО когда Garmin не подключён. Если часы есть,
+// реальные калории тренировки приходят из них и добавляются сверху (dynamicTarget) —
+// учитывать спорт ещё и множителем значило бы посчитать его дважды.
+export const ACTIVITY_LEVELS = [
+  { key: 'none',   mult: 1.20, label: 'Почти не тренируюсь',  labelEn: 'Rarely train' },
+  { key: 'light',  mult: 1.35, label: '1–2 раза в неделю',    labelEn: '1–2 times a week' },
+  { key: 'medium', mult: 1.50, label: '3–4 раза в неделю',    labelEn: '3–4 times a week' },
+  { key: 'high',   mult: 1.65, label: '5 и больше',           labelEn: '5 or more' },
+]
+// Профиль без поля activity (все, кто был до анкеты) считается как раньше — 1.35.
+const activityMult = (key) => (ACTIVITY_LEVELS.find(a => a.key === key) || {}).mult || NEAT_MULT
+
 export const GOALS = [
   { key: 'lose', label: 'Снизить вес', delta: -400 },
   { key: 'maintain', label: 'Поддержать', delta: 0 },
@@ -40,16 +53,18 @@ export function mifflinBMR({ weight, height, age, sex }) {
   return 10 * weight + 6.25 * height - 5 * age + (sex === 'female' ? -161 : 5)
 }
 
-// Целевое КБЖУ из профиля (с защитой от пустых/мусорных полей)
-export function computeTarget(profile) {
+// Целевое КБЖУ из профиля (с защитой от пустых/мусорных полей).
+// hasGarmin=true → спорт придёт реальными калориями из часов, поэтому база считается
+// по «быту без спорта» (1.35). Без часов — по ответу из анкеты, сколько человек тренируется.
+export function computeTarget(profile, opts = {}) {
+  const { hasGarmin = false } = opts
   const weight = Math.min(250, Math.max(30, +profile.weight || 70))
   const height = Math.min(230, Math.max(120, +profile.height || 170))
   const age = Math.min(100, Math.max(14, +profile.age || 40))
   const sex = profile.sex
   const bmr = mifflinBMR({ weight, height, age, sex })
   const goal = GOALS.find(g => g.key === profile.goal) || GOALS[1]
-  // База = обмен покоя × быт (NEAT), БЕЗ спорта. Тренировки добавляются отдельно из Garmin.
-  const neat = bmr * NEAT_MULT
+  const neat = bmr * (hasGarmin ? NEAT_MULT : activityMult(profile.activity))
   const kcal = Math.round((neat + goal.delta) / 10) * 10
   // Белок: 2.0 г/кг при наборе, иначе 1.8; жир ~27% ккал; остальное — углеводы
   const protein = Math.round(weight * (profile.goal === 'gain' ? 2.0 : 1.8))
@@ -464,10 +479,12 @@ export function eatenForDay(plan, intake, dateKey) {
 export function nutritionToday() {
   try {
     const profile = loadProfile()
-    const base = computeTarget(profile)
     const intake = loadIntake()
     const plan = loadPlan()
     const garmin = loadGarmin()
+    // База зависит от того, есть ли часы: с ними спорт придёт реальными калориями,
+    // без них — учитываем его множителем активности из анкеты.
+    const base = computeTarget(profile, { hasGarmin: !!garmin })
     const whoop = loadWhoop()
     const today = mskDateKey()
     const burned = workoutKcal(garmin, today, base.bmr)
