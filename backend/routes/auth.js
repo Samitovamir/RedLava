@@ -1,36 +1,49 @@
 import { Router } from 'express'
+import crypto from 'crypto'
 import { signToken, roleForLogin, requireAuth, bumpAuthEpoch } from '../authGuard.js'
 import { kvGet, kvSet } from '../store.js'
 
 const router = Router()
 
-// --- Защита от подбора пароля ---
+// --- Защита от подбора (логин и PIN сброса) ---
 // Бэкенд serverless (Vercel) — у каждого вызова может быть новый процесс, поэтому счётчик
 // в обычной переменной не сработает (сбрасывается каждый раз). Используем kvGet/kvSet —
 // тот же общий стор, что и для дневного лимита ИИ у гостя.
-const LOGIN_WINDOW_MS = 15 * 60 * 1000  // окно 15 минут
-const LOGIN_MAX_FAILS = 8               // неудачных попыток за окно — дальше блок
+const WINDOW_MS = 15 * 60 * 1000  // окно 15 минут
+const LOGIN_MAX_FAILS = 8         // неудачных попыток логина за окно — дальше блок
+const RESET_PIN_MAX_FAILS = 8     // PIN короткий (4 цифры) — тем более нужен лимит
 
-function loginAttemptKey(req) {
+function attemptKey(prefix, req) {
   const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip || 'noip'
-  const window = Math.floor(Date.now() / LOGIN_WINDOW_MS)
-  return `auth:fails:${ip.replace(/[^a-zA-Z0-9_.:-]/g, '').slice(0, 45)}:${window}`
+  const window = Math.floor(Date.now() / WINDOW_MS)
+  return `auth:${prefix}:${ip.replace(/[^a-zA-Z0-9_.:-]/g, '').slice(0, 45)}:${window}`
+}
+async function tooManyFails(key, max) {
+  return (Number(await kvGet(key)) || 0) >= max
+}
+async function recordFail(key) {
+  await kvSet(key, (Number(await kvGet(key)) || 0) + 1)
+}
+
+// Сравнение постоянным временем — секрет короткий (PIN), но раз сравниваем секрет, делаем по правилам.
+function safeEqual(a, b) {
+  const ba = Buffer.from(String(a)), bb = Buffer.from(String(b))
+  return ba.length === bb.length && crypto.timingSafeEqual(ba, bb)
 }
 
 // Вход: проверяем имя+пароль, отдаём токен и роль (owner | guest).
 router.post('/login', async (req, res) => {
   if (!process.env.APP_PASSWORD) return res.status(503).json({ error: 'auth_not_configured' })
 
-  const attemptKey = loginAttemptKey(req)
-  const fails = Number(await kvGet(attemptKey)) || 0
-  if (fails >= LOGIN_MAX_FAILS) {
+  const key = attemptKey('fails', req)
+  if (await tooManyFails(key, LOGIN_MAX_FAILS)) {
     return res.status(429).json({ error: 'too_many_attempts', message: 'Слишком много неудачных попыток входа. Подождите немного и попробуйте снова.' })
   }
 
   const { username, password } = req.body || {}
   const role = roleForLogin(username, password)
   if (!role) {
-    await kvSet(attemptKey, fails + 1)  // считаем только неудачи — угадавший с первого раза не наказывается
+    await recordFail(key)  // считаем только неудачи — угадавший с первого раза не наказывается
     return res.status(401).json({ error: 'wrong_password' })
   }
   return res.json({ token: await signToken(role), role })
@@ -46,6 +59,29 @@ router.get('/verify', requireAuth, async (req, res) => res.json({ ok: true, role
 router.post('/logout-all', requireAuth, async (req, res) => {
   if (req.role !== 'owner') return res.status(403).json({ error: 'forbidden' })
   await bumpAuthEpoch()
+  res.json({ ok: true })
+})
+
+// Проверка PIN для «Сбросить все данные» (Settings → Connections). ПЕРЕНЕСЕНО С ФРОНТА:
+// раньше PIN сравнивался прямо в JS-бандле ('9986' в открытом виде — любой мог прочитать его
+// в devtools или в исходниках и вызвать disconnect-эндпоинты сам). Теперь PIN живёт только
+// в RESET_PIN на сервере (.env / переменные окружения Vercel) и никогда не покидает бэкенд.
+// Сам сброс (disconnect каждого сервиса + очистка синка) фронт делает СЛЕДОМ, отдельными
+// запросами — каждый из них уже независимо проверяет req.role === 'owner'.
+router.post('/verify-reset-pin', requireAuth, async (req, res) => {
+  if (req.role !== 'owner') return res.status(403).json({ error: 'forbidden' })
+  if (!process.env.RESET_PIN) return res.status(503).json({ error: 'reset_not_configured' })
+
+  const key = attemptKey('resetfails', req)
+  if (await tooManyFails(key, RESET_PIN_MAX_FAILS)) {
+    return res.status(429).json({ error: 'too_many_attempts', message: 'Слишком много попыток. Подождите немного и попробуйте снова.' })
+  }
+
+  const { pin } = req.body || {}
+  if (typeof pin !== 'string' || !pin || !safeEqual(pin, process.env.RESET_PIN)) {
+    await recordFail(key)
+    return res.status(401).json({ error: 'wrong_pin' })
+  }
   res.json({ ok: true })
 })
 

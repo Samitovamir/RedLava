@@ -13,6 +13,15 @@ applyTheme()
 // Глобальный инжектор токена — добавляет Bearer к запросам /api/*
 installAuthFetch()
 
+// Service worker — офлайн-оболочка (см. public/sw.js) и предпосылка для нормальной
+// установки на домашний экран (Android/Chrome). Регистрируем после полной загрузки
+// страницы, чтобы не конкурировать за сеть с первой отрисовкой.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => { /* не критично — просто без офлайн-кэша */ })
+  })
+}
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <LanguageProvider>

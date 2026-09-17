@@ -1,6 +1,7 @@
-/* Минимальный service worker — нужен, чтобы «Задачи — <имя>» ставились как приложение
-   (PWA) и открывались даже при плохой сети. Кэшируем оболочку, API всегда идёт в сеть. */
-const CACHE = 'albert-tasks-shell-v1'
+/* Минимальный service worker для всего сайта (дашборд + помощник «Задачи») — нужен,
+   чтобы PWA нормально ставилась на домашний экран и открывалась даже при плохой сети.
+   Кэшируем оболочку (HTML/JS/CSS), API всегда идёт в сеть — личные данные не кэшируем. */
+const CACHE = 'redlava-shell-v1'
 
 self.addEventListener('install', () => self.skipWaiting())
 self.addEventListener('activate', (e) => e.waitUntil((async () => {

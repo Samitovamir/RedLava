@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { kvGet, kvSet } from '../store.js'
+import { kvGet, kvSet, kvDel } from '../store.js'
 
 /*
   Синхронизация пользовательских данных между устройствами пользователя.
@@ -31,6 +31,16 @@ router.put('/state', async (req, res) => {
   } catch (e) {
     res.json({ ok: false, message: String(e?.message || e).slice(0, 120) })
   }
+})
+
+// Стереть общий блок (кнопка «Сбросить все данные» в Settings). Раньше сброс чистил только
+// localStorage браузера — сам блоб на сервере переживал, и pullSync() при следующей загрузке
+// тихо восстанавливал «стёртые» данные обратно. Примечание: если в этот момент другое открытое
+// устройство сделает фоновый push со старым состоянием, блоб может воскреснуть — редкий случай
+// при однопользовательском сценарии, не решаем здесь отдельным механизмом блокировки.
+router.delete('/state', async (req, res) => {
+  if (req.role !== 'owner') return res.json({ ok: true, skipped: 'guest' })
+  try { await kvDel(KEY); res.json({ ok: true }) } catch (e) { res.json({ ok: false, message: String(e?.message || e).slice(0, 120) }) }
 })
 
 export default router

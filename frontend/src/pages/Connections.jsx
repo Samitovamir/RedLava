@@ -101,8 +101,12 @@ export default function Connections() {
       guestDesc: 'Сейчас вы в гостевом режиме — показаны демо-данные. Войдите в основной аккаунт, чтобы видеть настоящие данные.',
       mainDesc: 'Вы вошли в основной аккаунт с реальными данными. Можно выйти и войти под другим аккаунтом.',
       btnLoginMain: 'Войти в основной аккаунт', btnSwitch: 'Сменить аккаунт',
-      resetBtn: 'Сбросить все данные', resetPwLabel: 'Пароль для сброса:', resetPwPh: 'Пароль',
-      resetGo: 'Сбросить всё', resetBusy: 'Сбрасываю…', resetCancel: 'Отмена', resetWrong: 'Неверный пароль',
+      resetBtn: 'Сбросить все данные', resetPwLabel: 'PIN для сброса:', resetPwPh: 'PIN',
+      resetGo: 'Сбросить всё', resetBusy: 'Сбрасываю…', resetCancel: 'Отмена', resetWrong: 'Неверный PIN',
+      resetTooMany: 'Слишком много попыток. Подождите немного.',
+      resetNotConfigured: 'Сброс ещё не настроен на сервере.',
+      resetFailed: 'Не удалось проверить PIN. Попробуйте позже.',
+      resetNoServer: 'Нет связи с сервером.',
       logoutAllBtn: 'Выйти со всех устройств', logoutAllBusy: 'Выхожу…',
       logoutAllHint: 'Мгновенно отзывает вход на всех телефонах и браузерах — на этом устройстве тоже, войдёте заново по паролю. Полезно, если телефон потерялся или пароль мог кому-то попасться на глаза.',
       noticeConnectedSuffix: 'подключён ✓',
@@ -135,8 +139,12 @@ export default function Connections() {
       guestDesc: 'You are currently in guest mode — demo data is shown. Sign in to the primary account to see real data.',
       mainDesc: 'You are signed in to the primary account with real data. You can sign out and sign in with another account.',
       btnLoginMain: 'Sign in to primary account', btnSwitch: 'Switch account',
-      resetBtn: 'Reset all data', resetPwLabel: 'Reset password:', resetPwPh: 'Password',
-      resetGo: 'Reset everything', resetBusy: 'Resetting…', resetCancel: 'Cancel', resetWrong: 'Wrong password',
+      resetBtn: 'Reset all data', resetPwLabel: 'Reset PIN:', resetPwPh: 'PIN',
+      resetGo: 'Reset everything', resetBusy: 'Resetting…', resetCancel: 'Cancel', resetWrong: 'Wrong PIN',
+      resetTooMany: 'Too many attempts. Please wait a bit.',
+      resetNotConfigured: 'Reset isn’t set up on the server yet.',
+      resetFailed: 'Couldn’t verify the PIN. Please try again later.',
+      resetNoServer: 'No connection to the server.',
       logoutAllBtn: 'Sign out everywhere', logoutAllBusy: 'Signing out…',
       logoutAllHint: 'Instantly revokes sign-in on every phone and browser — including this one, you’ll sign back in with your password. Useful if a phone was lost or the password may have been seen.',
       noticeConnectedSuffix: 'connected ✓',
@@ -181,15 +189,33 @@ export default function Connections() {
     window.location.reload()
   }
 
-  // Полный сброс данных (пароль 9986): отвязывает сервисы и стирает локальные данные
+  // Полный сброс данных: PIN теперь проверяется НА СЕРВЕРЕ (RESET_PIN в .env), а не здесь —
+  // раньше '9986' сравнивался прямо в этом файле, то есть был виден всем в JS-бандле.
+  // Сброс идёт в два шага: сначала проверка PIN, и только при успехе — сами disconnect'ы
+  // (каждый уже сам проверяет req.role === 'owner' на бэкенде) + очистка синка на сервере.
   async function submitReset(e) {
     e.preventDefault()
-    if (resetPw.trim() !== '9986') { setResetErr(t.resetWrong); return }
+    setResetErr('')
     setResetBusy(true)
+    try {
+      const r = await fetch('/api/auth/verify-reset-pin', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: resetPw.trim() })
+      })
+      if (r.status === 401) { setResetErr(t.resetWrong); setResetBusy(false); return }
+      if (r.status === 429) { setResetErr(t.resetTooMany); setResetBusy(false); return }
+      if (r.status === 503) { setResetErr(t.resetNotConfigured); setResetBusy(false); return }
+      if (!r.ok) { setResetErr(t.resetFailed); setResetBusy(false); return }
+    } catch {
+      setResetErr(t.resetNoServer); setResetBusy(false); return
+    }
+
     await Promise.all([
       fetch('/api/calendar/disconnect', { method: 'POST' }).catch(() => {}),
       fetch('/api/whoop/disconnect', { method: 'POST' }).catch(() => {}),
-      fetch('/api/garmin/disconnect', { method: 'POST' }).catch(() => {})
+      fetch('/api/garmin/disconnect', { method: 'POST' }).catch(() => {}),
+      fetch('/api/labs/disconnect', { method: 'POST' }).catch(() => {}),
+      fetch('/api/sync/state', { method: 'DELETE' }).catch(() => {})
     ])
     try {
       Object.keys(localStorage).forEach(k => {
