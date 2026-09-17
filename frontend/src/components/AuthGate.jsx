@@ -23,9 +23,8 @@ export default function AuthGate({ children }) {
     ru: {
       title: 'RedLava',
       sub: 'Личный кабинет. Введите имя и пароль, чтобы войти.',
-      subReg: 'Новый аккаунт. Почта станет вашим логином.',
+      subReg: 'Новый аккаунт. Придумайте имя и пароль — ими и будете входить.',
       name: 'Имя',
-      email: 'Почта',
       password: 'Пароль',
       code: 'Код приглашения',
       checking: 'Проверяю…',
@@ -45,9 +44,8 @@ export default function AuthGate({ children }) {
     en: {
       title: 'RedLava',
       sub: 'Personal account. Enter your name and password to sign in.',
-      subReg: 'New account. Your email will be your login.',
+      subReg: 'New account. Pick a name and password — you’ll sign in with those.',
       name: 'Name',
-      email: 'Email',
       password: 'Password',
       code: 'Invite code',
       checking: 'Checking…',
@@ -109,7 +107,7 @@ export default function AuthGate({ children }) {
       const r = await fetch(registering ? '/api/auth/register' : '/api/auth/login', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(registering
-          ? { email: username, password, code: code.trim() || undefined }
+          ? { name: username, password, code: code.trim() || undefined }
           : { username, password })
       })
       if (r.ok) {
@@ -153,12 +151,11 @@ export default function AuthGate({ children }) {
         <p className="auth-sub">{mode === 'register' ? t.subReg : t.sub}</p>
         <input
           className="auth-input"
-          type={mode === 'register' ? 'email' : 'text'}
-          inputMode={mode === 'register' ? 'email' : undefined}
-          placeholder={mode === 'register' ? t.email : t.name}
+          type="text"
+          placeholder={t.name}
           autoCapitalize="off"
           autoCorrect="off"
-          autoComplete={mode === 'register' ? 'email' : 'username'}
+          autoComplete="username"
           value={username}
           onChange={e => setUsername(e.target.value)}
           autoFocus

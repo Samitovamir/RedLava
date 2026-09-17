@@ -2,7 +2,7 @@ import { Router } from 'express'
 import crypto from 'crypto'
 import { signToken, roleForLogin, requireAuth, bumpAuthEpoch } from '../authGuard.js'
 import { kvGet, kvSet } from '../store.js'
-import { createUser, verifyUserPassword, validateCredentials, publicUser, normalizeEmail, MIN_PASSWORD_LENGTH } from '../users.js'
+import { createUser, verifyUserPassword, validateCredentials, publicUser, MIN_PASSWORD_LENGTH } from '../users.js'
 
 const router = Router()
 
@@ -49,7 +49,8 @@ router.post('/register', async (req, res) => {
     return res.status(429).json({ error: 'too_many_attempts', message: 'Слишком много попыток. Подождите немного и попробуйте снова.' })
   }
 
-  const { email, password, code } = req.body || {}
+  const { username, name, password, code } = req.body || {}
+  const login = name || username
 
   const required = process.env.REGISTRATION_CODE
   if (required && (typeof code !== 'string' || !code || !safeEqual(code, required))) {
@@ -57,47 +58,46 @@ router.post('/register', async (req, res) => {
     return res.status(403).json({ error: 'bad_code', message: 'Неверный код приглашения.' })
   }
 
-  const invalid = validateCredentials(email, password)
+  const invalid = validateCredentials(login, password)
   if (invalid) {
     await recordFail(key)
-    const message = invalid === 'bad_email'
-      ? 'Проверьте адрес почты.'
-      : invalid === 'password_too_long'
-        ? 'Пароль слишком длинный.'
-        : `Пароль должен быть не короче ${MIN_PASSWORD_LENGTH} символов.`
+    const message = invalid === 'bad_name'
+      ? 'Имя: от 2 до 40 символов, без «@» и спецсимволов.'
+      : invalid === 'name_reserved'
+        ? 'Это имя занято системой, выберите другое.'
+        : invalid === 'password_too_long'
+          ? 'Пароль слишком длинный.'
+          : `Пароль должен быть не короче ${MIN_PASSWORD_LENGTH} символов.`
     return res.status(400).json({ error: invalid, message })
   }
 
-  const { user, error } = await createUser(email, password)
-  if (error === 'email_taken') return res.status(409).json({ error, message: 'Такая почта уже зарегистрирована.' })
+  const { user, error } = await createUser(login, password)
+  if (error === 'name_taken') return res.status(409).json({ error, message: 'Такое имя уже занято.' })
   if (error) return res.status(503).json({ error, message: 'Не удалось создать аккаунт. Попробуйте ещё раз.' })
 
   return res.json({ token: await signToken('user', user.id), role: 'user', user: publicUser(user) })
 })
 
-// Вход. Два пути рядом:
-//   1) настоящий аккаунт — в поле username/email указана почта, пароль сверяется с хешем;
-//   2) старый однопользовательский вход — владелец по APP_PASSWORD и гость по GUEST_PASSWORD.
-// Старый путь трогать нельзя, пока данные не переехали на аккаунты (этапы «б»/«в»/«г»),
-// иначе владелец потеряет доступ к своим же данным посреди миграции.
+// Вход — везде имя + пароль. Два пути идут ПОДРЯД, а не по развилке:
+//   1) настоящий аккаунт (имя есть в users:by-login, пароль сходится с хешем);
+//   2) если не подошло — старый однопользовательский вход: владелец по APP_PASSWORD,
+//      гость по GUEST_PASSWORD.
+// Порядок «сначала аккаунт, при неудаче — старый путь» важен: иначе человек,
+// зарегистрировавший аккаунт с именем владельца, заблокировал бы владельцу вход.
+// Старый путь трогать нельзя, пока данные не переехали на аккаунты (этапы «б»/«в»/«г»).
 router.post('/login', async (req, res) => {
   const key = attemptKey('fails', req)
   if (await tooManyFails(key, LOGIN_MAX_FAILS)) {
     return res.status(429).json({ error: 'too_many_attempts', message: 'Слишком много неудачных попыток входа. Подождите немного и попробуйте снова.' })
   }
 
-  const { username, password, email } = req.body || {}
-  const candidate = normalizeEmail(email || username)
+  const { username, name, password } = req.body || {}
+  const login = name || username
 
-  if (candidate.includes('@')) {
-    const user = await verifyUserPassword(candidate, password)
-    if (user) return res.json({ token: await signToken('user', user.id), role: 'user', user: publicUser(user) })
-    await recordFail(key)
-    return res.status(401).json({ error: 'wrong_password' })
-  }
+  const user = await verifyUserPassword(login, password)
+  if (user) return res.json({ token: await signToken('user', user.id), role: 'user', user: publicUser(user) })
 
-  if (!process.env.APP_PASSWORD) return res.status(503).json({ error: 'auth_not_configured' })
-  const role = roleForLogin(username, password)
+  const role = process.env.APP_PASSWORD ? roleForLogin(login, password) : null
   if (!role) {
     await recordFail(key)  // считаем только неудачи — угадавший с первого раза не наказывается
     return res.status(401).json({ error: 'wrong_password' })

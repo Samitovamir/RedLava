@@ -8,11 +8,14 @@ export const SHOPPING_KEY = 'albert-shopping-2'   // v2: копим в базо�
 export const TASTE_KEY = 'albert-taste'
 export const PLAN_KEY = 'albert-meal-plan'
 
-// Профиль по умолчанию — реальные данные пользователя.
-// Уровень активности больше не выбирается: тренировки берём из Garmin (реальный расход).
+// Профиль по умолчанию — НЕЙТРАЛЬНАЯ заглушка, а не чьи-то реальные данные:
+// раньше здесь стояли параметры владельца, и каждый новый аккаунт получал его калории.
+// Пока человек не заполнил свой профиль, считаем по этим усреднённым числам и помечаем
+// результат флагом isPlaceholder, чтобы интерфейс мог честно сказать «это прикидка».
+// Уровень активности не выбирается: тренировки берём из Garmin (реальный расход).
 export const DEFAULT_PROFILE = {
   weight: 75, height: 175, age: 35, sex: 'male',
-  goal: 'lose'
+  goal: 'maintain'
 }
 
 // Множитель повседневной активности (быт без спорта): обмен покоя × NEAT.
@@ -25,9 +28,10 @@ export const GOALS = [
   { key: 'gain', label: 'Набрать массу', delta: 300 }
 ]
 
+// isPlaceholder: человек ещё не заполнял профиль — цифры считаются по усреднённой заглушке.
 export function loadProfile() {
-  try { const s = localStorage.getItem(PROFILE_KEY); if (s) return { ...DEFAULT_PROFILE, ...JSON.parse(s) } } catch { /* ignore */ }
-  return { ...DEFAULT_PROFILE }
+  try { const s = localStorage.getItem(PROFILE_KEY); if (s) return { ...DEFAULT_PROFILE, ...JSON.parse(s), isPlaceholder: false } } catch { /* ignore */ }
+  return { ...DEFAULT_PROFILE, isPlaceholder: true }
 }
 export function saveProfile(p) { try { localStorage.setItem(PROFILE_KEY, JSON.stringify(p)) } catch { /* ignore */ } }
 
