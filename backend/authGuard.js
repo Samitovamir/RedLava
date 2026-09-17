@@ -1,11 +1,21 @@
 import jwt from 'jsonwebtoken'
 import { kvGet, kvSet } from './store.js'
 
-// Две роли: 'owner' (полный доступ к реальным данным) и 'guest' (демо, без реальных данных).
+// Роли:
+//   'owner' — единственный владелец старой однопользовательской модели (вход по APP_PASSWORD).
+//   'guest' — публичное демо, реальных данных не видит никогда.
+//   'user'  — настоящий аккаунт с почтой и паролем (этап «а» перехода на мультипользовательскую
+//             модель). Пока данные не привязаны к аккаунту (этапы «б»/«в»/«г»), такой аккаунт
+//             намеренно не получает доступа к реальным данным владельца — см. app.js, DEMO_ROLES.
+const VALID_ROLES = new Set(['owner', 'guest', 'user'])
 const GUEST_PASSWORD = () => process.env.GUEST_PASSWORD || '123'
-const secret = () => process.env.APP_PASSWORD || ''
 
-// Токен — подписанный JWT (HMAC-SHA256 тем же секретом APP_PASSWORD), а не вечная константа:
+// Секрет подписи токенов. Исторически это был APP_PASSWORD (пароль владельца) — оставляем
+// как запасной вариант, чтобы ничего не разлогинилось, но правильнее задать отдельный
+// JWT_SECRET: пароль владельца со временем уйдёт совсем, а подпись токенов должна пережить это.
+const secret = () => process.env.JWT_SECRET || process.env.APP_PASSWORD || ''
+
+// Токен — подписанный JWT (HMAC-SHA256), а не вечная константа:
 //  • живёт TOKEN_TTL и сам это проверяет (jwt.verify отклоняет просроченный),
 //  • несёт "эпоху" (auth:epoch в общем KV-сторе) — подняв её на 1 (bumpAuthEpoch), можно
 //    мгновенно разлогинить ВСЕ выданные раньше токены, не трогая пароль.
@@ -18,17 +28,21 @@ async function currentEpoch() {
   return Number(await kvGet('auth:epoch')) || 0
 }
 
-// Поднять эпоху на 1 → все ранее выданные токены (owner и guest) сразу перестают проходить.
+// Поднять эпоху на 1 → все ранее выданные токены сразу перестают проходить.
 // Используется кнопкой «выйти со всех устройств».
 export async function bumpAuthEpoch() {
   await kvSet('auth:epoch', (await currentEpoch()) + 1)
 }
 
-export async function signToken(role) {
-  return jwt.sign({ role, epoch: await currentEpoch() }, secret(), { expiresIn: TOKEN_TTL })
+// userId кладём в токен только для настоящих аккаунтов (role 'user'); у owner/guest его нет.
+export async function signToken(role, userId = null) {
+  const payload = { role, epoch: await currentEpoch() }
+  if (userId) payload.userId = userId
+  return jwt.sign(payload, secret(), { expiresIn: TOKEN_TTL })
 }
 
-// Проверка пары имя+пароль при входе → роль или null.
+// Старый путь входа: имя+пароль из переменных окружения → роль или null.
+// Настоящие аккаунты (почта+пароль) проверяются отдельно, в users.js.
 export function roleForLogin(username, password) {
   if (typeof password !== 'string' || !password) return null
   const u = (username || '').trim().toLowerCase()
@@ -43,24 +57,25 @@ function bearerToken(req) {
   return hdr.startsWith('Bearer ') ? hdr.slice(7) : ''
 }
 
-// Разобрать и проверить токен запроса → роль ('owner' | 'guest') или null. Проверяет подпись,
+// Разобрать и проверить токен → { role, userId } или null. Проверяет подпись,
 // срок действия (jwt.verify) И эпоху (не отозван ли массовым разлогином).
-async function roleFromToken(token) {
+async function identityFromToken(token) {
   if (!token || !secret()) return null
   let payload
   try { payload = jwt.verify(token, secret()) } catch { return null }  // просрочен/подделан/старый формат
-  if (payload.role !== 'owner' && payload.role !== 'guest') return null
+  if (!VALID_ROLES.has(payload.role)) return null
   if ((Number(payload.epoch) || 0) < (await currentEpoch())) return null  // отозван
-  return payload.role
+  return { role: payload.role, userId: payload.userId || null }
 }
 
-// Защита приватных маршрутов. Выставляет req.role ('owner' | 'guest').
+// Защита приватных маршрутов. Выставляет req.role и req.userId (последний — только у role 'user').
 export async function requireAuth(req, res, next) {
-  if (!process.env.APP_PASSWORD) return res.status(503).json({ error: 'auth_not_configured' })
+  if (!secret()) return res.status(503).json({ error: 'auth_not_configured' })
   try {
-    const role = await roleFromToken(bearerToken(req))
-    if (!role) return res.status(401).json({ error: 'unauthorized' })
-    req.role = role
+    const identity = await identityFromToken(bearerToken(req))
+    if (!identity) return res.status(401).json({ error: 'unauthorized' })
+    req.role = identity.role
+    req.userId = identity.userId
     next()
   } catch {
     res.status(401).json({ error: 'unauthorized' })
@@ -72,6 +87,6 @@ export const isGuestReq = (req) => req.role === 'guest'
 
 // Определить роль по токену без отклонения запроса (для централизованного гард-мидлвара в app.js).
 export async function roleFromReq(req) {
-  if (!process.env.APP_PASSWORD) return null
-  try { return await roleFromToken(bearerToken(req)) } catch { return null }
+  if (!secret()) return null
+  try { return (await identityFromToken(bearerToken(req)))?.role || null } catch { return null }
 }

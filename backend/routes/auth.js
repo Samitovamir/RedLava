@@ -2,16 +2,18 @@ import { Router } from 'express'
 import crypto from 'crypto'
 import { signToken, roleForLogin, requireAuth, bumpAuthEpoch } from '../authGuard.js'
 import { kvGet, kvSet } from '../store.js'
+import { createUser, verifyUserPassword, validateCredentials, publicUser, normalizeEmail, MIN_PASSWORD_LENGTH } from '../users.js'
 
 const router = Router()
 
-// --- Защита от подбора (логин и PIN сброса) ---
+// --- Защита от подбора (логин, регистрация и PIN сброса) ---
 // Бэкенд serverless (Vercel) — у каждого вызова может быть новый процесс, поэтому счётчик
 // в обычной переменной не сработает (сбрасывается каждый раз). Используем kvGet/kvSet —
 // тот же общий стор, что и для дневного лимита ИИ у гостя.
 const WINDOW_MS = 15 * 60 * 1000  // окно 15 минут
 const LOGIN_MAX_FAILS = 8         // неудачных попыток логина за окно — дальше блок
 const RESET_PIN_MAX_FAILS = 8     // PIN короткий (4 цифры) — тем более нужен лимит
+const REGISTER_MAX = 5            // регистраций с одного IP за окно — чтобы не наспамили аккаунтов
 
 function attemptKey(prefix, req) {
   const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip || 'noip'
@@ -31,16 +33,70 @@ function safeEqual(a, b) {
   return ba.length === bb.length && crypto.timingSafeEqual(ba, bb)
 }
 
-// Вход: проверяем имя+пароль, отдаём токен и роль (owner | guest).
-router.post('/login', async (req, res) => {
-  if (!process.env.APP_PASSWORD) return res.status(503).json({ error: 'auth_not_configured' })
+// Публичная информация об условиях входа — чтобы экран входа знал, показывать ли поле
+// «код приглашения», и не предлагал регистрацию там, где она закрыта.
+router.get('/config', (_req, res) => res.json({
+  registrationCodeRequired: !!process.env.REGISTRATION_CODE,
+  minPasswordLength: MIN_PASSWORD_LENGTH
+}))
 
+// Регистрация настоящего аккаунта (почта + пароль). Если задан REGISTRATION_CODE —
+// требуем его: так клуб раздаёт доступ по приглашению, а не открывает регистрацию всему
+// интернету. Переменная не задана — регистрация открыта (удобно на время разработки).
+router.post('/register', async (req, res) => {
+  const key = attemptKey('register', req)
+  if (await tooManyFails(key, REGISTER_MAX)) {
+    return res.status(429).json({ error: 'too_many_attempts', message: 'Слишком много попыток. Подождите немного и попробуйте снова.' })
+  }
+
+  const { email, password, code } = req.body || {}
+
+  const required = process.env.REGISTRATION_CODE
+  if (required && (typeof code !== 'string' || !code || !safeEqual(code, required))) {
+    await recordFail(key)
+    return res.status(403).json({ error: 'bad_code', message: 'Неверный код приглашения.' })
+  }
+
+  const invalid = validateCredentials(email, password)
+  if (invalid) {
+    await recordFail(key)
+    const message = invalid === 'bad_email'
+      ? 'Проверьте адрес почты.'
+      : invalid === 'password_too_long'
+        ? 'Пароль слишком длинный.'
+        : `Пароль должен быть не короче ${MIN_PASSWORD_LENGTH} символов.`
+    return res.status(400).json({ error: invalid, message })
+  }
+
+  const { user, error } = await createUser(email, password)
+  if (error === 'email_taken') return res.status(409).json({ error, message: 'Такая почта уже зарегистрирована.' })
+  if (error) return res.status(503).json({ error, message: 'Не удалось создать аккаунт. Попробуйте ещё раз.' })
+
+  return res.json({ token: await signToken('user', user.id), role: 'user', user: publicUser(user) })
+})
+
+// Вход. Два пути рядом:
+//   1) настоящий аккаунт — в поле username/email указана почта, пароль сверяется с хешем;
+//   2) старый однопользовательский вход — владелец по APP_PASSWORD и гость по GUEST_PASSWORD.
+// Старый путь трогать нельзя, пока данные не переехали на аккаунты (этапы «б»/«в»/«г»),
+// иначе владелец потеряет доступ к своим же данным посреди миграции.
+router.post('/login', async (req, res) => {
   const key = attemptKey('fails', req)
   if (await tooManyFails(key, LOGIN_MAX_FAILS)) {
     return res.status(429).json({ error: 'too_many_attempts', message: 'Слишком много неудачных попыток входа. Подождите немного и попробуйте снова.' })
   }
 
-  const { username, password } = req.body || {}
+  const { username, password, email } = req.body || {}
+  const candidate = normalizeEmail(email || username)
+
+  if (candidate.includes('@')) {
+    const user = await verifyUserPassword(candidate, password)
+    if (user) return res.json({ token: await signToken('user', user.id), role: 'user', user: publicUser(user) })
+    await recordFail(key)
+    return res.status(401).json({ error: 'wrong_password' })
+  }
+
+  if (!process.env.APP_PASSWORD) return res.status(503).json({ error: 'auth_not_configured' })
   const role = roleForLogin(username, password)
   if (!role) {
     await recordFail(key)  // считаем только неудачи — угадавший с первого раза не наказывается
@@ -52,7 +108,8 @@ router.post('/login', async (req, res) => {
 // Проверка действующего токена (для тихого входа при открытии сайта) — возвращаем роль
 // и СВЕЖИЙ токен: активный пользователь так продлевает себе сессию на ещё TOKEN_TTL и никогда
 // не разлогинивается сам по себе, а истинно заброшенный/украденный токен через TOKEN_TTL истечёт.
-router.get('/verify', requireAuth, async (req, res) => res.json({ ok: true, role: req.role, token: await signToken(req.role) }))
+router.get('/verify', requireAuth, async (req, res) =>
+  res.json({ ok: true, role: req.role, userId: req.userId || null, token: await signToken(req.role, req.userId) }))
 
 // «Выйти со всех устройств»: поднимает эпоху сессий — все ранее выданные токены (свои и чужие,
 // owner и guest) сразу перестают действовать, без смены пароля. Доступно только владельцу.

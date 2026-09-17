@@ -14,34 +14,53 @@ export default function AuthGate({ children }) {
   const [checking, setChecking] = useState(true)
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [code, setCode] = useState('')
+  const [mode, setMode] = useState('login')          // 'login' | 'register'
+  const [codeRequired, setCodeRequired] = useState(false)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const t = useT({
     ru: {
       title: 'RedLava',
       sub: 'Личный кабинет. Введите имя и пароль, чтобы войти.',
+      subReg: 'Новый аккаунт. Почта станет вашим логином.',
       name: 'Имя',
+      email: 'Почта',
       password: 'Пароль',
+      code: 'Код приглашения',
       checking: 'Проверяю…',
+      creating: 'Создаю…',
       login: 'Войти',
+      register: 'Создать аккаунт',
+      toRegister: 'Нет аккаунта? Создать',
+      toLogin: 'Уже есть аккаунт? Войти',
       errCreds: 'Неверное имя или пароль',
       errNotConfigured: 'Вход ещё не настроен на сервере.',
       errFailed: 'Не удалось войти. Попробуйте позже.',
       errNoConnection: 'Нет связи с сервером.',
+      errTooMany: 'Слишком много попыток. Подождите немного.',
       guestPre: 'Хотите просто посмотреть? Войдите как ',
       guestPost: ' — увидите демо без личных данных.',
     },
     en: {
       title: 'RedLava',
       sub: 'Personal account. Enter your name and password to sign in.',
+      subReg: 'New account. Your email will be your login.',
       name: 'Name',
+      email: 'Email',
       password: 'Password',
+      code: 'Invite code',
       checking: 'Checking…',
+      creating: 'Creating…',
       login: 'Sign in',
+      register: 'Create account',
+      toRegister: 'No account? Create one',
+      toLogin: 'Already have an account? Sign in',
       errCreds: 'Wrong name or password',
       errNotConfigured: 'Sign-in is not set up on the server yet.',
       errFailed: 'Couldn’t sign in. Please try again later.',
       errNoConnection: 'No connection to the server.',
+      errTooMany: 'Too many attempts. Please wait a bit.',
       guestPre: 'Just want to look around? Sign in as ',
       guestPost: ' — you’ll see a demo with no personal data.',
     },
@@ -73,14 +92,25 @@ export default function AuthGate({ children }) {
       .finally(() => setChecking(false))
   }, [])
 
+  // Нужен ли код приглашения при регистрации — знает только сервер (REGISTRATION_CODE)
+  useEffect(() => {
+    fetch('/api/auth/config')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setCodeRequired(!!d.registrationCodeRequired) })
+      .catch(() => { /* не критично — поле просто не покажем */ })
+  }, [])
+
   async function submit(e) {
     e.preventDefault()
     if (!username.trim() || !password.trim() || busy) return
     setBusy(true); setError('')
+    const registering = mode === 'register'
     try {
-      const r = await fetch('/api/auth/login', {
+      const r = await fetch(registering ? '/api/auth/register' : '/api/auth/login', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify(registering
+          ? { email: username, password, code: code.trim() || undefined }
+          : { username, password })
       })
       if (r.ok) {
         const d = await r.json()
@@ -88,10 +118,16 @@ export default function AuthGate({ children }) {
         setRole(d.role)
         if (d.role === 'guest') seedGuestDemo({ force: true, lang })  // свежий демо при входе
         setAuthed(true)
-      } else if (r.status === 401) {
-        setError(t.errCreds)
+      } else if (r.status === 429) {
+        setError(t.errTooMany)
       } else if (r.status === 503) {
         setError(t.errNotConfigured)
+      } else if (registering) {
+        // при регистрации сервер присылает понятную причину (занятая почта, слабый пароль, код)
+        const d = await r.json().catch(() => null)
+        setError(d?.message || t.errFailed)
+      } else if (r.status === 401) {
+        setError(t.errCreds)
       } else {
         setError(t.errFailed)
       }
@@ -99,6 +135,11 @@ export default function AuthGate({ children }) {
       setError(t.errNoConnection)
     }
     setBusy(false)
+  }
+
+  function switchMode() {
+    setMode(m => (m === 'login' ? 'register' : 'login'))
+    setError(''); setPassword(''); setCode('')
   }
 
   if (checking) return <div className="auth-splash" />
@@ -109,13 +150,15 @@ export default function AuthGate({ children }) {
       <form className="auth-card" onSubmit={submit}>
         <div className="auth-logo">R</div>
         <h1 className="auth-title">{t.title}</h1>
-        <p className="auth-sub">{t.sub}</p>
+        <p className="auth-sub">{mode === 'register' ? t.subReg : t.sub}</p>
         <input
           className="auth-input"
-          type="text"
-          placeholder={t.name}
+          type={mode === 'register' ? 'email' : 'text'}
+          inputMode={mode === 'register' ? 'email' : undefined}
+          placeholder={mode === 'register' ? t.email : t.name}
           autoCapitalize="off"
           autoCorrect="off"
+          autoComplete={mode === 'register' ? 'email' : 'username'}
           value={username}
           onChange={e => setUsername(e.target.value)}
           autoFocus
@@ -124,14 +167,29 @@ export default function AuthGate({ children }) {
           className="auth-input"
           type="password"
           placeholder={t.password}
+          autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
           value={password}
           onChange={e => setPassword(e.target.value)}
         />
+        {mode === 'register' && codeRequired && (
+          <input
+            className="auth-input"
+            type="text"
+            placeholder={t.code}
+            autoCapitalize="off"
+            autoCorrect="off"
+            value={code}
+            onChange={e => setCode(e.target.value)}
+          />
+        )}
         {error && <div className="auth-error">{error}</div>}
         <button className="auth-btn" type="submit" disabled={busy || !username.trim() || !password.trim()}>
-          {busy ? t.checking : t.login}
+          {busy ? (mode === 'register' ? t.creating : t.checking) : (mode === 'register' ? t.register : t.login)}
         </button>
-        <p className="auth-guest">{t.guestPre}<b>guest</b> / <b>123</b>{t.guestPost}</p>
+        <button className="auth-switch" type="button" onClick={switchMode}>
+          {mode === 'register' ? t.toLogin : t.toRegister}
+        </button>
+        {mode === 'login' && <p className="auth-guest">{t.guestPre}<b>guest</b> / <b>123</b>{t.guestPost}</p>}
       </form>
 
       <style>{`
@@ -179,6 +237,11 @@ export default function AuthGate({ children }) {
         }
         .auth-btn:hover:not(:disabled) { opacity: 0.9; }
         .auth-btn:disabled { opacity: 0.5; cursor: default; }
+        .auth-switch {
+          background: none; border: none; padding: 2px; cursor: pointer;
+          font-family: inherit; font-size: 13.5px; color: var(--accent);
+        }
+        .auth-switch:hover { text-decoration: underline; }
         .auth-guest { font-size: 12.5px; color: var(--muted); text-align: center; line-height: 1.5; margin-top: 2px; }
         .auth-guest b { color: var(--foreground); font-weight: 700; }
       `}</style>
