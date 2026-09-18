@@ -32,6 +32,8 @@ export default function NutritionSetup({ hasGarmin = false, onDone }) {
       preview: 'Ваша норма получится примерно',
       kcal: 'ккал в день',
       fill: 'Заполните возраст, рост и вес',
+      checkPre: 'Проверьте: ',
+      range: { age: 'возраст от 14 до 100 лет', height: 'рост от 120 до 230 см', weight: 'вес от 30 до 250 кг' },
     },
     en: {
       title: 'Let’s work out your daily target',
@@ -45,18 +47,27 @@ export default function NutritionSetup({ hasGarmin = false, onDone }) {
       preview: 'Your target will be about',
       kcal: 'kcal per day',
       fill: 'Fill in age, height and weight',
+      checkPre: 'Please check: ',
+      range: { age: 'age between 14 and 100', height: 'height between 120 and 230 cm', weight: 'weight between 30 and 250 kg' },
     },
   })
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
   const filled = +form.age > 0 && +form.height > 0 && +form.weight > 0
-  const preview = filled
+  // Границы те же, что в min/max у полей: формула Миффлина за ними даёт бессмысленную
+  // норму, а анкета заполняется один раз — молча принять «5 лет / 300 см» нельзя.
+  const LIMITS = { age: [14, 100], height: [120, 230], weight: [30, 250] }
+  const outOfRange = filled
+    ? Object.keys(LIMITS).filter(k => +form[k] < LIMITS[k][0] || +form[k] > LIMITS[k][1])
+    : []
+  const valid = filled && !outOfRange.length
+  const preview = valid
     ? computeTarget({ ...form, age: +form.age, height: +form.height, weight: +form.weight }, { hasGarmin })
     : null
 
   function submit(e) {
     e.preventDefault()
-    if (!filled) return
+    if (!valid) return
     onDone({
       sex: form.sex,
       age: +form.age,
@@ -87,11 +98,14 @@ export default function NutritionSetup({ hasGarmin = false, onDone }) {
 
       <div className="ns-fields">
         <label className="ns-field"><span>{t.age}</span>
-          <input type="number" inputMode="numeric" min="14" max="100" value={form.age} onChange={e => set('age', e.target.value)} /></label>
+          <input type="number" inputMode="numeric" min="14" max="100" className={outOfRange.includes('age') ? 'bad' : ''}
+            value={form.age} onChange={e => set('age', e.target.value)} /></label>
         <label className="ns-field"><span>{t.height}</span>
-          <input type="number" inputMode="numeric" min="120" max="230" value={form.height} onChange={e => set('height', e.target.value)} /></label>
+          <input type="number" inputMode="numeric" min="120" max="230" className={outOfRange.includes('height') ? 'bad' : ''}
+            value={form.height} onChange={e => set('height', e.target.value)} /></label>
         <label className="ns-field"><span>{t.weight}</span>
-          <input type="number" inputMode="decimal" min="30" max="250" value={form.weight} onChange={e => set('weight', e.target.value)} /></label>
+          <input type="number" inputMode="decimal" min="30" max="250" className={outOfRange.includes('weight') ? 'bad' : ''}
+            value={form.weight} onChange={e => set('weight', e.target.value)} /></label>
       </div>
 
       <div className="ns-block">
@@ -117,13 +131,19 @@ export default function NutritionSetup({ hasGarmin = false, onDone }) {
         </div>
       </div>
 
-      <div className="ns-preview">
-        {preview
-          ? <>{t.preview} <b>{preview.kcal}</b> {t.kcal}</>
-          : <span className="ns-hint">{t.fill}</span>}
+      {/* Итог + кнопка одним липким блоком: анкета длинная, и на телефоне её конец
+          приходится ровно под плавающую панель вкладок. Причина, по которой кнопка
+          выключена, должна ехать вместе с кнопкой — иначе она остаётся под панелью. */}
+      <div className="ns-submit">
+        <div className="ns-preview">
+          {preview
+            ? <>{t.preview} <b>{preview.kcal}</b> {t.kcal}</>
+            : outOfRange.length
+              ? <span className="ns-bad">{t.checkPre}{outOfRange.map(k => t.range[k]).join(', ')}</span>
+              : <span className="ns-hint">{t.fill}</span>}
+        </div>
+        <Button type="submit" variant="primary" disabled={!valid}>{t.submit}</Button>
       </div>
-
-      <Button type="submit" variant="primary" disabled={!filled}>{t.submit}</Button>
 
       <style>{`
         .ns-card { max-width: 560px; margin-inline: auto; display: flex; flex-direction: column; gap: 16px; }
@@ -152,9 +172,25 @@ export default function NutritionSetup({ hasGarmin = false, onDone }) {
           font-family: inherit; font-size: 16px; color: var(--text-primary); outline: none;
         }
         .ns-field input:focus { border-color: var(--accent); }
-        .ns-preview { font-size: 14.5px; color: var(--text-body); padding-top: 2px; }
+        .ns-field input.bad { border-color: var(--status-warn); }
+        .ns-preview { font-size: 14.5px; color: var(--text-body); }
         .ns-preview b { font-size: 19px; color: var(--text-primary); }
+        .ns-bad { font-size: 13px; line-height: 1.45; color: var(--status-warn); }
+        .ns-submit { display: flex; flex-direction: column; gap: 12px; }
+        .ns-submit .ds-btn { justify-content: center; }
         @media (max-width: 480px) { .ns-fields { grid-template-columns: 1fr 1fr; } }
+        @media (max-width: 900px) {
+          .ns-submit {
+            position: sticky;
+            /* над плавающей панелью вкладок: её низ 10px + высота ~64px = 74px */
+            bottom: calc(84px + env(safe-area-inset-bottom));
+            z-index: 2;
+            background: linear-gradient(to top, var(--bg-card-bot, var(--bg-surface)) 72%, transparent);
+            margin: 0 -20px -20px;
+            padding: 14px 20px 20px;
+            border-radius: 0 0 var(--radius) var(--radius);
+          }
+        }
       `}</style>
     </form>
   )

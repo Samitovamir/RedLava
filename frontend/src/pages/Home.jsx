@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import AIWorkZone from '../components/AIWorkZone.jsx'
 import BrandLogo from '../components/BrandLogo.jsx'
+import ConnectPrompt from '../components/ConnectPrompt.jsx'
 import DaySchedule from '../components/DaySchedule.jsx'
 import DaySummary from '../components/DaySummary.jsx'
 import HealthBrief from '../components/HealthBrief.jsx'
@@ -82,6 +83,9 @@ export default function Home() {
         {/* Настройки на мобиле — маленькая шестерёнка в шапке (на десктопе — в рейле меню) */}
         <button className="home-settings" aria-label={lang === 'en' ? 'Settings' : 'Настройки'} onClick={() => navigate('/settings')}>{ICON_GEAR}</button>
       </div>
+
+      {/* Только для того, у кого не подключено ничего: иначе с Главной некуда нажать */}
+      <ConnectPrompt />
 
       <TodaySignal />
 

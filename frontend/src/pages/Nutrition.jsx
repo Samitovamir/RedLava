@@ -671,8 +671,13 @@ export default function Nutrition() {
         subtitle={t.subtitle}
       />
 
-      {/* Тумблер индикатора FODMAP на видном месте — не всем нужен (просьба пользователя) */}
+      {/* Тумблер индикатора FODMAP на видном месте — не всем нужен (просьба пользователя).
+          Рядом — вход в профиль: рост/вес/цель задают норму калорий, и до этого попасть
+          можно было только из окна подбора блюд (то есть после ожидания ИИ). */}
       <div className="nu-top-row">
+        <button className="nu-prefs-top" onClick={openPrefs}>
+          <SlidersHorizontal size={15} strokeWidth={1.5} /> {t.editProfile}
+        </button>
         <button className={`nu-fodmap-toggle ${prefs.fodmap ? 'on' : ''}`} onClick={toggleFodmap} aria-pressed={prefs.fodmap}>
           <span className="nu-fodmap-dot" />
           {t.fodmapToggle}
@@ -1196,7 +1201,9 @@ export default function Nutrition() {
         .nu-share-btn:hover { color: var(--accent); border-color: var(--accent); }
 
         /* Тумблер индикатора FODMAP в шапке страницы */
-        .nu-top-row { display: flex; justify-content: flex-end; margin: -4px 0 14px; }
+        .nu-top-row { display: flex; justify-content: flex-end; align-items: center; gap: 10px; flex-wrap: wrap; margin: -4px 0 14px; }
+        .nu-prefs-top { display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border-med); background: var(--bg-tile); color: var(--text-secondary); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: color .15s, border-color .15s; }
+        .nu-prefs-top:hover { color: var(--text-primary); border-color: var(--accent); }
         .nu-fodmap-toggle { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border-med); background: var(--bg-tile); color: var(--text-secondary); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: color .15s, border-color .15s, background .15s; }
         .nu-fodmap-toggle b { color: var(--text-muted); font-weight: 700; letter-spacing: .02em; }
         .nu-fodmap-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-faint); flex: none; transition: background .15s; }
