@@ -1,21 +1,16 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
-import { Button, SectionHeader } from '../ui'
+import { SectionHeader } from '../ui'
 import { motion, AnimatePresence } from 'framer-motion'
-import {
-  Footprints, BedDouble, RotateCcw,
-  ThumbsUp, ThumbsDown, ShoppingCart, SlidersHorizontal, Share2
-} from 'lucide-react'
+import { ThumbsUp, ThumbsDown, SlidersHorizontal, Share2 } from 'lucide-react'
 import Icon from '../ui/Icon.jsx'
 import MicButton from '../components/MicButton.jsx'
 import {
   loadProfile, saveProfile, computeTarget, GOALS, ACTIVITY_LEVELS,
   MEALS, MEAL_KEYS, mealTarget, currentMeal,
   loadPrefs, savePrefs, DEFAULT_PREFS, CUISINES, rememberDish,
-  loadPlan, savePlan, setPlanMeal, clearPlanMeal, rateMeal, weekDays, dayPlanned, pendingRating,
-  loadShopping, saveShopping, addToShopping, formatProduct,
-  loadGarmin, loadWhoop, workoutKcal, eatenKcal, dynamicTarget, carryFromYesterday,
-  QUICK_ADD, loadIntake, saveIntake, addIntakeExtra, clearDayIntake, eatenForDay,
-  loadPantry, savePantry, archivePantry, recentlyBought, fodmapMeta
+  loadPlan, savePlan, rateMeal, weekDays, dayPlanned, pendingRating,
+  loadGarmin, loadWhoop, workoutKcal, dynamicTarget, carryFromYesterday,
+  loadIntake, saveIntake, eatenForDay, fodmapMeta
 } from '../utils/nutrition.js'
 import { mskDateKey } from '../utils/time.js'
 import { useT, useLang } from '../context/LanguageContext.jsx'
@@ -61,65 +56,29 @@ export default function Nutrition() {
       on: 'ВКЛ', off: 'ВЫКЛ',
       fodmapSection: 'FODMAP-диета',
       fodmapNote: 'Лечебное питание — по назначению врача. При включении ИИ подбирает блюда и рецепты с низким FODMAP и помечает уровень.',
-      // Карточка цели
-      goalFor: 'Цель на',
-      today: 'сегодня',
+      // Вход в профиль и общая единица
       editProfile: 'Изменить профиль',
-      done: 'Готово',
       kcal: 'ккал',
-      g: 'г',
-      mCalories: 'Калории', mProtein: 'Белки', mFat: 'Жиры', mCarbs: 'Углеводы',
-      // Разбивка цели
-      bdBase: 'База',
-      bdTraining: 'тренировка', bdRestDay: 'день отдыха',
-      bdRecovery: 'восстановление',
-      bdCarry: 'со вчера',
-      bdNoGarmin: 'Garmin не подключён — цель без учёта тренировок',
-      // Прогресс
-      eaten: 'Съедено ~', remaining: 'осталось ~',
-      fromCalai: ' · из CalAI', resetDay: 'сбросить', resetDayTitle: 'Сбросить учёт за день',
-      // Учёт
-      calaiReading: 'Читаю скрин…', calaiBtn: 'Внести из CalAI',
-      quickAddTitle: 'ккал',
-      // Подсказка цели — микрометрики
-      mBmr: 'Обмен покоя', mNeat: 'Быт без спорта', mGoal: 'Цель',
       // Профиль
       fWeight: 'Вес, кг', fHeight: 'Рост, см', fAge: 'Возраст', fSex: 'Пол',
       male: 'Мужской', female: 'Женский',
       activity: 'Активность', goal: 'Цель',
       activityGarminNote: 'Garmin подключён — тренировки считаются по реальным калориям с часов, поэтому ответ про частоту на норму не влияет.',
-      // Меню недели
-      weekMenu: 'Меню недели',
-      todaySuffix: ' · сегодня',
-      chosenOf: 'выбрано ~', ofTarget: ' из ', target: 'цель ',
+      // Кнопки подбора по приёмам
       mealApprox: '≈',
-      cancelChoice: 'Отменить выбор',
       picking: 'Подбираю…', pickBtn: 'Подобрать',
-      liked: 'понравилось', disliked: 'не очень',
       bMacro: 'Б', fMacro: 'Ж', uMacro: 'У',
-      // Список покупок
-      shopTitle: 'Список покупок на неделю',
-      clear: 'Очистить',
-      shopEmptyTitle: 'Список покупок пуст',
-      shopEmptyText: 'Подберите блюда в меню недели и добавьте их кнопкой «На кухню» — продукты соберутся здесь на всю неделю.',
-      shopEmptyCta: 'Перейти к меню недели',
-      shopHint: 'Количества округлены до того, что реально покупать в магазине.',
-      recentBought: 'недавно покупали', recentTitle: 'Покупали недавно — возможно, ещё есть дома',
-      removeItem: 'Убрать',
-      sendDriver: 'Отправить водителю (скоро)', sendDriverTitle: 'Появится, когда подключим отправку сообщений',
       // Окно подбора
       pickHead: 'Подбор: ', perMeal: ' ккал на приём',
       close: 'Закрыть',
       inMeal: 'Что в приёме:',
       notePlaceholder: 'Изменить подбор: например «полегче», «без молочного», «другое»',
       pickAgain: 'Подобрать заново',
-      adding: 'Добавляю…', toKitchenCard: 'На кухню',
       more: 'Подробнее →',
       pickingMore: 'Подбираю ещё…', showMore: 'Показать ещё блюда',
       // Детальная карточка / рецепт
       recipeBuilding: 'ИИ собирает рецепт…', recipeUnavailable: 'Рецепт недоступен',
       ingredients: 'Ингредиенты', steps: 'Приготовление',
-      toKitchen: 'На кухню', recipeWillFinish: ' (рецепт дособерётся)',
       photoBy: 'Фото: ',
       // Предпочтения
       prefsTitle: 'Профиль и предпочтения',
@@ -147,22 +106,13 @@ export default function Nutrition() {
       // Тосты / сообщения
       noServer: 'Нет связи с сервером. Запустите backend с ключом ИИ.',
       tookTooLong: 'Подбор занял слишком долго. Попробуйте ещё раз.',
-      calaiAte: 'CalAI: съедено ~', calaiAteSuffix: ' ккал ✓',
-      calaiFail: 'Не удалось прочитать скриншот', calaiUploadErr: 'Ошибка загрузки скриншота',
-      choiceCancelled: 'Выбор отменён',
-      shopCleared: 'Список отмечен как купленный и очищен',
       prefsSaved: 'Предпочтения сохранены ✓',
-      collecting: 'Собираю продукты…', addingProducts: 'Дособираю продукты…',
-      addedToMenu: ' добавлено в меню и список покупок ✓',
-      addedKitchen: ' и список покупок ✓',
       // Карты значений (RU → подпись), payload остаётся русским
       meals: { 'Завтрак': 'Завтрак', 'Обед': 'Обед', 'Перекус': 'Перекус', 'Ужин': 'Ужин' },
       comps: { 'Суп': 'Суп', 'Салат': 'Салат', 'Основное': 'Основное', 'Гарнир': 'Гарнир', 'Напиток': 'Напиток', 'Десерт': 'Десерт' },
       cuisines: { 'Русская': 'Русская', 'Итальянская': 'Итальянская', 'Грузинская': 'Грузинская', 'Японская': 'Японская', 'Средиземноморская': 'Средиземноморская', 'Азиатская': 'Азиатская', 'Мексиканская': 'Мексиканская' },
       foods: { 'Свинина': 'Свинина', 'Говядина': 'Говядина', 'Курица': 'Курица', 'Рыба': 'Рыба', 'Морепродукты': 'Морепродукты', 'Молочное': 'Молочное', 'Яйца': 'Яйца', 'Грибы': 'Грибы' },
       goals: { 'Снизить вес': 'Снизить вес', 'Поддержать': 'Поддержать', 'Набрать массу': 'Набрать массу' },
-      activities: { 'Низкая': 'Низкая', 'Лёгкая': 'Лёгкая', 'Средняя': 'Средняя', 'Высокая': 'Высокая', 'Спортсмен': 'Спортсмен' },
-      quick: { 'Кофе с молоком': 'Кофе с молоком', 'Кофе с молоком и сахаром': 'Кофе с молоком и сахаром', 'Кофе чёрный': 'Кофе чёрный', 'Протеиновый батончик': 'Протеиновый батончик', 'Протеиновый коктейль': 'Протеиновый коктейль' },
       wd: { 'Пн': 'Пн', 'Вт': 'Вт', 'Ср': 'Ср', 'Чт': 'Чт', 'Пт': 'Пт', 'Сб': 'Сб', 'Вс': 'Вс' },
       months: { 'янв': 'янв', 'фев': 'фев', 'мар': 'мар', 'апр': 'апр', 'мая': 'мая', 'июн': 'июн', 'июл': 'июл', 'авг': 'авг', 'сен': 'сен', 'окт': 'окт', 'ноя': 'ноя', 'дек': 'дек' },
     },
@@ -179,55 +129,24 @@ export default function Nutrition() {
       on: 'ON', off: 'OFF',
       fodmapSection: 'Low-FODMAP diet',
       fodmapNote: 'A medical diet — follow your doctor’s advice. When on, the AI picks low-FODMAP dishes and recipes and marks the level of each.',
-      goalFor: 'Goal for',
-      today: 'today',
       editProfile: 'Edit profile',
-      done: 'Done',
       kcal: 'kcal',
-      g: 'g',
-      mCalories: 'Calories', mProtein: 'Protein', mFat: 'Fat', mCarbs: 'Carbs',
-      bdBase: 'Base',
-      bdTraining: 'workout', bdRestDay: 'rest day',
-      bdRecovery: 'recovery',
-      bdCarry: 'from yesterday',
-      bdNoGarmin: 'Garmin not connected — goal without workouts',
-      eaten: 'Eaten ~', remaining: 'left ~',
-      fromCalai: ' · from CalAI', resetDay: 'reset', resetDayTitle: 'Reset the day’s tally',
-      calaiReading: 'Reading screenshot…', calaiBtn: 'Import from CalAI',
-      quickAddTitle: 'kcal',
-      mBmr: 'Resting metabolism', mNeat: 'Daily living', mGoal: 'Goal',
       fWeight: 'Weight, kg', fHeight: 'Height, cm', fAge: 'Age', fSex: 'Sex',
       male: 'Male', female: 'Female',
       activity: 'Activity', goal: 'Goal',
       activityGarminNote: 'Garmin is connected — workouts are counted from real watch calories, so this answer doesn’t change your target.',
-      weekMenu: 'Weekly menu',
-      todaySuffix: ' · today',
-      chosenOf: 'chosen ~', ofTarget: ' of ', target: 'goal ',
       mealApprox: '≈',
-      cancelChoice: 'Undo choice',
       picking: 'Picking…', pickBtn: 'Pick',
-      liked: 'liked', disliked: 'not great',
       bMacro: 'P', fMacro: 'F', uMacro: 'C',
-      shopTitle: 'Weekly grocery list',
-      clear: 'Clear',
-      shopEmptyTitle: 'Your grocery list is empty',
-      shopEmptyText: 'Pick dishes in the weekly menu and add them with the “To kitchen” button — ingredients will collect here for the whole week.',
-      shopEmptyCta: 'Go to weekly menu',
-      shopHint: 'Quantities are rounded to what you’d actually buy in a store.',
-      recentBought: 'bought recently', recentTitle: 'Bought recently — you may still have it at home',
-      removeItem: 'Remove',
-      sendDriver: 'Send to driver (soon)', sendDriverTitle: 'Coming once messaging is connected',
       pickHead: 'Picks: ', perMeal: ' kcal per meal',
       close: 'Close',
       inMeal: 'What’s in the meal:',
       notePlaceholder: 'Adjust the picks: e.g. “lighter”, “no dairy”, “something else”',
       pickAgain: 'Pick again',
-      adding: 'Adding…', toKitchenCard: 'To kitchen',
       more: 'Details →',
       pickingMore: 'Picking more…', showMore: 'Show more dishes',
       recipeBuilding: 'AI is building the recipe…', recipeUnavailable: 'Recipe unavailable',
       ingredients: 'Ingredients', steps: 'Steps',
-      toKitchen: 'To kitchen', recipeWillFinish: ' (recipe will finish in background)',
       photoBy: 'Photo: ',
       prefsTitle: 'Profile and preferences',
       prefsSub: 'Body metrics and goal set your calories. AI takes tastes into account when picking — within reason.',
@@ -252,21 +171,12 @@ export default function Nutrition() {
       rateUp: 'Liked it', rateDown: 'Not great', rateLater: 'Later',
       noServer: 'No connection to the server. Start the backend with an AI key.',
       tookTooLong: 'This took too long. Please try again.',
-      calaiAte: 'CalAI: eaten ~', calaiAteSuffix: ' kcal ✓',
-      calaiFail: 'Couldn’t read the screenshot', calaiUploadErr: 'Screenshot upload error',
-      choiceCancelled: 'Choice undone',
-      shopCleared: 'List marked as bought and cleared',
       prefsSaved: 'Preferences saved ✓',
-      collecting: 'Collecting ingredients…', addingProducts: 'Gathering remaining ingredients…',
-      addedToMenu: ' added to the menu and grocery list ✓',
-      addedKitchen: ' and grocery list ✓',
       meals: { 'Завтрак': 'Breakfast', 'Обед': 'Lunch', 'Перекус': 'Snack', 'Ужин': 'Dinner' },
       comps: { 'Суп': 'Soup', 'Салат': 'Salad', 'Основное': 'Main', 'Гарнир': 'Side', 'Напиток': 'Drink', 'Десерт': 'Dessert' },
       cuisines: { 'Русская': 'Russian', 'Итальянская': 'Italian', 'Грузинская': 'Georgian', 'Японская': 'Japanese', 'Средиземноморская': 'Mediterranean', 'Азиатская': 'Asian', 'Мексиканская': 'Mexican' },
       foods: { 'Свинина': 'Pork', 'Говядина': 'Beef', 'Курица': 'Chicken', 'Рыба': 'Fish', 'Морепродукты': 'Seafood', 'Молочное': 'Dairy', 'Яйца': 'Eggs', 'Грибы': 'Mushrooms' },
       goals: { 'Снизить вес': 'Lose weight', 'Поддержать': 'Maintain', 'Набрать массу': 'Gain mass' },
-      activities: { 'Низкая': 'Low', 'Лёгкая': 'Light', 'Средняя': 'Moderate', 'Высокая': 'High', 'Спортсмен': 'Athlete' },
-      quick: { 'Кофе с молоком': 'Coffee with milk', 'Кофе с молоком и сахаром': 'Coffee with milk and sugar', 'Кофе чёрный': 'Black coffee', 'Протеиновый батончик': 'Protein bar', 'Протеиновый коктейль': 'Protein shake' },
       wd: { 'Пн': 'Mon', 'Вт': 'Tue', 'Ср': 'Wed', 'Чт': 'Thu', 'Пт': 'Fri', 'Сб': 'Sat', 'Вс': 'Sun' },
       months: { 'янв': 'Jan', 'фев': 'Feb', 'мар': 'Mar', 'апр': 'Apr', 'мая': 'May', 'июн': 'Jun', 'июл': 'Jul', 'авг': 'Aug', 'сен': 'Sep', 'окт': 'Oct', 'ноя': 'Nov', 'дек': 'Dec' },
     },
@@ -303,7 +213,6 @@ export default function Nutrition() {
   const [mealsMsg, setMealsMsg] = useState('')
   const [loadingMeals, setLoadingMeals] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
-  const [kitchenBusy, setKitchenBusy] = useState(null)  // имя блюда, которое сейчас добавляется
   const [images, setImages] = useState({})              // имя блюда → {url, author, authorUrl, unsplashUrl}
   const [resultsOpen, setResultsOpen] = useState(false) // окно с подобранными блюдами
 
@@ -312,8 +221,6 @@ export default function Nutrition() {
   const [detailParts, setDetailParts] = useState([])   // [{component, name, recipe|null}]
   const [detailLoading, setDetailLoading] = useState(false)
 
-  const [shopping, setShopping] = useState(loadShopping)
-  const [pantry, setPantry] = useState(loadPantry)
   const [intake, setIntake] = useState(loadIntake)
   const [components, setComponents] = useState(['Основное'])
   const weekRef = useRef(null)
@@ -472,38 +379,6 @@ export default function Nutrition() {
     if (meal.parts && meal.parts.length) return meal.parts
     return [{ component: (components[0] || 'Основное'), name: meal.name, kcal: meal.kcal, protein: meal.protein, fat: meal.fat, carb: meal.carb }]
   }
-  function dishBase(meal) {
-    const img = images[meal.name]
-    return {
-      name: meal.name, short: meal.short || '', tags: meal.tags || [],
-      kcal: meal.kcal, protein: meal.protein, fat: meal.fat, carb: meal.carb,
-      imageUrl: img?.url || meal.imageUrl || null, imageAuthor: img?.author || '', imageAuthorUrl: img?.authorUrl || '', imageUnsplash: img?.unsplashUrl || '', imageQuery: meal.imageQuery || '',
-      parts: partsOf(meal).map(p => ({ component: p.component, name: p.name, kcal: p.kcal, protein: p.protein, fat: p.fat, carb: p.carb })),
-      partRecipes: [], ingredients: [], steps: [], chosenAt: Date.now(), rated: false
-    }
-  }
-
-  // «На кухню» прямо с карточки: сразу в план дня, рецепты частей и продукты подтягиваем фоном
-  async function quickKitchen(meal) {
-    setKitchenBusy(meal.name)
-    const base = dishBase(meal)
-    setPlan(prev => { const np = setPlanMeal(prev, selectedDay, mealType, base); savePlan(np); return np })
-    setResultsOpen(false)
-    flash(`«${meal.name}» → ${t.meals[mealType] || mealType}. ${t.collecting}`)
-    try {
-      const recipes = []
-      for (const part of base.parts) {
-        const r = await fetchRecipe(part.name)
-        if (r) recipes.push({ component: part.component, name: part.name, ingredients: r.ingredients || [], steps: r.steps || [], kcal: r.kcal, protein: r.protein, fat: r.fat, carb: r.carb })
-      }
-      const allIng = recipes.flatMap(r => r.ingredients)
-      setPlan(prev => { const np = setPlanMeal(prev, selectedDay, mealType, { ...base, partRecipes: recipes, ingredients: allIng }); savePlan(np); return np })
-      if (allIng.length) setShopping(prev => { const ns = addToShopping(prev, allIng, meal.name); saveShopping(ns); return ns })
-      flash(`«${meal.name}»${t.addedToMenu}`)
-    } catch { /* блюдо уже в плане */ }
-    setKitchenBusy(null)
-  }
-
   async function openSuggestDetail(meal, mealKeyOverride) {
     const parts = partsOf(meal)
     setDetail({ meal, mealKey: mealKeyOverride || mealType, dateKey: selectedDay, source: 'suggest' })
@@ -515,59 +390,11 @@ export default function Nutrition() {
     }
     setDetailLoading(false)
   }
-  function openPlannedDetail(dateKey, mealKey) {
-    const dish = plan[dateKey]?.[mealKey]
-    if (!dish) return
-    setDetail({ meal: dish, mealKey, dateKey, source: 'planned' })
-    const parts = dish.partRecipes?.length
-      ? dish.partRecipes.map(r => ({ component: r.component, name: r.name, recipe: r }))
-      : [{ component: 'Основное', name: dish.name, recipe: { ingredients: dish.ingredients || [], steps: dish.steps || [], kcal: dish.kcal, protein: dish.protein, fat: dish.fat, carb: dish.carb } }]
-    setDetailParts(parts); setDetailLoading(false)
-  }
   function closeDetail() { setDetail(null); setDetailParts([]) }
 
-  // «На кухню» из окна рецепта: добавляем в меню СРАЗУ, рецепты/продукты дособираем в фоне
-  async function toKitchen() {
-    const m = detail.meal
-    const dateKey = detail.dateKey, mealKey = detail.mealKey
-    const parts = detailParts.length ? detailParts : partsOf(m).map(p => ({ component: p.component, name: p.name, recipe: null }))
-    // 1) то, что уже собрано — кладём сразу
-    const ready = parts.filter(p => p.recipe).map(p => ({ component: p.component, name: p.name, ingredients: p.recipe.ingredients || [], steps: p.recipe.steps || [], kcal: p.recipe.kcal, protein: p.recipe.protein, fat: p.recipe.fat, carb: p.recipe.carb }))
-    const base = { ...dishBase(m), parts: parts.map(p => ({ component: p.component, name: p.name })), partRecipes: ready, ingredients: ready.flatMap(r => r.ingredients) }
-    setPlan(prev => { const np = setPlanMeal(prev, dateKey, mealKey, base); savePlan(np); return np })
-    if (base.ingredients.length) setShopping(prev => { const ns = addToShopping(prev, base.ingredients, m.name); saveShopping(ns); return ns })
-    closeDetail(); setResultsOpen(false)
-    // 2) недостающие рецепты — в фоне, не заставляя ждать
-    const missing = parts.filter(p => !p.recipe)
-    if (!missing.length) { flash(`«${m.name}» → ${t.meals[mealKey] || mealKey}${t.addedKitchen}`); return }
-    flash(`«${m.name}» → ${t.meals[mealKey] || mealKey}. ${t.addingProducts}`)
-    try {
-      const fetched = []
-      for (const part of missing) {
-        const r = await fetchRecipe(part.name)
-        if (r) fetched.push({ component: part.component, name: part.name, ingredients: r.ingredients || [], steps: r.steps || [], kcal: r.kcal, protein: r.protein, fat: r.fat, carb: r.carb })
-      }
-      const allRecipes = [...ready, ...fetched]
-      const allIng = allRecipes.flatMap(r => r.ingredients)
-      setPlan(prev => { const np = setPlanMeal(prev, dateKey, mealKey, { ...base, partRecipes: allRecipes, ingredients: allIng }); savePlan(np); return np })
-      const newIng = fetched.flatMap(r => r.ingredients)
-      if (newIng.length) setShopping(prev => { const ns = addToShopping(prev, newIng, m.name); saveShopping(ns); return ns })
-      flash(`«${m.name}»${t.addedToMenu}`)
-    } catch { /* блюдо уже в меню */ }
-  }
-  function removePlanned() {
-    const np = clearPlanMeal(plan, detail.dateKey, detail.mealKey)
-    setPlan(np); savePlan(np)
-    flash(t.choiceCancelled)
-    closeDetail()
-  }
-  // Отменить выбор прямо со слота дня (без открытия окна)
-  function removePlannedSlot(dateKey, mealKey) {
-    const np = clearPlanMeal(plan, dateKey, mealKey)
-    setPlan(np); savePlan(np)
-    flash(t.choiceCancelled)
-  }
-
+  // Оценка ранее выбранного блюда. Сам выбор блюд в меню недели убран из раздела
+  // (коммит 32350f0, «упрощение Меню по просьбе»), но у кого меню осталось с тех
+  // времён — тому всё ещё есть что оценить.
   function submitRate(liked) {
     const np = rateMeal(plan, rate.dateKey, rate.mealKey, liked ? 'up' : 'down', rateText)
     setPlan(np); savePlan(np)
@@ -579,30 +406,6 @@ export default function Nutrition() {
   function laterRate() {
     dismissedRate.current.add(rate.dateKey + '|' + rate.mealKey)
     setRate(null); setRateText('')
-  }
-
-  function removeShoppingItem(idx) {
-    const next = { ...shopping, items: shopping.items.filter((_, i) => i !== idx) }
-    setShopping(next); saveShopping(next)
-  }
-  function clearShopping() {
-    // запоминаем купленное (чтобы потом не было излишков долгоиграющих продуктов)
-    const np = archivePantry(pantry, shopping.items)
-    setPantry(np); savePantry(np)
-    const next = { weekStart: mskDateKey(), items: [] }
-    setShopping(next); saveShopping(next)
-    flash(t.shopCleared)
-  }
-
-  // ── Быстрый учёт «довесков» и CalAI ──
-  function quickAdd(item) {
-    const ni = addIntakeExtra(intake, selectedDay, item)
-    setIntake(ni); saveIntake(ni)
-    flash(`+${item.kcal} ${t.kcal} · ${t.quick[item.label] || item.label}`)
-  }
-  function resetIntake() {
-    const ni = clearDayIntake(intake, selectedDay)
-    setIntake(ni); saveIntake(ni)
   }
 
   // ── Предпочтения ──
@@ -1017,50 +820,13 @@ export default function Nutrition() {
 
       <style>{`
         .nu-page { display: flex; flex-direction: column; gap: 18px; max-width: 1400px; padding-bottom: 24px; }
-        .nu-tabs { display: inline-flex; gap: 4px; align-self: flex-start; background: var(--bg-surface); border: 1px solid var(--border-med); padding: 4px; border-radius: 12px; }
-        .nu-tab { padding: 8px 18px; border: none; background: transparent; color: var(--text-secondary); font-family: inherit; font-size: 14px; font-weight: 600; border-radius: 9px; cursor: pointer; transition: color 0.18s, background 0.18s; }
-        .nu-tab:hover { color: var(--text-primary); }
-        .nu-tab.active { background: var(--accent); color: var(--on-accent); }
-        @media (max-width: 640px) { .nu-tab { min-height: 40px; padding: 9px 18px; } }
         .muted { color: var(--muted); }
         .card-title { font-size: 16px; font-weight: 700; color: var(--foreground); margin-bottom: 12px; }
         /* Зазор ≥8px от фиксированной плашки «Демо-режим» (top:14px, bottom ≈46px от вьюпорта) */
-
-        .nu-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
         .nu-edit { padding: 7px 13px; border-radius: var(--radius-sm); border: 1px solid var(--border-med); background: transparent; color: var(--text-secondary); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s; }
         .nu-edit:hover { color: var(--text-primary); border-color: var(--accent); }
-
         /* KPI: главная «ккал» крупно, макросы Б/Ж/У — подчинённая группа, числа в --foreground */
-        .nu-kpi { display: flex; align-items: stretch; gap: 16px; flex-wrap: wrap; }
-        .nu-kpi-hero { display: flex; flex-direction: column; gap: 4px; justify-content: center; background: var(--bg-tile); border: 1px solid var(--border-med); border-radius: var(--radius-md); padding: 18px 24px; min-width: 200px; flex: 1 1 220px; }
-        .nu-kpi-num { font-size: 42px; font-weight: 800; color: var(--foreground); line-height: 1; letter-spacing: -.02em; }
-        .nu-kpi-unit { font-size: 16px; font-weight: 600; color: var(--text-muted); }
-        .nu-kpi-lbl { font-size: 13px; color: var(--text-secondary); }
-        .nu-kpi-macros { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; flex: 2 1 320px; }
-        .nu-kpi-macro { display: flex; flex-direction: column; gap: 3px; justify-content: center; background: var(--bg-tile); border: 1px solid var(--border-soft); border-radius: var(--radius-md); padding: 14px 16px; }
-        .nu-kpi-mval { font-size: 22px; font-weight: 700; color: var(--foreground); line-height: 1; }
-        .nu-kpi-munit { font-size: 12px; font-weight: 500; color: var(--text-muted); }
-        .nu-kpi-mlbl { font-size: 12px; color: var(--text-muted); }
-        .nu-breakdown { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
-        .nu-bd-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--text-body); background: var(--bg-tile); border: 1px solid var(--border-med); padding: 6px 11px; border-radius: 20px; }
-        .nu-bd-chip svg { color: var(--text-muted); }
-        .nu-bd-chip.plus, .nu-bd-chip.minus { color: var(--text-primary); border-color: var(--border-med); }
-        .nu-bd-chip.plus svg, .nu-bd-chip.minus svg { color: var(--text-muted); }
-        .nu-bd-chip.muted-chip { color: var(--text-muted); font-weight: 500; }
-
         /* Метаболика: микрометрики лейбл/значение + вывод в чип */
-        .nu-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 22px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border-soft); }
-        .nu-meta-metric { display: flex; flex-direction: column; gap: 2px; }
-        .nu-meta-lbl { font-size: 11.5px; }
-        .nu-meta-val { font-size: 15px; font-weight: 700; color: var(--foreground); }
-        .nu-meta-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
-        .nu-meta-chip { font-size: 12px; font-weight: 600; color: var(--text-secondary); background: var(--bg-tile); border: 1px solid var(--border-soft); padding: 5px 11px; border-radius: 20px; }
-        .nu-progress { margin-top: 14px; display: flex; flex-direction: column; gap: 7px; }
-        .nu-prog-bar { height: 8px; border-radius: 6px; background: var(--bg-tile); overflow: hidden; }
-        .nu-prog-fill { height: 100%; background: var(--accent); border-radius: 6px; transition: width .4s; }
-        .nu-prog-text { font-size: 13px; }
-
-        .nu-profile { overflow: hidden; }
         .nu-fields { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 12px; }
         .nu-field { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--text-muted); }
         .nu-field input, .nu-field select { background: var(--bg-tile); border: 1px solid var(--border-med); border-radius: var(--radius-sm); padding: 10px 12px; font-family: inherit; font-size: 14px; color: var(--foreground); outline: none; }
@@ -1071,18 +837,7 @@ export default function Nutrition() {
         .nu-seg-btn { padding: 8px 13px; border: none; background: transparent; color: var(--text-secondary); font-family: inherit; font-size: 13px; font-weight: 600; border-radius: 9px; cursor: pointer; transition: all .15s; }
         .nu-seg-btn:hover { color: var(--text-primary); }
         .nu-seg-btn.active { background: var(--bg-surface); color: var(--accent); box-shadow: var(--shadow-btn); }
-
         /* Учёт съеденного */
-        .nu-intake-tag { color: var(--accent); font-weight: 600; }
-        .nu-intake-reset { margin-left: 8px; background: transparent; border: none; color: var(--text-muted); font-family: inherit; font-size: 12px; text-decoration: underline; cursor: pointer; }
-        .nu-intake-reset:hover { color: var(--text-primary); }
-        .nu-intake-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; align-items: center; }
-        .nu-calai { display: inline-flex; align-items: center; gap: 7px; padding: 9px 14px; border-radius: var(--radius-sm); border: 1px solid var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); font-family: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer; transition: all .15s; }
-        .nu-calai:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 20%, transparent); }
-        .nu-calai:disabled { opacity: .6; cursor: default; }
-        .nu-quick { padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-med); background: var(--bg-tile); color: var(--text-body); font-family: inherit; font-size: 13px; cursor: pointer; transition: all .15s; }
-        .nu-quick:hover { border-color: var(--accent); color: var(--accent); }
-
         /* Состав приёма (комбо) */
         .nu-comp-row { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
         .nu-comp-lbl { font-size: 13px; margin-right: 2px; }
@@ -1095,27 +850,7 @@ export default function Nutrition() {
         .nu-part-sec:first-of-type { border-top: none; padding-top: 0; }
         .nu-part-head { font-size: 15px; font-weight: 700; color: var(--foreground); }
         .nu-detail-total { padding: 4px 0; }
-        .nu-recent { display: inline-block; margin-left: 8px; font-size: 11px; color: var(--status-warn); background: color-mix(in srgb, var(--status-warn) 14%, transparent); padding: 2px 8px; border-radius: 10px; vertical-align: middle; }
-
         /* Неделя — единственный «сильный» акцент: активный день */
-        .nu-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
-        .nu-day { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 12px 4px 10px; border-radius: var(--radius-md); border: 1px solid var(--border-soft); background: var(--bg-tile); cursor: pointer; transition: all .15s; }
-        .nu-day:hover { border-color: var(--border-med); }
-        .nu-day.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); box-shadow: 0 0 0 1px var(--accent) inset; }
-        .nu-day-wd { font-size: 12px; color: var(--text-muted); font-weight: 600; }
-        .nu-day.active .nu-day-wd { color: var(--accent); }
-        .nu-day-num { font-size: 20px; font-weight: 800; color: var(--foreground); line-height: 1; }
-        .nu-day.today .nu-day-num { color: var(--accent); }
-        .nu-day-dots { display: flex; gap: 3px; margin-top: 2px; }
-        .nu-day-dots i { width: 5px; height: 5px; border-radius: 50%; background: var(--text-muted); }
-        .nu-day-dots i.on { background: var(--accent); }
-        .nu-day.active .nu-day-dots i { background: color-mix(in srgb, var(--accent) 45%, var(--text-muted)); }
-        .nu-day.active .nu-day-dots i.on { background: var(--accent); }
-
-        .nu-day-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 18px; margin-bottom: 12px; flex-wrap: wrap; }
-        .nu-day-title { font-size: 15px; font-weight: 700; color: var(--foreground); }
-        .nu-day-kcal { font-size: 13px; }
-
         .nu-slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
         /* Базовая рамка у всех слотов одинаковая; у выбранного меняем ТОЛЬКО цвет границы (мягкий акцент — день уже несёт сильный) */
         .nu-slot { display: flex; flex-direction: column; gap: 10px; background: var(--bg-tile); border: 1px solid var(--border-soft); border-radius: var(--radius-md); padding: 14px; min-height: 120px; transition: border-color .15s; }
@@ -1125,23 +860,10 @@ export default function Nutrition() {
         .nu-slot-name svg { color: var(--text-muted); flex-shrink: 0; }
         .nu-slot.sel .nu-slot-name svg { color: var(--accent); }
         .nu-slot-target { font-size: 12px; white-space: nowrap; }
-        .nu-slot-dish { flex: 1; display: flex; flex-direction: column; gap: 5px; align-items: flex-start; text-align: left; background: transparent; border: none; cursor: pointer; padding: 0; }
-        .nu-slot-img { width: 100%; height: 76px; border-radius: var(--radius-sm); background-size: cover; background-position: center; background-color: var(--bg-surface); margin-bottom: 3px; }
-        .nu-slot-dish-name { font-size: 14.5px; font-weight: 600; color: var(--foreground); }
-        .nu-slot-dish:hover .nu-slot-dish-name { color: var(--accent); }
-        .nu-slot-dish-macros { font-size: 12.5px; }
-        .nu-slot-rated { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; }
-        .nu-slot-rated.up { color: var(--status-ok); }
-        .nu-slot-rated.down { color: var(--status-warn); }
-        .nu-slot-cancel { margin-top: 8px; align-self: stretch; background: transparent; border: 1px solid var(--border-soft); border-radius: var(--radius-sm); color: var(--text-muted); font-family: inherit; font-size: 12.5px; font-weight: 600; padding: 7px 10px; cursor: pointer; transition: all .15s; }
-        .nu-slot-cancel:hover { border-color: var(--status-crit); color: var(--status-crit); }
         /* «Подобрать» — ghost: без рамки (не конфликтует со сплошной рамкой карточки), заливка-подложка */
         .nu-slot-empty { flex: 1; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--accent) 7%, transparent); border: none; border-radius: var(--radius-sm); color: var(--accent); font-family: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; transition: all .15s; }
         .nu-slot-empty:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }
         .nu-slot-empty:disabled { opacity: .55; cursor: default; }
-
-        .nu-meal-controls { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 12px; }
-        .nu-permeal { font-size: 13px; }
         .nu-note-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
         .nu-note { flex: 1; width: 100%; background: var(--bg-tile); border: 1px solid var(--border-med); border-radius: var(--radius-md); padding: 12px 14px; font-family: inherit; font-size: 14px; color: var(--foreground); outline: none; }
         .nu-note:focus { border-color: var(--accent); }
@@ -1149,7 +871,6 @@ export default function Nutrition() {
         .nu-suggest { flex-shrink: 0; display: inline-flex; align-items: center; gap: 7px; padding: 12px 18px; border-radius: var(--radius-md); border: none; background: linear-gradient(var(--accent-btn-top), var(--accent-btn-bot)); color: var(--on-accent); font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; box-shadow: var(--shadow-btn); transition: opacity .15s; }
         .nu-suggest:hover:not(:disabled) { opacity: .92; }
         .nu-suggest:disabled { opacity: .5; cursor: default; }
-
         .nu-meal-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
         .nu-meals-state { grid-column: 1 / -1; padding: 28px 8px; text-align: center; font-size: 14.5px; }
         .nu-meal-card { display: flex; flex-direction: column; gap: 8px; background: var(--bg-tile); border: 1px solid var(--border-soft); border-radius: var(--radius-md); padding: 16px; }
@@ -1161,41 +882,18 @@ export default function Nutrition() {
         .nu-tags { display: flex; flex-wrap: wrap; gap: 6px; }
         .nu-tag { font-size: 11px; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); padding: 3px 9px; border-radius: 20px; }
         .nu-card-actions { display: flex; align-items: center; gap: 12px; margin-top: 6px; }
-        .nu-kitchen-card { display: inline-flex; align-items: center; gap: 7px; padding: 9px 14px; border-radius: var(--radius-sm); border: none; background: linear-gradient(var(--accent-btn-top), var(--accent-btn-bot)); color: var(--on-accent); font-family: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer; box-shadow: var(--shadow-btn); transition: opacity .15s; }
-        .nu-kitchen-card:hover:not(:disabled) { opacity: .9; }
-        .nu-kitchen-card:disabled { opacity: .55; cursor: default; }
         .nu-recipe-btn { align-self: flex-start; background: transparent; border: none; color: var(--accent); font-family: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; padding: 0; }
         .nu-recipe-btn:hover { text-decoration: underline; }
         .nu-more { margin-top: 16px; width: 100%; padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border-med); background: var(--bg-tile); color: var(--text-secondary); font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; transition: all .15s; }
         .nu-more:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
         .nu-more:disabled { opacity: .5; cursor: default; }
         .nu-empty { font-size: 14px; padding: 6px 0; line-height: 1.5; }
-        .nu-reopen { margin-top: 4px; align-self: flex-start; background: transparent; border: none; color: var(--accent); font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; padding: 6px 0 0; }
-        .nu-reopen:hover { text-decoration: underline; }
         .nu-results { width: 100%; max-width: 920px; max-height: 88vh; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
         /* Прошивка (.card::after, inset:7px absolute) на скролл-окнах считает рамку по ВСЕЙ высоте
            контента, а не по видимой области — дашед-строчка «разъезжается» и режет карточки.
            На скроллящихся модалках подбора/рецепта/оценки убираем её (рамка и градиент остаются). */
         .nu-results::after, .nu-modal::after, .nu-rate::after { display: none; }
-
-        .nu-shop-hint { font-size: 13px; margin-bottom: 10px; }
-        .nu-shop-list { display: flex; flex-direction: column; }
-        .nu-shop-item { display: grid; grid-template-columns: 1fr auto 28px; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--border-soft); }
-        .nu-shop-item:last-child { border-bottom: none; }
-        .nu-shop-name { font-size: 14.5px; color: var(--foreground); }
-        .nu-shop-qty { font-size: 13.5px; white-space: nowrap; font-weight: 600; }
-        .nu-shop-del { width: 26px; height: 26px; border-radius: var(--radius-sm); border: 1px solid var(--border-soft); background: transparent; color: var(--text-muted); cursor: pointer; font-size: 16px; line-height: 1; transition: all .15s; }
-        .nu-shop-del:hover { color: var(--status-crit); border-color: var(--status-crit); }
-        .nu-send { margin-top: 14px; padding: 12px 18px; border-radius: var(--radius-md); border: 1px dashed var(--border-med); background: transparent; color: var(--text-muted); font-family: inherit; font-size: 14px; font-weight: 600; cursor: not-allowed; opacity: .65; }
-
         /* Пустой список покупок — центрированный empty-state */
-        .nu-shop-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 24px 16px 8px; }
-        .nu-shop-empty-icon { display: flex; align-items: center; justify-content: center; width: 56px; height: 56px; border-radius: 50%; background: var(--bg-tile); border: 1px solid var(--border-soft); color: var(--text-muted); margin-bottom: 4px; }
-        .nu-shop-empty-title { font-size: 15.5px; font-weight: 700; color: var(--foreground); }
-        .nu-shop-empty-text { font-size: 13.5px; line-height: 1.5; max-width: 420px; }
-        .nu-shop-empty-cta { margin-top: 8px; padding: 10px 18px; border-radius: var(--radius-md); border: none; background: linear-gradient(var(--accent-btn-top), var(--accent-btn-bot)); color: var(--on-accent); font-family: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer; box-shadow: var(--shadow-btn); transition: opacity .15s; }
-        .nu-shop-empty-cta:hover { opacity: .92; }
-
         .nu-backdrop { position: fixed; inset: 0; background: var(--scrim); backdrop-filter: blur(3px); z-index: 500; display: flex; align-items: center; justify-content: center; padding: 24px; }
         .nu-modal { width: 100%; max-width: 560px; max-height: 88vh; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
         .nu-modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
@@ -1203,7 +901,6 @@ export default function Nutrition() {
         .nu-modal-head-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
         .nu-share-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-med); background: var(--bg-tile); color: var(--text-secondary); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: color .15s, border-color .15s; }
         .nu-share-btn:hover { color: var(--accent); border-color: var(--accent); }
-
         /* Тумблер индикатора FODMAP в шапке страницы */
         .nu-top-row { display: flex; justify-content: flex-end; align-items: center; gap: 10px; flex-wrap: wrap; margin: -4px 0 14px; }
         .nu-prefs-top { display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border-med); background: var(--bg-tile); color: var(--text-secondary); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: color .15s, border-color .15s; }
@@ -1224,7 +921,6 @@ export default function Nutrition() {
         .nu-credit a:hover { color: var(--foreground); }
         .nu-close { width: 32px; height: 32px; border-radius: var(--radius-sm); border: 1px solid var(--border-med); background: transparent; color: var(--text-muted); font-size: 20px; line-height: 1; cursor: pointer; flex-shrink: 0; }
         .nu-close:hover { color: var(--foreground); }
-
         /* ── Мобайл: окна Питания (подбор блюда / деталь / предпочтения) —
            bottom-sheet, как окна тренировки и события (дизайн-система) ── */
         @media (max-width: 640px) {
@@ -1244,10 +940,6 @@ export default function Nutrition() {
         .nu-ing .muted { color: var(--text-muted); }
         .nu-steps { display: flex; flex-direction: column; gap: 9px; padding-left: 20px; font-size: 15.5px; line-height: 1.6; color: var(--text-body); }
         .nu-modal-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
-        .nu-kitchen { font-size: 15px; }
-        .nu-remove { padding: 12px 18px; border-radius: var(--radius-md); border: 1px solid var(--status-crit); background: transparent; color: var(--status-crit); font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; transition: all .15s; }
-        .nu-remove:hover { background: color-mix(in srgb, var(--status-crit) 14%, transparent); }
-
         /* Слайдеры предпочтений */
         .nu-slider-row { display: flex; align-items: center; gap: 14px; }
         .nu-slider-row input[type=range] { flex: 1; accent-color: var(--accent); height: 4px; }
@@ -1261,7 +953,6 @@ export default function Nutrition() {
         .nu-food.no b { color: var(--status-crit); }
         .nu-chip { padding: 8px 13px; border-radius: 20px; border: 1px solid var(--border-med); background: var(--bg-tile); color: var(--text-secondary); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s; }
         .nu-chip.on { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
-
         /* Оценка */
         .nu-rate { width: 100%; max-width: 440px; display: flex; flex-direction: column; gap: 12px; text-align: center; }
         .nu-rate-meal { font-size: 13px; }
@@ -1273,15 +964,10 @@ export default function Nutrition() {
         .nu-rate-down:hover { border-color: var(--status-warn); color: var(--status-warn); background: color-mix(in srgb, var(--status-warn) 16%, transparent); }
         .nu-rate-later { background: transparent; border: none; color: var(--text-muted); font-family: inherit; font-size: 13px; cursor: pointer; padding: 4px; }
         .nu-rate-later:hover { color: var(--foreground); }
-
         .nu-toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); z-index: 600; background: var(--bg-surface); border: 1px solid var(--accent); color: var(--foreground); padding: 13px 20px; border-radius: var(--radius-md); font-size: 14px; font-weight: 600; box-shadow: var(--shadow-card); }
-
         @media (max-width: 900px) {
           .nu-fields { grid-template-columns: repeat(2, 1fr); }
-          .nu-kpi-macros { flex-basis: 100%; }
           .nu-slots { grid-template-columns: repeat(2, 1fr); }
-          .nu-week { gap: 5px; }
-          .nu-day { padding: 10px 2px 8px; }
         }
       `}</style>
     </div>
