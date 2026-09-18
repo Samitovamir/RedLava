@@ -498,7 +498,9 @@ export function nutritionToday() {
       : { protein: 0, fat: 0, carb: 0 }
     const remaining = Math.max(0, target.kcal - eaten)
     const goalLabel = (GOALS.find(g => g.key === profile.goal) || {}).label || profile.goal
-    return { hasData: true, target, eaten, remaining, macros, goalLabel }
+    // profileIsPlaceholder — анкета ещё не заполнена, цифры посчитаны по усреднённой
+    // заглушке. Интерфейсу это нужно, чтобы не выдавать такую цифру за личную норму.
+    return { hasData: true, target, eaten, remaining, macros, goalLabel, profileIsPlaceholder: !!profile.isPlaceholder }
   } catch { return { hasData: false } }
 }
 

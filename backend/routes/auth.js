@@ -26,6 +26,10 @@ async function tooManyFails(key, max) {
 async function recordFail(key) {
   await kvSet(key, (Number(await kvGet(key)) || 0) + 1)
 }
+// Для регистрации считаем КАЖДУЮ попытку, а не только неудачную: иначе «5 регистраций
+// с одного IP» не ограничивало ничего — успешные создания аккаунтов просто не попадали
+// в счётчик, и при открытой регистрации можно было наплодить их сколько угодно.
+const recordAttempt = recordFail
 
 // Сравнение постоянным временем — секрет короткий (PIN), но раз сравниваем секрет, делаем по правилам.
 function safeEqual(a, b) {
@@ -75,6 +79,7 @@ router.post('/register', async (req, res) => {
   if (error === 'name_taken') return res.status(409).json({ error, message: 'Такое имя уже занято.' })
   if (error) return res.status(503).json({ error, message: 'Не удалось создать аккаунт. Попробуйте ещё раз.' })
 
+  await recordAttempt(key)   // успешная регистрация тоже расходует лимит
   return res.json({ token: await signToken('user', user.id), role: 'user', user: publicUser(user) })
 })
 

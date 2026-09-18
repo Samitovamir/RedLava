@@ -51,6 +51,7 @@ const STR = {
     healthDeficit: 'Load is outrunning recovery — unload today and catch up on sleep.',
     healthBalanced: 'Recovery and load are level — hold your usual pace.',
     nutEmpty: 'Log your meals to see the day’s balance.',
+    nutNoProfile: 'Open Nutrition and answer five questions — then the target is yours, not an average.',
     nutOver: 'Target is met — keep the evening meal light and protein-led.',
     nutLeft: (n) => `${n} kcal left — lean on protein for the remaining meals.`,
     planAhead: 'Session still ahead — hold the target, don’t burn it early.',
@@ -82,6 +83,7 @@ const STR = {
     healthDeficit: 'Нагрузка обгоняет восстановление — сегодня разгрузись и добери сон.',
     healthBalanced: 'Восстановление и нагрузка вровень — держи привычный темп.',
     nutEmpty: 'Залогируй приёмы, чтобы видеть баланс дня.',
+    nutNoProfile: 'Загляни в «Питание» и ответь на пять вопросов — тогда норма будет твоя, а не усреднённая.',
     nutOver: 'Норма закрыта — вечером лучше лёгкий белковый приём.',
     nutLeft: (n) => `Осталось ${n} ккал — сделай упор на белок в оставшихся приёмах.`,
     planAhead: 'Тренировка впереди — держи цель, но не выкладывайся заранее.',
@@ -238,7 +240,10 @@ export default function TodaySignalV2() {
   const schedAdvice = ai.расписание || (sched.count === 0 ? s.schedFree : sched.loadPct >= 66 ? s.schedBusy : s.schedNormal)
   const readyAdvice = ai.спорт || (readyScore == null ? s.readyNoData : readyScore >= 75 ? s.readyHighAdv : readyScore >= 50 ? s.readyMidAdv : s.readyLowAdv)
   const healthAdvice = ai.здоровье || (balDiff == null ? s.healthNoData : balDiff >= 15 ? s.healthSurplus : balDiff <= -15 ? s.healthDeficit : s.healthBalanced)
-  const nutAdvice = ai.питание || (!nutOk ? s.nutEmpty : nut.eaten > (nut.target?.kcal || 0) ? s.nutOver : s.nutLeft(nut.remaining))
+  // Пока анкета не заполнена, норма посчитана по заглушке — не выдаём её за личную цифру
+  const nutAdvice = nut?.profileIsPlaceholder
+    ? s.nutNoProfile
+    : (ai.питание || (!nutOk ? s.nutEmpty : nut.eaten > (nut.target?.kcal || 0) ? s.nutOver : s.nutLeft(nut.remaining)))
   const planAdvice = planFact && (planFact.pct <= 0 ? s.planAhead : planFact.pct > 100 ? s.planOver : planFact.pct >= 100 ? s.planDone : s.planShort)
 
   return (
