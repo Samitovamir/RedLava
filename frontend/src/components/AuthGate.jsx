@@ -18,6 +18,7 @@ export default function AuthGate({ children }) {
   const [code, setCode] = useState('')
   const [mode, setMode] = useState('login')          // 'login' | 'register'
   const [codeRequired, setCodeRequired] = useState(false)
+  const [minPasswordLength, setMinPasswordLength] = useState(8)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const t = useT({
@@ -38,7 +39,18 @@ export default function AuthGate({ children }) {
       errNotConfigured: 'Вход ещё не настроен на сервере.',
       errFailed: 'Не удалось войти. Попробуйте позже.',
       errNoConnection: 'Нет связи с сервером.',
-      errTooMany: 'Слишком много попыток. Подождите немного.',
+      errTooMany: (min) => min ? `Слишком много попыток. Попробуйте через ${min} мин.` : 'Слишком много попыток. Подождите немного.',
+      passwordHint: (n) => `Пароль — минимум ${n} символов`,
+      srvErr: {
+        weak_password: (n) => `Пароль должен быть не короче ${n} символов.`,
+        password_too_long: () => 'Пароль слишком длинный.',
+        bad_name: () => 'Имя: от 2 до 40 символов, без «@» и спецсимволов.',
+        name_reserved: () => 'Это имя занято системой, выберите другое.',
+        name_taken: () => 'Такое имя уже занято.',
+        bad_code: () => 'Неверный код приглашения.',
+        store_failed: () => 'Не удалось создать аккаунт. Попробуйте ещё раз.',
+        busy: () => 'Сервер занят, попробуйте ещё раз.',
+      },
       guestPre: 'Хотите просто посмотреть? Войдите как ',
       guestPost: ' — увидите демо без личных данных.',
     },
@@ -59,7 +71,18 @@ export default function AuthGate({ children }) {
       errNotConfigured: 'Sign-in is not set up on the server yet.',
       errFailed: 'Couldn’t sign in. Please try again later.',
       errNoConnection: 'No connection to the server.',
-      errTooMany: 'Too many attempts. Please wait a bit.',
+      errTooMany: (min) => min ? `Too many attempts. Try again in ${min} min.` : 'Too many attempts. Please wait a bit.',
+      passwordHint: (n) => `Password — at least ${n} characters`,
+      srvErr: {
+        weak_password: (n) => `Password must be at least ${n} characters.`,
+        password_too_long: () => 'That password is too long.',
+        bad_name: () => 'Name: 2 to 40 characters, no “@” or special characters.',
+        name_reserved: () => 'That name is reserved, please pick another.',
+        name_taken: () => 'That name is already taken.',
+        bad_code: () => 'Wrong invite code.',
+        store_failed: () => 'Couldn’t create the account. Please try again.',
+        busy: () => 'Server is busy, please try again.',
+      },
       guestPre: 'Just want to look around? Sign in as ',
       guestPost: ' — you’ll see a demo with no personal data.',
     },
@@ -101,7 +124,11 @@ export default function AuthGate({ children }) {
   useEffect(() => {
     fetch('/api/auth/config')
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d) setCodeRequired(!!d.registrationCodeRequired) })
+      .then(d => {
+        if (!d) return
+        setCodeRequired(!!d.registrationCodeRequired)
+        if (d.minPasswordLength) setMinPasswordLength(d.minPasswordLength)
+      })
       .catch(() => { /* не критично — поле просто не покажем */ })
   }, [])
 
@@ -126,18 +153,16 @@ export default function AuthGate({ children }) {
         setUserName(d.user?.name || null)
         if (d.role === 'guest') seedGuestDemo({ force: true, lang })  // свежий демо при входе
         setAuthed(true)
-      } else if (r.status === 429) {
-        setError(t.errTooMany)
-      } else if (r.status === 503) {
-        setError(t.errNotConfigured)
-      } else if (registering) {
-        // при регистрации сервер присылает понятную причину (занятая почта, слабый пароль, код)
-        const d = await r.json().catch(() => null)
-        setError(d?.message || t.errFailed)
-      } else if (r.status === 401) {
-        setError(t.errCreds)
       } else {
-        setError(t.errFailed)
+        // Сервер отдаёт КОД ошибки, а не текст: перевод берём из своего словаря, иначе
+        // в английском интерфейсе показывалась бы русская строка с бэкенда.
+        const d = await r.json().catch(() => null)
+        const translate = t.srvErr[d?.error]
+        if (r.status === 429) setError(t.errTooMany(d?.retryInMinutes))
+        else if (r.status === 503 && d?.error !== 'store_failed') setError(t.errNotConfigured)
+        else if (translate) setError(translate(d?.minPasswordLength || minPasswordLength))
+        else if (r.status === 401) setError(t.errCreds)
+        else setError(t.errFailed)
       }
     } catch {
       setError(t.errNoConnection)
@@ -147,7 +172,7 @@ export default function AuthGate({ children }) {
 
   function switchMode() {
     setMode(m => (m === 'login' ? 'register' : 'login'))
-    setError(''); setPassword(''); setCode('')
+    setError(''); setCode('')
   }
 
   if (checking) return <div className="auth-splash" />
@@ -167,7 +192,7 @@ export default function AuthGate({ children }) {
           autoCorrect="off"
           autoComplete="username"
           value={username}
-          onChange={e => setUsername(e.target.value)}
+          onChange={e => { setUsername(e.target.value); if (error) setError('') }}
           autoFocus
         />
         <input
@@ -176,7 +201,7 @@ export default function AuthGate({ children }) {
           placeholder={t.password}
           autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
           value={password}
-          onChange={e => setPassword(e.target.value)}
+          onChange={e => { setPassword(e.target.value); if (error) setError('') }}
         />
         {mode === 'register' && codeRequired && (
           <input
@@ -189,7 +214,8 @@ export default function AuthGate({ children }) {
             onChange={e => setCode(e.target.value)}
           />
         )}
-        {error && <div className="auth-error">{error}</div>}
+        {mode === 'register' && <p className="auth-hint">{t.passwordHint(minPasswordLength)}</p>}
+        {error && <div className="auth-error" role="alert">{error}</div>}
         <button className="auth-btn" type="submit" disabled={busy || !username.trim() || !password.trim()}>
           {busy ? (mode === 'register' ? t.creating : t.checking) : (mode === 'register' ? t.register : t.login)}
         </button>
@@ -201,30 +227,36 @@ export default function AuthGate({ children }) {
 
       <style>{`
         .auth-splash { position: fixed; inset: 0; background: var(--bg-primary); }
+        /* overflow-y + margin:auto вместо align-items:center — карточка центрируется, когда
+           место есть, и ЛИСТАЕТСЯ, когда его нет: горизонтальная ориентация, открытая
+           клавиатура на Android, Split View. Раньше при высоте < ~570px логотип уезжал
+           за верхний край без возможности доскроллить. Шрифт не задаём — наследуется
+           общий Plus Jakarta Sans (здесь стоял Inter, который в проекте не подключён). */
         .auth-screen {
           position: fixed; inset: 0;
-          display: flex; align-items: center; justify-content: center;
+          display: flex; justify-content: center;
           padding: 24px;
+          overflow-y: auto;
           background: var(--bg-primary);
-          font-family: Inter, system-ui, sans-serif;
         }
         .auth-card {
           width: 100%; max-width: 380px;
+          margin: auto;
           display: flex; flex-direction: column; align-items: center; gap: 14px;
           background: var(--bg-card);
           border: 1px solid var(--border);
-          border-radius: 20px;
+          border-radius: var(--radius);
           padding: 36px 28px;
-          box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+          box-shadow: 0 24px 60px var(--scrim);
         }
         .auth-logo {
           width: 52px; height: 52px; border-radius: 14px;
-          background: var(--accent); color: var(--bg-primary);
+          background: var(--accent); color: var(--on-accent);
           display: flex; align-items: center; justify-content: center;
           font-size: 26px; font-weight: 800;
         }
         .auth-title { font-size: 22px; font-weight: 700; color: var(--foreground); margin: 6px 0 0; }
-        .auth-sub { font-size: 14px; color: var(--muted); text-align: center; margin: 0 0 6px; line-height: 1.5; }
+        .auth-sub { font-size: 14px; color: var(--text-secondary); text-align: center; margin: 0 0 6px; line-height: 1.5; }
         .auth-input {
           width: 100%; box-sizing: border-box;
           background: var(--bg-secondary);
@@ -236,20 +268,30 @@ export default function AuthGate({ children }) {
         .auth-input:focus { border-color: var(--accent); }
         .auth-input::placeholder { color: var(--muted); }
         .auth-error { width: 100%; font-size: 13.5px; color: var(--red); text-align: center; }
+        /* Фон кнопки — из градиента кнопок дизайн-системы, а не из --accent: тот токен
+           предназначен для текста/иконок и на светлых темах давал контраст ~2:1,
+           из-за чего активная кнопка выглядела выключенной. */
         .auth-btn {
           width: 100%; padding: 14px; border: none; border-radius: 12px;
-          background: var(--accent); color: var(--bg-primary);
+          background: linear-gradient(var(--accent-btn-top), var(--accent-btn-bot));
+          color: var(--on-accent);
           font-family: inherit; font-size: 16px; font-weight: 700; cursor: pointer;
-          transition: opacity 0.15s;
+          transition: filter 0.15s;
         }
-        .auth-btn:hover:not(:disabled) { opacity: 0.9; }
-        .auth-btn:disabled { opacity: 0.5; cursor: default; }
+        .auth-btn:hover:not(:disabled) { filter: brightness(1.08); }
+        /* Честный disabled: нейтральная плашка и приглушённый текст, а не просто opacity —
+           иначе непонятно, кнопка ещё активна или уже нет. */
+        .auth-btn:disabled {
+          background: var(--bg-tile); color: var(--text-muted);
+          cursor: default; filter: none;
+        }
         .auth-switch {
           background: none; border: none; padding: 2px; cursor: pointer;
           font-family: inherit; font-size: 13.5px; color: var(--accent);
         }
         .auth-switch:hover { text-decoration: underline; }
-        .auth-guest { font-size: 12.5px; color: var(--muted); text-align: center; line-height: 1.5; margin-top: 2px; }
+        .auth-guest { font-size: 12.5px; color: var(--text-secondary); text-align: center; line-height: 1.5; margin-top: 2px; }
+        .auth-hint { font-size: 12.5px; color: var(--text-secondary); text-align: center; line-height: 1.5; margin: -4px 0 2px; }
         .auth-guest b { color: var(--foreground); font-weight: 700; }
       `}</style>
     </div>

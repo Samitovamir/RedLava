@@ -13,7 +13,11 @@ const router = Router()
 const WINDOW_MS = 15 * 60 * 1000  // окно 15 минут
 const LOGIN_MAX_FAILS = 8         // неудачных попыток логина за окно — дальше блок
 const RESET_PIN_MAX_FAILS = 8     // PIN короткий (4 цифры) — тем более нужен лимит
-const REGISTER_MAX = 5            // регистраций с одного IP за окно — чтобы не наспамили аккаунтов
+// Регистраций с одного IP за окно. Настоящая защита от посторонних — REGISTRATION_CODE;
+// этот лимит нужен только против скриптового потока, поэтому щедрый: клуб может
+// регистрироваться вечером всей командой с одного Wi-Fi (или за NAT оператора),
+// и 5 попыток там упирались мгновенно, блокируя живых людей на 15 минут.
+const REGISTER_MAX = 30
 
 function attemptKey(prefix, req) {
   const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip || 'noip'
@@ -26,10 +30,12 @@ async function tooManyFails(key, max) {
 async function recordFail(key) {
   await kvSet(key, (Number(await kvGet(key)) || 0) + 1)
 }
-// Для регистрации считаем КАЖДУЮ попытку, а не только неудачную: иначе «5 регистраций
-// с одного IP» не ограничивало ничего — успешные создания аккаунтов просто не попадали
-// в счётчик, и при открытой регистрации можно было наплодить их сколько угодно.
+// Успешная регистрация тоже расходует лимит — иначе «5 регистраций с одного IP» не
+// ограничивало бы ничего. НО опечатки в форме (короткий пароль, занятое имя) НЕ считаются:
+// они ничего не создают, а человек за клубным Wi-Fi иначе выжигал бы лимит на всех соседей.
 const recordAttempt = recordFail
+// Минут до конца окна — чтобы в ответе был срок, а не просто «подождите немного»
+const minutesLeft = () => Math.max(1, Math.ceil((WINDOW_MS - (Date.now() % WINDOW_MS)) / 60000))
 
 // Сравнение постоянным временем — секрет короткий (PIN), но раз сравниваем секрет, делаем по правилам.
 function safeEqual(a, b) {
@@ -50,7 +56,7 @@ router.get('/config', (_req, res) => res.json({
 router.post('/register', async (req, res) => {
   const key = attemptKey('register', req)
   if (await tooManyFails(key, REGISTER_MAX)) {
-    return res.status(429).json({ error: 'too_many_attempts', message: 'Слишком много попыток. Подождите немного и попробуйте снова.' })
+    return res.status(429).json({ error: 'too_many_attempts', retryInMinutes: minutesLeft() })
   }
 
   const { username, name, password, code } = req.body || {}
@@ -58,26 +64,19 @@ router.post('/register', async (req, res) => {
 
   const required = process.env.REGISTRATION_CODE
   if (required && (typeof code !== 'string' || !code || !safeEqual(code, required))) {
-    await recordFail(key)
-    return res.status(403).json({ error: 'bad_code', message: 'Неверный код приглашения.' })
+    await recordFail(key)   // подбор кода — считаем
+    return res.status(403).json({ error: 'bad_code' })
   }
 
+  // Опечатку в форме лимитом не наказываем (см. комментарий к recordAttempt).
+  // Текст ошибки НЕ пишем: отдаём код, фронт покажет его на языке интерфейса —
+  // иначе в английском UI вылезала бы русская строка с сервера.
   const invalid = validateCredentials(login, password)
-  if (invalid) {
-    await recordFail(key)
-    const message = invalid === 'bad_name'
-      ? 'Имя: от 2 до 40 символов, без «@» и спецсимволов.'
-      : invalid === 'name_reserved'
-        ? 'Это имя занято системой, выберите другое.'
-        : invalid === 'password_too_long'
-          ? 'Пароль слишком длинный.'
-          : `Пароль должен быть не короче ${MIN_PASSWORD_LENGTH} символов.`
-    return res.status(400).json({ error: invalid, message })
-  }
+  if (invalid) return res.status(400).json({ error: invalid, minPasswordLength: MIN_PASSWORD_LENGTH })
 
   const { user, error } = await createUser(login, password)
-  if (error === 'name_taken') return res.status(409).json({ error, message: 'Такое имя уже занято.' })
-  if (error) return res.status(503).json({ error, message: 'Не удалось создать аккаунт. Попробуйте ещё раз.' })
+  if (error === 'name_taken') return res.status(409).json({ error })
+  if (error) return res.status(503).json({ error })
 
   await recordAttempt(key)   // успешная регистрация тоже расходует лимит
   return res.json({ token: await signToken('user', user.id), role: 'user', user: publicUser(user) })
@@ -93,7 +92,7 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   const key = attemptKey('fails', req)
   if (await tooManyFails(key, LOGIN_MAX_FAILS)) {
-    return res.status(429).json({ error: 'too_many_attempts', message: 'Слишком много неудачных попыток входа. Подождите немного и попробуйте снова.' })
+    return res.status(429).json({ error: 'too_many_attempts', retryInMinutes: minutesLeft() })
   }
 
   const { username, name, password } = req.body || {}
@@ -140,7 +139,7 @@ router.post('/verify-reset-pin', requireAuth, async (req, res) => {
 
   const key = attemptKey('resetfails', req)
   if (await tooManyFails(key, RESET_PIN_MAX_FAILS)) {
-    return res.status(429).json({ error: 'too_many_attempts', message: 'Слишком много попыток. Подождите немного и попробуйте снова.' })
+    return res.status(429).json({ error: 'too_many_attempts', retryInMinutes: minutesLeft() })
   }
 
   const { pin } = req.body || {}
