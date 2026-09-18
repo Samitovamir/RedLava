@@ -204,7 +204,13 @@ export const QUICK_ADD = [
 ]
 
 // FODMAP-светофор: уровень → подпись + цвет (токены статуса). null, если уровня нет.
-export function fodmapMeta(band, lang = 'ru') {
+// Язык по умолчанию — текущий язык интерфейса. LanguageProvider держит его в <html lang>,
+// а fodmapMeta зовут из десятка мест, которые lang не передают — и английский интерфейс
+// получал русские подписи «Высокий/Умеренный/Низкий».
+const uiLang = () => {
+  try { return document.documentElement.lang === 'en' ? 'en' : 'ru' } catch { return 'ru' }
+}
+export function fodmapMeta(band, lang = uiLang()) {
   const en = lang === 'en'
   if (band === 'high') return { key: 'high', label: en ? 'High' : 'Высокий', color: 'var(--status-crit)' }
   if (band === 'mod') return { key: 'mod', label: en ? 'Moderate' : 'Умеренный', color: 'var(--status-warn)' }

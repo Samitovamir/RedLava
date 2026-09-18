@@ -201,7 +201,11 @@ export default function TodaySignalV2() {
   // Питание: калории (съедено/цель) + FODMAP дня (только если диета включена)
   const nut = (() => { try { return nutritionToday() } catch { return null } })()
   const nutOk = !!nut?.hasData
-  const kcalPct = nutOk && nut.target?.kcal ? Math.min(100, Math.round(nut.eaten / nut.target.kcal * 100)) : 0
+  // Пока анкета не заполнена, нормы нет — гейдж показывает «—», а не честный ноль
+  // от выдуманной цифры (nutritionToday() всегда считает по заглушке профиля).
+  const kcalPct = nutOk && !nut.profileIsPlaceholder && nut.target?.kcal
+    ? Math.min(100, Math.round(nut.eaten / nut.target.kcal * 100))
+    : null
   const kcalColor = nutOk && nut.eaten > (nut.target?.kcal || 0) ? 'var(--status-warn)' : 'var(--accent)'
   const fodEnabled = (() => { try { return loadPrefs().fodmap } catch { return false } })()
   const fod = (() => {

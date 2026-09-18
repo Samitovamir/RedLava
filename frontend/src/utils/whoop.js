@@ -44,12 +44,15 @@ export function recoveryLabel(r) {
   return 'Низкое'
 }
 
-// Фазы сна — для полосы и легенды (порядок: бодрствование → лёгкий → REM → глубокий)
+// Фазы сна — для полосы и легенды (порядок: бодрствование → лёгкий → REM → глубокий).
+// Цвета — категорийные токены палитры темы, а не hex: раньше здесь были замороженные
+// цвета тёмной темы, и на светлых они выпадали из палитры. Подписи — фолбэк: оба
+// потребителя (MetricsView, SleepHypnogram) подставляют свои переводы по key.
 export const SLEEP_STAGES = [
-  { key: 'awake', label: 'Бодрствование', color: '#9ca3af' },
-  { key: 'light', label: 'Лёгкий сон',    color: '#6E8CA8' },
-  { key: 'rem',   label: 'REM (быстрый)', color: '#B07B52' },
-  { key: 'deep',  label: 'Глубокий сон',  color: '#7E9B6E' }
+  { key: 'awake', label: 'Бодрствование', color: 'var(--c-neutral)' },
+  { key: 'light', label: 'Лёгкий сон',    color: 'var(--c-steel)' },
+  { key: 'rem',   label: 'REM (быстрый)', color: 'var(--c-warm)' },
+  { key: 'deep',  label: 'Глубокий сон',  color: 'var(--c-sage)' }
 ]
 
 // Часы:минуты из минут

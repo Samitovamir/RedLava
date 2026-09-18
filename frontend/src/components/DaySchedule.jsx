@@ -1254,7 +1254,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
           padding: 9px 10px; border-radius: 8px; cursor: pointer;
           font-family: inherit; transition: background 0.12s;
         }
-        .ds-ft-slot:hover { background: rgba(255,255,255,0.06); }
+        .ds-ft-slot:hover { background: color-mix(in srgb, var(--text-primary) 6%, transparent); }
         .ds-ft-time { font-size: 13.5px; font-weight: 600; color: var(--foreground); }
         .ds-ft-dur { font-size: 11.5px; color: var(--green); }
         .ds-ft-move {
@@ -1266,7 +1266,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
         .ds-ft-variant {
           display: flex; align-items: center; gap: 10px;
           padding: 10px; border-radius: 10px;
-          background: rgba(255,255,255,0.025);
+          background: color-mix(in srgb, var(--text-primary) 2.5%, transparent);
           border: 1px solid var(--border);
           margin: 0 2px 6px;
         }
@@ -1296,7 +1296,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
         .ds-wk-col {
           display: flex; flex-direction: column; gap: 6px;
           border-radius: 12px; padding: 6px;
-          background: rgba(255,255,255,0.015);
+          background: color-mix(in srgb, var(--text-primary) 1.5%, transparent);
         }
         .ds-wk-col.today { background: color-mix(in srgb, var(--accent-today) 7%, transparent); }
         .ds-wk-head {
@@ -1333,7 +1333,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
           min-height: 72px;
           display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
           border: 1px solid var(--border); border-radius: 10px;
-          background: rgba(255,255,255,0.015);
+          background: color-mix(in srgb, var(--text-primary) 1.5%, transparent);
           padding: 8px; cursor: pointer; font-family: inherit;
           transition: border-color 0.15s, background 0.15s;
         }
@@ -1445,14 +1445,14 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
           padding: 9px 10px; border-radius: 8px;
           cursor: pointer; transition: background 0.12s;
         }
-        .ds-dropdown-item:hover { background: rgba(255,255,255,0.06); }
+        .ds-dropdown-item:hover { background: color-mix(in srgb, var(--text-primary) 6%, transparent); }
         .ds-dropdown-item.danger { color: var(--red); }
         .ds-dropdown-item.danger:hover { background: color-mix(in srgb, var(--red) 12%, transparent); }
         .ds-notif {
           display: flex; flex-direction: column; gap: 3px;
           padding: 9px 10px; border-radius: 8px;
         }
-        .ds-notif:hover { background: rgba(255,255,255,0.04); }
+        .ds-notif:hover { background: color-mix(in srgb, var(--text-primary) 4%, transparent); }
         .ds-notif-text { font-size: 13px; color: var(--foreground); line-height: 1.4; }
         .ds-notif-time { font-size: 11px; color: var(--muted-foreground); }
         .ds-icon-btn {
@@ -1599,7 +1599,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
           flex-shrink: 0;
           transition: all 0.15s;
         }
-        .ds-event-menu:hover { background: rgba(255,255,255,0.06); color: var(--foreground); }
+        .ds-event-menu:hover { background: color-mix(in srgb, var(--text-primary) 6%, transparent); color: var(--foreground); }
         /* z-index выше backdrop (40), чтобы клики по пунктам меню срабатывали */
         .ds-event .ds-menu-wrap { z-index: 60; }
         /* когда меню открыто — поднимаем карточку над backdrop И снимаем обрезку,
@@ -1720,7 +1720,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
 
         .ds-conflict-backdrop {
           position: fixed; inset: 0;
-          background: rgba(0,0,0,0.5);
+          background: var(--scrim);
           backdrop-filter: blur(3px);
           z-index: 600;
           display: flex; align-items: center; justify-content: center;

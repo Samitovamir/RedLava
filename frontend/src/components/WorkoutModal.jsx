@@ -16,6 +16,7 @@ const STR = {
     avg: 'avg', route: 'Route', loading: 'Loading workout details…',
     dynamics: 'Distance dynamics', kilometers: 'Kilometers', segments: 'Segments',
     noCharts: 'No detailed charts in Garmin for this workout.',
+    hr: 'Heart rate', altitude: 'Altitude',
   },
   ru: {
     months: ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'],
@@ -27,6 +28,7 @@ const STR = {
     avg: 'ср.', route: 'Маршрут', loading: 'Загружаю подробности тренировки…',
     dynamics: 'Динамика по дистанции', kilometers: 'Километры', segments: 'Отрезки',
     noCharts: 'Для этой тренировки нет детальных графиков в Garmin.',
+    hr: 'Пульс', altitude: 'Высота',
   },
 }
 
@@ -274,10 +276,10 @@ export default function WorkoutModal({ workout, onClose }) {
               {(series?.hr || series?.elevation || series?.power || series?.cadence) && (
                 <div className="card wm-charts">
                   <div className="card-title">{L.dynamics}</div>
-                  {series.hr && <LineChart xs={kmAxis} ys={series.hr} color="var(--red)" unit="уд/мин" label="Пульс" />}
-                  {series.elevation && <LineChart xs={kmAxis} ys={series.elevation} color="var(--green)" unit="м" label="Высота" />}
-                  {series.power && <LineChart xs={kmAxis} ys={series.power} color="var(--orange)" unit="Вт" label="Мощность" />}
-                  {series.cadence && <LineChart xs={kmAxis} ys={series.cadence} color="var(--accent)" unit="шаг/мин" label="Каденс" />}
+                  {series.hr && <LineChart xs={kmAxis} ys={series.hr} color="var(--red)" unit={L.bpm} label={L.hr} />}
+                  {series.elevation && <LineChart xs={kmAxis} ys={series.elevation} color="var(--green)" unit={L.m} label={L.altitude} />}
+                  {series.power && <LineChart xs={kmAxis} ys={series.power} color="var(--orange)" unit={L.watt} label={L.power} />}
+                  {series.cadence && <LineChart xs={kmAxis} ys={series.cadence} color="var(--accent)" unit={L.spm} label={L.cadence} />}
                 </div>
               )}
 

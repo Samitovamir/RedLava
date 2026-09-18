@@ -50,6 +50,9 @@ export default function DiaryTab({ target, intake, setIntake, selectedDay, flash
       notFound: 'Продукт не найден — сфотографируй еду', camFail: 'Камера недоступна — сфотографируй еду',
       gramsTitle: 'Сколько граммов?', per100: 'на 100 г', grams: 'Граммы',
       savedTitle: 'Сохранённые блюда', savedEmpty: 'Пока нет сохранённых блюд. Сохрани блюдо из записи дневника.', logIt: 'Добавить',
+      breakdownTitle: 'Съедено сегодня', close: 'Закрыть',
+      bMacro: 'Б', fMacro: 'Ж', uMacro: 'У', estimated: 'оценка',
+      fodDay: 'Итог дня по FODMAP:',
     },
     en: {
       eaten: 'Eaten', of: 'of', kcal: 'kcal', left: 'left', over: 'over',
@@ -65,6 +68,9 @@ export default function DiaryTab({ target, intake, setIntake, selectedDay, flash
       notFound: 'Product not found — photograph the food', camFail: 'Camera unavailable — photograph the food',
       gramsTitle: 'How many grams?', per100: 'per 100 g', grams: 'Grams',
       savedTitle: 'Saved dishes', savedEmpty: 'No saved dishes yet. Save one from a diary entry.', logIt: 'Add',
+      breakdownTitle: 'Eaten today', close: 'Close',
+      bMacro: 'P', fMacro: 'F', uMacro: 'C', estimated: 'estimate',
+      fodDay: 'FODMAP for the day:',
     },
   })
 
@@ -248,14 +254,14 @@ export default function DiaryTab({ target, intake, setIntake, selectedDay, flash
       />
       {breakdownOpen && (
         <Portal>
-          <div onClick={() => setBreakdownOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', backdropFilter: 'blur(3px)', zIndex: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div onClick={() => setBreakdownOpen(false)} style={{ position: 'fixed', inset: 0, background: 'var(--scrim)', backdropFilter: 'blur(3px)', zIndex: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
             <div onClick={e => e.stopPropagation()} className="card" style={{ width: '100%', maxWidth: 460, maxHeight: '82vh', overflowY: 'auto', padding: 20 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                <h3 style={{ margin: 0, fontSize: 17, color: 'var(--text-primary)' }}>Съедено сегодня</h3>
-                <button onClick={() => setBreakdownOpen(false)} aria-label="Закрыть" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 24, cursor: 'pointer', lineHeight: 1 }}>×</button>
+                <h3 style={{ margin: 0, fontSize: 17, color: 'var(--text-primary)' }}>{t.breakdownTitle}</h3>
+                <button onClick={() => setBreakdownOpen(false)} aria-label={t.close} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 24, cursor: 'pointer', lineHeight: 1 }}>×</button>
               </div>
               <div style={{ fontSize: 12.5, color: 'var(--text-secondary)', marginBottom: 10 }}>
-                {eatenK} ккал · Б {Math.round(eatenP)} · Ж {Math.round(eatenF)} · У {Math.round(eatenC)}
+                {eatenK} {t.kcal} · {t.bMacro} {Math.round(eatenP)} · {t.fMacro} {Math.round(eatenF)} · {t.uMacro} {Math.round(eatenC)}
               </div>
               {entryFods.map(({ en, f }, i) => {
                 const meta = fodmapMeta(f?.band)
@@ -263,7 +269,7 @@ export default function DiaryTab({ target, intake, setIntake, selectedDay, flash
                   <div key={en.id || i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '11px 0', borderTop: '1px solid var(--border-soft)' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{en.name}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{en.kcal} ккал · Б {en.protein} · Ж {en.fat} · У {en.carb}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{en.kcal} {t.kcal} · {t.bMacro} {en.protein} · {t.fMacro} {en.fat} · {t.uMacro} {en.carb}</div>
                     </div>
                     {fodmapOn && meta && (
                       <div style={{ textAlign: 'right', flex: 'none', maxWidth: 130 }}>
@@ -271,7 +277,7 @@ export default function DiaryTab({ target, intake, setIntake, selectedDay, flash
                           <span style={{ width: 8, height: 8, borderRadius: '50%', background: meta.color, flex: 'none' }} />
                           <b style={{ color: meta.color, fontSize: 12.5 }}>{meta.label}</b>
                         </span>
-                        {(f.reason || f.estimated) && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{f.reason}{f.estimated ? ' · оценка' : ''}</div>}
+                        {(f.reason || f.estimated) && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{f.reason}{f.estimated ? ` · ${t.estimated}` : ''}</div>}
                       </div>
                     )}
                   </div>
@@ -279,7 +285,7 @@ export default function DiaryTab({ target, intake, setIntake, selectedDay, flash
               })}
               {fodmapOn && dayFodmap && (
                 <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border-soft)', fontSize: 13, color: 'var(--text-body)' }}>
-                  Итог дня по FODMAP: <b style={{ color: fodmapMeta(dayFodmap).color }}>{fodmapMeta(dayFodmap).label}</b>
+                  {t.fodDay} <b style={{ color: fodmapMeta(dayFodmap).color }}>{fodmapMeta(dayFodmap).label}</b>
                   {dayFodmapReason && <span style={{ color: 'var(--text-muted)' }}> — {dayFodmapReason}</span>}
                 </div>
               )}

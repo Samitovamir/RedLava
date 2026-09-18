@@ -59,6 +59,8 @@ export default function Nutrition() {
       recipeCopied: 'Рецепт скопирован — можно переслать домработнице',
       recipeWait: 'Рецепт ещё собирается — подождите пару секунд',
       on: 'ВКЛ', off: 'ВЫКЛ',
+      fodmapSection: 'FODMAP-диета',
+      fodmapNote: 'Лечебное питание — по назначению врача. При включении ИИ подбирает блюда и рецепты с низким FODMAP и помечает уровень.',
       // Карточка цели
       goalFor: 'Цель на',
       today: 'сегодня',
@@ -175,6 +177,8 @@ export default function Nutrition() {
       recipeCopied: 'Recipe copied — you can forward it',
       recipeWait: 'Recipe is still building — wait a couple of seconds',
       on: 'ON', off: 'OFF',
+      fodmapSection: 'Low-FODMAP diet',
+      fodmapNote: 'A medical diet — follow your doctor’s advice. When on, the AI picks low-FODMAP dishes and recipes and marks the level of each.',
       goalFor: 'Goal for',
       today: 'today',
       editProfile: 'Edit profile',
@@ -962,13 +966,13 @@ export default function Nutrition() {
               <div className="nu-sec-title">{t.avoid}</div>
               <input className="nu-note" placeholder={t.avoidPlaceholder} value={prefsDraft.avoid} onChange={e => setDraft('avoid', e.target.value)} />
 
-              <div className="nu-sec-title">FODMAP-диета</div>
+              <div className="nu-sec-title">{t.fodmapSection}</div>
               <div className="muted" style={{ fontSize: 12.5, lineHeight: 1.45, marginTop: -4, marginBottom: 8 }}>
-                Лечебное питание — по назначению врача. При включении ИИ подбирает блюда и рецепты с низким FODMAP и помечает уровень.
+                {t.fodmapNote}
               </div>
               <div className="nu-foods">
                 <button className={`nu-food ${prefsDraft.fodmap ? 'yes' : 'no'}`} onClick={() => setDraft('fodmap', !prefsDraft.fodmap)}>
-                  Low-FODMAP <b>{prefsDraft.fodmap ? 'ВКЛ' : 'ВЫКЛ'}</b>
+                  Low-FODMAP <b>{prefsDraft.fodmap ? t.on : t.off}</b>
                 </button>
               </div>
 
@@ -1192,7 +1196,7 @@ export default function Nutrition() {
         .nu-shop-empty-cta { margin-top: 8px; padding: 10px 18px; border-radius: var(--radius-md); border: none; background: linear-gradient(var(--accent-btn-top), var(--accent-btn-bot)); color: var(--on-accent); font-family: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer; box-shadow: var(--shadow-btn); transition: opacity .15s; }
         .nu-shop-empty-cta:hover { opacity: .92; }
 
-        .nu-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.55); backdrop-filter: blur(3px); z-index: 500; display: flex; align-items: center; justify-content: center; padding: 24px; }
+        .nu-backdrop { position: fixed; inset: 0; background: var(--scrim); backdrop-filter: blur(3px); z-index: 500; display: flex; align-items: center; justify-content: center; padding: 24px; }
         .nu-modal { width: 100%; max-width: 560px; max-height: 88vh; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
         .nu-modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
         .nu-modal-head h3 { font-size: 19px; font-weight: 700; color: var(--foreground); margin: 0; }
