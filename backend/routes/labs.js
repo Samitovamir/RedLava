@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { requireAuth } from '../authGuard.js'
 import { kvGetScoped, kvSetScoped, kvDelScoped, scopeOf } from '../userScope.js'
 import crypto from 'crypto'
+import { msg as uiMsg } from '../messages.js'
 
 /*
   Blood tests out of a public Yandex.Disk folder.
@@ -148,7 +149,7 @@ router.use(requireAuth)
 // Connect or update the link to the public folder
 router.post('/connect', async (req, res) => {
   const { url } = req.body || {}
-  if (!url || !/disk\.yandex/i.test(url)) return res.status(400).json({ ok: false, message: 'Дайте ссылку на публичную папку Яндекс.Диска' })
+  if (!url || !/disk\.yandex/i.test(url)) return res.status(400).json({ ok: false, message: uiMsg(req, 'labsBadUrl') })
   await kvSetScoped(URL_KEY, scopeOf(req), url)
   res.json({ ok: true })
 })
@@ -195,9 +196,9 @@ router.post('/parse', async (req, res) => {
   try {
     const files = await listFiles(url)
     const file = files.find(f => f.path === path)
-    if (!file) return res.json({ ok: false, message: 'файл не найден' })
+    if (!file) return res.json({ ok: false, message: uiMsg(req, 'labsNoFile') })
     const parsed = await parseFile(file, url)
-    if (!parsed) return res.json({ ok: false, message: 'не удалось разобрать' })   // a real failure — don't cache it, a retry is possible
+    if (!parsed) return res.json({ ok: false, message: uiMsg(req, 'labsUnparsed') })   // a real failure — don't cache it, a retry is possible
     const report = { id: path, date: parsed.date, lab: parsed.lab || '', kind: parsed.kind || '', fileName: file.name, folder: file.folder, values: parsed.values || {} }
     // Save it even with no markers (the file isn't a blood test / has no numbers) — so the AI isn't run again
     store[path] = { modified, report }
@@ -212,7 +213,7 @@ router.post('/parse', async (req, res) => {
 // with nothing invented. The file arrives as base64. The result is cached by its contents.
 router.post('/upload', async (req, res) => {
   const { name, mime, data } = req.body || {}
-  if (!data) return res.status(400).json({ ok: false, message: 'нет файла' })
+  if (!data) return res.status(400).json({ ok: false, message: uiMsg(req, 'labsNoUpload') })
   const userId = scopeOf(req)
   try {
     const buf = Buffer.from(data, 'base64')

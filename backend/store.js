@@ -10,7 +10,9 @@ import { dirname, join } from 'path'
 const URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL || ''
 const TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || ''
 
-const FILE = join(dirname(fileURLToPath(import.meta.url)), '.localstore.json')
+// LOCALSTORE_FILE lets the tests point at a throwaway store instead of sharing
+// the developer's own one, which they would otherwise fill with test accounts.
+const FILE = process.env.LOCALSTORE_FILE || join(dirname(fileURLToPath(import.meta.url)), '.localstore.json')
 // A hard timeout on every KV request: the critical section under the lock has to fit inside
 // LOCK_TTL with certainty, otherwise a hung SET reopens the race.
 const KV_TIMEOUT_MS = 3000

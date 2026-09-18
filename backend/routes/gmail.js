@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { kvGetScoped, scopeOf } from '../userScope.js'
 import { getAccessToken } from './calendar.js'
+import { msg as uiMsg } from '../messages.js'
 
 // Sending mail through the Gmail API (one shared Google sign-in, server-side — the user needs no keys).
 // Mounted behind requireAuth in app.js.
@@ -43,11 +44,11 @@ router.get('/status', async (req, res) => {
 // Send an email
 router.post('/send', async (req, res) => {
   const { to, subject, body } = req.body || {}
-  if (!validEmail(to)) return res.json({ ok: false, message: 'Укажите корректный email получателя.' })
-  if (!String(body || '').trim()) return res.json({ ok: false, message: 'Пустое письмо — добавьте текст.' })
+  if (!validEmail(to)) return res.json({ ok: false, message: uiMsg(req, 'mailBadTo') })
+  if (!String(body || '').trim()) return res.json({ ok: false, message: uiMsg(req, 'mailEmpty') })
 
   const access = await getAccessToken(scopeOf(req))
-  if (!access) return res.json({ ok: false, message: 'Google не подключён. Подключите Google в разделе «Подключения».' })
+  if (!access) return res.json({ ok: false, message: uiMsg(req, 'mailNoGoogle') })
 
   try {
     const raw = b64url(buildMime({ to: String(to).trim(), subject, body }))
@@ -68,7 +69,7 @@ router.post('/send', async (req, res) => {
     }
     res.json({ ok: true })
   } catch {
-    res.json({ ok: false, message: 'Ошибка отправки. Проверьте соединение.' })
+    res.json({ ok: false, message: uiMsg(req, 'mailNetwork') })
   }
 })
 

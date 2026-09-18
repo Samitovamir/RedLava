@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { GarminConnect } from 'garmin-connect'
 import { requireAuth } from '../authGuard.js'
 import { kvGetScoped, kvSetScoped, kvDelScoped, scopeOf } from '../userScope.js'
+import { msg as uiMsg } from '../messages.js'
 
 const router = Router()
 // Key prefix; the real key carries the data owner's id (see userScope.js)
@@ -319,7 +320,7 @@ function mapActivity(a) {
 // Connect: sign in with login/password → store the session token
 router.post('/connect', requireAuth, async (req, res) => {
   const { email, password } = req.body || {}
-  if (!email || !password) return res.status(400).json({ success: false, message: 'Введите email и пароль' })
+  if (!email || !password) return res.status(400).json({ success: false, message: uiMsg(req, 'garminCreds') })
   try {
     const c = new GarminConnect({ username: email, password })
     await c.login(email, password)

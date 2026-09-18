@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import Anthropic from '@anthropic-ai/sdk'
 import { kvGet, kvSet } from '../store.js'
+import { msg as uiMsg } from '../messages.js'
 
 /*
   Nutrition: the AI suggests meals that fit the target calories and macros and the user's
@@ -132,7 +133,7 @@ const RECIPE_TOOL = [{
 
 // Suggest meals that fit the target
 router.post('/meals', async (req, res) => {
-  if (!process.env.ANTHROPIC_API_KEY) return res.json({ ok: false, message: 'Нет ключа ИИ', meals: [] })
+  if (!process.env.ANTHROPIC_API_KEY) return res.json({ ok: false, message: uiMsg(req, 'nutNoAiKey'), meals: [] })
   const { target = {}, mealType = 'обед', prefs = null, likes = [], dislikes = [], count = 5, note = '', exclude = [], components = [], health = '' } = req.body || {}
   try {
     const client = getClient()
@@ -172,7 +173,7 @@ router.post('/meals', async (req, res) => {
 
 // A dish's recipe
 router.post('/recipe', async (req, res) => {
-  if (!process.env.ANTHROPIC_API_KEY) return res.json({ ok: false, message: 'Нет ключа ИИ' })
+  if (!process.env.ANTHROPIC_API_KEY) return res.json({ ok: false, message: uiMsg(req, 'nutNoAiKey') })
   const { dish, servings = 1, prefs = null } = req.body || {}
   if (!dish) return res.status(400).json({ ok: false, message: 'dish required' })
   // Recipe cache keyed by dish name: generated once, served from memory after that
@@ -316,10 +317,10 @@ const CALAI_PROMPT =
   '(и отдельные позиции, если видно). Вызови log_intake.'
 
 router.post('/intake-image', async (req, res) => {
-  if (!process.env.ANTHROPIC_API_KEY) return res.json({ ok: false, message: 'Нет ключа ИИ' })
+  if (!process.env.ANTHROPIC_API_KEY) return res.json({ ok: false, message: uiMsg(req, 'nutNoAiKey') })
   const { image, mode = 'food', health = '' } = req.body || {}
   const m = /^data:(image\/(png|jpeg|jpg|webp));base64,(.+)$/.exec(String(image || ''))
-  if (!m) return res.status(400).json({ ok: false, message: 'Нужно фото (png/jpg/webp)' })
+  if (!m) return res.status(400).json({ ok: false, message: uiMsg(req, 'nutNeedPhoto') })
   const media = m[1] === 'image/jpg' ? 'image/jpeg' : m[1]
   const prompt = mode === 'label' ? LABEL_PROMPT : mode === 'calai' ? CALAI_PROMPT : FOOD_PROMPT(health)
   try {

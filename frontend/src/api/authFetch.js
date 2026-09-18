@@ -58,6 +58,18 @@ export const getDeviceId = () => {
   } catch { return 'nodevice' }
 }
 
+// The chosen interface language, or the browser's locale on a first visit —
+// the same rule LanguageContext uses, kept here so plain fetch() calls have it too.
+const LANG_KEY = 'redlava-lang'
+export const getLang = () => {
+  try {
+    const saved = localStorage.getItem(LANG_KEY)
+    if (saved === 'ru' || saved === 'en') return saved
+    const langs = navigator.languages?.length ? navigator.languages : [navigator.language]
+    return langs.some(l => String(l).toLowerCase().startsWith('ru')) ? 'ru' : 'en'
+  } catch { return 'en' }
+}
+
 let installed = false
 export function installAuthFetch() {
   if (installed || typeof window === 'undefined') return
@@ -72,6 +84,9 @@ export function installAuthFetch() {
     // Do NOT overwrite Authorization if the caller has already set its own
     if (token && !headers.has('Authorization')) headers.set('Authorization', 'Bearer ' + token)
     headers.set('X-Device-Id', getDeviceId())
+    // The interface language, so the server can answer in it. Without this the
+    // backend replied in Russian always, and an English UI showed Russian errors.
+    headers.set('X-Lang', getLang())
 
     const res = await orig(input, { ...init, headers })
     // The token is expired or invalid — except on the sign-in endpoints themselves

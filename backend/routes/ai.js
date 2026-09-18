@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import Anthropic from '@anthropic-ai/sdk'
 import { kvGet, kvSet } from '../store.js'
+import { msg as uiMsg } from '../messages.js'
 
 const router = Router()
 
@@ -42,7 +43,6 @@ async function guestOverDailyLimit(req) {
   return false
 }
 
-const GUEST_LIMIT_MSG = 'Дневной лимит ИИ в демо-режиме исчерпан. Зайдите завтра или войдите в основной аккаунт.'
 
 function getClient() {
   return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -123,16 +123,16 @@ function aiRateLimit(req, res, next) {
   // An over-long request is a common cause of accidental overspending
   const msg = req.body?.message
   if (typeof msg === 'string' && msg.length > LIMITS.maxMessageChars) {
-    return res.status(200).json(softBlock('Запрос слишком длинный. Сократите его, пожалуйста, и попробуйте снова.'))
+    return res.status(200).json(softBlock(uiMsg(req, 'tooLong')))
   }
   if (inMin >= LIMITS.perMin) {
-    return res.status(200).json(softBlock('Слишком много запросов подряд. Давайте сделаем паузу на минуту и попробуем снова.'))
+    return res.status(200).json(softBlock(uiMsg(req, 'tooFast')))
   }
   if (inHour >= LIMITS.perHour) {
-    return res.status(200).json(softBlock('Помощник сегодня поработал очень активно. Давайте продолжим через часок.'))
+    return res.status(200).json(softBlock(uiMsg(req, 'tooManyHour')))
   }
   if (inDay >= LIMITS.perDay) {
-    return res.status(200).json(softBlock('На сегодня помощник уже сделал очень много. Давайте вернёмся к этому завтра.'))
+    return res.status(200).json(softBlock(uiMsg(req, 'tooManyDay')))
   }
   aiHits.push(now)
   next()
@@ -157,9 +157,9 @@ router.post('/chat', async (req, res) => {
   // Ordinary chat means short answers (1024). Long formats (walking through blood tests and
   // the like) may ask for more, but never above the ceiling, so an answer never cuts off mid-word.
   const outTokens = Math.min(Math.max(Number(maxTokens) || 1024, 256), 8192)
-  if (await guestOverDailyLimit(req)) return res.status(200).json(softBlock(GUEST_LIMIT_MSG))
+  if (await guestOverDailyLimit(req)) return res.status(200).json(softBlock(uiMsg(req, 'guestLimit')))
   if (!process.env.ANTHROPIC_API_KEY) {
-    return res.json({ reply: 'Добавьте ANTHROPIC_API_KEY в .env файл для работы ИИ.' })
+    return res.json({ reply: uiMsg(req, 'noAiKey') })
   }
   try {
     const client = getClient()
@@ -286,9 +286,9 @@ const ROUTE_TOOL = {
 router.post('/agent', async (req, res) => {
   const { message, snapshot, history, context } = req.body
   if (!message) return res.status(400).json({ error: 'message required' })
-  if (await guestOverDailyLimit(req)) return res.status(200).json(softBlock(GUEST_LIMIT_MSG))
+  if (await guestOverDailyLimit(req)) return res.status(200).json(softBlock(uiMsg(req, 'guestLimit')))
   if (!process.env.ANTHROPIC_API_KEY) {
-    return res.json({ reply: 'Добавьте ANTHROPIC_API_KEY в .env — и я смогу реально выполнять задачи (создавать события и т.д.).', actions: [] })
+    return res.json({ reply: uiMsg(req, 'noAiKeyActions'), actions: [] })
   }
 
   // The big static block (rules + data snapshot) is CACHEABLE and identical for every panel
@@ -432,9 +432,9 @@ const ARTICLE_TOOL = [{
 router.post('/read', async (req, res) => {
   const { message, context, history, snapshot } = req.body
   if (!message) return res.status(400).json({ error: 'message required' })
-  if (await guestOverDailyLimit(req)) return res.status(200).json(softBlock(GUEST_LIMIT_MSG))
+  if (await guestOverDailyLimit(req)) return res.status(200).json(softBlock(uiMsg(req, 'guestLimit')))
   if (!process.env.ANTHROPIC_API_KEY) {
-    return res.json({ text: 'Добавьте ANTHROPIC_API_KEY в .env, и я подробно всё расскажу с картинками.', images: [] })
+    return res.json({ text: uiMsg(req, 'noAiKeyArticle'), images: [] })
   }
   const system =
     'Ты — эрудированный и увлекательный рассказчик, личный помощник русскоязычного пользователя. ' +
@@ -481,12 +481,12 @@ router.post('/read', async (req, res) => {
 })
 
 router.post('/analyze-file', async (req, res) => {
-  res.json({ result: 'Анализ файлов — в разработке' })
+  res.json({ result: uiMsg(req, 'filesSoon') })
 })
 
 router.post('/daily-summary', async (req, res) => {
   if (!process.env.ANTHROPIC_API_KEY) {
-    return res.json({ summary: 'Добавьте ANTHROPIC_API_KEY в .env для получения сводки.' })
+    return res.json({ summary: uiMsg(req, 'noAiKeySummary') })
   }
   try {
     const client = getClient()
