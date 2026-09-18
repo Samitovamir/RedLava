@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { clearToken, isGuest, isOwner, getUserName } from '../api/authFetch'
+import { clearToken, setToken, isGuest, getUsername } from '../api/authFetch'
+import { wipePersonalData } from '../utils/accountData.js'
 import { useT, useLang } from '../context/LanguageContext.jsx'
 import { pushSync } from '../utils/sync.js'
 import { Button, Field, SectionHeader, StatusPill } from '../ui'
@@ -97,20 +98,17 @@ export default function Connections() {
       garminNote: 'Пароль уходит на сервер по защищённому соединению и не хранится в браузере.',
       btnLoginConnect: 'Войти и подключить',
       foot: 'Все сервисы подключаются по-настоящему: данные появятся в разделах сразу после подключения.',
-      guestName: 'Гостевой вход', mainName: 'Основной аккаунт', mainBadge: 'Основной',
+      guestName: 'Гостевой вход',
       guestDesc: 'Сейчас вы в гостевом режиме — показаны демо-данные. Войдите в основной аккаунт, чтобы видеть настоящие данные.',
-      mainDesc: 'Вы вошли в основной аккаунт с реальными данными. Можно выйти и войти под другим аккаунтом.',
       memberBadge: 'Ваш аккаунт',
       memberDesc: 'Здесь видны только ваши подключения и данные — они не пересекаются с другими аккаунтами.',
       btnLoginMain: 'Войти в основной аккаунт', btnSwitch: 'Сменить аккаунт',
-      resetBtn: 'Сбросить все данные', resetPwLabel: 'PIN для сброса:', resetPwPh: 'PIN',
-      resetGo: 'Сбросить всё', resetBusy: 'Сбрасываю…', resetCancel: 'Отмена', resetWrong: 'Неверный PIN',
-      resetTooMany: 'Слишком много попыток. Подождите немного.',
-      resetNotConfigured: 'Сброс ещё не настроен на сервере.',
-      resetFailed: 'Не удалось проверить PIN. Попробуйте позже.',
+      resetBtn: 'Сбросить мои данные',
+      resetConfirm: 'Отключить все ваши сервисы и стереть ваши данные? Отменить это будет нельзя.',
+      resetGo: 'Да, сбросить', resetBusy: 'Сбрасываю…', resetCancel: 'Отмена',
       resetNoServer: 'Нет связи с сервером.',
-      logoutAllBtn: 'Выйти со всех устройств', logoutAllBusy: 'Выхожу…',
-      logoutAllHint: 'Мгновенно отзывает вход на всех телефонах и браузерах — на этом устройстве тоже, войдёте заново по паролю. Полезно, если телефон потерялся или пароль мог кому-то попасться на глаза.',
+      logoutAllBtn: 'Выйти на других устройствах', logoutAllBusy: 'Отзываю…',
+      logoutAllHint: 'Отзывает вход в ваш аккаунт на всех остальных телефонах и браузерах. Это устройство остаётся внутри, других участников не касается. Нужно, если телефон потерялся или пароль мог кому-то попасться на глаза.',
       noticeConnectedSuffix: 'подключён ✓',
       noticeErrPrefix: 'Не удалось подключить', noticeErrSuffix: 'Попробуйте ещё раз.',
       noticeNotConfigured: 'ещё не настроен на сервере (нужны ключи доступа).',
@@ -137,20 +135,17 @@ export default function Connections() {
       garminNote: 'The password is sent to the server over a secure connection and is not stored in the browser.',
       btnLoginConnect: 'Sign in and connect',
       foot: 'All services connect for real: data appears in the sections right after connecting.',
-      guestName: 'Guest access', mainName: 'Primary account', mainBadge: 'Primary',
+      guestName: 'Guest access',
       guestDesc: 'You are currently in guest mode — demo data is shown. Sign in to the primary account to see real data.',
-      mainDesc: 'You are signed in to the primary account with real data. You can sign out and sign in with another account.',
       memberBadge: 'Your account',
       memberDesc: 'Only your own connections and data show up here — nothing crosses over with other accounts.',
       btnLoginMain: 'Sign in to primary account', btnSwitch: 'Switch account',
-      resetBtn: 'Reset all data', resetPwLabel: 'Reset PIN:', resetPwPh: 'PIN',
-      resetGo: 'Reset everything', resetBusy: 'Resetting…', resetCancel: 'Cancel', resetWrong: 'Wrong PIN',
-      resetTooMany: 'Too many attempts. Please wait a bit.',
-      resetNotConfigured: 'Reset isn’t set up on the server yet.',
-      resetFailed: 'Couldn’t verify the PIN. Please try again later.',
+      resetBtn: 'Reset my data',
+      resetConfirm: 'Disconnect all your services and erase your data? This cannot be undone.',
+      resetGo: 'Yes, reset', resetBusy: 'Resetting…', resetCancel: 'Cancel',
       resetNoServer: 'No connection to the server.',
-      logoutAllBtn: 'Sign out everywhere', logoutAllBusy: 'Signing out…',
-      logoutAllHint: 'Instantly revokes sign-in on every phone and browser — including this one, you’ll sign back in with your password. Useful if a phone was lost or the password may have been seen.',
+      logoutAllBtn: 'Sign out other devices', logoutAllBusy: 'Revoking…',
+      logoutAllHint: 'Revokes sign-in to your account on every other phone and browser. This device stays signed in, and other members are unaffected. Useful if a phone was lost or the password may have been seen.',
       noticeConnectedSuffix: 'connected ✓',
       noticeErrPrefix: 'Couldn’t connect', noticeErrSuffix: 'Please try again.',
       noticeNotConfigured: 'isn’t set up on the server yet (access keys required).',
@@ -177,7 +172,6 @@ export default function Connections() {
   const [urlForm, setUrlForm] = useState('')
   const [notice, setNotice] = useState('')
   const [resetOpen, setResetOpen] = useState(false)
-  const [resetPw, setResetPw] = useState('')
   const [resetErr, setResetErr] = useState('')
   const [resetBusy, setResetBusy] = useState(false)
   const [logoutAllBusy, setLogoutAllBusy] = useState(false)
@@ -185,34 +179,30 @@ export default function Connections() {
   // «Выйти со всех устройств»: мгновенно отзывает ВСЕ выданные токены (свои и чужие) на
   // сервере — если телефон потерялся или пароль мог кому-то попасться на глаза, не нужно
   // менять сам пароль. Разлогинивает и это устройство — дальше вход по паролю заново.
+  // Отзывает сессии этого аккаунта на ДРУГИХ устройствах. Текущее остаётся внутри:
+  // сервер вместе с подтверждением присылает свежий токен с новой эпохой, и мы его
+  // сохраняем. Иначе человек, который чистит сессии украденного телефона, выкидывал бы
+  // заодно и тот ноутбук, с которого это делает.
   async function logoutAll() {
     if (logoutAllBusy) return
     setLogoutAllBusy(true)
-    try { await fetch('/api/auth/logout-all', { method: 'POST' }) } catch { /* ignore */ }
-    clearToken()
+    try {
+      const r = await fetch('/api/auth/logout-all', { method: 'POST' })
+      const d = await r.json().catch(() => null)
+      if (d?.token) setToken(d.token)
+    } catch { /* ignore */ }
     window.location.reload()
   }
 
-  // Полный сброс данных: PIN теперь проверяется НА СЕРВЕРЕ (RESET_PIN в .env), а не здесь —
-  // раньше '9986' сравнивался прямо в этом файле, то есть был виден всем в JS-бандле.
-  // Сброс идёт в два шага: сначала проверка PIN, и только при успехе — сами disconnect'ы
-  // (каждый уже сам проверяет req.role === 'owner' на бэкенде) + очистка синка на сервере.
+  // Сброс СВОИХ данных: отключить все свои интеграции и стереть свой блоб синхронизации.
+  // PIN здесь был от однопользовательской версии, где кнопка распоряжалась единственными
+  // данными в системе. Теперь каждый распоряжается только своей ячейкой (эндпоинты
+  // disconnect работают по id владельца), и секрет на собственные данные лишний —
+  // достаточно явного подтверждения, чтобы не нажать случайно.
   async function submitReset(e) {
     e.preventDefault()
     setResetErr('')
     setResetBusy(true)
-    try {
-      const r = await fetch('/api/auth/verify-reset-pin', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin: resetPw.trim() })
-      })
-      if (r.status === 401) { setResetErr(t.resetWrong); setResetBusy(false); return }
-      if (r.status === 429) { setResetErr(t.resetTooMany); setResetBusy(false); return }
-      if (r.status === 503) { setResetErr(t.resetNotConfigured); setResetBusy(false); return }
-      if (!r.ok) { setResetErr(t.resetFailed); setResetBusy(false); return }
-    } catch {
-      setResetErr(t.resetNoServer); setResetBusy(false); return
-    }
 
     await Promise.all([
       fetch('/api/calendar/disconnect', { method: 'POST' }).catch(() => {}),
@@ -221,18 +211,16 @@ export default function Connections() {
       fetch('/api/labs/disconnect', { method: 'POST' }).catch(() => {}),
       fetch('/api/sync/state', { method: 'DELETE' }).catch(() => {})
     ])
-    try {
-      Object.keys(localStorage).forEach(k => {
-        if (k === 'albert-auth') return // вход не трогаем
-        if (k.startsWith('albert-') || k.startsWith('ai-sum')) localStorage.removeItem(k)
-      })
-    } catch { /* ignore */ }
+    // Тем же списком исключений, что и при смене аккаунта: вход, устройство и его
+    // настройки не личные данные и теряться при сбросе не должны.
+    wipePersonalData()
     window.location.reload()
   }
 
   const guest = isGuest()
-  const owner = isOwner()   // действия уровня сервера — только ему
-  const userName = getUserName()   // для настоящих аккаунтов — показываем имя, а не «Основной аккаунт»
+  // Действия ниже — личные: человек управляет своими сессиями и своими данными.
+  // Гостю они недоступны: у демо нет ни аккаунта, ни своих данных.
+  const userName = getUsername()
 
   // Сменить аккаунт: чистим токен и роль, перезагружаем — AuthGate покажет экран входа
   // Перед сменой аккаунта дослать несохранённое НА СЕРВЕР, пока мы ещё под своим токеном:
@@ -478,13 +466,13 @@ export default function Connections() {
           </span>
           <div className="conn-info">
             <div className="conn-name">
-              {guest ? t.guestName : owner ? t.mainName : (userName || t.memberBadge)}
+              {guest ? t.guestName : (userName || t.memberBadge)}
               {guest
                 ? <span className="conn-soon">{t.demo}</span>
-                : <StatusPill status="ok">{owner ? t.mainBadge : t.memberBadge}</StatusPill>}
+                : <StatusPill status="ok">{t.memberBadge}</StatusPill>}
             </div>
             <div className="conn-desc muted">
-              {guest ? t.guestDesc : owner ? t.mainDesc : t.memberDesc}
+              {guest ? t.guestDesc : t.memberDesc}
             </div>
           </div>
           <div className="conn-account-action">
@@ -495,7 +483,7 @@ export default function Connections() {
         </div>
       </motion.div>
 
-      {owner && (
+      {!guest && (
         <div className="conn-security">
           <Button variant="ghost" size="sm" onClick={logoutAll} disabled={logoutAllBusy}>
             {logoutAllBusy ? t.logoutAllBusy : t.logoutAllBtn}
@@ -504,23 +492,18 @@ export default function Connections() {
         </div>
       )}
 
-      {owner && <div className="conn-reset">
+      {!guest && <div className="conn-reset">
         {!resetOpen ? (
           <Button variant="ghost" size="sm" onClick={() => { setResetOpen(true); setResetErr('') }}>
             {t.resetBtn}
           </Button>
         ) : (
           <form className="conn-reset-form" onSubmit={submitReset}>
-            <span className="muted">{t.resetPwLabel}</span>
-            <input
-              className="ds-input conn-reset-input" type="password" placeholder={t.resetPwPh}
-              value={resetPw} onChange={e => { setResetPw(e.target.value); setResetErr('') }}
-              autoFocus inputMode="numeric"
-            />
-            <Button type="submit" variant="danger" size="sm" disabled={resetBusy || !resetPw.trim()}>
+            <span className="conn-reset-warn">{t.resetConfirm}</span>
+            <Button type="submit" variant="danger" size="sm" disabled={resetBusy}>
               {resetBusy ? t.resetBusy : t.resetGo}
             </Button>
-            <Button type="button" variant="ghost" size="sm" onClick={() => { setResetOpen(false); setResetPw(''); setResetErr('') }}>
+            <Button type="button" variant="ghost" size="sm" onClick={() => { setResetOpen(false); setResetErr('') }}>
               {t.resetCancel}
             </Button>
             {resetErr && <span className="conn-reset-err">{resetErr}</span>}
@@ -559,8 +542,8 @@ export default function Connections() {
         .conn-security-hint { font-size: 12.5px; line-height: 1.5; max-width: 480px; }
         .conn-reset { margin-top: 8px; padding-top: 18px; border-top: 1px solid var(--border-soft); }
         .conn-reset-form { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-        .conn-reset-input { width: 140px; padding: 9px 14px; font-size: 14px; }
         .conn-reset-err { font-size: 13px; color: var(--status-crit); }
+        .conn-reset-warn { font-size: 13.5px; line-height: 1.45; color: var(--text-body); }
         @media (max-width: 640px) {
           .conn-list { grid-template-columns: 1fr; }
           .conn-row { flex-wrap: wrap; }

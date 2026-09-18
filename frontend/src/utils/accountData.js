@@ -17,8 +17,10 @@ const PERSONAL_PREFIXES = ['albert-', 'ai-sum']
 // Исключения — НЕ личные: вход, идентификатор устройства и настройки самого устройства
 // (тема, раскладка, язык). Их незачем терять при смене аккаунта.
 const KEEP = new Set([
-  'albert-auth', 'albert-role', 'albert-device',
-  'albert-theme', 'albert-theme-mobile', 'albert-layout',
+  // кто вошёл: токен, роль, id/логин/права аккаунта
+  'albert-auth', 'albert-role', 'albert-user-id', 'albert-username',
+  // устройство и его настройки
+  'albert-device', 'albert-theme', 'albert-theme-mobile', 'albert-layout',
   OWNER_TAG,
 ])
 
@@ -32,8 +34,8 @@ export function wipePersonalData() {
 
 /*
   Сверить, чьи данные лежат в браузере, с тем, кто вошёл сейчас.
-  accountKey — устойчивый идентификатор аккаунта: userId настоящего аккаунта,
-  либо роль для владельца/гостя (у них userId нет).
+  accountKey — устойчивый идентификатор аккаунта: userId обычного аккаунта
+  либо роль 'guest' (у демо своего id нет).
   Возвращает true, если данные пришлось стереть.
 */
 export function claimLocalData(accountKey) {

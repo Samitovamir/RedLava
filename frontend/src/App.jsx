@@ -9,10 +9,9 @@ import DemoBanner from './components/DemoBanner.jsx'
 import CommandShell from './shells/CommandShell.jsx'
 import { useLayout, useIsMobile } from './layout.js'
 import { useThemeSync } from './theme.js'
-import { isGuest, getRole } from './api/authFetch.js'
+import { isGuest } from './api/authFetch.js'
 import { MAIL_ENABLED, HISTORY_ENABLED } from './config/features.js'
 import { pullSync, startSync } from './utils/sync.js'
-import { seedLegacyOwnerData } from './utils/legacyOwnerSeed.js'
 import { EventsProvider } from './context/EventsContext.jsx'
 import { HistoryProvider } from './context/HistoryContext.jsx'
 import { MemoryProvider } from './context/MemoryContext.jsx'
@@ -102,10 +101,6 @@ export default function App() {
     const finish = () => {
       if (done) return
       done = true
-      // Разовый перенос личного владельца из кода в его же данные (профиль питания,
-      // привычки в память). Строго ПОСЛЕ pullSync: сначала подтягиваем его настоящие
-      // данные с сервера, и только потом дописываем недостающее, чтобы ничего не затереть.
-      seedLegacyOwnerData(getRole())
       setSynced(true)
       startSync()
     }

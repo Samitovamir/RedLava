@@ -1,8 +1,7 @@
 import { Router } from 'express'
 import Anthropic from '@anthropic-ai/sdk'
 import { requireAuth } from '../authGuard.js'
-import { kvGet, kvSet, kvDel } from '../store.js'
-import { kvGetScoped, kvSetScoped, kvDelScoped, scopeOf, OWNER_ID } from '../userScope.js'
+import { kvGetScoped, kvSetScoped, kvDelScoped, scopeOf } from '../userScope.js'
 import crypto from 'crypto'
 
 /*
@@ -19,23 +18,12 @@ const URL_KEY = 'labs:yandex_url'
 const YA = 'https://cloud-api.yandex.net/v1/disk/public/resources'
 
 // Папка анализов — У КАЖДОГО СВОЯ, её указывают через интерфейс (/connect).
-// Здесь была вшита конкретная ссылка владельца: пока пользователь был один, это было
-// удобно, но ссылка на публичную папку Яндекс.Диска с ЧУЖИМИ АНАЛИЗАМИ КРОВИ в открытом
-// репозитории — это раскрытие медицинских данных всем, кто откроет репо. Никаких
-// фолбэков со ссылками в коде: только переменная окружения, только на своём сервере.
-// Наследство владельца (разовый перенос в его личный ключ, см. getUrl) работает
-// ровно тогда, когда LABS_YANDEX_URL задана; не задана — владелец указывает папку
-// через интерфейс, как все остальные.
-const OWNER_LEGACY_URL = process.env.LABS_YANDEX_URL || ''
-
-// Действующая ссылка этого человека. Ни для кого, кроме владельца, наследства нет.
+// Здесь была вшита конкретная ссылка владельца, и это была утечка: публичная шара
+// Яндекс.Диска с чужими анализами крови в открытом репозитории. Никаких ссылок
+// в коде и никаких наследств — только то, что человек указал сам.
 async function getUrl(userId) {
   if (!userId) return null
-  const own = await kvGetScoped(URL_KEY, userId)
-  if (own) return own
-  if (userId !== OWNER_ID || !OWNER_LEGACY_URL) return null
-  await kvSetScoped(URL_KEY, userId, OWNER_LEGACY_URL)   // переносим наследство один раз
-  return OWNER_LEGACY_URL
+  return (await kvGetScoped(URL_KEY, userId)) || null
 }
 
 function getClient() { return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }) }
@@ -49,7 +37,6 @@ async function loadStore(userId) { return (await kvGetScoped(STORE_KEY, userId))
 async function saveStore(userId, s) { await kvSetScoped(STORE_KEY, userId, s) }
 // Старый формат — по одному ключу на файл. Используем для разовой миграции, чтобы
 // уже разобранные файлы не пришлось гонять через ИИ повторно.
-const oldKey = (path, modified) => 'labs:parsed:' + crypto.createHash('md5').update(path + '|' + (modified || '')).digest('hex')
 
 // Рекурсивный обход публичной папки → плоский список файлов (pdf/изображения)
 async function listFiles(publicKey, path = '', depth = 0, acc = []) {
@@ -205,14 +192,6 @@ router.post('/parse', async (req, res) => {
   if (!path) return res.status(400).json({ ok: false, message: 'path required' })
   const store = await loadStore(userId)
   if (store[path]?.modified === modified) return res.json({ ok: true, report: store[path].report, cached: true })
-  // Разовая миграция из старого формата (отдельный ключ на файл) — без повторного ИИ.
-  // Только для владельца: у остальных тот старый кэш — не их данные.
-  const migrated = userId === OWNER_ID ? await kvGet(oldKey(path, modified)) : null
-  if (migrated) {
-    store[path] = { modified, report: migrated }
-    await saveStore(userId, store)
-    return res.json({ ok: true, report: migrated, cached: true })
-  }
   try {
     const files = await listFiles(url)
     const file = files.find(f => f.path === path)

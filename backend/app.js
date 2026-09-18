@@ -48,8 +48,9 @@ app.use((req, _res, next) => {
 // до реальных Google/Whoop/Garmin/Gmail. Так гость физически не может увидеть данные владельца.
 // disconnect-эндпоинты — тоже сюда: они лишь проверяли requireAuth (валидный ЛЮБОЙ токен),
 // а guest/123 общеизвестен (написан прямо на экране входа и в README) — без этой строки гость
-// мог бы по-настоящему отключить владельцу Google/Whoop/Garmin/анализы. Роут-хендлеры теперь ТОЖЕ
-// проверяют req.role === 'owner' сами (защита не только тут, на случай будущего рефакторинга).
+// мог бы по-настоящему отключить чужие интеграции. Роут-хендлеры теперь ТОЖЕ проверяют
+// наличие своей ячейки данных (scopeOf) сами — защита не только тут, на случай будущего
+// рефакторинга этого мидлвара.
 const GUEST_BLOCK = new Set([
   '/api/whoop/data', '/api/whoop/status', '/api/whoop/connect-url', '/api/whoop/disconnect',
   '/api/garmin/data', '/api/garmin/status', '/api/garmin/planned', '/api/garmin/connect', '/api/garmin/connect-url', '/api/garmin/disconnect',

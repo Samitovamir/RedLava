@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
-import { getToken, setToken, clearToken, setRole, setUserId, setUserName } from '../api/authFetch.js'
+// storeUsername, а не setUsername: ниже есть состояние поля ввода с таким же именем,
+// и оно затеняло бы импорт — логин молча не сохранялся бы в браузере.
+import { getToken, setToken, clearToken, setRole, setUserId, setUsername as storeUsername } from '../api/authFetch.js'
 import { claimLocalData } from '../utils/accountData.js'
 import { seedGuestDemo } from '../utils/demo.js'
 import { useT, useLang } from '../context/LanguageContext.jsx'
@@ -25,9 +27,9 @@ export default function AuthGate({ children }) {
   const t = useT({
     ru: {
       title: 'RedLava',
-      sub: 'Личный кабинет. Введите имя и пароль, чтобы войти.',
-      subReg: 'Новый аккаунт. Придумайте имя и пароль — ими и будете входить.',
-      name: 'Имя',
+      sub: 'Личный кабинет. Введите логин и пароль, чтобы войти.',
+      subReg: 'Новый аккаунт. Придумайте логин и пароль — ими и будете входить.',
+      name: 'Логин',
       password: 'Пароль',
       code: 'Код приглашения',
       checking: 'Проверяю…',
@@ -45,9 +47,9 @@ export default function AuthGate({ children }) {
       srvErr: {
         weak_password: (n) => `Пароль должен быть не короче ${n} символов.`,
         password_too_long: () => 'Пароль слишком длинный.',
-        bad_name: () => 'Имя: от 2 до 40 символов, без «@» и спецсимволов.',
+        bad_name: () => 'Логин: от 2 до 40 символов, без «@» и спецсимволов.',
         name_reserved: () => 'Это имя занято системой, выберите другое.',
-        name_taken: () => 'Такое имя уже занято.',
+        name_taken: () => 'Такой логин уже занят.',
         bad_code: () => 'Неверный код приглашения.',
         store_failed: () => 'Не удалось создать аккаунт. Попробуйте ещё раз.',
         busy: () => 'Сервер занят, попробуйте ещё раз.',
@@ -57,9 +59,9 @@ export default function AuthGate({ children }) {
     },
     en: {
       title: 'RedLava',
-      sub: 'Personal account. Enter your name and password to sign in.',
-      subReg: 'New account. Pick a name and password — you’ll sign in with those.',
-      name: 'Name',
+      sub: 'Personal account. Enter your username and password to sign in.',
+      subReg: 'New account. Pick a username and password — you’ll sign in with those.',
+      name: 'Username',
       password: 'Password',
       code: 'Invite code',
       checking: 'Checking…',
@@ -77,9 +79,9 @@ export default function AuthGate({ children }) {
       srvErr: {
         weak_password: (n) => `Password must be at least ${n} characters.`,
         password_too_long: () => 'That password is too long.',
-        bad_name: () => 'Name: 2 to 40 characters, no “@” or special characters.',
+        bad_name: () => 'Username: 2 to 40 characters, no “@” or special characters.',
         name_reserved: () => 'That name is reserved, please pick another.',
-        name_taken: () => 'That name is already taken.',
+        name_taken: () => 'That username is already taken.',
         bad_code: () => 'Wrong invite code.',
         store_failed: () => 'Couldn’t create the account. Please try again.',
         busy: () => 'Server is busy, please try again.',
@@ -111,7 +113,7 @@ export default function AuthGate({ children }) {
           if (d.token) setToken(d.token)  // сервер продлил сессию — сохраняем свежий токен
           setRole(d.role)
           setUserId(d.userId || null)
-          setUserName(d.user?.name || null)
+          storeUsername(d.user?.username || null)
           if (d.role === 'guest') seedGuestDemo({ lang })
           setAuthed(true)
         }
@@ -142,7 +144,7 @@ export default function AuthGate({ children }) {
       const r = await fetch(registering ? '/api/auth/register' : '/api/auth/login', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(registering
-          ? { name: username, password, code: code.trim() || undefined }
+          ? { username, password, code: code.trim() || undefined }
           : { username, password })
       })
       if (r.ok) {
@@ -151,7 +153,7 @@ export default function AuthGate({ children }) {
         setToken(d.token)
         setRole(d.role)
         setUserId(d.user?.id || null)
-        setUserName(d.user?.name || null)
+        storeUsername(d.user?.username || null)
         if (d.role === 'guest') seedGuestDemo({ force: true, lang })  // свежий демо при входе
         setAuthed(true)
       } else {

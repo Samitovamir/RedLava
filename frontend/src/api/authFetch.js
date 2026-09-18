@@ -13,18 +13,18 @@ export const setToken = (t) => {
 export const clearToken = () => {
   try {
     localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(ROLE_KEY)
-    localStorage.removeItem('albert-user-id'); localStorage.removeItem('albert-user-name')
+    localStorage.removeItem('albert-user-id'); localStorage.removeItem('albert-username')
   } catch { /* ignore */ }
 }
 
-// Роль входа: 'owner' (реальные данные) | 'guest' (демо)| 'guest' (демо)
+// Роль входа: 'user' (обычный аккаунт, свои данные) | 'guest' (публичное демо)
 export const getRole = () => {
   try { return localStorage.getItem(ROLE_KEY) } catch { return null }
 }
 export const setRole = (r) => {
   try { r ? localStorage.setItem(ROLE_KEY, r) : localStorage.removeItem(ROLE_KEY) } catch { /* ignore */ }
 }
-// id настоящего аккаунта (у владельца и гостя его нет — там роль и есть опознаватель)
+// id аккаунта. У гостя его нет: у демо нет своих данных, опознавать нечего.
 const USER_ID_KEY = 'albert-user-id'
 export const getUserId = () => {
   try { return localStorage.getItem(USER_ID_KEY) } catch { return null }
@@ -32,20 +32,17 @@ export const getUserId = () => {
 export const setUserId = (id) => {
   try { id ? localStorage.setItem(USER_ID_KEY, id) : localStorage.removeItem(USER_ID_KEY) } catch { /* ignore */ }
 }
-// Имя настоящего аккаунта — только для отображения («Вы вошли как …» в Settings).
-const USER_NAME_KEY = 'albert-user-name'
-export const getUserName = () => {
-  try { return localStorage.getItem(USER_NAME_KEY) } catch { return null }
+// Username аккаунта — для отображения («Вы вошли как …» в Настройках).
+const USERNAME_KEY = 'albert-username'
+export const getUsername = () => {
+  try { return localStorage.getItem(USERNAME_KEY) } catch { return null }
 }
-export const setUserName = (name) => {
-  try { name ? localStorage.setItem(USER_NAME_KEY, name) : localStorage.removeItem(USER_NAME_KEY) } catch { /* ignore */ }
+export const setUsername = (username) => {
+  try { username ? localStorage.setItem(USERNAME_KEY, username) : localStorage.removeItem(USERNAME_KEY) } catch { /* ignore */ }
 }
 
+
 export const isGuest = () => getRole() === 'guest'
-// Владелец старой однопользовательской версии (вход по общему паролю). У него есть
-// действия уровня всего сервера — разлогинить все устройства, полный сброс — которых
-// у обычных аккаунтов быть не должно.
-export const isOwner = () => getRole() === 'owner'
 
 // Постоянный идентификатор устройства — чтобы дневной лимит ИИ для гостей считался
 // ПО УСТРОЙСТВУ, а не общим на всех гостей. Создаётся один раз и хранится в браузере.

@@ -11,15 +11,12 @@ import { kvGetScoped, kvSetScoped, kvDelScoped, scopeOf } from '../userScope.js'
 
 const router = Router()
 const KEY = 'sync:state'
-// Как ключ назывался в однопользовательской версии — нужен, чтобы данные владельца
-// нашлись и переехали в его персональный ключ при первом чтении.
-const LEGACY_KEY = 'sync:albert:state'
 
 router.get('/state', async (req, res) => {
   const userId = scopeOf(req)
   if (!userId) return res.json({ ok: true, state: null, updatedAt: 0 })   // гость
   try {
-    const blob = await kvGetScoped(KEY, userId, LEGACY_KEY)
+    const blob = await kvGetScoped(KEY, userId)
     res.json({ ok: true, state: blob?.state || null, updatedAt: blob?.updatedAt || 0 })
   } catch (e) {
     res.json({ ok: false, state: null, updatedAt: 0, message: String(e?.message || e).slice(0, 120) })
@@ -47,7 +44,7 @@ router.put('/state', async (req, res) => {
 router.delete('/state', async (req, res) => {
   const userId = scopeOf(req)
   if (!userId) return res.json({ ok: true, skipped: 'guest' })
-  try { await kvDelScoped(KEY, userId, LEGACY_KEY); res.json({ ok: true }) } catch (e) { res.json({ ok: false, message: String(e?.message || e).slice(0, 120) }) }
+  try { await kvDelScoped(KEY, userId); res.json({ ok: true }) } catch (e) { res.json({ ok: false, message: String(e?.message || e).slice(0, 120) }) }
 })
 
 export default router
