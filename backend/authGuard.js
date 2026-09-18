@@ -2,11 +2,12 @@ import jwt from 'jsonwebtoken'
 import { kvGet, kvSet } from './store.js'
 
 // Роли:
-//   'owner' — единственный владелец старой однопользовательской модели (вход по APP_PASSWORD).
-//   'guest' — публичное демо, реальных данных не видит никогда.
-//   'user'  — настоящий аккаунт с почтой и паролем (этап «а» перехода на мультипользовательскую
-//             модель). Пока данные не привязаны к аккаунту (этапы «б»/«в»/«г»), такой аккаунт
-//             намеренно не получает доступа к реальным данным владельца — см. app.js, DEMO_ROLES.
+//   'owner' — владелец. Вход по общему паролю APP_PASSWORD, без имени: так он входил,
+//             когда приложение было однопользовательским. Его данные живут под id 'owner'.
+//   'guest' — публичное демо. Реальных данных не видит никогда: запросы к интеграциям
+//             перехватываются в app.js (GUEST_BLOCK) и отдают демо-заглушки.
+//   'user'  — обычный аккаунт: имя + пароль, хранится в users.js. Видит только свои
+//             данные — каждый ключ хранилища несёт id владельца, см. userScope.js.
 const VALID_ROLES = new Set(['owner', 'guest', 'user'])
 const GUEST_PASSWORD = () => process.env.GUEST_PASSWORD || '123'
 
@@ -42,7 +43,7 @@ export async function signToken(role, userId = null) {
 }
 
 // Старый путь входа: имя+пароль из переменных окружения → роль или null.
-// Настоящие аккаунты (почта+пароль) проверяются отдельно, в users.js.
+// Обычные аккаунты (имя+пароль) проверяются отдельно, в users.js.
 export function roleForLogin(username, password) {
   if (typeof password !== 'string' || !password) return null
   const u = (username || '').trim().toLowerCase()

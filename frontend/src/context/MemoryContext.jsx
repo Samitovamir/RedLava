@@ -5,7 +5,7 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 // (инструмент remember_fact).
 
 const STORAGE_KEY = 'albert-memory'
-// Память начинается пустой — наполняется реальными фактами о владельце (демо убрано)
+// Память начинается пустой — наполняется реальными фактами о человеке (демо убрано)
 const SEED = []
 
 const MemoryContext = createContext(null)

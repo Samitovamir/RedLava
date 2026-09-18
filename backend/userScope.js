@@ -1,7 +1,7 @@
 import { kvGet, kvSet, kvDel } from './store.js'
 
 /*
-  Ключи данных, привязанные к человеку (этап «б» мультипользовательской модели).
+  Ключи данных, привязанные к человеку. Это и есть изоляция аккаунтов друг от друга.
 
   Было: один общий ключ на всё приложение — `google:tokens`, `whoop:tokens`,
   `garmin:token`, `labs:yandex_url`, `labs:store`, `sync:albert:state`. Пока

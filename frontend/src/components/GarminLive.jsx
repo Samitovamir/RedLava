@@ -327,7 +327,7 @@ export default function GarminLive({ embedded = false, listsOnly = false }) {
         </motion.div>
       )}
 
-      {/* Виджеты «Калории» и «План/факт» (просьба пользователя) */}
+      {/* Виджеты «Калории» и «План/факт»: расход за день и выполнение плана рядом */}
       {!listsOnly && (hasCalData || hasPlanFact) && (
         <div className="gl-summary">
           {hasCalData && (

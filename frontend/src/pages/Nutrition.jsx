@@ -392,9 +392,9 @@ export default function Nutrition() {
   }
   function closeDetail() { setDetail(null); setDetailParts([]) }
 
-  // Оценка ранее выбранного блюда. Сам выбор блюд в меню недели убран из раздела
-  // (коммит 32350f0, «упрощение Меню по просьбе»), но у кого меню осталось с тех
-  // времён — тому всё ещё есть что оценить.
+  // Оценка ранее выбранного блюда. Планировщик меню недели из раздела убран
+  // (см. 32350f0), так что новых записей в плане не появляется — но у кого план
+  // остался с тех времён, тому всё ещё есть что оценить.
   function submitRate(liked) {
     const np = rateMeal(plan, rate.dateKey, rate.mealKey, liked ? 'up' : 'down', rateText)
     setPlan(np); savePlan(np)
@@ -419,7 +419,8 @@ export default function Nutrition() {
   }
   function savePrefsModal() { savePrefs(prefsDraft); setPrefs(prefsDraft); setPrefsOpen(false); flash(t.prefsSaved) }
 
-  // Быстрый тумблер индикатора FODMAP прямо в шапке (не всем нужен — пользователь просил вынести на видное место)
+  // Тумблер FODMAP вынесен в шапку раздела, а не спрятан в профиль: лечебная диета
+  // нужна меньшинству, но кому нужна — переключает её часто.
   function toggleFodmap() {
     const np = { ...prefs, fodmap: !prefs.fodmap }
     setPrefs(np); savePrefs(np)
@@ -478,9 +479,9 @@ export default function Nutrition() {
         subtitle={t.subtitle}
       />
 
-      {/* Тумблер индикатора FODMAP на видном месте — не всем нужен (просьба пользователя).
-          Рядом — вход в профиль: рост/вес/цель задают норму калорий, и до этого попасть
-          можно было только из окна подбора блюд (то есть после ожидания ИИ). */}
+      {/* Слева вход в профиль: рост/вес/цель задают норму калорий, а попасть туда раньше
+          можно было только из окна подбора блюд — то есть после ожидания ИИ.
+          Справа тумблер FODMAP: см. toggleFodmap выше. */}
       <div className="nu-top-row">
         <button className="nu-prefs-top" onClick={openPrefs}>
           <SlidersHorizontal size={15} strokeWidth={1.5} /> {t.editProfile}
