@@ -65,9 +65,9 @@ function buildHealthData(reports, whoop, garmin) {
     const last = h[h.length - 1]
     const def = resolveMarker(name, last)
     const st = markerStatus(last.value, def.min, def.max)
-    const norm = (def.min == null && def.max == null) ? 'норма не указана' : `норма ${rangeText(def.min, def.max)}`
+    const rangeNote = (def.min == null && def.max == null) ? 'норма не указана' : `норма ${rangeText(def.min, def.max)}`
     // This is CONTEXT TEXT FOR THE AI (not UI): the prompt is Russian, the UI language is irrelevant
-    const line = `${def.name} ${last.value} ${def.unit || ''} (${norm}, сдан ${fmtDate(last.date)})`
+    const line = `${def.name} ${last.value} ${def.unit || ''} (${rangeNote}, сдан ${fmtDate(last.date)})`
     if (st === 'low' || st === 'high') flagged.push(`${line} — ${STATUS_INFO[st].label}`)
     else normal.push(def.name)
   })

@@ -12,6 +12,10 @@ const b64url = (buf) =>
 
 // Encode a non-ASCII header (the subject) per RFC 2047
 function encodeHeader(str) {
+  // RFC 2047 defines the ASCII range literally as \x00-\x7F, so the control
+  // characters in this class are deliberate: it is the standard test for whether
+  // a header needs encoding at all.
+  // eslint-disable-next-line no-control-regex
   if (/^[\x00-\x7F]*$/.test(str)) return str
   return `=?UTF-8?B?${Buffer.from(str, 'utf8').toString('base64')}?=`
 }

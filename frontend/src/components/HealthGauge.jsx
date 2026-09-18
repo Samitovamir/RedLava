@@ -23,7 +23,6 @@ export default function HealthGauge({ variant = 1, recovery = null, strain = nul
   const cx = size / 2, cy = size / 2
   const rOuter = (size - stroke) / 2 - 2
   const h = Math.round(size * 0.66)
-  const numSize = Math.round(size * 0.2)
   const subSize = Math.max(10, Math.round(size * 0.072))
   const recFrac = recovery != null ? Math.max(0, Math.min(1, recovery / 100)) : 0
   const strFrac = strain != null ? Math.max(0, Math.min(1, strain / strainMax)) : 0

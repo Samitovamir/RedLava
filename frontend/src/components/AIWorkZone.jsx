@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import ReadingOverlay from './ReadingOverlay.jsx'
 import { fetchImagesForQueries } from '../utils/wikiImages.js'
@@ -23,7 +23,7 @@ import VoiceInput from './VoiceInput.jsx'
 export default function AIWorkZone() {
   const [status, setStatus] = useState('idle') // 'idle' | 'processing' | 'result' | 'done'
   const [task, setTask] = useState('')
-  const [result, setResult] = useState(null)
+  const [, setResult] = useState(null)
   const [doneInfo, setDoneInfo] = useState(null) // { title, detail }
   const [reading, setReading] = useState(null) // { open, entries:[{q,text,images,loadingImages}], loading }
 

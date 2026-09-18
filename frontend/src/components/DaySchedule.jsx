@@ -237,29 +237,6 @@ function planShift(evs, need) {
   return best
 }
 
-// Compact the day towards the start ('start') or the end ('end'), gathering one free window.
-// Returns Map(event→{start,end}) along with the gap that opens up.
-function compactDay(evs, direction) {
-  const sorted = [...evs].sort((a, b) => toMinutes(a.start) - toMinutes(b.start))
-  const changes = new Map()
-  if (direction === 'start') {
-    let cur = WORK_START
-    sorted.forEach(e => {
-      const dur = toMinutes(e.end) - toMinutes(e.start)
-      changes.set(e, { start: minutesToStr(cur), end: minutesToStr(cur + dur) })
-      cur += dur
-    })
-    return { changes, gap: [cur, WORK_END] }
-  } else {
-    let cur = WORK_END
-    ;[...sorted].reverse().forEach(e => {
-      const dur = toMinutes(e.end) - toMinutes(e.start)
-      changes.set(e, { start: minutesToStr(cur - dur), end: minutesToStr(cur) })
-      cur -= dur
-    })
-    return { changes, gap: [WORK_START, cur] }
-  }
-}
 
 export default function DaySchedule({ extended = false, onViewDayChange }) {
   const { lang } = useLang()

@@ -100,8 +100,8 @@ export default function AuthGate({ children }) {
 
   // Sign in silently on load, provided a token is already there and still valid
   useEffect(() => {
-    const t = getToken()
-    if (!t) { setChecking(false); return }
+    const token = getToken()
+    if (!token) { setChecking(false); return }
     fetch('/api/auth/verify')
       .then(async r => {
         if (r.ok) {

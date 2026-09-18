@@ -66,7 +66,6 @@ const clean = s => (s != null && !/^[A-Z0-9][A-Z0-9_]{3,}$/.test(String(s).trim(
 const statusColor = k => ({ PRODUCTIVE: 'var(--status-ok)', PEAKING: 'var(--status-ok)', MAINTAINING: 'var(--accent)', RECOVERY: 'var(--status-warn)', UNPRODUCTIVE: 'var(--status-warn)', OVERREACHING: 'var(--status-crit)', DETRAINING: 'var(--status-crit)' }[k] || 'var(--accent)')
 // A fallback phrase per status (for when the backend sends no text and only a code arrives)
 const statusFeedback = (k, s) => ({ PRODUCTIVE: s.fbProductive, PEAKING: s.fbPeaking, MAINTAINING: s.fbMaintaining, RECOVERY: s.fbRecovery, UNPRODUCTIVE: s.fbUnproductive, OVERREACHING: s.fbOverreaching, DETRAINING: s.fbDetraining, STRAINED: s.fbStrained }[k] || null)
-const balanceColor = k => ({ OPTIMAL: 'var(--status-ok)', LOW: 'var(--status-warn)', HIGH: 'var(--status-crit)' }[k] || 'var(--accent)')
 // The status label built from the Garmin CODE, in the interface language. The backend only sends
 // the Russian statusRu — which is why English showed a dash, and the HRV status showed nothing at all.
 const TS_LABEL = {

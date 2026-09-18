@@ -1,0 +1,23 @@
+name: Lint
+
+# Runs on every push and PR. Blocking on purpose: the rule set is deliberately
+# narrow — only things that are bugs, no style opinions — so a failure here means
+# something is actually broken, not that a brace is in the wrong place.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  eslint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npm run lint

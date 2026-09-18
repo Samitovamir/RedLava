@@ -58,10 +58,10 @@ export default function SleepHypnogram({ stages, start, end }) {
           </g>
         ))}
         {/* hour lines + labels */}
-        {ticks.map((t, i) => (
+        {ticks.map((tick, i) => (
           <g key={i}>
-            <line x1={t.x} y1={padTop} x2={t.x} y2={padTop + ROWS.length * rowH} stroke="var(--border)" strokeWidth="1" opacity="0.4" />
-            <text x={t.x} y={H - 8} textAnchor="middle" className="hyp-tick" fill="var(--muted)">{t.label}</text>
+            <line x1={tick.x} y1={padTop} x2={tick.x} y2={padTop + ROWS.length * rowH} stroke="var(--border)" strokeWidth="1" opacity="0.4" />
+            <text x={tick.x} y={H - 8} textAnchor="middle" className="hyp-tick" fill="var(--muted)">{tick.label}</text>
           </g>
         ))}
         {/* vertical transitions between stages */}

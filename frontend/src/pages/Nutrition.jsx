@@ -8,9 +8,9 @@ import {
   loadProfile, saveProfile, computeTarget, GOALS, ACTIVITY_LEVELS,
   MEALS, MEAL_KEYS, mealTarget, currentMeal,
   loadPrefs, savePrefs, DEFAULT_PREFS, CUISINES, rememberDish,
-  loadPlan, savePlan, rateMeal, weekDays, dayPlanned, pendingRating,
+  loadPlan, savePlan, rateMeal, weekDays, pendingRating,
   loadGarmin, loadWhoop, workoutKcal, dynamicTarget, carryFromYesterday,
-  loadIntake, saveIntake, eatenForDay, fodmapMeta
+  loadIntake, eatenForDay, fodmapMeta
 } from '../utils/nutrition.js'
 import { mskDateKey } from '../utils/time.js'
 import { useT, useLang } from '../context/LanguageContext.jsx'
@@ -188,8 +188,8 @@ export default function Nutrition() {
   const [garmin, setGarmin] = useState(loadGarmin)
   const [whoop, setWhoop] = useState(loadWhoop)
   useEffect(() => {
-    const t = setTimeout(() => { setGarmin(loadGarmin()); setWhoop(loadWhoop()) }, 2000)
-    return () => clearTimeout(t)
+    const timer = setTimeout(() => { setGarmin(loadGarmin()); setWhoop(loadWhoop()) }, 2000)
+    return () => clearTimeout(timer)
   }, [])
 
   // With a watch, sport arrives as real calories (dynamicTarget); without one we account for it
@@ -223,7 +223,6 @@ export default function Nutrition() {
 
   const [intake, setIntake] = useState(loadIntake)
   const [components, setComponents] = useState(['Основное'])
-  const weekRef = useRef(null)
   const [toast, setToast] = useState('')
 
   // Rating a dish that was eaten
@@ -276,7 +275,6 @@ export default function Nutrition() {
   const target = dynamicTarget(base, profile, { burned, hasGarmin: !!garmin, recovery, carry })
   const eaten = eatenForDay(plan, intake, selectedDay)
   const remaining = Math.max(0, target.kcal - eaten)
-  const intakeRec = intake[selectedDay] || null
 
   // The per-meal target given what's left of the day: the unfilled meals split the remainder
   function perMealTarget(mt) {
@@ -289,8 +287,6 @@ export default function Nutrition() {
     return { kcal: Math.round(kcal / 10) * 10, protein: Math.round(target.protein * r), fat: Math.round(target.fat * r), carb: Math.round(target.carb * r) }
   }
   const perMeal = perMealTarget(mealType)
-  const sgn = n => (n > 0 ? '+' : '') + n
-  const dayInfo = dayPlanned(plan, selectedDay)
   const selDay = week.find(d => d.key === selectedDay)
   const dayLabel = selDay ? `${t.wd[selDay.wd] || selDay.wd}, ${selDay.day} ${t.months[selDay.month] || selDay.month}` : selectedDay
 

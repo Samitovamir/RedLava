@@ -69,13 +69,6 @@ function fmtDate(d, months = MONTHS.ru) {
   return `${Number(day)} ${months[Number(m) - 1]}`
 }
 
-// Russian plural forms: тренировка / тренировки / тренировок
-function plural(n, one, few, many) {
-  const m10 = n % 10, m100 = n % 100
-  if (m10 === 1 && m100 !== 11) return one
-  if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return few
-  return many
-}
 
 // Sport cards and dots use the theme's ONE accent (no rainbow of colors without a legend).
 function typeColor() {
@@ -185,7 +178,7 @@ export default function GarminLive({ embedded = false, listsOnly = false }) {
   // Planned workouts (TrainingPeaks/Garmin) and which of them are already in the calendar
   const { events, applyAiActions } = useEvents()
   const [planned, setPlanned] = useState([])
-  const [plannedDebug, setPlannedDebug] = useState(null)
+  const [, setPlannedDebug] = useState(null)
   const [openSec, setOpenSec] = useState({ planned: true, recent: true })  // which sections are collapsed
   const toggleSec = k => setOpenSec(s => ({ ...s, [k]: !s[k] }))
   const [added, setAdded] = useState(() => {
@@ -201,16 +194,6 @@ export default function GarminLive({ embedded = false, listsOnly = false }) {
   const existsInCal = (date, start, title) =>
     (events || []).some(e => e.date === date && e.start === start && (e.title || '').trim() === (title || '').trim())
 
-  // Add a workout to the calendar: at its own time if it has one, otherwise the best morning slot
-  function scheduleWorkout(w) {
-    if (added[w.id]) return            // already added — don't duplicate it
-    const dur = w.durationMin || 60
-    const { start, end } = w.time
-      ? { start: w.time, end: minToHm(hmToMin(w.time) + dur) }
-      : proposeSlot(w.date, dur, events)
-    if (!existsInCal(w.date, start, w.title)) applyAiActions([eventInput(w, start, end)])
-    persistAdded({ ...added, [w.id]: { date: w.date, start, end } })
-  }
 
   // Open the time wheel: it defaults to the workout's own time, or the proposed morning slot
   function openPicker(w) {

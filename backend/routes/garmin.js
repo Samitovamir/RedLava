@@ -1,7 +1,6 @@
 import { Router } from 'express'
 import { GarminConnect } from 'garmin-connect'
 import { requireAuth } from '../authGuard.js'
-import { kvGet, kvSet, kvDel } from '../store.js'
 import { kvGetScoped, kvSetScoped, kvDelScoped, scopeOf } from '../userScope.js'
 
 const router = Router()

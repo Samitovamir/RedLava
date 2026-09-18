@@ -126,7 +126,6 @@ export default function DiaryTab({ target, intake, setIntake, selectedDay, flash
   const remK = Math.max(0, target.kcal - eatenK)
   const pct = target.kcal > 0 ? Math.min(100, Math.round(eatenK / target.kcal * 100)) : 0
   const over = eatenK > target.kcal
-  const ringColor = over ? 'var(--status-warn)' : 'var(--accent)'
   // FODMAP for the day: the worst level among the entries, plus the reason behind it
   const fodmapOn = loadPrefs().fodmap
   const entryFods = entries.map(en => ({ en, f: entryFodmap(en) }))   // each entry's FODMAP level (the AI's label, or an estimate)

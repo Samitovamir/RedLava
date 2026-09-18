@@ -349,7 +349,7 @@ export function barGeom(value, min, max) {
 const MONTHS = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек']
 const MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 export function fmtDate(iso, lang = 'ru') {
-  const [y, m, d] = iso.split('-').map(Number)
+  const [, m, d] = iso.split('-').map(Number)
   return lang === 'en' ? `${MONTHS_EN[m - 1]} ${d}` : `${d} ${MONTHS[m - 1]}`
 }
 export function todayIso() {

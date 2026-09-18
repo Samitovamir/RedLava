@@ -90,7 +90,7 @@ export default function MailForm({ initial, onSent, onCancel, sendLabel }) {
         <div className="mail-body-wrap">
           <textarea ref={bodyRef} className="ds-input mail-textarea" rows={6} placeholder={t.bodyPlaceholder} value={body}
             onChange={e => setBody(e.target.value)} />
-          <div className="mail-mic"><MicButton primary onText={t => setBody(prev => (prev ? prev.trim() + ' ' : '') + t)} /></div>
+          <div className="mail-mic"><MicButton primary onText={said => setBody(prev => (prev ? prev.trim() + ' ' : '') + said)} /></div>
         </div>
         <span className="mail-body-hint">{t.bodyHint}</span>
       </label>

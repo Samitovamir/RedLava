@@ -214,8 +214,8 @@ export default function TodaySignalV2() {
       const rec = loadIntake()?.[mskDateKey()]
       const entries = rec?.entries || []
       if (!entries.length) return { band: null, val: null, label: '—', color: 'var(--text-muted)' }  // on, but nothing eaten yet
-      let hi = 0, mo = 0, lo = 0
-      for (const e of entries) { const bnd = entryFodmap(e)?.band; if (bnd === 'high') hi++; else if (bnd === 'mod') mo++; else lo++ }
+      let hi = 0, mo = 0
+      for (const e of entries) { const bnd = entryFodmap(e)?.band; if (bnd === 'high') hi++; else if (bnd === 'mod') mo++ }
       const band = hi ? 'high' : mo ? 'mod' : 'low'
       const val = band === 'high' ? 84 : band === 'mod' ? 50 : 16   // the marker's position on the low→high scale
       const m = fodmapMeta(band, lang)

@@ -113,7 +113,6 @@ export default function AddEventModal({ onAdd, onClose, initial, defaultDate, de
       cancel: 'Cancel'
     }
   })
-  const personalName = lang === 'en' ? 'Personal' : 'Личное'
   const isEdit = !!initial
   const [type, setType] = useState(initial?.type || 'call')
   const [title, setTitle] = useState(initial?.title || '')
@@ -127,7 +126,7 @@ export default function AddEventModal({ onAdd, onClose, initial, defaultDate, de
   const [priority, setPriority] = useState(initial?.priority || null) // optional; defaults to «Обычный»
   const [showPriHelp, setShowPriHelp] = useState(false)
 
-  const toMin = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m }
+  const toMin = (hhmm) => { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m }
   const toStr = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
   const invalidTime = toMin(end) <= toMin(start) // the end has to be later than the start
 
@@ -151,15 +150,15 @@ export default function AddEventModal({ onAdd, onClose, initial, defaultDate, de
     <Modal open onClose={onClose} size="sm" title={isEdit ? t.editTitle : t.newTitle} className="aem-modal">
 
         <div className="aem-types">
-          {TYPES.map(t => (
+          {TYPES.map(opt => (
             <button
-              key={t.value}
-              className={`aem-type ${type === t.value ? 'active' : ''}`}
-              style={type === t.value ? { borderColor: t.color, color: t.color } : {}}
-              onClick={() => setType(t.value)}
+              key={opt.value}
+              className={`aem-type ${type === opt.value ? 'active' : ''}`}
+              style={type === opt.value ? { borderColor: opt.color, color: opt.color } : {}}
+              onClick={() => setType(opt.value)}
             >
-              <span className="aem-type-dot" style={{ background: t.color }} />
-              {lang === 'en' ? t.labelEn : t.label}
+              <span className="aem-type-dot" style={{ background: opt.color }} />
+              {lang === 'en' ? opt.labelEn : opt.label}
             </button>
           ))}
         </div>

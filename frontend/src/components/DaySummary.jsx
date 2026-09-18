@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { AnimatePresence } from 'framer-motion'
 import { Sparkles } from 'lucide-react'
 import { useEvents, dateKey } from '../context/EventsContext.jsx'
 import { useMail } from '../context/MailContext.jsx'
