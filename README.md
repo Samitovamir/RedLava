@@ -6,6 +6,15 @@ A personal training and health dashboard for endurance athletes. Training data f
 
 > Built for a real user (an amateur triathlete) who was checking four different apps every morning. It has been in daily use since June 2026.
 
+![Home — the Status card reads every domain at once](docs/home.png)
+
+<p align="center">
+  <img src="docs/health.png" width="58%" alt="Health — blood tests parsed from PDFs, tracked over time" />
+  <img src="docs/sport-mobile.png" width="20%" alt="Sport on a phone" />
+</p>
+
+<sup>Screenshots are the guest demo (`guest` / `123`) — sample data, not anyone's real health records.</sup>
+
 ---
 
 ## What it does
@@ -37,10 +46,24 @@ backend/   Express, deployed as a single Vercel serverless function (api/index.j
 
 - **Token rotation under concurrency.** WHOOP issues single-use refresh tokens. Parallel serverless invocations racing to refresh would invalidate each other, so refreshes are serialised behind a KV lock and the new token pair is written in one fenced operation.
 - **Google OAuth in "Testing" mode expires refresh tokens every 7 days.** The backend detects `invalid_grant`, marks the token dead instead of retrying forever, and surfaces a reconnect banner.
-- **Auth** is signed, short-lived JWTs (renewed on every silent check, so an active session never expires but an abandoned/stolen token does) carrying a revocation epoch — bumping it instantly invalidates every outstanding token without a password change. A guest role gets demo data only; real data is never sent to a guest session. Login is rate-limited per IP. See [SECURITY.md](SECURITY.md) for the full threat model.
+- **Revocable stateless sessions.** A JWT cannot normally be taken back — a stolen one works until it expires. Each token therefore carries a session epoch that is kept per account, so "sign out my other devices" invalidates one person's tokens and nobody else's, at the cost of a single key read per request. See [Security](#security).
 - **AI cost guard**: per-minute/hour/day request limits and a message size cap, since one dashboard load fans out to ~10–15 AI cards.
 - **Design system**: four themes driven entirely by CSS custom properties; components never hardcode a colour.
 - **Bilingual** (EN/RU): first visit follows the browser locale, then the choice is remembered.
+
+## Security
+
+Auth is signed, short-lived JWTs with a per-account revocation epoch; passwords are
+bcrypt-hashed; every stored key carries its owner's id, so accounts cannot read each
+other's data. CSP is served with SHA-256 hashes of the two inline scripts (no
+`unsafe-inline` for `script-src`), OAuth callbacks are protected by single-use state,
+and login, registration and the reset flow are rate-limited in the KV store. The
+assistant's system prompt states an instruction hierarchy so text inside the user's own
+data cannot act as a command, and destructive tool calls need a human confirmation.
+
+Every push runs **CodeQL** and a **gitleaks** secret scan over the full history;
+Dependabot watches dependencies with major bumps deliberately ignored. The threat model,
+and the risks knowingly accepted, are written down in [SECURITY.md](SECURITY.md).
 
 ## Stack
 

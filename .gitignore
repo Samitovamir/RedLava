@@ -22,3 +22,10 @@ AGENTS.md
 mockup/
 mockups/
 presentation/
+
+# Журналы консолей: в них попадает всё, что набирали, включая вставленные ключи
+.Rhistory
+.Rapp.history
+.bash_history
+.python_history
+.node_repl_history
