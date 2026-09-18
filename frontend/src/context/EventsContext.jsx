@@ -58,7 +58,10 @@ export function EventsProvider({ children }) {
       .then(d => {
         setGoogleConnected(!!d.connected)
         setGoogleNeedsReconnect(!!d.needsReconnect)
-        if (!d.connected) { setEventsRaw([]); return null }  // не подключён → пустое расписание
+        // Google не подключён — НЕ трогаем расписание: у аккаунта без Google события
+        // заводятся вручную (и синхронизируются между его устройствами). Раньше здесь
+        // стояла очистка, и такие события стирались при каждой загрузке страницы.
+        if (!d.connected) return null
         return fetch('/api/calendar/events').then(r => r.json())
       })
       .then(data => {

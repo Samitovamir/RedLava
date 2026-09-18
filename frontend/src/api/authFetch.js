@@ -11,7 +11,7 @@ export const setToken = (t) => {
   try { localStorage.setItem(TOKEN_KEY, t) } catch { /* ignore */ }
 }
 export const clearToken = () => {
-  try { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(ROLE_KEY) } catch { /* ignore */ }
+  try { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(ROLE_KEY); localStorage.removeItem('albert-user-id') } catch { /* ignore */ }
 }
 
 // Роль входа: 'owner' (реальные данные) | 'guest' (демо)| 'guest' (демо)
@@ -21,6 +21,17 @@ export const getRole = () => {
 export const setRole = (r) => {
   try { r ? localStorage.setItem(ROLE_KEY, r) : localStorage.removeItem(ROLE_KEY) } catch { /* ignore */ }
 }
+// id настоящего аккаунта (у владельца и гостя его нет — там роль и есть опознаватель)
+const USER_ID_KEY = 'albert-user-id'
+export const getUserId = () => {
+  try { return localStorage.getItem(USER_ID_KEY) } catch { return null }
+}
+export const setUserId = (id) => {
+  try { id ? localStorage.setItem(USER_ID_KEY, id) : localStorage.removeItem(USER_ID_KEY) } catch { /* ignore */ }
+}
+// Устойчивый ключ аккаунта — по нему понимаем, чьи данные лежат в браузере.
+export const accountKey = () => getUserId() || getRole() || null
+
 export const isGuest = () => getRole() === 'guest'
 // Владелец старой однопользовательской версии (вход по общему паролю). У него есть
 // действия уровня всего сервера — разлогинить все устройства, полный сброс — которых

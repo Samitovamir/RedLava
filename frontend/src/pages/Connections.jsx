@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { clearToken, isGuest, isOwner } from '../api/authFetch'
 import { useT, useLang } from '../context/LanguageContext.jsx'
+import { pushSync } from '../utils/sync.js'
 import { Button, Field, SectionHeader, StatusPill } from '../ui'
 
 /*
@@ -230,7 +231,11 @@ export default function Connections() {
   const owner = isOwner()   // действия уровня сервера — только ему
 
   // Сменить аккаунт: чистим токен и роль, перезагружаем — AuthGate покажет экран входа
-  function switchAccount() {
+  // Перед сменой аккаунта дослать несохранённое НА СЕРВЕР, пока мы ещё под своим токеном:
+  // при входе другого человека локальные данные этого аккаунта стираются (accountData.js),
+  // и всё, что не успело уехать, было бы потеряно.
+  async function switchAccount() {
+    await pushSync().catch(() => {})
     clearToken()
     window.location.reload()
   }

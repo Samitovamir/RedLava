@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { getToken, setToken, clearToken, setRole } from '../api/authFetch.js'
+import { getToken, setToken, clearToken, setRole, setUserId, accountKey } from '../api/authFetch.js'
+import { claimLocalData } from '../utils/accountData.js'
 import { seedGuestDemo } from '../utils/demo.js'
 import { useT, useLang } from '../context/LanguageContext.jsx'
 
@@ -81,6 +82,10 @@ export default function AuthGate({ children }) {
           const d = await r.json()
           if (d.token) setToken(d.token)  // сервер продлил сессию — сохраняем свежий токен
           setRole(d.role)
+          setUserId(d.userId || null)
+          // До монтирования приложения: если в браузере лежат данные другого аккаунта —
+          // стереть, иначе человек увидит чужое, а фоновый push отправит это в его ячейку.
+          claimLocalData(accountKey())
           if (d.role === 'guest') seedGuestDemo({ lang })
           setAuthed(true)
         }
@@ -114,6 +119,8 @@ export default function AuthGate({ children }) {
         const d = await r.json()
         setToken(d.token)
         setRole(d.role)
+        setUserId(d.user?.id || null)
+        claimLocalData(accountKey())   // чужие данные в этом браузере — стереть до старта
         if (d.role === 'guest') seedGuestDemo({ force: true, lang })  // свежий демо при входе
         setAuthed(true)
       } else if (r.status === 429) {
