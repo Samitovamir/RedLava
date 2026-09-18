@@ -27,8 +27,8 @@ function formatDate(t) {
   const d = mskNow()
   const days = t.days
   const months = t.months
-  // По-русски месяцы строчные: «10 июня». Заглавная — только у первой буквы строки
-  // (имя дня недели в начале), без CSS-capitalize, который бы поднял и «Июня».
+  // In Russian the month is lowercase: «10 июня». Only the first letter of the whole string
+  // is capitalized (the weekday leads), rather than CSS capitalize, which would also raise «Июня».
   const s = `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]}`
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
@@ -64,8 +64,8 @@ export default function Home() {
   const quoteStr = quote.text
   const authorStr = `— ${quote.author}`
 
-  // Раскладка: в «Командном центре» Главная — компактный обзор центра экрана
-  // (лента дня/статусы/помощник живут в постоянных панелях оболочки).
+  // Layout: in "Командный центр" Home is a compact overview of the middle of the screen
+  // (the day's feed, the statuses and the assistant live in the shell's permanent panels).
   const layout = useLayout()
 
   return (
@@ -80,11 +80,11 @@ export default function Home() {
           <p className="quote-text">{quoteStr}</p>
           <span className="quote-author">{authorStr}</span>
         </div>
-        {/* Настройки на мобиле — маленькая шестерёнка в шапке (на десктопе — в рейле меню) */}
+        {/* Settings on mobile: a small gear in the header (on desktop it sits in the menu rail) */}
         <button className="home-settings" aria-label={lang === 'en' ? 'Settings' : 'Настройки'} onClick={() => navigate('/settings')}>{ICON_GEAR}</button>
       </div>
 
-      {/* Только для того, у кого не подключено ничего: иначе с Главной некуда нажать */}
+      {/* Only for someone with nothing connected: otherwise Home has nowhere to click through to */}
       <ConnectPrompt />
 
       <TodaySignal />
@@ -98,24 +98,24 @@ export default function Home() {
         </div>
       ) : (
         <>
-          {/* Классическая раскладка сознательно короткая: под «Статусом» нет блоков
-              Расписание/Спорт/Здоровье/Питание, только «Ваш помощник». Главное по каждому
-              домену теперь внутри самого «Статуса» (спидометр стресса, ползунок событий),
-              и дублировать это карточками — значит листать одно и то же дважды.
-              Компоненты и импорты на месте: вернуть = добавить сюда. */}
+          {/* The classic layout is deliberately short: below "Статус" there are no
+              Schedule/Sport/Health/Nutrition blocks, only "Ваш помощник". What matters in each
+              domain now lives inside "Статус" itself (the stress dial, the event slider), and
+              duplicating that in cards means scrolling past the same thing twice.
+              The components and imports are still here: to bring a block back, add it here. */}
           <AIWorkZone />
         </>
       )}
 
       {/*
-        Убрано с Главной по той же причине, что и блоки выше. ФУНКЦИОНАЛ СОХРАНЁН:
-        компоненты, импорты и страницы на месте — можно вернуть сюда или перенести
-        в другое место, просто раскомментировав. Сетка (.home-grid / .quick-cards) цела.
+        Taken off Home for the same reason as the blocks above. THE FUNCTIONALITY IS INTACT:
+        the components, imports and pages are all still here — they can come back here or move
+        somewhere else, simply by uncommenting. The grid (.home-grid / .quick-cards) is intact.
 
-        <HealthBrief />            — «Коротко о здоровье»
+        <HealthBrief />            — "Коротко о здоровье"
         <div className="home-grid">
-          <DaySchedule />          — календарь дня
-          <DaySummary />           — «Сводка дня»
+          <DaySchedule />          — the day's calendar
+          <DaySummary />           — "Сводка дня"
         </div>
       */}
 

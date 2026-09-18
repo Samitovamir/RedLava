@@ -1,8 +1,8 @@
 /*
-  «Статус» — сводка дня по доменам: гейдж слева, персональный ИИ-совет справа.
-  Порядок доменов: Стресс · Расписание · Спорт · Здоровье · Питание.
-  Совет по каждому домену приходит от ИИ (useAiSummary), с детерминированным
-  фолбэком на пороги, если ИИ недоступен. Только CSS-переменные, тёмная тема.
+  "Status" — the day summed up by domain: a gauge on the left, personal AI advice on the right.
+  Domain order: Stress · Schedule · Sport · Health · Nutrition.
+  The advice for each domain comes from the AI (useAiSummary), with a deterministic
+  threshold-based fallback when the AI is unavailable. CSS variables only, dark theme.
 */
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
@@ -24,8 +24,8 @@ import { useMemoryFacts } from '../context/MemoryContext.jsx'
 import { useLang, useT } from '../context/LanguageContext.jsx'
 import { buildSignalData, DOMAIN_ADVICE_CONTEXT, parseAdvice } from '../utils/daySignal.js'
 
-// Строки компонента. Чистые функции ниже принимают нужную половину словаря (`s`),
-// потому что они объявлены вне компонента и до хуков не дотягиваются.
+// The component's strings. The pure functions below take the half of the dictionary they need
+// (`s`), because they are declared outside the component and can't reach the hooks.
 const STR = {
   en: {
     eyebrow: 'Status',
@@ -99,10 +99,10 @@ function readLS(key) {
 
 const toMin = h => { const m = /^(\d{1,2}):(\d{2})/.exec(h || ''); return m ? +m[1] * 60 + +m[2] : null }
 
-// Данные «Расписания» с ТЕНДЕНЦИЕЙ: загрузка этого дня относительно ОБЫЧНОГО дня.
-// Базовая линия — среднее число событий в день по ПРОШЛЫМ дням из календаря (реальная
-// история). Шкала калибруется так, что обычный день ≈ середина (50): маркер левее —
-// спокойнее обычного, правее — плотнее. Чем больше истории, тем точнее база.
+// "Schedule" data with a TREND: this day's load relative to a TYPICAL day.
+// The baseline is the average number of events per day across PAST days in the calendar (real
+// history). The scale is calibrated so that a typical day sits near the middle (50): a marker
+// further left means calmer than usual, further right busier. More history, a truer baseline.
 function scheduleData(events, s) {
   const now = mskNow()
   const p = n => String(n).padStart(2, '0')
@@ -112,16 +112,16 @@ function scheduleData(events, s) {
   const count = todays.length
   const next = todays.filter(e => e.m != null && e.m > nowMin).sort((a, b) => a.m - b.m)[0] || null
 
-  // База: среднее событий/день по ПРОШЛЫМ дням (исключаем сегодня и будущее)
+  // The baseline: average events/day over PAST days (today and the future excluded)
   const counts = {}
   for (const e of events) if (e.date && e.date < today) counts[e.date] = (counts[e.date] || 0) + 1
   const pastDays = Object.keys(counts)
   const baseline = pastDays.length >= 3 ? pastDays.reduce((acc, d) => acc + counts[d], 0) / pastDays.length : 2
-  // Обычный день (=baseline) попадает на 50; 0 → 0; 2×baseline и выше → 100
+  // A typical day (=baseline) lands on 50; 0 → 0; 2×baseline and above → 100
   const loadPct = Math.min(100, Math.round(count / (Math.max(1, baseline) * 2) * 100))
   const ratio = baseline > 0 ? count / baseline : (count ? 2 : 0)
 
-  // Одно слово под числом на гейдже: насколько день плотнее/свободнее обычного
+  // One word under the number on the gauge: how much busier/freer than usual the day is
   const word = count === 0 ? s.dayFree
     : ratio > 1.4 ? s.dayBusier
     : ratio < 0.6 ? s.dayCalmer
@@ -139,8 +139,8 @@ function scheduleData(events, s) {
 
 const r1 = x => Math.round(x * 10) / 10
 
-// План/факт тренировки: план из TrainingPeaks/Garmin на сегодня + факт выполнения.
-// Нет плановой тренировки на сегодня → null (строка не показывается).
+// Workout plan vs actual: today's plan from TrainingPeaks/Garmin plus what was actually done.
+// No workout planned for today → null (the row isn't shown).
 function sportPlanFact(planned, garmin, todayKey, s) {
   const pToday = (planned || []).filter(w => w.date === todayKey)
   if (!pToday.length) return null
@@ -155,8 +155,8 @@ function sportPlanFact(planned, garmin, todayKey, s) {
   return { pct, goalText }
 }
 
-// Готовность к тренировкам: Garmin Training Readiness (0–100), иначе — Whoop recovery.
-// Выше — лучше (в отличие от стресса). Уровень и цвет по порогам.
+// Training readiness: Garmin Training Readiness (0–100), otherwise Whoop recovery.
+// Higher is better (unlike stress). The level and color come from thresholds.
 function readyMeta(v, s) {
   if (v == null) return null
   if (v >= 75) return { w: s.readyHigh, c: 'var(--status-ok)' }
@@ -174,7 +174,7 @@ export default function TodaySignalV2() {
   const garmin = readLS('albert-garmin-live')
   const whoop = readLS('albert-whoop-live')
 
-  // План тренировок (TrainingPeaks/Garmin): гость → демо, иначе — с бэкенда
+  // The workout plan (TrainingPeaks/Garmin): a guest gets the demo, otherwise the backend
   const [planned, setPlanned] = useState(() => (isGuest() ? demoPlanned(lang) : []))
   useEffect(() => {
     if (isGuest()) { setPlanned(demoPlanned(lang)); return }
@@ -184,8 +184,8 @@ export default function TodaySignalV2() {
   }, [])
   const planFact = sportPlanFact(planned, garmin, mskDateKey(), s)
 
-  // Здоровье: восстановление + нагрузка. Источник авто (Whoop→Garmin), как на вкладке.
-  // Whoop → recovery + strain(0–21). Garmin (без Whoop) → Body Battery: заряд(восст.) + потрачено(нагрузка), 0–100.
+  // Health: recovery + strain. The source is chosen automatically (Whoop→Garmin), as on the tab.
+  // Whoop → recovery + strain(0–21). Garmin (no Whoop) → Body Battery: charge(recovery) + drained(strain), 0–100.
   const hSource = resolveSource(loadSourcePref(), whoop, garmin)
   let recovery = null, strain = null, strainMax = 21, hSourceLabel = null
   if (hSource === 'whoop') {
@@ -198,39 +198,39 @@ export default function TodaySignalV2() {
   const loadPct = strain != null ? strain / strainMax * 100 : null
   const balDiff = (recovery != null && loadPct != null) ? recovery - loadPct : null
 
-  // Питание: калории (съедено/цель) + FODMAP дня (только если диета включена)
+  // Nutrition: calories (eaten/target) + the day's FODMAP (only when the diet is enabled)
   const nut = (() => { try { return nutritionToday() } catch { return null } })()
   const nutOk = !!nut?.hasData
-  // Пока анкета не заполнена, нормы нет — гейдж показывает «—», а не честный ноль
-  // от выдуманной цифры (nutritionToday() всегда считает по заглушке профиля).
+  // Until the questionnaire is filled in there is no target — the gauge shows "—" instead of an
+  // honest zero off a made-up figure (nutritionToday() always computes from the profile stub).
   const kcalPct = nutOk && !nut.profileIsPlaceholder && nut.target?.kcal
     ? Math.min(100, Math.round(nut.eaten / nut.target.kcal * 100))
     : null
   const kcalColor = nutOk && nut.eaten > (nut.target?.kcal || 0) ? 'var(--status-warn)' : 'var(--accent)'
   const fodEnabled = (() => { try { return loadPrefs().fodmap } catch { return false } })()
   const fod = (() => {
-    if (!fodEnabled) return null   // диета выключена — гейджа нет
+    if (!fodEnabled) return null   // the diet is off — no gauge
     try {
       const rec = loadIntake()?.[mskDateKey()]
       const entries = rec?.entries || []
-      if (!entries.length) return { band: null, val: null, label: '—', color: 'var(--text-muted)' }  // включена, но еды нет
+      if (!entries.length) return { band: null, val: null, label: '—', color: 'var(--text-muted)' }  // on, but nothing eaten yet
       let hi = 0, mo = 0, lo = 0
       for (const e of entries) { const bnd = entryFodmap(e)?.band; if (bnd === 'high') hi++; else if (bnd === 'mod') mo++; else lo++ }
       const band = hi ? 'high' : mo ? 'mod' : 'low'
-      const val = band === 'high' ? 84 : band === 'mod' ? 50 : 16   // позиция маркера на шкале низкий→высокий
+      const val = band === 'high' ? 84 : band === 'mod' ? 50 : 16   // the marker's position on the low→high scale
       const m = fodmapMeta(band, lang)
       return { band, val, label: m.label, color: m.color }
     } catch { return null }
   })()
-  // Спорт · готовность
+  // Sport · readiness
   const rd = garmin?.readiness
   const readyScore = rd?.score ?? whoop?.recovery ?? null
   const rm = readyMeta(readyScore, s)
   const str = garmin?.stress
   const value = str ? (str.recent ?? str.current ?? str.avg ?? null) : null
-  const fresh = s.stressSource   // стресс приходит из Garmin (у Whoop шкалы стресса нет)
+  const fresh = s.stressSource   // stress comes from Garmin (Whoop has no stress scale)
 
-  // ── Персональные ИИ-советы по доменам (что делать), с детерминированным фолбэком ──
+  // ── Personal AI advice per domain (what to do), with a deterministic fallback ──
   const { facts } = useMemoryFacts()
   const adviceSummary = useAiSummary({
     id: 'status-advice-v2',
@@ -244,7 +244,7 @@ export default function TodaySignalV2() {
   const schedAdvice = ai.расписание || (sched.count === 0 ? s.schedFree : sched.loadPct >= 66 ? s.schedBusy : s.schedNormal)
   const readyAdvice = ai.спорт || (readyScore == null ? s.readyNoData : readyScore >= 75 ? s.readyHighAdv : readyScore >= 50 ? s.readyMidAdv : s.readyLowAdv)
   const healthAdvice = ai.здоровье || (balDiff == null ? s.healthNoData : balDiff >= 15 ? s.healthSurplus : balDiff <= -15 ? s.healthDeficit : s.healthBalanced)
-  // Пока анкета не заполнена, норма посчитана по заглушке — не выдаём её за личную цифру
+  // While the questionnaire is unfilled the target comes from a stub — don't pass it off as personal
   const nutAdvice = nut?.profileIsPlaceholder
     ? s.nutNoProfile
     : (ai.питание || (!nutOk ? s.nutEmpty : nut.eaten > (nut.target?.kcal || 0) ? s.nutOver : s.nutLeft(nut.remaining)))
@@ -260,7 +260,7 @@ export default function TodaySignalV2() {
       <span className="sv2-eyebrow">{s.eyebrow}</span>
 
       <div className="sv2-domains">
-        {/* ───────── Стресс ───────── */}
+        {/* ───────── Stress ───────── */}
         <div className="sv2-drow">
           <div className="sv2-dgauge">
             <StressArc value={value} size={gaugeSize} />
@@ -272,7 +272,7 @@ export default function TodaySignalV2() {
           </div>
         </div>
 
-        {/* ───────── Расписание ───────── */}
+        {/* ───────── Schedule ───────── */}
         <div className="sv2-sched">
           <div className="sv2-dgauge">
             <ZoneArc value={sched.loadPct} max={100} center={sched.count} sub={sched.word} subColor={sched.color} size={gaugeSize}
@@ -296,7 +296,7 @@ export default function TodaySignalV2() {
           </div>
         </div>
 
-        {/* ───────── Спорт · готовность ───────── */}
+        {/* ───────── Sport · readiness ───────── */}
         {rm && (
           <div className="sv2-drow">
             <div className="sv2-dgauge">
@@ -314,7 +314,7 @@ export default function TodaySignalV2() {
           </div>
         )}
 
-        {/* ───────── Спорт · план/факт (только если есть плановая тренировка) ───────── */}
+        {/* ───────── Sport · plan vs actual (only when a workout is planned) ───────── */}
         {planFact && (
           <div className="sv2-drow">
             <div className="sv2-dgauge">
@@ -327,7 +327,7 @@ export default function TodaySignalV2() {
           </div>
         )}
 
-        {/* ───────── Здоровье ───────── */}
+        {/* ───────── Health ───────── */}
         {hasHealth && (
           <div className="sv2-drow">
             <div className="sv2-dgauge">
@@ -341,7 +341,7 @@ export default function TodaySignalV2() {
           </div>
         )}
 
-        {/* ───────── Питание (калории + FODMAP-полукруг, если диета включена) ───────── */}
+        {/* ───────── Nutrition (calories + FODMAP semicircle when the diet is on) ───────── */}
         {nutOk && (
           <div className="sv2-drow">
             <div className="sv2-dgauge sv2-nut">

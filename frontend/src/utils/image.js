@@ -1,6 +1,6 @@
-// Сжатие фото для фото-дневника питания (через canvas, без зависимостей):
-//  • миниатюра — для ленты «съедено сегодня», хранится локально (albert-intake-thumbs);
-//  • версия для отправки в ИИ — меньше пикселей → быстрее и дешевле vision-запрос.
+// Photo compression for the nutrition photo diary (via canvas, no dependencies):
+//  • a thumbnail for the "eaten today" feed, stored locally (albert-intake-thumbs);
+//  • a version to send to the AI — fewer pixels → a faster and cheaper vision request.
 
 function loadImage(dataUrl) {
   return new Promise((resolve, reject) => {
@@ -23,16 +23,16 @@ async function resizeToDataUrl(dataUrl, maxPx, quality) {
     canvas.getContext('2d').drawImage(img, 0, 0, w, h)
     return canvas.toDataURL('image/jpeg', quality)
   } catch {
-    return dataUrl   // не смогли сжать — отдаём как есть
+    return dataUrl   // couldn't compress it — hand it back as is
   }
 }
 
-// Маленькая миниатюра для ленты (хранится в localStorage отдельным ключом)
+// A small thumbnail for the feed (kept in localStorage under its own key)
 export function compressToThumb(dataUrl, { maxPx = 320, quality = 0.6 } = {}) {
   return resizeToDataUrl(dataUrl, maxPx, quality)
 }
 
-// Версия для отправки в ИИ (умеренный размер — быстрее/дешевле, точности хватает)
+// The version sent to the AI (a moderate size — faster and cheaper, still accurate enough)
 export function compressForUpload(dataUrl, { maxPx = 1024, quality = 0.72 } = {}) {
   return resizeToDataUrl(dataUrl, maxPx, quality)
 }

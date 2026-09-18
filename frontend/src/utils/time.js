@@ -1,12 +1,12 @@
-// Сайт всегда живёт по московскому времени: владелец в Москве, а тестируем из других зон.
-// mskNow() возвращает Date, у которого локальные поля (часы/дата/день недели)
-// соответствуют московскому времени — поэтому его можно использовать вместо new Date()
-// везде, где нужно «сейчас» или «сегодня».
+// The site always runs on Moscow time: the owner is in Moscow, but we test from other zones.
+// mskNow() returns a Date whose local fields (hours/date/weekday) match Moscow
+// time — which is why it can stand in for new Date() everywhere we need
+// "now" or "today".
 export function mskNow() {
   return new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Moscow' }))
 }
 
-// Ключ даты YYYY-MM-DD по московскому времени
+// YYYY-MM-DD date key in Moscow time
 export function mskDateKey() {
   const d = mskNow()
   const p = n => String(n).padStart(2, '0')

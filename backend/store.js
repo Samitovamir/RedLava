@@ -1,6 +1,7 @@
-// Простое key-value хранилище для токенов подключений.
-// В проде — Vercel KV / Upstash Redis (через REST, env подставляет Vercel).
-// Локально без настроек — в памяти + файл (чтобы перезапуск бэкенда не сбрасывал подключения).
+// A simple key-value store for the integration tokens.
+// In production: Vercel KV / Upstash Redis (over REST, with Vercel supplying the env vars).
+// Locally, with nothing to configure: in memory plus a file, so restarting the backend does
+// not drop the connections.
 
 import { readFileSync, writeFileSync } from 'fs'
 import { fileURLToPath } from 'url'
@@ -10,13 +11,13 @@ const URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL ||
 const TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN || ''
 
 const FILE = join(dirname(fileURLToPath(import.meta.url)), '.localstore.json')
-// Жёсткий таймаут на каждый KV-запрос: критическая секция под замком должна
-// гарантированно укладываться в LOCK_TTL, иначе зависший SET переоткрывает гонку.
+// A hard timeout on every KV request: the critical section under the lock has to fit inside
+// LOCK_TTL with certainty, otherwise a hung SET reopens the race.
 const KV_TIMEOUT_MS = 3000
 const kvSignal = () => AbortSignal.timeout(KV_TIMEOUT_MS)
 const mem = new Map()
 if (!URL) {
-  try { Object.entries(JSON.parse(readFileSync(FILE, 'utf8'))).forEach(([k, v]) => mem.set(k, v)) } catch { /* нет файла — ок */ }
+  try { Object.entries(JSON.parse(readFileSync(FILE, 'utf8'))).forEach(([k, v]) => mem.set(k, v)) } catch { /* no file yet — fine */ }
 }
 function persist() {
   try { writeFileSync(FILE, JSON.stringify(Object.fromEntries(mem))) } catch { /* ignore */ }
@@ -33,7 +34,7 @@ export async function kvGet(key) {
   } catch { return null }
 }
 
-// Возвращает true при успешной записи (важно для надёжной ротации токенов).
+// Returns true when the write succeeded (which matters for reliable token rotation).
 export async function kvSet(key, value) {
   if (!URL) { mem.set(key, value); persist(); return true }
   try {
@@ -54,7 +55,7 @@ export async function kvDel(key) {
   } catch { /* ignore */ }
 }
 
-// Команда Redis через Upstash REST (массив в теле) — для SET с флагами и EVAL.
+// A Redis command over the Upstash REST API (an array in the body) — for SET with flags and EVAL.
 async function redisCmd(args) {
   const r = await fetch(URL, {
     method: 'POST',
@@ -68,10 +69,10 @@ async function redisCmd(args) {
 const newOwner = () =>
   globalThis.crypto?.randomUUID?.() || (Date.now() + '-' + Math.random().toString(36).slice(2))
 
-// Атомарный single-flight замок с ВЛАДЕЛЬЦЕМ (fenced): SET key <token> EX ttl NX.
-// Возвращает уникальный токен-владелец при захвате, иначе null. Кросс-инстансно на
-// Upstash; локально (без URL) — в памяти с истечением. Нужен, чтобы параллельные
-// запросы не жгли одноразовый refresh_token Whoop одновременно.
+// An atomic single-flight lock with an OWNER (fenced): SET key <token> EX ttl NX.
+// Returns a unique owner token when the lock is taken, otherwise null. Works across
+// instances on Upstash; locally (with no URL) it lives in memory and expires. It exists so
+// that parallel requests do not burn Whoop's single-use refresh_token at the same time.
 export async function kvLock(key, ttlSec) {
   const token = newOwner()
   if (!URL) {
@@ -87,8 +88,8 @@ export async function kvLock(key, ttlSec) {
   } catch { return null }
 }
 
-// Снятие замка ТОЛЬКО своим токеном (compare-and-delete): держатель с истёкшим TTL
-// не может снести замок преемника. На Upstash — атомарно через EVAL.
+// Release the lock ONLY with your own token (compare-and-delete): a holder whose TTL has
+// expired cannot tear down its successor's lock. On Upstash this is atomic, via EVAL.
 export async function kvUnlock(key, token) {
   if (!token) return
   if (!URL) {
@@ -101,11 +102,11 @@ export async function kvUnlock(key, token) {
   } catch { /* ignore */ }
 }
 
-// Запись с ФЕНСИНГОМ замка: пишет value в key ТОЛЬКО если замок lockKey всё ещё
-// принадлежит lockToken (атомарно через EVAL). Защищает от «замороженного» serverless-
-// инстанса, чей TTL замка уже истёк на стороне Redis: его запоздалая запись отвергается,
-// поэтому stale-ротация/пометка dead не затрут валидный токен преемника.
-// Возвращает { applied, error }: applied — записали; error — сбой инфраструктуры (повтор).
+// A FENCED write: stores value at key ONLY if the lock at lockKey still belongs to lockToken
+// (atomically, via EVAL). It guards against a "frozen" serverless instance whose lock TTL has
+// already expired on the Redis side: its late write is rejected, so a stale rotation or dead
+// marking cannot overwrite the successor's valid token.
+// Returns { applied, error }: applied — the write went through; error — infrastructure failure (retry).
 export async function kvSetIfLocked(key, value, lockKey, lockToken) {
   if (!lockToken) return { applied: false, error: false }
   if (!URL) {

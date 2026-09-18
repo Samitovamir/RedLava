@@ -3,12 +3,12 @@ import { useT, useLang } from '../context/LanguageContext.jsx'
 import { LAYOUTS, applyLayout, useLayout, useIsMobile } from '../layout.js'
 
 /*
-  Переключатель раскладок («что где находится») — сосед ThemeSwitcher в Настройках.
-  Каждый вариант показан мини-схемой компоновки (чистый CSS, цвета из токенов).
-  Раскладка применяется мгновенно (data-layout на <html>) и запоминается.
+  The layout switcher ("what goes where") — ThemeSwitcher's neighbor in Settings.
+  Each option is shown as a small layout sketch (pure CSS, colors from the tokens).
+  The layout applies instantly (data-layout on <html>) and is remembered.
 */
 
-// Мини-схема компоновки: набор «блоков» для каждой раскладки
+// The layout sketch: a set of "blocks" for each layout
 function LayoutSketch({ id }) {
   if (id === 'classic') return (
     <span className="ls-sketch" aria-hidden="true">

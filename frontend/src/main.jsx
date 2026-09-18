@@ -7,18 +7,18 @@ import { installAuthFetch } from './api/authFetch.js'
 import { applyTheme } from './theme.js'
 import './index.css'
 
-// Применяем эффективную тему до рендера (учитывает мобильный + системную тему телефона)
+// Apply the effective theme before rendering (accounts for mobile plus the phone's system theme)
 applyTheme()
 
-// Глобальный инжектор токена — добавляет Bearer к запросам /api/*
+// The global token injector — adds Bearer to /api/* requests
 installAuthFetch()
 
-// Service worker — офлайн-оболочка (см. public/sw.js) и предпосылка для нормальной
-// установки на домашний экран (Android/Chrome). Регистрируем после полной загрузки
-// страницы, чтобы не конкурировать за сеть с первой отрисовкой.
+// Service worker — the offline shell (see public/sw.js) and a prerequisite for a proper
+// install to the home screen (Android/Chrome). We register it once the page has fully
+// loaded, so that it does not compete for the network with the first paint.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => { /* не критично — просто без офлайн-кэша */ })
+    navigator.serviceWorker.register('/sw.js').catch(() => { /* not critical — we just go without the offline cache */ })
   })
 }
 

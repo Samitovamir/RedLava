@@ -8,14 +8,14 @@ const STR = {
 }
 
 /*
-  Режим чтения. Отдельное окно поверх сайта (не на весь экран),
-  фон заблюрен и затемнён. Прокручивается. Картинки от ИИ (Wikipedia).
-  Ведёт ДИАЛОГ: внизу можно задать уточняющий вопрос, ИИ помнит контекст.
-  Закрытие: крестик, клик по фону, Esc.
+  Reading mode. A separate window on top of the site (not full screen),
+  with the background blurred and dimmed. It scrolls. Images come from the AI (Wikipedia).
+  It holds a CONVERSATION: a follow-up question can be asked at the bottom and the AI
+  remembers the context. It closes via the X, a click on the backdrop, or Esc.
   props: { open, entries:[{q,text,images,loadingImages}], loading, onClose, onAsk }
 */
 
-// Разложить текст на абзацы и вставить между ними картинки
+// Split the text into paragraphs and slot the images in between them
 function buildBlocks(text, images = []) {
   const paragraphs = (text || '').split(/\n{2,}/).map(s => s.trim()).filter(Boolean)
   const blocks = []
@@ -44,7 +44,7 @@ export default function ReadingOverlay({ open, entries = [], loading, onClose, o
     return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = '' }
   }, [open, onClose])
 
-  // Автопрокрутка вниз при новом ответе / загрузке
+  // Auto-scroll to the bottom on a new answer or while loading
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [entries.length, loading])

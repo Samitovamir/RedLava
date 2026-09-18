@@ -1,25 +1,25 @@
 import { useState, useEffect } from 'react'
 
 /*
-  Раскладки сайта («что где находится») — параллельная система к темам
-  («какого всё цвета»). Выбор хранится в localStorage и применяется к
-  <html data-layout="…">; страницы реагируют CSS-селекторами
-  html[data-layout="…"] и хуком useLayout() для структурных различий.
+  Site layouts ("where things sit") — a system parallel to the themes
+  ("what colour everything is"). The choice is kept in localStorage and applied to
+  <html data-layout="…">; pages react to it through the CSS selector
+  html[data-layout="…"] and through the useLayout() hook for structural differences.
 
-  - classic  — текущая компоновка (по умолчанию, ничего не меняет)
-  - cockpit  — «Кокпит»: фиксированные крупные зоны, минимум скролла
-  - journal  — «Журнал»: одна колонка, брифинг-иерархия вывод→данные→действия
-  - command  — «Командный центр»: плотные колонки, статус-строка сверху
+  - classic  — the current arrangement (the default, changes nothing)
+  - cockpit  — "Cockpit": fixed large zones, as little scrolling as possible
+  - journal  — "Journal": a single column, briefing order conclusion→data→actions
+  - command  — "Command center": dense columns, a status line across the top
 */
 
 const STORAGE_KEY = 'albert-layout'
 export const DEFAULT_LAYOUT = 'classic'
 
-// Брейкпоинт мобильной версии (синхронизирован с @media в index.css).
+// The mobile breakpoint (kept in sync with the @media query in index.css).
 export const MOBILE_QUERY = '(max-width: 640px)'
 
-// Реактивный флаг «мобильный экран». На мобильном сайт всегда работает в
-// «Классике» (остальные раскладки выглядят плохо на узком экране).
+// Reactive "narrow screen" flag. On mobile the site always runs in
+// Classic (the other layouts look bad on a narrow screen).
 export function useIsMobile() {
   const [m, setM] = useState(() => {
     try { return window.matchMedia(MOBILE_QUERY).matches } catch { return false }
@@ -42,7 +42,7 @@ export const LAYOUTS = [
 
 const VALID_LAYOUTS = new Set(LAYOUTS.map(l => l.id))
 
-// Старые сохранённые раскладки (cockpit/journal) больше не поддерживаются → Классика.
+// Layouts saved by older builds (cockpit/journal) are no longer supported → Classic.
 export function getLayout() {
   try { const v = localStorage.getItem(STORAGE_KEY); return VALID_LAYOUTS.has(v) ? v : DEFAULT_LAYOUT } catch { return DEFAULT_LAYOUT }
 }
@@ -53,7 +53,7 @@ export function applyLayout(id) {
   window.dispatchEvent(new CustomEvent('albert-layout', { detail: id }))
 }
 
-// Подписка на смену раскладки — для компонентов со структурными различиями
+// Subscribe to layout changes — for components that differ structurally between layouts
 export function useLayout() {
   const [layout, setLayout] = useState(getLayout)
   useEffect(() => {

@@ -36,11 +36,11 @@ const STR = {
 }
 
 /*
-  Большое окно на главной: ИИ коротко и без воды отмечает только важное по анализам
-  и здоровью и даёт конкретные советы. Знает даты анализов (могут быть старыми) и
-  советует, когда пересдать. Не паникёр. Под текстом — мини-карточки упомянутых
-  показателей (шкала нормы, статус, тренд). Снизу — вопросы с полем ввода и диктовкой.
-  Выжимка кэшируется по данным здоровья (не по календарю).
+  The big panel on the home screen: briefly and without filler, the AI flags only what matters
+  in the blood tests and health data and gives concrete advice. It knows the dates of the tests
+  (which may be old) and says when to retest. It doesn't panic. Below the text, mini-cards for
+  the markers it mentioned (reference scale, status, trend). At the bottom, questions with an
+  input field and dictation. The summary is cached on the health data (not on the calendar).
 */
 
 function readReports() {
@@ -56,17 +56,17 @@ function readGarmin() {
   return null
 }
 
-// Сжатая сводка здоровья с ДАТАМИ (и ключ кэша): отклонения + Whoop + тренировки Garmin.
+// Condensed health summary with DATES (doubles as the cache key): deviations + Whoop + Garmin workouts.
 function buildHealthData(reports, whoop, garmin) {
   const hist = buildHistory(reports)
   const flagged = [], normal = []
-  // Все показатели из файлов: норму берём из документа, справочник дополняет.
+  // Every marker from the files: the range comes from the document, the reference list fills gaps.
   Object.entries(hist).forEach(([name, h]) => {
     const last = h[h.length - 1]
     const def = resolveMarker(name, last)
     const st = markerStatus(last.value, def.min, def.max)
     const norm = (def.min == null && def.max == null) ? 'норма не указана' : `норма ${rangeText(def.min, def.max)}`
-    // Это текст КОНТЕКСТА ДЛЯ ИИ (не UI), промпт русский — язык интерфейса тут не при чём
+    // This is CONTEXT TEXT FOR THE AI (not UI): the prompt is Russian, the UI language is irrelevant
     const line = `${def.name} ${last.value} ${def.unit || ''} (${norm}, сдан ${fmtDate(last.date)})`
     if (st === 'low' || st === 'high') flagged.push(`${line} — ${STATUS_INFO[st].label}`)
     else normal.push(def.name)
@@ -89,12 +89,12 @@ function buildHealthData(reports, whoop, garmin) {
 }
 
 const CONTEXT =
-  'Ты — внимательный помощник пользователя по здоровью (он пожилой человек без мед. образования). ' +
+  'Ты — внимательный помощник по здоровью. У человека нет медицинского образования. ' +
   'По его анализам крови и данным Whoop дай ОЧЕНЬ короткую выжимку: 2–4 коротких предложения, только важное. ' +
   'Назови показатели вне нормы простыми словами и дай конкретный практичный совет: какой витамин или добавку обсудить с врачом, какой доп. анализ имеет смысл. ' +
   'УЧИТЫВАЙ ДАТЫ анализов: если данные старые, скажи об этом. Если показатель корректируется приёмом (витамин D, железо, B12) — посоветуй пересдать через 2–3 месяца. Если показатель стабильный и не критичный — не гони пересдавать, достаточно планово. ' +
   'НЕ БУДЬ ПАНИКЁРОМ. Если отклонение небольшое, показатель не критичный или мало меняется со временем — спокойно скажи, что это не повод для волнения. Тревожный тон уместен только когда действительно важно. ' +
-  'ВАЖНО ПРО ТРЕНИРОВКИ: пользователь — триатлет, тренируется интенсивно и очень дорожит спортом. ' +
+  'ВАЖНО ПРО ТРЕНИРОВКИ: человек занимается триатлоном и дорожит спортом. ' +
   'Если показатель влияет на тренировки — дай совет по нагрузке и насколько настоятельно его соблюдать. ' +
   'Из-за мелких или некритичных отклонений менять режим НЕ надо, не паникуй и не отговаривай его от спорта по пустякам. ' +
   'Но если очевидно, что тренировки могут УХУДШИТЬ состояние (например, отклонения по сердцу, сильная анемия, явное воспаление) — прямо и чётко скажи снизить нагрузку или временно прекратить и обратиться к врачу. Калибруй настойчивость по реальной серьёзности. ' +
@@ -102,7 +102,7 @@ const CONTEXT =
   'ПРО ВОССТАНОВЛЕНИЕ: показатель Whoop «Восстановление» — это УТРЕННИЙ балл готовности (с ним он проснулся), он фиксирован на день и не убывает к вечеру. Не путай его с «остатком заряда»/Body Battery (энергией, которая тратится за день) — такого показателя в данных нет. ' +
   'Опирайся ТОЛЬКО на данные ниже, ничего не выдумывай. Ты не ставишь диагноз, а даёшь дружеский ориентир.'
 
-// Какие показатели ИИ упомянул в тексте (по основе слова, чтобы ловить склонения)
+// Which markers the AI mentioned in its text (matched on the word stem, to catch inflections)
 function norm(s) { return s.toLowerCase().replace(/ё/g, 'е') }
 function mentionedMarkers(text, markers) {
   if (!text) return []
@@ -175,12 +175,12 @@ export default function HealthBrief() {
       ? 'A short AI summary of your results will appear once an AI key is connected. The results and trends themselves are on the “Health” tab.'
       : 'Короткая ИИ-выжимка по анализам появится, когда подключён ключ ИИ. Сами анализы и динамика — на вкладке «Здоровье».',
     snapshot: healthData,
-    manual: true          // не грузим автоматически — только по кнопке
+    manual: true          // don't load it automatically — only on the button
   })
 
-  // Все показатели, реально присутствующие в файлах (с нормой из документа/справочника)
+  // Every marker actually present in the files (with the range from the document/reference list)
   const allMarkers = Object.keys(hist).map(name => ({ ...resolveMarker(name, hist[name][hist[name].length - 1]), _key: name }))
-  // показатели, упомянутые в выжимке (или, если ни один не назван, — те что вне нормы)
+  // the markers mentioned in the summary (or, if none were named, the ones outside their range)
   let markers = mentionedMarkers(text, allMarkers)
   if (!markers.length) {
     allMarkers.forEach(m => {
@@ -188,12 +188,12 @@ export default function HealthBrief() {
       if (['low', 'high'].includes(markerStatus(h[h.length - 1].value, m.min, m.max))) markers.push(m)
     })
   }
-  // уникальные, максимум 4
+  // unique, at most 4
   markers = markers.filter((m, i, arr) => arr.findIndex(x => x.name === m.name) === i).slice(0, 4)
 
-  const [collapsed, setCollapsed] = useState(false)   // свернуть карточку целиком
+  const [collapsed, setCollapsed] = useState(false)   // collapse the whole card
 
-  // Вопросы по здоровью
+  // Health questions
   const [chat, setChat] = useState([])
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
@@ -208,12 +208,12 @@ export default function HealthBrief() {
     const prior = chat
     setInput(''); setChat(prev => [...prev, { role: 'user', text: q }]); setBusy(true)
     const context =
-      'Ты — внимательный помощник пользователя по здоровью, спокойный и без паники. пользователь — триатлет, тренируется интенсивно. ' +
+      'Ты — внимательный помощник по здоровью, спокойный и без паники. Человек занимается триатлоном. ' +
       'Отвечай кратко и по делу на русском, простыми словами. Не ставь диагноз; при необходимости советуй обратиться к врачу. ' +
       'Если вопрос касается тренировок — учитывай его данные и здоровье: по мелочам не отговаривай от спорта, но при реально опасных отклонениях (сердце, сильная анемия, воспаление) чётко советуй снизить нагрузку. ' +
       'Не нагнетай: мелкие или некритичные отклонения объясняй спокойно. Опирайся на данные ниже.' +
       (lang === 'en' ? ' Always reply to the user in English.' : '')
-    // Единый агент: видит ВЕСЬ сайт, копит память, умеет инструменты. Контекст — фокус на здоровье.
+    // One shared agent: it sees the WHOLE site, builds up memory and has tools. The context focuses it on health.
     const { reply, error } = await askAgent({ message: q, snapshot: fullSnapshot, history: prior, context })
     setChat(prev => [...prev, { role: 'assistant', text: error ? t.noServer : (reply || t.answerFail) }])
     setBusy(false)

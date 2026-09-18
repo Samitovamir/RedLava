@@ -1,6 +1,6 @@
-// Поиск иллюстраций в Wikipedia по запросу — без ключей, с CORS (origin=*).
-// Берём картинку первой подходящей статьи. Сначала англ. вики (там больше фото),
-// если пусто — пробуем русскую.
+// Searching Wikipedia for illustrations by query — no API keys, CORS-friendly (origin=*).
+// We take the image from the first matching article. English Wikipedia first (it has more
+// photos); if that comes back empty, we try the Russian one.
 
 async function fromWiki(lang, query) {
   const url =
@@ -18,7 +18,7 @@ async function fromWiki(lang, query) {
   return { src, title: page.title, caption: query }
 }
 
-// Вернуть массив картинок (по одной на запрос), пропуская те, что не нашлись.
+// Return an array of images (one per query), skipping the queries that found nothing.
 export async function fetchImagesForQueries(queries = []) {
   const out = []
   const seen = new Set()
@@ -27,7 +27,7 @@ export async function fetchImagesForQueries(queries = []) {
       let img = await fromWiki('en', q)
       if (!img) img = await fromWiki('ru', q)
       if (img && !seen.has(img.src)) { seen.add(img.src); out.push(img) }
-    } catch { /* пропускаем неудачные */ }
+    } catch { /* skip the ones that failed */ }
   }
   return out
 }

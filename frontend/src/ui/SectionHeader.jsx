@@ -1,6 +1,6 @@
 import Icon from './Icon.jsx'
 
-// Единая шапка раздела: заголовок + подзаголовок + действия (справа) + табы (ниже).
+// One section header for everything: title + subtitle + actions (on the right) + tabs (below).
 export default function SectionHeader({ title, subtitle, actions, tabs, icon, className = '' }) {
   return (
     <div className={['ds-section-header', className].filter(Boolean).join(' ')}>

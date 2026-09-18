@@ -10,19 +10,19 @@ import { useIsMobile } from '../layout.js'
 import Icon from '../ui/Icon.jsx'
 
 /*
-  Расписание дня — вертикальный таймлайн (референс скрин 1).
-  Часовая шкала слева, pill-карточки событий, жёлтая плашка текущего времени,
-  FAB-кнопка "+". Данные пока mock — подключатся к Google Calendar.
+  The day's schedule — a vertical timeline (reference screenshot 1).
+  An hour scale down the left, pill cards for the events, a yellow marker for the current time,
+  and a "+" FAB. The data is still mock — it will be wired up to Google Calendar.
 */
 
 import { mskNow } from '../utils/time.js'
 
-// Жёсткие границы таймлайна; реальное окно часов вычисляется от событий дня (activeHours)
+// Hard bounds for the timeline; the real hour window is derived from the day's events (activeHours)
 const HOUR_MIN = 5
 const HOUR_MAX = 23
 const PX_PER_HOUR = 72
 
-// Иконки по типу события
+// Icons per event type
 const ICONS = {
   call: (
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -46,17 +46,17 @@ const ICONS = {
   )
 }
 
-// Типы/категории/иконки событий — общий словарь utils/events.js (рендер через ui/Icon).
-// Локальные имена COLORS/eventIcon сохранены, чтобы не трогать места использования.
+// Event types/categories/icons come from the shared dictionary utils/events.js (rendered via ui/Icon).
+// The local names COLORS/eventIcon are kept so the call sites don't have to change.
 const COLORS = Object.fromEntries(EVENT_TYPES.map((t) => [t.value, categoryColor(t.colorKey)]))
 const eventIcon = (e) => <Icon name={eventIconKey(e)} size={17} strokeWidth={2} color="var(--on-accent)" />
 
-// Происходит ли событие в указанный день (с учётом повторения)
+// Does the event fall on the given day (repetition included)
 function eventOccursOn(ev, viewDate) {
-  if (!ev.date) return true // legacy без даты — показываем всегда
+  if (!ev.date) return true // legacy entries with no date — always shown
   const evDate = new Date(ev.date + 'T00:00:00')
   const view = new Date(dateKey(viewDate) + 'T00:00:00')
-  if (view < evDate) return false // повторения только с даты начала и далее
+  if (view < evDate) return false // repeats only count from the start date onwards
   const rep = ev.repeat || 'none'
   if (rep === 'none') return view.getTime() === evDate.getTime()
   if (rep === 'daily') return true
@@ -88,7 +88,7 @@ function formatRu(offset, lang = 'ru') {
     else if (offset === -1) prefixEn = 'Yesterday, '
     return `${prefixEn}${monthsEn[d.getMonth()]} ${d.getDate()}`
   }
-  // родительный падеж: "5 июня"
+  // genitive case: "5 июня" (the 5th of June)
   const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
   let prefix = ''
   if (offset === 0) prefix = 'Сегодня, '
@@ -103,13 +103,13 @@ function minutesToStr(min) {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
 }
 
-// Расчёт горизонтальной раскладки наложенных событий (деление ширины по колонкам)
+// Work out the horizontal layout of overlapping events (the width is split into columns)
 function layoutEvents(list) {
   const items = list.map((e, i) => ({
     ...e, _i: i, _ref: e, _s: toMinutes(e.start), _e: toMinutes(e.end)
   })).sort((a, b) => a._s - b._s || a._e - b._e)
 
-  // жадно раскидываем по колонкам
+  // greedily spread them across the columns
   const colEnds = []
   items.forEach(ev => {
     let col = colEnds.findIndex(end => ev._s >= end)
@@ -117,7 +117,7 @@ function layoutEvents(list) {
     else colEnds[col] = ev._e
     ev._col = col
   })
-  // сколько колонок занято в кластере пересечений данного события
+  // how many columns are taken up in this event's cluster of overlaps
   items.forEach(ev => {
     const overlapping = items.filter(o => o._s < ev._e && o._e > ev._s)
     ev._cols = Math.max(...overlapping.map(o => o._col)) + 1
@@ -125,20 +125,20 @@ function layoutEvents(list) {
   return items
 }
 
-// Минимальная высота карточки события (вмещает иконку + 2 строки текста)
+// The minimum height of an event card (enough for the icon + 2 lines of text)
 const MIN_EV_H = 58
 const EV_GAP = 6
 
-// Событие «весь день» (00:00–23:59, так приходят из Google Calendar) — на шкалу
-// не кладём: рисовалось бы карточкой высотой в сутки поверх линии «сейчас» и
-// сталкивало бы обычные события во вторую колонку. Ему место в плашке над шкалой.
+// An all-day event (00:00–23:59, which is how they arrive from Google Calendar) is kept
+// off the scale: it would draw as a card a full day tall on top of the "now" line and
+// push the ordinary events into a second column. Its place is the strip above the scale.
 function isAllDayEvent(e) {
   return toMinutes(e.start) === 0 && toMinutes(e.end) >= 23 * 60 + 59
 }
 
-// Вертикальная упаковка: короткие/смежные события не накладываются.
-// Каждое событие получает _top и _height; внутри колонки блоки «расталкиваются» вниз.
-// Времена за пределами шкалы (раньше HOUR_MIN) прижимаются к её началу.
+// Vertical packing: short or adjacent events never overlap.
+// Every event gets a _top and a _height; within a column the blocks push each other downwards.
+// Times outside the scale (earlier than HOUR_MIN) are clamped to its start.
 function packTimeline(items) {
   const colBottom = {}
   const ordered = [...items].sort((a, b) => a._s - b._s || a._e - b._e)
@@ -155,11 +155,11 @@ function packTimeline(items) {
   return items
 }
 
-// --- Поиск времени ---
+// --- Finding time ---
 const WORK_START = 8 * 60   // 08:00
-const WORK_END = 21 * 60    // никаких дел после 21:00
+const WORK_END = 21 * 60    // no tasks after 21:00
 
-// Свободные окна дня в рабочих часах
+// The day's free windows inside working hours
 function freeWindows(evs) {
   const busy = evs.map(e => [toMinutes(e.start), toMinutes(e.end)]).sort((a, b) => a[0] - b[0])
   const free = []
@@ -174,9 +174,9 @@ function freeWindows(evs) {
 
 const hasContiguous = (evs, need) => freeWindows(evs).some(([s, e]) => e - s >= need)
 
-// Подобрать низкоприоритетные события, которые можно убрать, чтобы освободить need минут подряд
+// Pick low-priority events that could be dropped to free up "need" minutes in a row
 function suggestMoves(evs, need) {
-  // неотложные (1) не трогаем; сначала самые низкие (3), потом важные (2)
+  // urgent ones (1) stay put; start with the lowest (3), then the important ones (2)
   const movable = evs
     .filter(e => (e.priority || 3) >= 2)
     .sort((a, b) => (b.priority || 3) - (a.priority || 3))
@@ -188,12 +188,12 @@ function suggestMoves(evs, need) {
     removed.push(m)
   }
   if (!hasContiguous(remaining, need)) return null
-  // освободившееся окно
+  // the window that has opened up
   const win = freeWindows(remaining).find(([s, e]) => e - s >= need)
   return { removed, slot: { start: win[0], end: win[0] + need } }
 }
 
-// Найти самое раннее свободное место длительностью dur среди занятых интервалов
+// Find the earliest free slot of length dur among the busy intervals
 function earliestFit(busy, dur) {
   const sorted = [...busy].sort((a, b) => a[0] - b[0])
   let cur = WORK_START
@@ -205,17 +205,17 @@ function earliestFit(busy, dur) {
   return null
 }
 
-// Умный сдвиг: освободить непрерывное окно need, двигая ТОЛЬКО мешающие события
-// (неотложные не трогаем, важных среди двигаемых — не больше одного). Возвращает план или null.
+// Smart shift: free up a contiguous window of "need" minutes by moving ONLY the events in the way
+// (urgent ones stay put, and at most one important one may move). Returns a plan or null.
 function planShift(evs, need) {
   const grid = 15
   let best = null
   for (let P = WORK_START; P + need <= WORK_END; P += grid) {
     const block = [P, P + need]
     const overlapping = evs.filter(e => toMinutes(e.start) < block[1] && toMinutes(e.end) > block[0])
-    if (overlapping.length === 0) continue                                   // это просто свободно (нашлось бы в contiguous)
-    if (overlapping.some(e => (e.priority || 3) === 1)) continue             // нельзя двигать неотложные
-    if (overlapping.filter(e => (e.priority || 3) === 2).length > 1) continue // не больше одного важного
+    if (overlapping.length === 0) continue                                   // this is simply free (the contiguous pass would have found it)
+    if (overlapping.some(e => (e.priority || 3) === 1)) continue             // urgent events must not be moved
+    if (overlapping.filter(e => (e.priority || 3) === 2).length > 1) continue // no more than one important one
 
     const staying = evs.filter(e => !overlapping.includes(e))
     let busy = staying.map(e => [toMinutes(e.start), toMinutes(e.end)]).concat([block])
@@ -231,14 +231,14 @@ function planShift(evs, need) {
     }
     if (ok && (!best || overlapping.length < best.moved.length)) {
       best = { changes, gap: block, moved: overlapping }
-      if (overlapping.length === 1) break // меньше уже не подвинуть
+      if (overlapping.length === 1) break // no plan can move fewer than one
     }
   }
   return best
 }
 
-// Уплотнить день к началу ('start') или к концу ('end'), собрав свободное окно.
-// Возвращает Map(событие→{start,end}) и образовавшийся промежуток.
+// Compact the day towards the start ('start') or the end ('end'), gathering one free window.
+// Returns Map(event→{start,end}) along with the gap that opens up.
 function compactDay(evs, direction) {
   const sorted = [...evs].sort((a, b) => toMinutes(a.start) - toMinutes(b.start))
   const changes = new Map()
@@ -263,7 +263,7 @@ function compactDay(evs, direction) {
 
 export default function DaySchedule({ extended = false, onViewDayChange }) {
   const { lang } = useLang()
-  // Английский вариант текста демо-событий, если он есть; иначе исходный (русский)
+  // The English text of a demo event when there is one; otherwise the original (Russian)
   const pick = (o, f) => (lang === 'en' && o && o[f + 'En']) ? o[f + 'En'] : (o ? o[f] : '')
   const t = useT({
     ru: {
@@ -350,28 +350,28 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
     return arr
   }, [])
 
-  // --- Состояние ---
-  const isMobile = useIsMobile()  // на телефоне день показываем списком (agenda), а не почасовой шкалой
-  const { events, resetEvents, removeEvent, upsertEvent, applyBulk, focusSignal } = useEvents()  // общий источник для всех страниц
-  // расширенный режим: 'day' | 'week' | 'month'; обычный: 'list' | 'columns'
+  // --- State ---
+  const isMobile = useIsMobile()  // on a phone the day is shown as a list (agenda), not an hour-by-hour scale
+  const { events, resetEvents, removeEvent, upsertEvent, applyBulk, focusSignal } = useEvents()  // the shared source for every page
+  // extended mode: 'day' | 'week' | 'month'; normal mode: 'list' | 'columns'
   const [viewMode, setViewMode] = useState(extended ? 'day' : 'list')
-  const [dayOffset, setDayOffset] = useState(0)       // 0=сегодня, -1=вчера, +1=завтра
+  const [dayOffset, setDayOffset] = useState(0)       // 0=today, -1=yesterday, +1=tomorrow
   const [openMenu, setOpenMenu] = useState(null)      // 'bell' | 'header' | 'ev-<i>' | 'findtime' | null
   const [modalOpen, setModalOpen] = useState(false)
-  const [editEvent, setEditEvent] = useState(null)    // редактируемое событие (null = добавление)
-  const [conflict, setConflict] = useState(null)      // { pending, existing } — наложение по времени
-  const [prefillStart, setPrefillStart] = useState(null) // старт для новой задачи из «Найди время»
-  const [ftHours, setFtHours] = useState(2)           // сколько часов нужно
-  const [ftContig, setFtContig] = useState(true)      // подряд / частями
-  const [ftResult, setFtResult] = useState(null)      // результат поиска
-  const [ftPreview, setFtPreview] = useState(null)    // превью перестановки { variant, rows, slot }
+  const [editEvent, setEditEvent] = useState(null)    // the event being edited (null = adding a new one)
+  const [conflict, setConflict] = useState(null)      // { pending, existing } — an overlap in time
+  const [prefillStart, setPrefillStart] = useState(null) // start time for a new task coming from "Find time"
+  const [ftHours, setFtHours] = useState(2)           // how many hours are needed
+  const [ftContig, setFtContig] = useState(true)      // in a row / in parts
+  const [ftResult, setFtResult] = useState(null)      // the search result
+  const [ftPreview, setFtPreview] = useState(null)    // preview of the rearrangement { variant, rows, slot }
 
-  // Просматриваемая дата
+  // The date being viewed
   const viewDate = mskNow()
   viewDate.setDate(viewDate.getDate() + dayOffset)
   const viewKey = dateKey(viewDate)
 
-  // ИИ создал/перенёс событие → прыгаем на его день, чтобы было сразу видно
+  // The AI created or rescheduled an event → jump to its day so it is visible right away
   const scrollRef = useRef(null)
   useEffect(() => {
     if (!focusSignal?.date) return
@@ -380,7 +380,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
     setDayOffset(Math.round((sel0 - today0) / 86400000))
     setViewMode(m => (m === 'week' || m === 'month' ? 'day' : m))
     setOpenMenu(null)
-    // Доскролл таймлайна к времени события (после перерисовки дня).
+    // Scroll the timeline to the event's time (once the day has re-rendered).
     if (focusSignal.time) {
       const top = ((toMinutes(focusSignal.time) - HOUR_MIN * 60) / 60) * PX_PER_HOUR
       requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -389,18 +389,18 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
     }
   }, [focusSignal])
 
-  // Сообщаем наверх, какой день сейчас открыт — чтобы сводка справа была про него же.
+  // Tell the parent which day is open, so the summary on the right is about that same day.
   useEffect(() => { onViewDayChange?.(viewKey) }, [viewKey])
 
-  // События дня (с учётом повторений) для произвольной даты
+  // The day's events (repeats included) for an arbitrary date
   const eventsOf = (d) => events
     .filter(e => eventOccursOn(e, d))
     .sort((a, b) => toMinutes(a.start) - toMinutes(b.start))
 
   const dayEvents = eventsOf(viewDate)
 
-  // Автоскролл таймлайна при открытии дня: к «сейчас» (если смотрим сегодня и время в диапазоне),
-  // иначе к первому событию дня — чтобы не упираться в мёртвые зоны сверху.
+  // Auto-scroll the timeline when a day opens: to "now" (when we are looking at today and the time
+  // is within range), otherwise to the day's first event — so we don't land in the dead zone up top.
   useEffect(() => {
     if (viewMode !== 'list' && viewMode !== 'day') return
     const el = scrollRef.current
@@ -421,11 +421,11 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
     }))
   }, [viewKey, viewMode])
 
-  // События «весь день» — отдельной плашкой над шкалой, на таймлайн идут только обычные
+  // All-day events get their own strip above the scale; only the timed ones go on the timeline
   const allDayEvents = dayEvents.filter(isAllDayEvent)
   const timedEvents = dayEvents.filter(e => !isAllDayEvent(e))
 
-  // Раскладка таймлайна с упаковкой (без наложений) + итоговая высота контейнера
+  // The packed timeline layout (no overlaps) + the container's resulting height
   const positionedEvents = packTimeline(layoutEvents(timedEvents))
   const timelineHeight = Math.max(
     (HOUR_MAX - HOUR_MIN) * PX_PER_HOUR + 40,
@@ -433,17 +433,17 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
     0
   ) + 20
 
-  // Дни недели текущего просматриваемого дня (Пн–Вс)
+  // The days of the week that contains the day being viewed (Mon–Sun)
   const weekDays = useMemo(() => {
     const base = new Date(viewDate)
-    const wd = (base.getDay() + 6) % 7 // 0=Пн
+    const wd = (base.getDay() + 6) % 7 // 0=Mon
     base.setDate(base.getDate() - wd)
     return Array.from({ length: 7 }, (_, i) => {
       const d = new Date(base); d.setDate(base.getDate() + i); return d
     })
   }, [viewKey])
 
-  // Дни месяца для сетки (с добивкой до полных недель)
+  // The month's days for the grid (padded out to whole weeks)
   const monthCells = useMemo(() => {
     const y = viewDate.getFullYear(), m = viewDate.getMonth()
     const first = new Date(y, m, 1)
@@ -457,25 +457,25 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
   }, [viewKey])
 
 
-  // Закрытие любого dropdown по Escape
+  // Escape closes any open dropdown
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') { setOpenMenu(null); setModalOpen(false) } }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  // --- Обработчики кнопок ---
-  // Шаг стрелок зависит от вида: в «Неделе» и «Месяце» сдвиг на один день не двигал
-  // сетку вообще — до следующего месяца надо было щёлкнуть ~30 раз.
+  // --- Button handlers ---
+  // The arrow step depends on the view: in Week and Month a one-day shift didn't move
+  // the grid at all — reaching the next month took about 30 clicks.
   const stepDays = viewMode === 'month' ? 30 : viewMode === 'week' ? 7 : 1
-  const prevDay = () => { setDayOffset(o => o - stepDays); setOpenMenu(null) }   // ‹ — назад на шаг вида
-  const nextDay = () => { setDayOffset(o => o + stepDays); setOpenMenu(null) }   // › — вперёд на шаг вида
-  // Подпись стрелки должна называть тот шаг, который она реально делает
+  const prevDay = () => { setDayOffset(o => o - stepDays); setOpenMenu(null) }   // ‹ — back one step of the current view
+  const nextDay = () => { setDayOffset(o => o + stepDays); setOpenMenu(null) }   // › — forward one step of the current view
+  // The arrow's tooltip has to name the step it actually takes
   const prevTitle = viewMode === 'month' ? t.prevMonth : viewMode === 'week' ? t.prevWeek : t.prevDay
   const nextTitle = viewMode === 'month' ? t.nextMonth : viewMode === 'week' ? t.nextWeek : t.nextDay
-  const goToday = () => { setDayOffset(0); setOpenMenu(null) }            // "На сегодня"
+  const goToday = () => { setDayOffset(0); setOpenMenu(null) }            // "Go to today"
 
-  // Переход к произвольной дате из календаря
+  // Jump to an arbitrary date from the calendar
   const goToDate = (d) => {
     const today0 = mskNow(); today0.setHours(0, 0, 0, 0)
     const sel0 = new Date(d); sel0.setHours(0, 0, 0, 0)
@@ -483,19 +483,19 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
     setOpenMenu(null)
   }
 
-  // Проверка наложения по времени в тот же день (исключая редактируемое событие)
+  // Check for a time overlap on the same day (excluding the event being edited)
   const findOverlap = (ev) => {
     const s = toMinutes(ev.start), e = toMinutes(ev.end)
     const evView = new Date(ev.date + 'T00:00:00')
     return events.find(o =>
       o !== editEvent &&
-      o.date === ev.date &&  // та же дата начала (для повторов — упрощённо по дате старта)
+      o.date === ev.date &&  // the same start date (for repeats this is simplified to the start date)
       eventOccursOn(o, evView) &&
       toMinutes(o.start) < e && toMinutes(o.end) > s
     )
   }
 
-  // Сохранение из модалки: добавление ИЛИ редактирование
+  // Saving from the modal: either adding OR editing
   const saveEvent = (ev) => {
     const overlap = findOverlap(ev)
     if (overlap) {
@@ -510,7 +510,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
     setEditEvent(null)
   }
 
-  // Разрешение наложения
+  // Resolving an overlap
   const resolveKeepBoth = () => { commitEvent(conflict.pending, conflict.editing); setConflict(null) }
   const resolveReplace = async () => {
     await removeEvent(conflict.existing)
@@ -525,11 +525,11 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
     setConflict(null)
   }
 
-  const deleteEvent = (ev) => {                                           // меню события → удалить
+  const deleteEvent = (ev) => {                                           // event menu → delete
     removeEvent(ev)
     setOpenMenu(null)
   }
-  const startEdit = (ev) => {                                             // меню события → редактировать/перенести
+  const startEdit = (ev) => {                                             // event menu → edit/reschedule
     setEditEvent(ev)
     setModalOpen(true)
     setOpenMenu(null)
@@ -538,7 +538,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
   const closeModal = () => { setModalOpen(false); setEditEvent(null); setPrefillStart(null) }
   const toggleMenu = (id) => setOpenMenu(cur => cur === id ? null : id)
 
-  // Из «Найди время»: открыть добавление с предзаполненным слотом (час по умолчанию)
+  // From "Find time": open the add dialog with the slot pre-filled (one hour by default)
   const addAtSlot = (slot) => {
     const dur = Math.min(60, slot.end - slot.start)
     setPrefillStart({ start: minutesToStr(slot.start), end: minutesToStr(slot.start + dur) })
@@ -547,10 +547,10 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
     setOpenMenu(null)
   }
 
-  // Переход к конкретному дню (из месячного/недельного вида)
+  // Jump to a specific day (from the month or week view)
   const goToDay = (d) => { goToDate(d); setViewMode('day') }
 
-  // Запуск поиска времени
+  // Run the time search
   const runFindTime = () => {
     const need = Math.round(ftHours * 60)
     const free = freeWindows(dayEvents)
@@ -564,10 +564,10 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
         return p1 === 0 && p2 <= 1
       }
 
-      // Подряд места нет — собираем варианты
+      // There is no contiguous slot — assemble the options
       const variants = []
 
-      // ГЛАВНОЕ: подвинуть мешающие события (не трогая неотложные)
+      // THE MAIN OPTION: move the events in the way (without touching the urgent ones)
       const plan = planShift(dayEvents, need)
       if (plan) {
         const n = plan.moved.length
@@ -583,7 +583,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
         })
       }
 
-      // ЗАПАСНОЙ: убрать (только если подвинуть нельзя или как альтернатива)
+      // THE FALLBACK: drop them (only when shifting is impossible, or as an alternative)
       const rem = suggestMoves(dayEvents, need)
       if (rem && allowed(rem.removed)) {
         const names = rem.removed.map(e => e.title).join(', ')
@@ -602,7 +602,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
     }
   }
 
-  // Открыть превью перестановки (показываем только затронутые события)
+  // Open the rearrangement preview (we only show the events affected)
   const openPreview = (v) => {
     let rows
     if (v.kind === 'shift') {
@@ -617,7 +617,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
     setOpenMenu(null)
   }
 
-  // Подтвердить перестановку — применяется везде через общий контекст
+  // Confirm the rearrangement — it is applied everywhere through the shared context
   const confirmPreview = () => {
     const v = ftPreview.variant
     if (v.kind === 'shift') {
@@ -629,7 +629,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
     setFtResult(null)
   }
 
-  // текущее время (линия только когда смотрим сегодня)
+  // the current time (the line only shows when we are looking at today)
   const now = mskNow()
   const nowMin = now.getHours() * 60 + now.getMinutes()
   const inRange = dayOffset === 0 && nowMin >= HOUR_MIN * 60 && nowMin <= HOUR_MAX * 60
@@ -638,9 +638,9 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
 
   return (
     <div className={`day-schedule card ${extended ? 'extended' : ''}`}>
-      {/* Хедер */}
+      {/* Header */}
       <div className="ds-head">
-        {/* Переключатель вида */}
+        {/* View switcher */}
         {extended ? (
           <div className="ds-view-switch text">
             <button className={`ds-view-txt ${viewMode === 'day' ? 'active' : ''}`} onClick={() => setViewMode('day')}>{t.day}</button>
@@ -664,7 +664,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
           </div>
         )}
 
-        {/* Навигация по дням: ‹ дата › (клик по дате — открыть календарь) */}
+        {/* Day navigation: ‹ date › (clicking the date opens the calendar) */}
         <div className="ds-nav">
           <button className="ds-arrow" onClick={prevDay} title={prevTitle} aria-label={prevTitle}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
           <div className="ds-menu-wrap">
@@ -683,9 +683,9 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
           <button className="ds-arrow" onClick={nextDay} title={nextTitle} aria-label={nextTitle}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></button>
         </div>
 
-        {/* Колокольчик и меню */}
+        {/* Bell and menu */}
         <div className="ds-actions">
-          {/* Найди время — только в расширенном режиме */}
+          {/* Find time — only in extended mode */}
           {extended && (
             <div className="ds-menu-wrap">
               <button className={`ds-findtime ${openMenu === 'findtime' ? 'active' : ''}`} onClick={() => toggleMenu('findtime')}>
@@ -697,7 +697,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
                   <motion.div className="ds-dropdown wide ft-pop" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.15 }}>
                     <div className="ds-dropdown-title">{t.findTimeTitle} · {formatRu(dayOffset, lang).replace(lang === 'en' ? 'Today, ' : 'Сегодня, ', '')}</div>
 
-                    {/* Параметры поиска */}
+                    {/* Search parameters */}
                     <div className="ds-ft-controls">
                       <div className="ds-ft-hours">
                         <span>{t.need}</span>
@@ -713,7 +713,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
                     <button className="ds-ft-run" onClick={runFindTime}>{t.findTimeBtn}</button>
                     <span className="ds-ft-note">{t.ftNote}</span>
 
-                    {/* Результат */}
+                    {/* Result */}
                     {ftResult && ftResult.ok && ftResult.mode === 'contig' && (
                       <div className="ds-ft-res">
                         <div className="ds-ft-res-title">{t.freeContig}</div>
@@ -790,10 +790,10 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
         </div>
       </div>
 
-      {/* Backdrop для закрытия dropdown по клику вне */}
+      {/* Backdrop that closes the dropdown on a click outside */}
       {openMenu && <div className="ds-backdrop" onClick={() => setOpenMenu(null)} />}
 
-      {/* События «весь день» — компактные плашки над шкалой (как в Google Calendar) */}
+      {/* All-day events — compact strips above the scale (as in Google Calendar) */}
       {(viewMode === 'list' || viewMode === 'day') && allDayEvents.length > 0 && (
         <div className="ds-allday">
           {allDayEvents.map((ev, i) => (
@@ -819,12 +819,12 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
         </div>
       )}
 
-      {/* Режим "День/Список" — вертикальный таймлайн (десктоп).
-          На телефоне почасовая шкала неудобна (пустые часы, узко) → ниже список-agenda. */}
+      {/* The "Day/List" mode — a vertical timeline (desktop).
+          On a phone the hour-by-hour scale is awkward (empty hours, too narrow) → the agenda list below. */}
       {(viewMode === 'list' || viewMode === 'day') && !isMobile && (
         <div className="ds-scroll" ref={scrollRef}>
           <div className="ds-timeline" style={{ height: timelineHeight }}>
-            {/* Часовые линии + слабые получасовые отметки (к ним привязаны карточки) */}
+            {/* Hour lines + faint half-hour marks (the cards are aligned to these) */}
             {hours.map((h, i) => (
               <div key={h}>
                 <div className="ds-hour-row" style={{ top: i * PX_PER_HOUR }}>
@@ -839,7 +839,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
               </div>
             ))}
 
-            {/* Линия текущего времени */}
+            {/* The current-time line */}
             {inRange && (
               <div className="ds-now" style={{ top: nowTop }}>
                 <span className="ds-now-label">{nowLabel}</span>
@@ -851,9 +851,9 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
               <p className="ds-empty-list">{t.emptyTimeline}</p>
             )}
 
-            {/* События (с учётом наложения — деление ширины по колонкам) */}
+            {/* Events (overlaps handled by splitting the width into columns) */}
             {positionedEvents.map((e, k) => {
-              const ev = e._ref  // ссылка на исходный объект для операций
+              const ev = e._ref  // a reference to the original object, for the operations
               const i = k
               const top = e._top
               const height = e._height
@@ -911,7 +911,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
         </div>
       )}
 
-      {/* Режим "День/Список" на телефоне — agenda-список (без почасовой сетки) */}
+      {/* The "Day/List" mode on a phone — an agenda list (no hour grid) */}
       {(viewMode === 'list' || viewMode === 'day') && isMobile && (
         <div className="ds-agenda">
           {dayEvents.length === 0 && <p className="ds-empty-list">{t.emptyTimeline}</p>}
@@ -961,7 +961,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
         </div>
       )}
 
-      {/* Режим "Колонки" — компактная сетка событий */}
+      {/* The "Columns" mode — a compact grid of events */}
       {viewMode === 'columns' && (
         <div className="ds-columns">
           {dayEvents.length === 0 && <p className="ds-empty">{t.emptyColumns}</p>}
@@ -976,7 +976,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
         </div>
       )}
 
-      {/* Режим "Неделя" — 7 колонок */}
+      {/* The "Week" mode — 7 columns */}
       {viewMode === 'week' && (
         <div className="ds-week">
           {weekDays.map((d, i) => {
@@ -1006,7 +1006,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
         </div>
       )}
 
-      {/* Режим "Месяц" — календарная сетка */}
+      {/* The "Month" mode — a calendar grid */}
       {viewMode === 'month' && (
         <div className="ds-month">
           <div className="ds-month-week">
@@ -1033,12 +1033,12 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
         </div>
       )}
 
-      {/* FAB — добавить событие */}
+      {/* FAB — add an event */}
       <button className="ds-fab" title={t.addEventTitle} onClick={openAdd}>
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </button>
 
-      {/* Модалка добавления / редактирования */}
+      {/* The add / edit modal */}
       <AnimatePresence>
         {modalOpen && (
           <AddEventModal
@@ -1052,7 +1052,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
         )}
       </AnimatePresence>
 
-      {/* Окно превью перестановки */}
+      {/* The rearrangement preview window */}
       <AnimatePresence>
         {ftPreview && (
           <div className="ds-conflict-backdrop" onClick={() => setFtPreview(null)}>
@@ -1098,7 +1098,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
         )}
       </AnimatePresence>
 
-      {/* Окно наложения событий */}
+      {/* The event overlap window */}
       <AnimatePresence>
         {conflict && (
           <div className="ds-conflict-backdrop" onClick={() => setConflict(null)}>

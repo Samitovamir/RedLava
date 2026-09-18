@@ -1,6 +1,6 @@
 import Icon from './Icon.jsx'
 
-// Пустое состояние: иконка + заголовок + текст + действие (Button).
+// Empty state: icon + title + text + an action (Button).
 export default function EmptyState({ icon, title, text, action, className = '' }) {
   return (
     <div className={['ds-empty', className].filter(Boolean).join(' ')}>

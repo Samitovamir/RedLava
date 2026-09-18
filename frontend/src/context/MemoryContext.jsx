@@ -1,11 +1,11 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 
-// Долгая память ассистента: факты и предпочтения пользователя, которые живут между
-// сессиями и подмешиваются во все контексты ИИ. Пополняется вручную или самим ИИ
-// (инструмент remember_fact).
+// The assistant's long-term memory: facts and preferences about the user that live on
+// between sessions and are mixed into every AI context. Added to by hand or by the AI
+// itself (the remember_fact tool).
 
 const STORAGE_KEY = 'albert-memory'
-// Память начинается пустой — наполняется реальными фактами о человеке (демо убрано)
+// Memory starts out empty — it fills with real facts about the person (the demo data is gone)
 const SEED = []
 
 const MemoryContext = createContext(null)
@@ -32,8 +32,8 @@ export function MemoryProvider({ children }) {
 
   const removeFact = useCallback((id) => setFacts(f => f.filter(x => x.id !== id)), [])
 
-  // Обновление памяти: убрать устаревший факт (old) и при наличии добавить новый (new).
-  // Совпадение «old» ищем мягко (точное или перекличка ≥6 символов), чтобы ловить формулировку ИИ.
+  // Updating memory: drop the outdated fact (old) and, if one is supplied, add the new one (new).
+  // We match "old" loosely (exactly, or an overlap of ≥6 characters) to catch the AI's own wording.
   const updateFact = useCallback((oldText, newText) => {
     const o = (oldText || '').trim().toLowerCase()
     const nt = (newText || '').trim()

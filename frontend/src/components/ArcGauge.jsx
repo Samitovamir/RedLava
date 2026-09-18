@@ -1,10 +1,10 @@
 import { motion } from 'framer-motion'
 
 /*
-  Гейдж в стиле Garmin: дуга 270° (открыта снизу). Два режима:
-   • zones — цветные зоны по шкале + белый маркер на значении (как VO₂max/пульс у Garmin);
-   • иначе — серая дорожка + заливка одним цветом до значения (как Шаги/Body Battery).
-  Центр: крупное число + подпись; снизу — название. Только CSS-переменные.
+  A Garmin-style gauge: a 270° arc, open at the bottom. Two modes:
+   • zones — colored zones along the scale + a white marker at the value (like Garmin's VO₂max/HR);
+   • otherwise — a grey track + a single-color fill up to the value (like Steps/Body Battery).
+  In the center: a large number + a caption; the label sits underneath. CSS variables only.
   props: value, min=0, max=100, zones=[{from,to,color}], marker, color, centerText, sublabel, label, size
 */
 const A0 = 135, SWEEP = 270
@@ -27,10 +27,10 @@ export default function ArcGauge({ value, min = 0, max = 100, zones = null, mark
     <div className="ag">
       <div className="ag-wrap" style={{ width: size, height: h }}>
         <svg width={size} height={h} viewBox={`0 0 ${size} ${h}`}>
-          {/* серая дорожка на всю дугу */}
+          {/* grey track spanning the whole arc */}
           <path d={arc(0, 1)} fill="none" stroke="color-mix(in srgb, var(--text-faint) 30%, transparent)" strokeWidth={stroke} strokeLinecap="round" />
           {zones ? (
-            // цветные зоны
+            // colored zones
             zones.map((z, i) => {
               const f0 = norm(z.from), f1 = norm(z.to)
               const gap = 0.02
@@ -39,11 +39,11 @@ export default function ArcGauge({ value, min = 0, max = 100, zones = null, mark
               return b > a ? <path key={i} d={arc(a, b)} fill="none" stroke={z.color} strokeWidth={stroke} strokeLinecap="round" /> : null
             })
           ) : (
-            // заливка одним цветом до значения
+            // single-color fill up to the value
             <motion.path d={arc(0, Math.max(0.001, frac))} fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round"
               initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.9, ease: 'easeOut' }} />
           )}
-          {/* маркер значения (для зон) */}
+          {/* value marker (for the zones mode) */}
           {marker && (
             <>
               <circle cx={mx} cy={my} r={stroke / 2 + 3.5} fill="var(--bg-card-top, var(--bg-surface))" />

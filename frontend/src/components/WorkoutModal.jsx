@@ -4,7 +4,7 @@ import { Modal } from '../ui'
 import { categoryColor } from '../utils/categoryColor.js'
 import { useT } from '../context/LanguageContext.jsx'
 
-// `L` (labels), не `s` — в этом файле `s` уже занято под сплит
+// `L` (labels), not `s` — in this file `s` is already taken by a split
 const STR = {
   en: {
     months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
@@ -33,10 +33,10 @@ const STR = {
 }
 
 /*
-  Подробное окно тренировки (как в Garmin): сводка, карта маршрута,
-  графики пульса/высоты/мощности/каденса и сплиты по километрам.
-  Данные: /api/garmin/activity/:id (сплиты + тайм-серии + GPS-трек).
-  Работает для любой тренировки из ленты — нужен workout.id.
+  The detailed workout window (Garmin-style): the summary, the route map,
+  heart rate / altitude / power / cadence charts and per-kilometre splits.
+  Data: /api/garmin/activity/:id (splits + time series + GPS track).
+  Works for any workout in the feed — all it needs is workout.id.
 */
 
 function fmtDate(d, L) {
@@ -45,8 +45,8 @@ function fmtDate(d, L) {
   return `${Number(day)} ${L.months[Number(m) - 1]}`
 }
 
-// Цвет типа тренировки — из палитры категорий темы (--cat-sport-*),
-// чтобы совпадал с лентой тренировок и переключался вместе с темой.
+// The colour for a workout type comes from the theme's category palette (--cat-sport-*),
+// so it matches the workout feed and switches along with the theme.
 function typeColor(type = '') {
   if (/run/.test(type)) return categoryColor('sport-run')
   if (/cycl|bik/.test(type)) return categoryColor('sport-bike')
@@ -56,7 +56,7 @@ function typeColor(type = '') {
   return 'var(--accent)'
 }
 
-// Сводные метрики верхней сетки
+// The summary metrics for the top grid
 function summaryMetrics(w, L) {
   const out = []
   if (w.distanceKm != null) out.push({ k: L.distance, v: w.distanceKm, u: L.km })
@@ -74,7 +74,7 @@ function summaryMetrics(w, L) {
   return out
 }
 
-// ── График (линия/область) с подписями значений ─────────────────────
+// ── Chart (line/area) with value labels ─────────────────────────────
 function avgOf(arr) {
   const v = arr.filter(x => x != null && !Number.isNaN(x))
   return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null
@@ -88,7 +88,7 @@ function LineChart({ xs, ys, color, area = true, unit = '', label, height = 120,
   let yMin = Math.min(...valid), yMax = Math.max(...valid)
   if (yMin === yMax) { yMin -= 1; yMax += 1 }
   const avg = avgOf(ys)
-  // X по дистанции, если она есть, иначе по индексу
+  // X by distance when we have it, otherwise by index
   const xValid = (xs || []).filter(v => v != null)
   const useDist = xValid.length && (Math.max(...xValid) - Math.min(...xValid)) > 0
   const xMin = useDist ? Math.min(...xValid) : 0
@@ -149,7 +149,7 @@ function LineChart({ xs, ys, color, area = true, unit = '', label, height = 120,
   )
 }
 
-// ── Сплиты/отрезки (бары) ───────────────────────────────────────────
+// ── Splits/segments (bars) ──────────────────────────────────────────
 const fmtDur = sec => `${Math.floor(sec / 60)}:${String(Math.round(sec % 60)).padStart(2, '0')}`
 
 function SplitsChart({ splits, color }) {
@@ -157,7 +157,7 @@ function SplitsChart({ splits, color }) {
   if (!splits.length) return null
   const speeds = splits.map(s => s.speedKmh || 0)
   const durs = splits.map(s => s.durationSec || 0)
-  const useSpeed = speeds.some(v => v > 0)        // бег/вело — бар по скорости (длиннее = быстрее)
+  const useSpeed = speeds.some(v => v > 0)        // running/cycling — the bar shows speed (longer = faster)
   const maxSpeed = Math.max(...speeds, 1)
   const maxDur = Math.max(...durs, 1)
   return (
@@ -183,7 +183,7 @@ function SplitsChart({ splits, color }) {
   )
 }
 
-// ── Карта маршрута из GPS ───────────────────────────────────────────
+// ── Route map from GPS ──────────────────────────────────────────────
 function RouteMap({ route, color }) {
   const L = useT(STR)
   if (!route?.length) return null
@@ -192,7 +192,8 @@ function RouteMap({ route, color }) {
   const minLon = Math.min(...lons), maxLon = Math.max(...lons)
   const W = 600, H = 240, pad = 16
   const spanLat = (maxLat - minLat) || 1e-6, spanLon = (maxLon - minLon) || 1e-6
-  // Сохраняем пропорции (широта сжимается по cos)
+  // Keep the proportions right: a degree of longitude is shorter than a degree of
+  // latitude by cos(latitude), so the longitude span is scaled by it.
   const aspect = spanLon / spanLat * Math.cos((minLat + maxLat) / 2 * Math.PI / 180)
   const innerW = W - 2 * pad, innerH = H - 2 * pad
   let drawW = innerW, drawH = innerW / aspect

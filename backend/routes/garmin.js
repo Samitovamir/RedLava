@@ -5,10 +5,10 @@ import { kvGet, kvSet, kvDel } from '../store.js'
 import { kvGetScoped, kvSetScoped, kvDelScoped, scopeOf } from '../userScope.js'
 
 const router = Router()
-// База ключа; реальный ключ — с id владельца данных (см. userScope.js)
+// Key prefix; the real key carries the data owner's id (see userScope.js)
 const TOKEN_KEY = 'garmin:token'
 
-// Названия типов тренировок Garmin → по-русски
+// Garmin workout type names → Russian
 const TYPE_RU = {
   running: 'Бег', treadmill_running: 'Бег (дорожка)', trail_running: 'Трейл',
   cycling: 'Велосипед', indoor_cycling: 'Велотренажёр', road_biking: 'Велосипед',
@@ -18,7 +18,7 @@ const TYPE_RU = {
   elliptical: 'Эллипсоид'
 }
 
-// Метки тренировочного эффекта Garmin → по-русски
+// Garmin training-effect labels → Russian
 const TE_RU = {
   RECOVERY: 'Восстановительная', BASE: 'Базовая', AEROBIC_BASE: 'Аэробная база',
   TEMPO: 'Темповая', THRESHOLD: 'Пороговая', LACTATE_THRESHOLD: 'Лактатный порог',
@@ -29,22 +29,22 @@ const TE_RU = {
 
 const round = (n, d = 0) => { const f = 10 ** d; return Math.round(n * f) / f }
 
-// База внутреннего API Garmin (тот же хост, что и для деталей тренировки)
+// Base of Garmin's internal API (the same host that serves workout details)
 const CONNECT = 'https://connectapi.garmin.com'
-// Дата «сегодня» по Москве (владелец в Москве; сервер на Vercel в UTC — иначе у полуночи путаница)
+// "Today" as a Moscow date (the owner is in Moscow; the Vercel server runs in UTC — otherwise midnight gets confusing)
 function mskDateStr() {
   const d = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Moscow' }))
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-// Плановые (приближающиеся) тренировки из календаря Garmin.
-// Сюда попадают и планы из TrainingPeaks, если он связан с Garmin.
-// Берём текущий и следующий месяц, оставляем будущие. Месяц у Garmin 0-индексный.
-// Плановая (не выполненная) тренировка?
+// Planned (upcoming) workouts from the Garmin calendar.
+// TrainingPeaks plans land here too, as long as it is linked to Garmin.
+// We take the current and the next month and keep the future ones. Garmin's month is 0-indexed.
+// Is this a planned (not yet completed) workout?
 function isPlannedItem(it) {
   const t = String(it.itemType || '').toLowerCase()
-  if (t === 'activity') return false                 // уже выполнена
-  if (/workout/.test(t)) return true                 // структурная плановая
+  if (t === 'activity') return false                 // already completed
+  if (/workout/.test(t)) return true                 // a structured planned workout
   if (it.workoutId && (!t || /plan|scheduled|training/.test(t))) return true
   return false
 }
@@ -86,8 +86,8 @@ async function getPlanned(c) {
   return { planned: out.slice(0, 20), debug: { totalItems, typesSeen } }
 }
 
-// Body Battery — «остаток заряда»: текущее значение + сколько заряжено/потрачено за день.
-// Это ЖИВОЙ показатель (меняется в течение дня), в отличие от утреннего Recovery Whoop.
+// Body Battery — the "charge left": the current value plus how much was charged/drained today.
+// This is a LIVE figure (it moves through the day), unlike Whoop's morning Recovery.
 async function getBodyBattery(c, dateStr) {
   try {
     const r = await c.client.get(`${CONNECT}/wellness-service/wellness/bodyBattery/reports/daily?startDate=${dateStr}&endDate=${dateStr}`)
@@ -101,9 +101,9 @@ async function getBodyBattery(c, dateStr) {
   } catch { return null }
 }
 
-// Стресс Garmin (0–100). Массив замеров каждые ~3 мин: [метка_времени_мс, значение].
-// Возвращаем последний валидный замер + его метку времени (чтобы подписать «обновлено HH:MM»),
-// скользящее среднее за ~последний час (близко к «сейчас», но без шума одного пика), плюс avg/max дня.
+// Garmin stress (0–100). An array of samples taken every ~3 min: [timestamp_ms, value].
+// We return the last valid sample plus its timestamp (so it can be captioned "updated HH:MM"), a rolling
+// average over the last ~hour (close to "now", but without the noise of a single spike), and the day's avg/max.
 async function getStress(c, dateStr) {
   try {
     const r = await c.client.get(`${CONNECT}/wellness-service/wellness/dailyStress/${dateStr}`)
@@ -114,7 +114,7 @@ async function getStress(c, dateStr) {
       const ts = arr[i]?.[0], v = arr[i]?.[1]
       if (v != null && v >= 0) { current = v; currentTs = ts ?? null; break }
     }
-    // Среднее за последние 60 минут валидных замеров (относительно последнего замера)
+    // Average of the valid samples from the last 60 minutes (relative to the latest sample)
     let recent = null
     if (currentTs != null) {
       const win = 60 * 60 * 1000
@@ -128,17 +128,17 @@ async function getStress(c, dateStr) {
   } catch { return null }
 }
 
-// Готовность к тренировкам (Training Readiness, 0–100) — сводный балл Garmin: сон,
-// восстановление, ВЧП/HRV, острая нагрузка, история стресса. Внутренний эндпоинт
-// возвращает массив замеров за день — берём самый свежий. Уровень и факторы —
-// как в приложении Garmin (для текста «почему такая готовность»).
+// Training Readiness (0–100) — Garmin's composite score: sleep, recovery, HRV, acute
+// load, stress history. The internal endpoint returns an array of the day's samples,
+// so we take the freshest one. The level and the factors match the Garmin app
+// (they feed the "why is readiness what it is" text).
 const TR_LEVEL_RU = { NONE: 'нет данных', LOW: 'низкая', MODERATE: 'средняя', HIGH: 'высокая', MAXIMUM: 'высокая' }
 async function getTrainingReadiness(c, dateStr) {
   try {
     const r = await c.client.get(`${CONNECT}/metrics-service/metrics/trainingreadiness/${dateStr}`)
     const arr = Array.isArray(r) ? r : (r ? [r] : [])
     if (!arr.length) return null
-    // самый свежий по timestamp
+    // the freshest one by timestamp
     const d = arr.slice().sort((a, b) => (b?.timestamp || 0) > (a?.timestamp || 0) ? 1 : -1)[0]
     if (d?.score == null) return null
     return {
@@ -147,7 +147,7 @@ async function getTrainingReadiness(c, dateStr) {
       levelRu: TR_LEVEL_RU[d.level] || null,
       feedback: d.feedbackLong || d.feedbackShort || null,
       sleepScore: d.sleepScore ?? null,
-      recoveryTime: d.recoveryTime ?? null,      // минут до полного восстановления
+      recoveryTime: d.recoveryTime ?? null,      // minutes until fully recovered
       hrvFactor: d.hrvFactorPercent ?? null,
       acuteLoad: d.acuteLoad ?? null,
       timestamp: d.timestamp ?? null
@@ -155,11 +155,11 @@ async function getTrainingReadiness(c, dateStr) {
   } catch { return null }
 }
 
-// ── Расширенные метрики Garmin (Training Status/Load, HRV, прогнозы, Endurance/Hill,
-//    лактатный порог, интенсивные минуты). Внутренние эндпоинты Garmin; поля могут
-//    отличаться между прошивками — всё парсим ТОЛЕРАНТНО (опциональные цепочки, на любой
-//    сбой конкретной метрики → null, остальные не страдают). Провалидируем при первом
-//    реальном синке Garmin пользователя.
+// ── Advanced Garmin metrics (Training Status/Load, HRV, predictions, Endurance/Hill,
+//    lactate threshold, intensity minutes). These are Garmin's internal endpoints; the
+//    fields can differ between firmware versions, so everything is parsed LENIENTLY
+//    (optional chaining; any one metric that fails → null, the others are unaffected).
+//    To be validated on a user's first real Garmin sync.
 const TS_STATUS_RU = { PRODUCTIVE: 'Продуктивно', MAINTAINING: 'Поддержание', PEAKING: 'Пик формы', RECOVERY: 'Восстановление', UNPRODUCTIVE: 'Непродуктивно', OVERREACHING: 'Перегрузка', DETRAINING: 'Детренинг', STRAINED: 'Перенапряжение', NO_STATUS: 'Нет данных' }
 const TL_BALANCE_RU = { OPTIMAL: 'Оптимально', LOW: 'Ниже нормы', HIGH: 'Выше нормы', VERY_LOW: 'Сильно ниже', VERY_HIGH: 'Сильно выше' }
 const HRV_STATUS_RU = { BALANCED: 'Сбалансировано', UNBALANCED: 'Разбалансировано', LOW: 'Низкое', POOR: 'Плохое', NONE: 'Нет данных' }
@@ -174,7 +174,7 @@ async function getTrainingStatusLoad(c, dateStr) {
   try {
     const r = await c.client.get(`${CONNECT}/metrics-service/metrics/trainingstatus/aggregated/${dateStr}`)
     if (!r) return { trainingStatus: null, trainingLoad: null }
-    // Training Status (последнее устройство)
+    // Training Status (the most recent device)
     const tsDev = firstDev(r.mostRecentTrainingStatus?.latestTrainingStatusData)
     let trainingStatus = null
     if (tsDev) {
@@ -182,11 +182,11 @@ async function getTrainingStatusLoad(c, dateStr) {
       trainingStatus = {
         status: key || null,
         statusRu: (key && TS_STATUS_RU[key]) || null,
-        feedback: tsDev.trainingStatusFeedbackPhrase ? null : null,   // фраза-подсказка приходит кодом; текст задаём на фронте по статусу
+        feedback: tsDev.trainingStatusFeedbackPhrase ? null : null,   // the hint phrase arrives as a code; the frontend derives the text from the status
         vo2Max: tsDev.vo2Max ?? tsDev.maxMetCategoryValue ?? null
       }
     }
-    // Training Load balance + острая/хроническая
+    // Training Load balance + acute/chronic load
     const balDev = firstDev(r.mostRecentTrainingLoadBalance?.metricsTrainingLoadBalanceDTOMap)
     const acuteDev = firstDev(r.mostRecentTrainingStatus?.latestTrainingStatusData)
     let trainingLoad = null
@@ -259,12 +259,12 @@ async function getIntensityMinutes(c, displayName, dateStr) {
     const r = await c.client.get(`${CONNECT}/usersummary-service/usersummary/daily/${displayName}?calendarDate=${dateStr}`)
     const mod = r?.moderateIntensityMinutes ?? 0, vig = r?.vigorousIntensityMinutes ?? 0
     const goal = r?.intensityMinutesGoal ?? 150
-    const weekly = mod + vig * 2   // Garmin считает интенсивные вдвойне
+    const weekly = mod + vig * 2   // Garmin counts vigorous minutes double
     return (mod || vig) ? { weekly, goal } : null
   } catch { return null }
 }
 
-// Собрать все расширенные метрики параллельно (каждая защищена по отдельности)
+// Collect every advanced metric in parallel (each one guarded on its own)
 async function getAdvancedMetrics(c, dateStr) {
   const displayName = await getDisplayName(c)
   const [tsl, hrvStatus, racePredictions, enduranceScore, hillScore, intensityMinutes] = await Promise.all([
@@ -274,7 +274,7 @@ async function getAdvancedMetrics(c, dateStr) {
   return { trainingStatus: tsl.trainingStatus, trainingLoad: tsl.trainingLoad, hrvStatus, racePredictions, enduranceScore, hillScore, intensityMinutes }
 }
 
-// Темп бега из средней скорости (м/с) → строка «мин:сек / км»
+// Running pace from average speed (m/s) → a "min:sec / km" string
 function paceFromSpeed(mps) {
   if (!mps || mps <= 0) return null
   const secPerKm = 1000 / mps
@@ -284,7 +284,7 @@ function paceFromSpeed(mps) {
 }
 
 function clientFromToken(t) {
-  // Конструктор библиотеки требует креды, даже когда грузим готовый токен — даём заглушку
+  // The library's constructor demands credentials even when we load a ready-made token — hand it a stub
   const c = new GarminConnect({ username: 'token', password: 'token' })
   c.loadToken(t.oauth1, t.oauth2)
   return c
@@ -305,19 +305,19 @@ function mapActivity(a) {
     maxHr: a.maxHR ? Math.round(a.maxHR) : null,
     calories: a.calories ? Math.round(a.calories) : null,
     date: (a.startTimeLocal || '').slice(0, 10),
-    // расширенные метрики (показываем только то, что есть)
-    pace: isRun ? paceFromSpeed(a.averageSpeed) : null,                                   // мин/км для бега
-    speedKmh: (isCycle && a.averageSpeed) ? round(a.averageSpeed * 3.6, 1) : null,         // км/ч для вело
-    elevationGain: a.elevationGain ? Math.round(a.elevationGain) : null,                   // набор высоты, м
+    // advanced metrics (we surface only what's actually there)
+    pace: isRun ? paceFromSpeed(a.averageSpeed) : null,                                   // min/km for runs
+    speedKmh: (isCycle && a.averageSpeed) ? round(a.averageSpeed * 3.6, 1) : null,         // km/h for rides
+    elevationGain: a.elevationGain ? Math.round(a.elevationGain) : null,                   // elevation gain, m
     cadence: a.averageRunningCadenceInStepsPerMinute ? Math.round(a.averageRunningCadenceInStepsPerMinute) : null,
-    avgPower: a.avgPower ? Math.round(a.avgPower) : null,                                  // средняя мощность, Вт
+    avgPower: a.avgPower ? Math.round(a.avgPower) : null,                                  // average power, W
     vo2Max: a.vO2MaxValue ? Math.round(a.vO2MaxValue) : null,
     trainingEffect: a.aerobicTrainingEffect ? round(a.aerobicTrainingEffect, 1) : null,   // 0–5
     trainingLabel: a.trainingEffectLabel ? (TE_RU[a.trainingEffectLabel] || null) : null
   }
 }
 
-// Подключить: вход по логину/паролю → сохраняем токен сессии
+// Connect: sign in with login/password → store the session token
 router.post('/connect', requireAuth, async (req, res) => {
   const { email, password } = req.body || {}
   if (!email || !password) return res.status(400).json({ success: false, message: 'Введите email и пароль' })
@@ -341,15 +341,15 @@ router.get('/status', requireAuth, async (req, res) => {
   res.json({ connected: !!t?.oauth2 })
 })
 
-// Отключает СВОЮ интеграцию: ключ несёт id владельца данных, поэтому чужую задеть нельзя.
-// Гостю здесь делать нечего (у него нет своей ячейки) — его заодно отсекает app.js.
+// Disconnects YOUR OWN integration: the key carries the data owner's id, so nobody else's can be touched.
+// A guest has no business here (they have no slot of their own) — app.js turns them away as well.
 router.post('/disconnect', requireAuth, async (req, res) => {
   if (!scopeOf(req)) return res.status(403).json({ error: 'forbidden' })
   await kvDelScoped(TOKEN_KEY, scopeOf(req))
   res.json({ ok: true })
 })
 
-// Данные для страницы «Спорт»
+// Data for the Sport page
 router.get('/data', requireAuth, async (req, res) => {
   const t = await kvGetScoped(TOKEN_KEY, scopeOf(req))
   if (!t?.oauth2) return res.json({ connected: false })
@@ -363,13 +363,13 @@ router.get('/data', requireAuth, async (req, res) => {
     try { const s = await c.getSteps(new Date()); steps = typeof s === 'number' ? s : (s?.totalSteps ?? null) } catch { /* ignore */ }
     try { const hr = await c.getHeartRate(new Date()); restingHr = hr?.restingHeartRate ?? null } catch { /* ignore */ }
 
-    // Body Battery (остаток заряда дня), стресс и готовность к тренировкам — по московской дате
+    // Body Battery (the day's charge left), stress and training readiness — by the Moscow date
     const today = mskDateStr()
     const [bodyBattery, stress, readiness] = await Promise.all([getBodyBattery(c, today), getStress(c, today), getTrainingReadiness(c, today)])
 
-    // VO2max — берём из свежайшей тренировки, где он есть
+    // VO2max — taken from the most recent workout that reports one
     const vo2Max = mapped.find(w => w.vo2Max)?.vo2Max ?? null
-    // Объём за последние 7 дней (сумма дистанций) + число тренировок
+    // Volume over the last 7 days (total distance) + the number of workouts
     const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10)
     const lastWeek = mapped.filter(w => w.date >= weekAgo)
     const weekKm = round(lastWeek.reduce((s, w) => s + (w.distanceKm || 0), 0), 1)
@@ -395,9 +395,9 @@ router.get('/data', requireAuth, async (req, res) => {
   }
 })
 
-// Расширенные метрики Garmin (Training Status/Load, HRV, прогнозы забегов, Endurance/Hill,
-// лактатный порог, интенсивные минуты) — ОТДЕЛЬНО и лениво: это ~7 тяжёлых запросов к
-// Garmin, они не должны тормозить основной /data (заряд тела / стресс / готовность).
+// Advanced Garmin metrics (Training Status/Load, HRV, race predictions, Endurance/Hill,
+// lactate threshold, intensity minutes) — SEPARATE and lazy: these are ~7 heavy requests
+// to Garmin, and they must not slow the main /data down (body battery / stress / readiness).
 router.get('/insights', requireAuth, async (req, res) => {
   const t = await kvGetScoped(TOKEN_KEY, scopeOf(req))
   if (!t?.oauth2) return res.json({ connected: false })
@@ -410,7 +410,7 @@ router.get('/insights', requireAuth, async (req, res) => {
   }
 })
 
-// Приближающиеся плановые тренировки (в т.ч. из TrainingPeaks через Garmin)
+// Upcoming planned workouts (including TrainingPeaks ones that come through Garmin)
 router.get('/planned', requireAuth, async (req, res) => {
   const t = await kvGetScoped(TOKEN_KEY, scopeOf(req))
   if (!t?.oauth2) return res.json({ connected: false, planned: [] })
@@ -423,7 +423,7 @@ router.get('/planned', requireAuth, async (req, res) => {
   }
 })
 
-// Подробности одной тренировки: сплиты по км + тайм-серии (пульс/темп/высота/мощность/каденс) + GPS-трек
+// Details of a single workout: per-km splits + time series (heart rate/pace/elevation/power/cadence) + the GPS track
 const ACT_BASE = 'https://connectapi.garmin.com/activity-service/activity/'
 
 router.get('/activity/:id', requireAuth, async (req, res) => {
@@ -433,7 +433,7 @@ router.get('/activity/:id', requireAuth, async (req, res) => {
   try {
     const c = clientFromToken(t)
 
-    // Сплиты (круги/километры)
+    // Splits (laps/kilometres)
     let splits = []
     try {
       const sp = await c.client.get(`${ACT_BASE}${id}/splits`)
@@ -452,7 +452,7 @@ router.get('/activity/:id', requireAuth, async (req, res) => {
       }))
     } catch { /* ignore */ }
 
-    // Тайм-серии + трек
+    // Time series + track
     let series = null, route = null
     try {
       const det = await c.client.get(`${ACT_BASE}${id}/details`, { params: { maxChartSize: 250, maxPolylineSize: 250 } })
@@ -460,7 +460,7 @@ router.get('/activity/:id', requireAuth, async (req, res) => {
       ;(det.metricDescriptors || []).forEach(m => { idx[m.key] = m.metricsIndex })
       const rows = det.activityDetailMetrics || []
       const col = (row, key) => { const i = idx[key]; return i == null ? null : row.metrics[i] }
-      const step = Math.max(1, Math.floor(rows.length / 120))   // прореживаем до ~120 точек
+      const step = Math.max(1, Math.floor(rows.length / 120))   // thin the data down to ~120 points
       const dist = [], hr = [], speed = [], elev = [], power = [], cad = []
       for (let i = 0; i < rows.length; i += step) {
         const r = rows[i]

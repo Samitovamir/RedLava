@@ -4,9 +4,9 @@ import { useMail } from '../context/MailContext.jsx'
 import { useMemoryFacts } from '../context/MemoryContext.jsx'
 import { useHistory } from '../context/HistoryContext.jsx'
 
-// Единый ассистент: ВСЕ окна ИИ ходят сюда (один «мозг», одна память, все инструменты).
-// ask() шлёт сообщение в /agent и сам применяет вернувшиеся действия:
-// события расписания, письмо, и — главное — пополнение/обновление долгой памяти о человеке.
+// One assistant: EVERY AI window comes through here (one "brain", one memory, all the tools).
+// ask() posts the message to /agent and applies the actions that come back itself:
+// schedule events, an email, and above all adding to and updating the long-term memory about the person.
 export function useAgent() {
   const { applyAiActions } = useEvents()
   const { openDraft } = useMail()

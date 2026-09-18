@@ -2,14 +2,15 @@
 <html lang="ru" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <!-- ВНИМАНИЕ: этот и следующий ниже inline-скрипт разрешены в CSP (vercel.json) по SHA-256
-         хэшу их точного содержимого. Если меняешь текст ЛЮБОГО из этих <script> — пересчитай
-         хэш (сборка `npm run build` + sha256 от содержимого тега в base64) и обнови оба
-         'sha256-...' в vercel.json → headers → Content-Security-Policy → script-src.
-         Иначе браузер молча заблокирует скрипт и тема будет мелькать дефолтной. -->
+    <!-- WARNING: this inline script and the one further down are allowed by the CSP
+         (vercel.json) via the SHA-256 hash of their exact contents. If you change the text of
+         EITHER <script>, recompute the hash (`npm run build`, then base64 sha256 of the tag's
+         contents) and update both 'sha256-...' values in vercel.json → headers →
+         Content-Security-Policy → script-src. Otherwise the browser silently blocks the
+         script and the page flashes the default theme on every load. -->
     <script>
-      /* Применяем тему и раскладку до отрисовки — без мелькания дефолта.
-         На телефоне — только iOS-темы; 'auto' следует за оформлением телефона. */
+      /* Apply the theme and layout before first paint, so the default never flashes.
+         On phones only the iOS themes are offered; 'auto' follows the phone's own setting. */
       try {
         var t;
         if (matchMedia('(max-width: 640px)').matches) {
@@ -20,7 +21,7 @@
           t = localStorage.getItem('albert-theme') || 'black-leather';
         }
         document.documentElement.setAttribute('data-theme', t);
-        /* Тонируем верхнюю полосу Safari под фон темы, чтобы «чёлка» сливалась с сайтом */
+        /* Tint Safari's top bar to match the theme background, so the notch blends in */
         var BG = { 'ios-dark': '#000000', 'ios-light': '#F2F2F7', 'black-leather': '#121211',
                    'brown-leather': '#120E0B', 'cream': '#EFE9DD', 'original': '#1E1B18' };
         var m = document.createElement('meta');
@@ -29,14 +30,14 @@
         document.head.appendChild(m);
       } catch (e) {}
       try { document.documentElement.setAttribute('data-layout', localStorage.getItem('albert-layout') || 'classic') } catch (e) {}
-      /* Запущено «с экрана Домой» (standalone): нет панели Safari снизу — помечаем,
-         чтобы нижнее меню доковалось к краю и не висело над чёрной зоной жеста. */
+      /* Launched from the home screen (standalone): Safari's bottom bar is absent, so mark
+         it and let the tab bar dock to the edge instead of floating over the gesture area. */
       try { if (navigator.standalone || matchMedia('(display-mode: standalone)').matches) document.documentElement.setAttribute('data-standalone', '') } catch (e) {}
-      /* Манифест PWA выбираем СИНХРОННО здесь, до того как Safari его прочитает: на странице
-         помощника (/tasks/h) — личный манифест (start_url = его ссылка), иначе — дашборда.
-         Раньше манифест подменялся из React (useEffect) слишком поздно: iOS успевал взять
-         дашбордовский (start_url '/'), и установленное приложение помощника открывало вход
-         пользователя вместо PIN-экрана. */
+      /* Pick the PWA manifest SYNCHRONOUSLY here, before Safari reads it: the helper page
+         (/tasks/h) gets its own manifest (start_url = that person's link), everything else
+         gets the dashboard's. Swapping it from React (useEffect) happened too late — iOS had
+         already taken the dashboard manifest (start_url '/'), so the installed helper app
+         opened the account sign-in instead of the PIN screen. */
       try {
         var isHelper = location.pathname.indexOf('/tasks/h') === 0;
         var mf = document.createElement('link');
@@ -58,13 +59,13 @@
         document.head.appendChild(mf);
       } catch (e) {}
     </script>
-    <!-- Favicon: монограмма AS (как и иконка приложения) -->
+    <!-- Favicon: the same monogram as the app icon -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <!-- Иконка приложения на экране «Домой»: монограмма AS (пользователь Самитов) -->
+    <!-- Home-screen app icon -->
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-    <!-- viewport-fit=cover: контент во весь экран, под Dynamic Island/«чёлку» (без полей-рамки) -->
+    <!-- viewport-fit=cover: content fills the screen, running under the Dynamic Island / notch -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <!-- На домашнем экране (PWA): полноэкранно, статус-бар поверх контента -->
+    <!-- Installed as a PWA: full screen, with the status bar over the content -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -73,10 +74,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <title>RedLava</title>
     <style>
-      /* iOS не даёт залочить ориентацию для home-screen приложения (manifest.orientation
-         игнорируется). Поэтому в УСТАНОВЛЕННОМ приложении при повороте в ландшафт показываем
-         подсказку «поверните вертикально» — контент не разъезжается. В обычной вкладке Safari
-         заглушки нет (data-standalone отсутствует). */
+      /* iOS will not let a home-screen app lock its orientation (manifest.orientation is
+         ignored). So in the INSTALLED app a landscape turn shows a "rotate upright" notice
+         rather than letting the layout fall apart. An ordinary Safari tab never sees it,
+         because data-standalone is absent there. */
       .rotate-guard { display: none; }
       @media (orientation: landscape) and (max-height: 480px) {
         html[data-standalone] .rotate-guard {
@@ -96,12 +97,12 @@
       <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
         <rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/>
       </svg>
-      <!-- Статический HTML вне React: подпись ставится по языку браузера -->
+      <!-- Static HTML outside React: the wording is chosen by browser language below -->
       <p data-rotate-msg>Please rotate your phone upright</p>
     </div>
     <script>
-      // Подпись «поверните телефон» живёт вне React (показывается до загрузки бандла),
-      // поэтому язык берём из сохранённого выбора, иначе — из локали браузера.
+      // The "rotate your phone" notice lives outside React (it shows before the bundle
+      // loads), so the language comes from the saved choice, falling back to the browser locale.
       (function () {
         try {
           var saved = localStorage.getItem('redlava-lang')
@@ -111,7 +112,7 @@
             var el = document.querySelector('[data-rotate-msg]')
             if (el) el.textContent = 'Поверните телефон вертикально'
           }
-        } catch (e) { /* оставляем английский вариант из разметки */ }
+        } catch (e) { /* keep the English wording already in the markup */ }
       })()
     </script>
     <script type="module" src="/src/main.jsx"></script>

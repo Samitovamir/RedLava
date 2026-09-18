@@ -1,8 +1,8 @@
 import Icon from './Icon.jsx'
 
-// Единая кнопка. variant: primary | ghost | subtle | danger | success.
-// size: sm | md | lg. shape="icon" — квадратная икон-кнопка.
-// iconLeft/iconRight — строка-ключ iconMap ИЛИ lucide-компонент.
+// The single button component. variant: primary | ghost | subtle | danger | success.
+// size: sm | md | lg. shape="icon" — a square icon-only button.
+// iconLeft/iconRight — either an iconMap key string OR a lucide component.
 const renderIcon = (i, size) =>
   i ? <Icon name={typeof i === 'string' ? i : undefined} icon={typeof i !== 'string' ? i : undefined} size={size} /> : null
 

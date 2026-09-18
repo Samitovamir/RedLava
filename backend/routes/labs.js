@@ -5,22 +5,22 @@ import { kvGetScoped, kvSetScoped, kvDelScoped, scopeOf } from '../userScope.js'
 import crypto from 'crypto'
 
 /*
-  Анализы крови из публичной папки Яндекс.Диска.
-  Владелец кидает PDF/фото в свою папку (с подпапками по датам), мы:
-   1) читаем публичную папку рекурсивно (без OAuth);
-   2) каждый файл разбираем через Claude (vision): извлекаем показатели,
-      а дату определяем из НАЗВАНИЯ ПАПКИ (даже если она кривая);
-   3) кэшируем результат по пути+дате изменения, чтобы не разбирать повторно.
+  Blood tests out of a public Yandex.Disk folder.
+  A person drops PDFs/photos into their own folder (with subfolders per date), and we:
+   1) read the public folder recursively (no OAuth);
+   2) parse each file with Claude (vision): pull out the markers, while taking
+      the date from the FOLDER NAME (however mangled that name is);
+   3) cache the result by path + modification date, so nothing is parsed twice.
 */
 
 const router = Router()
 const URL_KEY = 'labs:yandex_url'
 const YA = 'https://cloud-api.yandex.net/v1/disk/public/resources'
 
-// Папка анализов — У КАЖДОГО СВОЯ, её указывают через интерфейс (/connect).
-// Здесь была вшита конкретная ссылка владельца, и это была утечка: публичная шара
-// Яндекс.Диска с чужими анализами крови в открытом репозитории. Никаких ссылок
-// в коде и никаких наследств — только то, что человек указал сам.
+// The blood-test folder is PER PERSON, and it is supplied through the interface (/connect).
+// The owner's actual link used to be hard-coded here, and that was a leak: a public
+// Yandex.Disk share of somebody's blood tests, sitting in an open repository. No links
+// in the code and nothing inherited — only what the person entered themselves.
 async function getUrl(userId) {
   if (!userId) return null
   return (await kvGetScoped(URL_KEY, userId)) || null
@@ -28,17 +28,17 @@ async function getUrl(userId) {
 
 function getClient() { return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }) }
 
-// ВСЕ разобранные анализы лежат в ОДНОМ ключе: { [id]: { modified, report } }.
-// Так на чтении не возникает «бурста» из 69 одновременных запросов к Upstash
-// (из-за чего на бесплатном тарифе часть ответов терялась и файлы разбирались заново).
-// id для файлов Яндекс.Диска = путь файла; для ручной загрузки = 'upload:<md5 содержимого>'.
+// ALL parsed blood tests live under ONE key: { [id]: { modified, report } }.
+// That keeps a read from bursting into 69 simultaneous requests to Upstash (on the free
+// tier some of those responses were dropped, and the files got parsed all over again).
+// The id for Yandex.Disk files is the file path; for a manual upload, 'upload:<md5 of the contents>'.
 const STORE_KEY = 'labs:store'
 async function loadStore(userId) { return (await kvGetScoped(STORE_KEY, userId)) || {} }
 async function saveStore(userId, s) { await kvSetScoped(STORE_KEY, userId, s) }
-// Старый формат — по одному ключу на файл. Используем для разовой миграции, чтобы
-// уже разобранные файлы не пришлось гонять через ИИ повторно.
+// The old format used one key per file. Kept for a one-off migration, so that files
+// already parsed don't have to be run through the AI a second time.
 
-// Рекурсивный обход публичной папки → плоский список файлов (pdf/изображения)
+// Walk the public folder recursively → a flat list of files (pdf/images)
 async function listFiles(publicKey, path = '', depth = 0, acc = []) {
   if (depth > 3) return acc
   const u = `${YA}?public_key=${encodeURIComponent(publicKey)}${path ? `&path=${encodeURIComponent(path)}` : ''}&limit=200`
@@ -59,7 +59,7 @@ async function listFiles(publicKey, path = '', depth = 0, acc = []) {
   return acc
 }
 
-// Получить ссылку на скачивание файла из публичной папки
+// Get a download link for a file inside the public folder
 async function downloadHref(publicKey, path) {
   const r = await fetch(`${YA}/download?public_key=${encodeURIComponent(publicKey)}&path=${encodeURIComponent(path)}`)
   if (!r.ok) return null
@@ -99,9 +99,9 @@ const MARKER_HINT =
   'Глюкоза, Холестерин общий, ЛПНП, ЛПВП, Триглицериды, Креатинин, Мочевина, АЛТ, АСТ, Билирубин общий, ' +
   'Витамин D, Витамин B12, Фолиевая кислота, Ферритин, Железо, ТТГ, Т4 свободный, Тестостерон, Кортизол, СРБ, Калий, Натрий, Магний.'
 
-// Разобрать буфер файла через Claude (vision) — общая логика для Яндекс.Диска и ручной загрузки
+// Parse a file buffer with Claude (vision) — the logic shared by Yandex.Disk and manual uploads
 async function parseBuffer(buf, { name = '', mime = '', folder = '' }) {
-  if (buf.length > 9_000_000) return null   // слишком большой — пропускаем
+  if (buf.length > 9_000_000) return null   // too large — skip it
   const b64 = buf.toString('base64')
   const isPdf = /pdf/i.test(mime) || /\.pdf$/i.test(name)
   const media = isPdf ? 'application/pdf'
@@ -133,7 +133,7 @@ async function parseBuffer(buf, { name = '', mime = '', folder = '' }) {
   return block?.input || null
 }
 
-// Разобрать один файл из Яндекс.Диска
+// Parse a single file from Yandex.Disk
 async function parseFile(file, publicKey) {
   const href = await downloadHref(publicKey, file.path)
   if (!href) return null
@@ -145,7 +145,7 @@ async function parseFile(file, publicKey) {
 
 router.use(requireAuth)
 
-// Подключить/обновить ссылку на публичную папку
+// Connect or update the link to the public folder
 router.post('/connect', async (req, res) => {
   const { url } = req.body || {}
   if (!url || !/disk\.yandex/i.test(url)) return res.status(400).json({ ok: false, message: 'Дайте ссылку на публичную папку Яндекс.Диска' })
@@ -158,16 +158,16 @@ router.get('/status', async (req, res) => {
   res.json({ connected: !!url, url: url || null })
 })
 
-// Отключает СВОЮ интеграцию: ключ несёт id владельца данных, поэтому чужую задеть нельзя.
-// Гостю здесь делать нечего (у него нет своей ячейки) — его заодно отсекает app.js.
+// Disconnects YOUR OWN integration: the key carries the data owner's id, so nobody else's can be touched.
+// A guest has no business here (they have no slot of their own) — app.js turns them away as well.
 router.post('/disconnect', async (req, res) => {
   if (!scopeOf(req)) return res.status(403).json({ error: 'forbidden' })
   await kvDelScoped(URL_KEY, scopeOf(req))
   res.json({ ok: true })
 })
 
-// Список файлов + признак, разобран ли уже (для прогресса на фронте).
-// Одно чтение единого хранилища — никаких массовых параллельных запросов.
+// The list of files plus a flag for whether each is already parsed (feeds the frontend's progress).
+// One read of the single store — no swarm of parallel requests.
 router.get('/files', async (req, res) => {
   const userId = scopeOf(req)
   const url = await getUrl(userId)
@@ -182,8 +182,8 @@ router.get('/files', async (req, res) => {
   }
 })
 
-// Разобрать ОДИН файл (фронт вызывает по очереди — не упираемся в таймаут).
-// Результат сохраняется в единое хранилище и больше не теряется при перезапуске.
+// Parse ONE file (the frontend calls this one at a time, so we never run into the timeout).
+// The result is saved into the single store and is no longer lost across a restart.
 router.post('/parse', async (req, res) => {
   const userId = scopeOf(req)
   const url = await getUrl(userId)
@@ -197,9 +197,9 @@ router.post('/parse', async (req, res) => {
     const file = files.find(f => f.path === path)
     if (!file) return res.json({ ok: false, message: 'файл не найден' })
     const parsed = await parseFile(file, url)
-    if (!parsed) return res.json({ ok: false, message: 'не удалось разобрать' })   // реальный сбой — не кэшируем, можно повторить
+    if (!parsed) return res.json({ ok: false, message: 'не удалось разобрать' })   // a real failure — don't cache it, a retry is possible
     const report = { id: path, date: parsed.date, lab: parsed.lab || '', kind: parsed.kind || '', fileName: file.name, folder: file.folder, values: parsed.values || {} }
-    // Сохраняем даже с пустыми показателями (файл не анализ / нет цифр) — чтобы не гонять ИИ повторно
+    // Save it even with no markers (the file isn't a blood test / has no numbers) — so the AI isn't run again
     store[path] = { modified, report }
     await saveStore(userId, store)
     res.json({ ok: true, report })
@@ -208,8 +208,8 @@ router.post('/parse', async (req, res) => {
   }
 })
 
-// Ручная загрузка файла напрямую (перетащил PDF/фото в окно) — разбираем тем же ИИ,
-// без выдумывания. Файл приходит base64. Результат кэшируем по содержимому.
+// A file uploaded by hand (a PDF/photo dragged into the window) — parsed by the same AI,
+// with nothing invented. The file arrives as base64. The result is cached by its contents.
 router.post('/upload', async (req, res) => {
   const { name, mime, data } = req.body || {}
   if (!data) return res.status(400).json({ ok: false, message: 'нет файла' })
@@ -232,15 +232,15 @@ router.post('/upload', async (req, res) => {
   }
 })
 
-// Все разобранные отчёты, объединённые по дате (формат фронта: {date, values}).
-// Берём из единого хранилища — и Яндекс.Диск, и ручные загрузки.
+// Every parsed report, merged by date (the frontend's format: {date, values}).
+// Taken from the single store — both Yandex.Disk and manual uploads.
 router.get('/reports', async (req, res) => {
   const userId = scopeOf(req)
   const url = await getUrl(userId)
   try {
     const store = await loadStore(userId)
     const entries = Object.values(store).map(e => e.report).filter(r => r && r.date && Object.keys(r.values || {}).length)
-    // Объединяем по дате: значения из всех файлов одной даты в один отчёт
+    // Merge by date: the values from every file sharing a date go into one report
     const byDate = {}
     entries.forEach(r => {
       byDate[r.date] ||= { id: r.date, date: r.date, fileName: r.fileName, values: {} }

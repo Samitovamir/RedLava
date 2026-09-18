@@ -1,10 +1,10 @@
 import { categoryColor } from './categoryColor.js'
 
 /*
-  Общий словарь СОБЫТИЙ для AddEventModal + DaySchedule (и любых будущих мест):
-  типы, цвета (токены тем через categoryColor) и осмысленная категория/иконка.
-  Данные событий хранят type-строку, цвет и иконка выводятся отсюда — без
-  дублирования словарей и инлайн-SVG по компонентам.
+  The shared EVENT dictionary for AddEventModal + DaySchedule (and anywhere it's needed later):
+  the types, the colors (theme tokens via categoryColor) and a meaningful category/icon.
+  Event data stores only the type string; the color and the icon are derived here — no
+  dictionaries duplicated and no inline SVG scattered across components.
 */
 
 export const EVENT_TYPES = [
@@ -18,14 +18,14 @@ export const EVENT_TYPES = [
 export const eventTypeColor = (type) =>
   categoryColor((EVENT_TYPES.find((t) => t.value === type) || EVENT_TYPES[1]).colorKey)
 
-// Осмысленная категория по СМЫСЛУ события, а не по «техническому» типу:
-// тренировка / личное / письмо / звонок / встреча / дело. Тип события узковат
-// (call/calendar/email/meeting), поэтому тренировки и личное ловим по ключевым словам.
+// A category based on what the event MEANS, rather than on its "technical" type:
+// workout / personal / email / call / meeting / task. The event type is too narrow
+// (call/calendar/email/meeting), so workouts and personal events are caught by keyword.
 const WORKOUT_RE = /трениров|бассейн|плаван|заплыв|пробежк|\bбег\b|\bзал\b|спорт|йог|велосипед|\bвелик\b|кросс|кардио|растяжк|gym|run|swim|workout|ride|\bbike\b|yoga/i
 const PERSONAL_RE = /личное|семья|\bдом\b|врач|family|personal|doctor/i
 
 export function eventCategory(e) {
-  if (e.type === 'workout') return 'workout'   // явный тип «Тренировка» (не только по ключевым словам)
+  if (e.type === 'workout') return 'workout'   // an explicit "Workout" type (not just a keyword match)
   const txt = `${e.title || ''} ${e.who || ''}`
   if (WORKOUT_RE.test(txt)) return 'workout'
   if (e.type === 'email') return 'mail'
@@ -35,7 +35,7 @@ export function eventCategory(e) {
   return 'event'
 }
 
-// Категория → ключ iconMap (рендер через ui/Icon)
+// Category → an iconMap key (rendered through ui/Icon)
 const CATEGORY_ICON_KEY = {
   workout: 'sport-run',
   personal: 'event-personal',

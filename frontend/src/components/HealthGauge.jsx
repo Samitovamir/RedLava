@@ -1,10 +1,10 @@
 /*
-  Здоровье: восстановление (Whoop recovery 0–100) + нагрузка (strain 0–21) в ОДНОМ полукруге.
-  Три варианта совмещения (выбор пользователя):
-   • variant 1 — две концентрические дуги (внешняя восст., внутренняя нагрузка)
-   • variant 2 — две половины (левая нагрузка, правая восстановление)
-   • variant 3 — баланс: один маркер на шкале «перегруз ↔ запас»
-  Только CSS-переменные, тёмная тема.
+  Health: recovery (Whoop recovery 0–100) + strain (0–21) in ONE semicircle.
+  Three ways of combining them (the user chooses):
+   • variant 1 — two concentric arcs (recovery outside, strain inside)
+   • variant 2 — two halves (strain on the left, recovery on the right)
+   • variant 3 — balance: a single marker on an "overload ↔ surplus" scale
+  CSS variables only, dark theme.
   props: variant(1|2|3), recovery, strain, strainMax=21, size
 */
 import { useT } from '../context/LanguageContext.jsx'
@@ -34,7 +34,7 @@ export default function HealthGauge({ variant = 1, recovery = null, strain = nul
 
   let body, center
   if (variant === 1) {
-    // Две концентрические дуги
+    // Two concentric arcs
     const rInner = rOuter - (stroke + 7)
     body = (
       <>
@@ -51,7 +51,7 @@ export default function HealthGauge({ variant = 1, recovery = null, strain = nul
       </div>
     )
   } else if (variant === 2) {
-    // Две половины: левая — нагрузка, правая — восстановление
+    // Two halves: strain on the left, recovery on the right
     body = (
       <>
         <path d={arc(0, 0.5, rOuter)} fill="none" stroke={FAINT} strokeWidth={stroke} strokeLinecap="round" />
@@ -73,7 +73,7 @@ export default function HealthGauge({ variant = 1, recovery = null, strain = nul
       </div>
     )
   } else {
-    // Баланс: маркер на шкале перегруз ↔ запас
+    // Balance: a marker on the overload ↔ surplus scale
     const balDiff = (recovery != null && loadPct != null) ? recovery - loadPct : 0
     const pos = Math.max(0, Math.min(1, (balDiff + 100) / 200))
     const verdict = balDiff >= 15 ? s.surplus : balDiff <= -15 ? s.overload : s.balance

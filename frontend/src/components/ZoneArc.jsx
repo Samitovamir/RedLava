@@ -1,14 +1,14 @@
 /*
-  Универсальный полукруглый гейдж «зоны + маркер» (геометрия StressArc).
-  Полукруг, цветные зоны по шкале, белая точка-маркер на значении, центр = число + слово.
-  props: value, max, zones=[{from,to,color}] (в единицах шкалы), center, sub, subColor, size
-  Только CSS-переменные.
+  A general-purpose half-circle "zones + marker" gauge (StressArc's geometry).
+  A half circle, colored zones along the scale, a white dot marking the value, center = number + word.
+  props: value, max, zones=[{from,to,color}] (in scale units), center, sub, subColor, size
+  CSS variables only.
 */
 export default function ZoneArc({ value = null, max = 100, zones = [], center, sub, subColor, centerColor, size = 156 }) {
   const stroke = 8, gap = 0.06
   const r = (size - stroke) / 2 - 2, cx = size / 2, cy = size / 2
   const h = Math.round(size * 0.66)
-  // Слово в центре (не число) — того же размера, что маленькие подписи-слова в других гейджах
+  // A word in the center (not a number) gets the same size as the small word labels in other gauges
   const wordSize = Math.max(11, Math.round(size * 0.082))
   const isWord = typeof center === 'string' && center.length > 3
   const numSize = isWord ? wordSize : Math.round(size * 0.22)

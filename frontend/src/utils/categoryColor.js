@@ -1,16 +1,16 @@
-// Цвет категории через CSS-переменную темы (а не хардкод hex в JS).
-// Данные хранят colorKey-строку ('sport-run', 'lab-blood', 'meal-breakfast',
-// 'event-call', 'pri-1'), а реальный цвет берётся из --cat-<key>, заданного
-// в каждой из 4 тем (index.css). Так палитра категорий переключается с темой.
+// A category's color via a theme CSS variable, rather than a hex hardcoded in JS.
+// The data stores a colorKey string ('sport-run', 'lab-blood', 'meal-breakfast',
+// 'event-call', 'pri-1') and the actual color comes from --cat-<key>, which each of the
+// 4 themes defines (index.css). That way the category palette switches with the theme.
 //
-// Пример: <span style={{ color: categoryColor(item.colorKey) }} />
-// или для фона-тинта: tint(item.colorKey, 0.14)
+// For example: <span style={{ color: categoryColor(item.colorKey) }} />
+// or, for a tinted background: tint(item.colorKey, 0.14)
 
 export const categoryColor = (key) =>
   key ? `var(--cat-${key}, var(--text-muted))` : 'var(--text-muted)'
 
-// Полупрозрачная подложка того же цвета (для плашек/чипов категории).
-// Использует color-mix — поддержан современными браузерами (таргет Vite/React).
+// A translucent backing in the same color (for category tiles and chips).
+// Uses color-mix, which modern browsers support (our Vite/React target).
 export const categoryTint = (key, amount = 0.14) =>
   key
     ? `color-mix(in srgb, var(--cat-${key}, var(--text-muted)) ${Math.round(amount * 100)}%, transparent)`

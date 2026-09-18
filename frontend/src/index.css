@@ -1,8 +1,8 @@
 /* ============================================================
-   Design system (tweakcn export) — источник истины для токенов
-   :root = светлая тема, .dark = тёмная (активна по умолчанию)
-   @theme inline опущен намеренно: это синтаксис Tailwind v4,
-   у нас чистый CSS + Vite, токены работают через var() напрямую.
+   Design system (tweakcn export) — the source of truth for tokens
+   :root = light theme, .dark = dark theme (active by default)
+   @theme inline is omitted on purpose: that is Tailwind v4 syntax,
+   and we run plain CSS + Vite, so tokens work through var() directly.
    ============================================================ */
 :root {
   --card: #f5f5f4;
@@ -56,11 +56,11 @@
   --accent: #B07B52;
   --border: #272D35;
   --radius: 1.25rem;
-  --chart-1: #B07B52;   /* коньяк */
-  --chart-2: #6E8CA8;   /* сталь */
-  --chart-3: #7E9B6E;   /* шалфей */
-  --chart-4: #C98A5E;   /* тёплый янтарь */
-  --chart-5: #8A93A0;   /* серый */
+  --chart-1: #B07B52;   /* cognac */
+  --chart-2: #6E8CA8;   /* steel */
+  --chart-3: #7E9B6E;   /* sage */
+  --chart-4: #C98A5E;   /* warm amber */
+  --chart-5: #8A93A0;   /* gray */
   --popover: #1B2027;
   --primary: #B07B52;
   --sidebar: #1B2027;
@@ -86,45 +86,45 @@
 }
 
 /* ============================================================
-   Мост совместимости: имена, которые уже используют компоненты,
-   маппятся на токены темы. Всегда активна тёмная тема (html.dark).
+   Compatibility bridge: the names the components already use are
+   mapped onto theme tokens. The dark theme is always active (html.dark).
    ============================================================ */
 :root {
-  /* ── Палитра «коньяк / графит» (задана пользователем) ───────── */
-  --bg-app: #16191D;        /* фон всего приложения */
-  --bg-surface: #1B2027;    /* карточки, поля ввода */
-  --bg-anchor: #1E232A;     /* панель-якорь (вывод дня) */
-  --bg-sidebar: #1B2027;    /* боковое меню */
+  /* ── "Cognac / graphite" palette (chosen by the user) ───────── */
+  --bg-app: #16191D;        /* background of the whole app */
+  --bg-surface: #1B2027;    /* cards, input fields */
+  --bg-anchor: #1E232A;     /* anchor panel (the day's takeaway) */
+  --bg-sidebar: #1B2027;    /* side menu */
 
-  --border-soft: #272D35;   /* обычные границы карточек */
-  --border-med: #2C333C;    /* акцентные границы, поля */
+  --border-soft: #272D35;   /* ordinary card borders */
+  --border-med: #2C333C;    /* accent borders, fields */
 
-  --text-primary: #ECEEF1;  /* заголовки, якорь */
-  --text-body: #DDE1E6;     /* основной */
-  --text-secondary: #9AA3AF;/* вторичный */
-  --text-muted: #7E8794;    /* подписи, лейблы */
-  --text-faint: #5C6470;    /* подсказки, плейсхолдеры */
+  --text-primary: #ECEEF1;  /* headings, the anchor */
+  --text-body: #DDE1E6;     /* body text */
+  --text-secondary: #9AA3AF;/* secondary */
+  --text-muted: #7E8794;    /* captions, labels */
+  --text-faint: #5C6470;    /* hints, placeholders */
 
-  --accent-cognac: #B07B52;     /* главный тёплый акцент */
-  --accent-cognac-btn: #A06B45; /* кнопки (чуть темнее) */
-  --accent-steel: #6E8CA8;      /* холодный акцент: иконки, ссылки */
+  --accent-cognac: #B07B52;     /* the main warm accent */
+  --accent-cognac-btn: #A06B45; /* buttons (slightly darker) */
+  --accent-steel: #6E8CA8;      /* cool accent: icons, links */
 
-  --status-ok: #7E9B6E;     /* норма — шалфейный */
-  --status-warn: #C98A5E;   /* отклонение — коньячный */
-  --status-crit: #A85A4A;   /* критично — кирпичный */
-  --status-extra: #8B5CF6;  /* «перевыполнение» — фиолетовый (план/факт спорта) */
-  --status-ok-bg: #1F2A22;  /* фон-плашка нормы */
-  --status-warn-bg: #2E2018;/* фон-плашка отклонения */
+  --status-ok: #7E9B6E;     /* in range — sage */
+  --status-warn: #C98A5E;   /* out of range — cognac */
+  --status-crit: #A85A4A;   /* critical — brick */
+  --status-extra: #8B5CF6;  /* "over target" — purple (planned vs actual training) */
+  --status-ok-bg: #1F2A22;  /* tile background, in range */
+  --status-warn-bg: #2E2018;/* tile background, out of range */
 
-  --on-accent: #F0EBE5;     /* текст на коньячной кнопке */
+  --on-accent: #F0EBE5;     /* text on the cognac button */
 
-  /* статусные цвета — маппинг на старые имена компонентов */
+  /* status colors — mapped onto the old component names */
   --green: #7E9B6E;
   --red: #A85A4A;
   --yellow: #C98A5E;
   --orange: #BC7B4E;
 
-  /* лейаут / тени */
+  /* layout / shadows */
   --sidebar-width: 72px;
   --border-hover: rgba(176, 123, 82, 0.40);
   --shadow-card: 0 1px 2px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.25);
@@ -132,11 +132,11 @@
 }
 
 .dark {
-  /* legacy-алиасы → токены темы */
+  /* legacy aliases → theme tokens */
   --bg-primary: var(--background);
   --bg-card: var(--card);
   --bg-secondary: var(--secondary);
-  /* в компонентах --muted = цвет текста, --accent = индиго акцент */
+  /* in components --muted is a text color and --accent is the indigo accent */
   --muted: var(--muted-foreground);
   --accent: var(--primary);
   --accent-foreground: var(--primary-foreground);
@@ -148,12 +148,12 @@
   padding: 0;
 }
 
-/* Единая анимация нажатия для всех кнопок (плавно «вдавливаются») */
+/* One press animation for every button (they sink in smoothly) */
 button { transition: transform var(--dur-fast, 150ms) cubic-bezier(0.4,0,0.2,1), filter var(--dur-fast, 150ms) ease, background var(--dur-fast, 150ms) ease, border-color var(--dur-fast, 150ms) ease; }
 button:not(:disabled):active { transform: translateY(1px) scale(0.97); }
 
-/* Заполненные кнопки действий: лёгкая выпуклость (кромка света сверху + тень снизу),
-   БЕЗ цветных свечений. !important — чтобы перекрыть старые glow в компонентах. */
+/* Filled action buttons: a slight dome (light edge on top + shadow below),
+   with NO colored glows. !important is there to override the old glows in components. */
 .ds-fab, .cp-btn, .hb-send, .hc-send,
 .mail-btn.primary, .conn-btn.primary, .detail-btn.primary, .mail-done-btn,
 .nu-suggest, .nu-kitchen-card, .aem-btn.primary, .ds-pv-btn.primary, .awz-submit, .vi-submit {
@@ -163,14 +163,14 @@ button:not(:disabled):active { transform: translateY(1px) scale(0.97); }
     var(--shadow-btn, 0 3px 6px rgba(0,0,0,0.30)) !important;
 }
 
-/* CTA: единый акцентный градиент темы + читаемый текст (фикс «выглядит выключенной») */
+/* CTA: the theme's single accent gradient + readable text (fixes "looks disabled") */
 .awz-submit, .mail-btn.primary, .mail-done-btn, .conn-btn.primary,
 .hb-send, .hc-send, .aem-btn.primary, .ds-pv-btn.primary {
   background: linear-gradient(180deg, var(--accent-btn-top), var(--accent-btn-bot)) !important;
   color: var(--on-accent) !important;
   border: none !important;
 }
-/* Честное disabled: нейтральная плашка + приглушённый текст — явно не активна */
+/* Honest disabled state: a neutral tile + dimmed text — clearly inactive */
 .awz-submit:disabled, .mail-btn.primary:disabled, .mail-done-btn:disabled,
 .conn-btn.primary:disabled, .hb-send:disabled, .hc-send:disabled,
 .aem-btn.primary:disabled, .ds-pv-btn.primary:disabled, .cp-btn:disabled {
@@ -181,7 +181,7 @@ button:not(:disabled):active { transform: translateY(1px) scale(0.97); }
   opacity: 0.6; cursor: not-allowed;
   filter: none !important;
 }
-/* Видимый фокус с клавиатуры (a11y) — во всех формах и кнопках */
+/* Visible keyboard focus (a11y) — on every form field and button */
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
 :focus:not(:focus-visible) { outline: none; }
 
@@ -189,9 +189,9 @@ html, body, #root {
   height: 100%;
   width: 100%;
 }
-/* iOS «с экрана Домой» (standalone): 100vh там НЕ равен реальной видимой высоте —
-   из-за этого слой опускается выше физического низа экрана и снизу вылезает серая
-   полоса фона (как панель Safari, но пустая). dvh = настоящая видимая высота. */
+/* iOS "from the Home screen" (standalone): 100vh there is NOT the real visible height —
+   the layer stops short of the physical bottom of the screen and a gray strip of background
+   shows below it (like the Safari bar, but empty). dvh = the true visible height. */
 @supports (height: 100dvh) {
   html, body, #root { height: 100dvh; }
 }
@@ -201,12 +201,12 @@ body {
   background-color: var(--background);
   color: var(--foreground);
   -webkit-font-smoothing: antialiased;
-  /* Цифры одной ширины — метрики и KPI не «пляшут» */
+  /* Digits of equal width — metrics and KPIs don't jitter */
   font-variant-numeric: tabular-nums;
   overflow: hidden;
 }
 
-/* Премиальная плотность заголовков (один sans во всём продукте) */
+/* Premium heading density (one sans across the whole product) */
 h1, h2, h3 { letter-spacing: -0.015em; }
 
 #root {
@@ -219,7 +219,7 @@ h1, h2, h3 { letter-spacing: -0.015em; }
   display: flex;
   width: 100%;
   height: 100vh;
-  height: 100dvh;   /* реальная высота экрана в standalone — без серой полосы снизу */
+  height: 100dvh;   /* the real screen height in standalone — no gray strip at the bottom */
   overflow: hidden;
 }
 
@@ -229,26 +229,26 @@ h1, h2, h3 { letter-spacing: -0.015em; }
   padding: 32px 32px 96px 32px;
   overflow-y: auto;
   position: relative;
-  z-index: 1;               /* контент поверх декоративного лого-водяного знака справа (z-index:0) */
+  z-index: 1;               /* content above the decorative logo watermark on the right (z-index:0) */
   height: 100vh;
   height: 100dvh;
   scroll-behavior: smooth;
-  -webkit-overflow-scrolling: touch;   /* нативный эластичный overscroll */
+  -webkit-overflow-scrolling: touch;   /* native elastic overscroll */
   overscroll-behavior-y: auto;
   transition: margin-left 0.22s var(--ease);
 }
-/* Закреплённый рельс навигации: контент уезжает под раскрытый сайдбар */
+/* Pinned nav rail: the content moves aside for the expanded sidebar */
 html[data-nav-pinned] .page-content { margin-left: var(--sidebar-width-expanded); }
 
-/* Мобайл: сайдбара нет (плавающая таб-панель), плотность выше.
-   Нижний отступ = высота плавающей панели (≈64) + её отступ снизу (10) + воздух —
-   чтобы последний контент гарантированно прокручивался выше стекла, а не под ним. */
+/* Mobile: no sidebar (a floating tab bar instead), higher density.
+   Bottom padding = the floating bar's height (≈64) + its own bottom offset (10) + breathing
+   room — so the last item is guaranteed to scroll above the glass rather than under it. */
 @media (max-width: 640px) {
-  /* На телефоне прокручивается САМ ДОКУМЕНТ, а не внутренний контейнер.
-     iOS корректно держит position:fixed (нижнее меню) и safe-area только при
-     скролле документа. Внутренний скролл-контейнер (height:100dvh; overflow:auto)
-     ломает позицию фиксированной панели в standalone — она не достаёт до
-     физического низа экрана, и снизу вылезает фон страницы (серая полоса). */
+  /* On a phone THE DOCUMENT ITSELF scrolls, not an inner container.
+     iOS keeps position:fixed (the bottom menu) and the safe area correct only
+     when the document is what scrolls. An inner scroll container (height:100dvh;
+     overflow:auto) breaks the fixed bar's position in standalone — it no longer
+     reaches the physical bottom, and the page background shows below (a gray strip). */
   html, body, #root {
     height: auto;
     min-height: 100dvh;
@@ -267,29 +267,29 @@ html[data-nav-pinned] .page-content { margin-left: var(--sidebar-width-expanded)
     height: auto;
     min-height: 100dvh;
     overflow: visible;
-    /* Сверху добавляем safe-area: в standalone контент уходит под статус-бар, и без
-       этого отступа заголовок налезает на часы/заряд. В обычной вкладке inset=0. */
+    /* Add the safe area on top: in standalone the content runs under the status bar, and
+       without this padding the heading collides with the clock/battery. In a normal tab inset=0. */
     padding: calc(14px + env(safe-area-inset-top)) 16px calc(114px + env(safe-area-inset-bottom)) 16px;
   }
-  /* «С экрана Домой»: меню доковано к самому низу — резервируем ровно под него */
+  /* "From the Home screen": the menu is docked to the very bottom — reserve exactly that much */
   html[data-standalone] .page-content {
     padding-bottom: calc(88px + env(safe-area-inset-bottom));
   }
 }
 
 .card {
-  /* Панель с объёмом: градиент сверху-вниз (свет падает сверху),
-     кромка света по верхней грани, тёмная — по нижней, двухслойная тень. */
+  /* A panel with depth: a top-to-bottom gradient (light falls from above),
+     a light edge along the top, a dark one along the bottom, a two-layer shadow. */
   background: linear-gradient(180deg, var(--bg-card-top, var(--bg-surface)), var(--bg-card-bot, var(--bg-surface)));
   border: 1px solid var(--border-soft);
   border-radius: var(--radius);
   padding: 20px;
-  /* кромки света/тени inset-тенями: гладко огибают скругление, без серого шва на углах */
+  /* light/dark edges as inset shadows: they follow the corner radius smoothly, no gray seam at the corners */
   box-shadow: inset 0 1px 0 var(--edge-light), inset 0 -1px 0 var(--edge-dark, transparent), var(--shadow-card);
   color: var(--text-body);
   position: relative;
 }
-/* Строчка-прошивка: пунктирная рамка с отступом внутрь (как шов на коже) */
+/* Stitching: a dashed border inset from the edge (like a seam in leather) */
 .card::after {
   content: "";
   position: absolute;
@@ -300,7 +300,7 @@ html[data-nav-pinned] .page-content { margin-left: var(--sidebar-width-expanded)
   pointer-events: none;
 }
 
-/* Панель-якорь (крупный вывод дня) — больше объёма + та же прошивка */
+/* Anchor panel (the big takeaway of the day) — more depth + the same stitching */
 .anchor-card {
   background: linear-gradient(180deg, var(--bg-anchor-top, var(--bg-surface)), var(--bg-anchor-bot, var(--bg-surface)));
   border: 1px solid var(--border-soft);
@@ -341,38 +341,38 @@ html[data-nav-pinned] .page-content { margin-left: var(--sidebar-width-expanded)
 }
 
 /* ============================================================
-   ТЕМЫ ОФОРМЛЕНИЯ (THEMES_1.md) — 4 палитры через data-theme.
-   Базовые токены (сетка/типографика/переходы) + 4 темы + МОСТ,
-   который маппит новые токены на «старые» имена переменных,
-   используемые компонентами, — поэтому переключение мгновенно
-   подхватывают все экраны без переписывания компонентов.
+   THEMES (THEMES_1.md) — 4 palettes switched through data-theme.
+   Base tokens (grid/typography/transitions) + 4 themes + the BRIDGE
+   that maps the new tokens onto the "old" variable names the
+   components use — which is why every screen picks up a switch
+   instantly, with no component rewrites.
    ============================================================ */
 :root {
-  /* Отступы (8px) */
+  /* Spacing (8px) */
   --space-1: 4px;  --space-2: 8px;  --space-3: 12px;
   --space-4: 16px; --space-6: 24px; --space-8: 32px;
-  /* Радиусы */
+  /* Corner radii */
   --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px;
-  /* Типографика (размеры; --text-body занят под цвет в темах) */
+  /* Typography (sizes; --text-body is taken by a color in the themes) */
   --text-anchor: 27px; --text-title: 18px; --text-label: 13px; --text-hint: 12px;
   --weight-regular: 400; --weight-medium: 500;
-  /* Переходы */
+  /* Transitions */
   --dur-fast: 150ms; --dur-base: 200ms; --dur-slow: 300ms;
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
 
-  /* Текстура «плетения» (тонкая диагональная штриховка поверх поверхностей).
-     По умолчанию — для тёмных кожаных тем; в cream переопределяется ниже. */
+  /* "Weave" texture (a faint diagonal hatch over the surfaces).
+     The defaults are for the dark leather themes; cream overrides them below. */
   --weave-hi: rgba(255,255,255,0.022);
   --weave-lo: rgba(0,0,0,0.045);
   --weave-gap: 5px;
 }
 
-/* Плавная смена темы */
+/* Smooth theme switching */
 body { transition: background-color var(--dur-base) var(--ease), color var(--dur-base) var(--ease); }
 
-/* ТЕМА 1: ЧЁРНАЯ КОЖА — тёплый уголь, полированная сталь, коньячная строчка.
-   Porsche-логика: металл = управление (один интерактивный акцент),
-   коньяк = материальные детали (прошивка, отметка «сегодня/сейчас»). */
+/* THEME 1: BLACK LEATHER — warm charcoal, polished steel, cognac stitching.
+   Porsche logic: metal = controls (one interactive accent),
+   cognac = material detail (stitching, the "today/now" marker). */
 [data-theme="black-leather"] {
   --bg-app: #121211; --bg-surface: #1A1A18;
   --bg-anchor-top: #232320; --bg-anchor-bot: #1B1B19;
@@ -380,7 +380,7 @@ body { transition: background-color var(--dur-base) var(--ease), color var(--dur
   --edge-light: #35342E; --edge-dark: #0C0C0B; --border-soft: #2A2925;
   --text-primary: #EFEEEA; --text-body: #D6D4CF; --text-secondary: #A4A29B; --text-muted: #7B7972; --text-faint: #5B5953;
   --accent: #8FB2D4; --accent-btn-top: #5C84A8; --accent-btn-bot: #41648B; --on-accent: #F4F8FC;
-  --accent-today: #DCA26B; /* светлее --c-warm, чтобы «сейчас» не сливался с категорийной точкой */
+  --accent-today: #DCA26B; /* lighter than --c-warm so "now" does not blend into the category dot */
   --bg-tile: #232322; --border-med: #3A3933; --shadow-btn: 0 3px 8px rgba(0,0,0,0.40);
   --status-ok: #7E9B6E; --status-warn: #C98A5E; --status-crit: #A85A4A;
   --stitch: #54422F;
@@ -391,10 +391,10 @@ body { transition: background-color var(--dur-base) var(--ease), color var(--dur
   --scrim: rgba(10,10,9,0.70);
 }
 
-/* ТЕМА 2: КОРИЧНЕВАЯ КОЖА — седло/коньяк, светлая строчка */
+/* THEME 2: BROWN LEATHER — saddle/cognac, light stitching */
 [data-theme="brown-leather"] {
-  /* кофейно-коричневый, а не терракотовый: красный канал сближен с зелёным,
-     чтобы поверхности читались как «коричневая кожа», а не отдавали красным */
+  /* coffee brown, not terracotta: the red channel is pulled closer to green
+     so the surfaces read as "brown leather" instead of leaning red */
   --bg-app: #110F0C; --bg-surface: #221D19;
   --bg-anchor-top: #292420; --bg-anchor-bot: #201A16;
   --bg-card-top: #241F1B; --bg-card-bot: #1C1814;
@@ -412,7 +412,7 @@ body { transition: background-color var(--dur-base) var(--ease), color var(--dur
   --scrim: rgba(12,9,7,0.70);
 }
 
-/* ТЕМА 3: КРЕМОВАЯ (светлая) — бумага/светлая кожа, контраст поверхностей поднят */
+/* THEME 3: CREAM (light) — paper/light leather, surface contrast raised */
 [data-theme="cream"] {
   --bg-app: #EFE9DD; --bg-surface: #FDFBF6;
   --bg-anchor-top: #EBE2D0; --bg-anchor-bot: #E7DDC9;
@@ -434,7 +434,7 @@ body { transition: background-color var(--dur-base) var(--ease), color var(--dur
   --weave-lo: rgba(120,100,70,0.05);
 }
 
-/* ТЕМА 4: ОРИГИНАЛЬНАЯ — реальные «родные» цвета сайта (тёплый near-black + индиго) */
+/* THEME 4: ORIGINAL — the site's actual native colors (warm near-black + indigo) */
 [data-theme="original"] {
   --bg-app: #1E1B18; --bg-surface: #2C2825;
   --bg-anchor-top: #2C2825; --bg-anchor-bot: #29251F;
@@ -442,7 +442,7 @@ body { transition: background-color var(--dur-base) var(--ease), color var(--dur
   --edge-light: #46413B; --edge-dark: #1C1916; --border-soft: #3A3633;
   --text-primary: #E2E8F0; --text-body: #D1D5DB; --text-secondary: #9CA3AF; --text-muted: #9CA3AF; --text-faint: #6B7280;
   --accent: #818CF8; --accent-btn-top: #818CF8; --accent-btn-bot: #6366F1; --on-accent: #1E1B18;
-  --accent-today: #C68B52; /* чистый коньяк, НЕ равен --status-warn */
+  --accent-today: #C68B52; /* pure cognac, NOT the same as --status-warn */
   --bg-tile: #3E372D; --border-med: #4A4236; --shadow-btn: 0 3px 8px rgba(0,0,0,0.28);
   --status-ok: #4FA86C; --status-warn: #DD9A3E; --status-crit: #E05C4A;
   --stitch: transparent;
@@ -453,9 +453,9 @@ body { transition: background-color var(--dur-base) var(--ease), color var(--dur
   --scrim: rgba(15,13,11,0.70);
 }
 
-/* ТЕМА 5: iOS DARK — минимализм Apple iOS: глубокий чёрный (OLED),
-   системный синий, плоские поверхности, hairline-границы. Без кожи:
-   строчка/зерно/виньетка отключены. Сделана специально под мобильную. */
+/* THEME 5: iOS DARK — Apple iOS minimalism: deep black (OLED),
+   system blue, flat surfaces, hairline borders. No leather:
+   stitching/grain/vignette are off. Built specifically for mobile. */
 [data-theme="ios-dark"] {
   --bg-app: #000000; --bg-surface: #1C1C1E;
   --bg-anchor-top: #1C1C1E; --bg-anchor-bot: #161618;
@@ -475,14 +475,14 @@ body { transition: background-color var(--dur-base) var(--ease), color var(--dur
   --weave-hi: transparent; --weave-lo: transparent;
 }
 
-/* ТЕМА 6: iOS LIGHT — системный светлый: группированный фон, белые карточки,
-   системный синий, мягкие тени, hairline-границы. Тоже под мобильную. */
+/* THEME 6: iOS LIGHT — the system light look: grouped background, white cards,
+   system blue, soft shadows, hairline borders. Also built for mobile. */
 [data-theme="ios-light"] {
   --bg-app: #F2F2F7; --bg-surface: #FFFFFF;
   --bg-anchor-top: #FFFFFF; --bg-anchor-bot: #FAFAFC;
   --bg-card-top: #FFFFFF; --bg-card-bot: #FFFFFF;
   --edge-light: #FFFFFF; --edge-dark: rgba(0,0,0,0.04); --border-soft: #E0E0E6;
-  /* iOS label-цвета: darker для читаемости на белом (secondaryLabel ~0.6, но поднято) */
+  /* iOS label colors: darker for legibility on white (secondaryLabel ~0.6, but raised) */
   --text-primary: #000000; --text-body: #1C1C1E; --text-secondary: rgba(60,60,67,0.72); --text-muted: rgba(60,60,67,0.56); --text-faint: rgba(60,60,67,0.42);
   --accent: #007AFF; --accent-btn-top: #0A84FF; --accent-btn-bot: #007AFF; --on-accent: #FFFFFF;
   --accent-today: #FF9500;
@@ -497,19 +497,19 @@ body { transition: background-color var(--dur-base) var(--ease), color var(--dur
   --weave-hi: transparent; --weave-lo: transparent;
 }
 
-/* ТЕМА 7: RED LAVA — фирменный стиль команды по триатлону redlava.team:
-   чистый светлый фон + фирменный лава-красный #CF1020, чёрный жирный текст.
-   База — ios-light (плоские белые карточки, hairline-границы, без кожи/зерна).
-   Сделана под мобильную версию (бренд-оформление приложения для атлетов). */
+/* THEME 7: RED LAVA — the brand style of the redlava.team triathlon team:
+   a clean light background + the brand lava red #CF1020, bold black text.
+   Based on ios-light (flat white cards, hairline borders, no leather/grain).
+   Built for the mobile version (brand styling of the app for athletes). */
 [data-theme="red-lava"] {
   --bg-app: #F4F5F7; --bg-surface: #FFFFFF;
   --bg-anchor-top: #FFFFFF; --bg-anchor-bot: #FFF6F5;
   --bg-card-top: #FFFFFF; --bg-card-bot: #FFFFFF;
   --edge-light: #FFFFFF; --edge-dark: rgba(0,0,0,0.05); --border-soft: #ECE6E5;
   --text-primary: #14100F; --text-body: #221B19; --text-secondary: rgba(38,27,25,0.66); --text-muted: rgba(38,27,25,0.50); --text-faint: rgba(38,27,25,0.38);
-  /* Лава-красный — единственный интерактивный акцент (кнопки, активный пункт, кольца действия) */
+  /* Lava red — the only interactive accent (buttons, the active item, action rings) */
   --accent: #CF1020; --accent-btn-top: #E61E2B; --accent-btn-bot: #CF1020; --on-accent: #FFFFFF;
-  --accent-today: #FF5600; /* оранжевая лава — «сегодня/сейчас», отлична от красного акцента */
+  --accent-today: #FF5600; /* orange lava — "today/now", distinct from the red accent */
   --bg-tile: #F4EEED; --border-med: #E3DAD9; --shadow-btn: 0 2px 8px rgba(207,16,32,0.24);
   --status-ok: #2EA85F; --status-warn: #F08A00; --status-crit: #CF1020;
   --stitch: transparent;
@@ -521,8 +521,8 @@ body { transition: background-color var(--dur-base) var(--ease), color var(--dur
   --weave-hi: transparent; --weave-lo: transparent;
 }
 
-/* ЦВЕТ ИИ (--ai / --ai-glow): жёлтое золото на ТЁМНЫХ темах, фиолет на СВЕТЛЫХ.
-   Списки тем взаимоисключающие — пересечений нет, конфликтов специфичности нет. */
+/* AI COLOR (--ai / --ai-glow): yellow gold on DARK themes, violet on LIGHT ones.
+   The theme lists are mutually exclusive — no overlap, no specificity conflicts. */
 [data-theme="black-leather"], [data-theme="brown-leather"],
 [data-theme="original"], [data-theme="ios-dark"], .dark {
   --ai: #EBC15C; --ai-glow: #E0A23A;
@@ -531,8 +531,8 @@ body { transition: background-color var(--dur-base) var(--ease), color var(--dur
   --ai: #6D28D9; --ai-glow: #7C3AED;
 }
 
-/* МОСТ: новые токены тем → «старые» имена, на которые завязаны компоненты.
-   Идёт ПОСЛЕ .dark и блоков тем, поэтому переопределяет их. */
+/* BRIDGE: the new theme tokens → the "old" names the components depend on.
+   It comes AFTER .dark and the theme blocks, so it overrides them. */
 [data-theme] {
   --background: var(--bg-app);
   --bg-primary: var(--bg-app);
@@ -563,26 +563,26 @@ body { transition: background-color var(--dur-base) var(--ease), color var(--dur
 }
 
 /* ============================================================
-   МАТЕРИАЛ: зерно кожи + световая виньетка.
-   Два фиксированных слоя поверх всего (pointer-events:none):
-   зерно даёт фактуру, виньетка — один источник света сверху
-   и мягкое сгущение к краям. Интенсивность — токенами темы.
+   MATERIAL: leather grain + a light vignette.
+   Two fixed layers on top of everything (pointer-events:none):
+   the grain supplies texture, the vignette a single light source
+   above plus a soft build-up toward the edges. Intensity comes from theme tokens.
    ============================================================ */
 body::before {
-  /* Зерно ОТКЛЮЧЕНО по решению владельца (2026-06-10): растровый шум поверх
-     всего экрана читается как «плёнка» и пикселизуется при зуме. Материальность
-     остаётся на карточках (градиент, кромки, прошивка) — без слоя поверх текста. */
+  /* Grain is OFF by the owner's decision (2026-06-10): raster noise over the
+     whole screen reads as "film" and pixelates when zoomed. The material feel
+     stays on the cards (gradient, edges, stitching) — with no layer over the text. */
   display: none;
   content: "";
   position: fixed; inset: 0;
   z-index: 9999; pointer-events: none;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/><feComponentTransfer><feFuncR type='linear' slope='4' intercept='-1.5'/><feFuncG type='linear' slope='4' intercept='-1.5'/><feFuncB type='linear' slope='4' intercept='-1.5'/></feComponentTransfer></filter><rect width='140' height='140' filter='url(%23n)'/></svg>");
   background-size: 220px 220px;
-  /* fractalNoise сам по себе низкоконтрастен (sd≈0.07), а overlay на тёмной базе
-     ещё и гасит амплитуду (result = 2·base·blend) — поэтому контраст шума поднят
-     feComponentTransfer (slope 4, симметрично вокруг 0.5 → без сдвига яркости),
-     а opacity на тёмных темах ~0.2. Приёмка: stddev 1.5–3.0 на плоском фоне.
-     cream использует multiply (см. --grain-blend). */
+  /* fractalNoise is low-contrast on its own (sd≈0.07), and overlay on a dark base
+     damps the amplitude further (result = 2·base·blend) — so the noise contrast is
+     raised with feComponentTransfer (slope 4, symmetric around 0.5 → no brightness shift),
+     and opacity on dark themes is ~0.2. Acceptance: stddev 1.5–3.0 on a flat background.
+     cream uses multiply instead (see --grain-blend). */
   opacity: var(--grain, 0.2);
   mix-blend-mode: var(--grain-blend, overlay);
 }
@@ -596,26 +596,26 @@ body::after {
 }
 
 /* ============================================================
-   КАТЕГОРИЙНЫЕ ЦВЕТА (по темам) + ПРИМИТИВЫ ДИЗАЙН-СИСТЕМЫ
-   Пересборка «Замок» (Porsche×CarPlay). Чисто аддитивно —
-   существующие правила не меняются. Палитра категорий = 6 хюэ
-   на тему, на которые маппятся все категории (общий блок ниже),
-   поэтому цвета переключаются вместе с темой.
+   CATEGORY COLORS (per theme) + DESIGN-SYSTEM PRIMITIVES
+   The "Castle" rebuild (Porsche×CarPlay). Purely additive —
+   no existing rule changes. The category palette is 6 hues per
+   theme that all categories map onto (shared block below),
+   so the colors switch along with the theme.
    ============================================================ */
 [data-theme="black-leather"]{ --c-warm:#C08A5E; --c-steel:#7BA3C9; --c-sage:#8AA978; --c-amber:#D2A24A; --c-rose:#C77F86; --c-neutral:#9AA0A8; }
 [data-theme="brown-leather"]{ --c-warm:#C89B6A; --c-steel:#8FA8B6; --c-sage:#9DAE72; --c-amber:#D6A24A; --c-rose:#C98E7E; --c-neutral:#A89684; }
 [data-theme="cream"]{ --c-warm:#B0683B; --c-steel:#4E7A9E; --c-sage:#5E8A55; --c-amber:#B0822A; --c-rose:#AE5E66; --c-neutral:#7A6F5C; }
 [data-theme="original"]{ --c-warm:#C98A5E; --c-steel:#6E8CA8; --c-sage:#6FA06B; --c-amber:#D6973E; --c-rose:#C77F86; --c-neutral:#9CA3AF; }
 [data-theme="red-lava"]{ --c-warm:#E0512A; --c-steel:#3E7CB1; --c-sage:#2E9E64; --c-amber:#E0922A; --c-rose:#CF4D5A; --c-neutral:#7C7470; }
-/* iOS-темы (мобилка) — без этих токенов БЖУ-бары и категорийные цвета были прозрачными */
+/* iOS themes (mobile) — without these tokens the macro bars and category colors came out transparent */
 [data-theme="ios-dark"]{ --c-warm:#FF7A45; --c-steel:#0A84FF; --c-sage:#30D158; --c-amber:#FF9F0A; --c-rose:#FF375F; --c-neutral:#98989F; }
 [data-theme="ios-light"]{ --c-warm:#F2601F; --c-steel:#007AFF; --c-sage:#34C759; --c-amber:#FF9500; --c-rose:#FF2D55; --c-neutral:#8E8E93; }
 
 /* ============================================================
-   Бренд-марка RED LAVA. На светлых темах лого «парит» прозрачным
-   (по умолчанию плашки нет — токены не заданы, BrandLogo берёт
-   transparent). На тёмных — садится на белый патч-шеврон, иначе
-   чёрные части лого («LAVA», остриё щита) тонут в тёмном фоне.
+   RED LAVA brand mark. On light themes the logo "floats" on transparency
+   (no tile by default — the tokens are unset, so BrandLogo falls back
+   to transparent). On dark themes it sits on a white chevron patch, or
+   the black parts ("LAVA", the shield's tip) sink into the dark background.
    ============================================================ */
 [data-theme="black-leather"], [data-theme="brown-leather"],
 [data-theme="original"], [data-theme="ios-dark"] {
@@ -627,31 +627,31 @@ body::after {
 
 [data-theme]{
   --sidebar-width-expanded: 248px;
-  /* спорт */
+  /* sport */
   --cat-sport-run: var(--c-warm); --cat-sport-bike: var(--c-steel); --cat-sport-swim: var(--c-sage); --cat-sport-gym: var(--c-rose); --cat-sport-walk: var(--c-amber);
-  /* события */
+  /* events */
   --cat-event-call: var(--c-steel); --cat-event-calendar: var(--c-warm); --cat-event-email: var(--c-sage); --cat-event-meeting: var(--c-neutral); --cat-event-workout: var(--c-rose);
-  /* приоритеты */
+  /* priorities */
   --cat-pri-1: var(--status-crit); --cat-pri-2: var(--status-warn); --cat-pri-3: var(--text-secondary);
-  /* анализы (14 групп) */
+  /* lab panels (14 groups) */
   --cat-lab-blood: var(--c-rose); --cat-lab-lipids: var(--c-warm); --cat-lab-metabolic: var(--c-amber); --cat-lab-liver: var(--c-sage); --cat-lab-kidney: var(--c-steel);
   --cat-lab-iron: var(--c-neutral); --cat-lab-vitamins: var(--c-amber); --cat-lab-electrolytes: var(--c-steel); --cat-lab-thyroid: var(--c-rose); --cat-lab-hormones: var(--c-sage);
   --cat-lab-inflammation: var(--status-warn); --cat-lab-coagulation: var(--c-rose); --cat-lab-infections: var(--status-crit); --cat-lab-other: var(--c-neutral);
-  /* приёмы пищи */
+  /* meals */
   --cat-meal-breakfast: var(--c-amber); --cat-meal-lunch: var(--c-sage); --cat-meal-snack: var(--c-rose); --cat-meal-dinner: var(--c-steel);
-  /* помощники (задачи по дому) — цвет адаптируется к теме через общую палитру */
+  /* helpers (household tasks) — the color adapts to the theme through the shared palette */
 }
 
-/* ===== БЛОК ИИ-СОВЕТА — рамка «цвета ИИ» (--ai) + бегущая волна свечения =====
-   .ai-glow — утилита (кольцо + волна) на любой контейнер; .ai-advice — готовый блок. */
+/* ===== AI ADVICE BLOCK — a border in the "AI color" (--ai) + a running glow wave =====
+   .ai-glow is a utility (ring + wave) for any container; .ai-advice is a ready-made block. */
 @property --ai-wave { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
 .ai-glow {
   position: relative;
   box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--ai) 55%, transparent),
               0 7px 22px -10px color-mix(in srgb, var(--ai-glow) 68%, transparent);
 }
-/* Волна идёт по рамке (маскированный конический бордюр ВНУТРИ элемента):
-   не режется overflow, не ломается transform-предком, крутится всегда, на любой ширине. */
+/* The wave runs along the border (a masked conic border INSIDE the element):
+   overflow cannot clip it, a transformed ancestor cannot break it, it always spins, at any width. */
 .ai-glow::after {
   content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
   padding: 1.5px;
@@ -675,7 +675,7 @@ body::after {
 .ai-advice-label { display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--ai); margin-bottom: 6px; }
 .ai-advice-body { font-size: 13.5px; line-height: 1.55; color: var(--text-body); white-space: pre-line; }
 
-/* ===== ПРИМИТИВЫ (.ds-*) — единый источник правды для атомов ===== */
+/* ===== PRIMITIVES (.ds-*) — the single source of truth for the atoms ===== */
 .ds-btn{
   display:inline-flex; align-items:center; justify-content:center; gap:8px;
   font-family:inherit; font-weight:600; line-height:1; white-space:nowrap;
@@ -707,7 +707,7 @@ body::after {
 .ds-field__label{ font-size:12.5px; font-weight:500; letter-spacing:.01em; color:var(--text-secondary); }
 .ds-input{
   width:100%; box-sizing:border-box; background:var(--bg-tile); border:1px solid var(--border-med); border-radius:var(--radius-md);
-  box-shadow:var(--inset-tile, none);  /* поле «утоплено» в кожу */
+  box-shadow:var(--inset-tile, none);  /* the field is "sunk" into the leather */
   padding:12px 14px; font-family:inherit; font-size:15px; color:var(--foreground); outline:none; transition:border-color var(--dur-fast) var(--ease);
 }
 .ds-input:focus{ border-color:var(--accent); }
@@ -730,19 +730,19 @@ body::after {
 .ds-pill--crit{ color:var(--status-crit); }
 
 /* ============================================================
-   РАСКЛАДКИ (data-layout на <html>) — «что где находится».
-   classic — без правил (текущая компоновка). Темы работают в каждой.
+   LAYOUTS (data-layout on <html>) — "what sits where".
+   classic has no rules (the current arrangement). Themes work in each of them.
    ============================================================ */
 
-/* --- Командный центр: глобальная статус-строка (оболочка CommandShell) --- */
+/* --- Command center: the global status strip (the CommandShell wrapper) --- */
 html[data-layout="command"] { --status-strip-h: 42px; }
-/* Демо-бейдж опускается под статус-строку, чтобы не перекрывались */
+/* The demo badge drops below the status strip so the two do not overlap */
 html[data-layout="command"] .demo-banner { top: calc(var(--status-strip-h) + 10px); }
 @media (max-width: 640px) {
   html[data-layout="command"] .demo-banner { top: 14px; }
 }
 
-/* --- Журнал: все разделы — спокойная центрированная колонка --- */
+/* --- Journal: every section becomes one calm centered column --- */
 html[data-layout="journal"] .health-page,
 html[data-layout="journal"] .nu-page,
 html[data-layout="journal"] .history-page,
@@ -753,20 +753,20 @@ html[data-layout="journal"] .settings-page {
   margin-inline: auto;
 }
 
-/* --- Кокпит: плотнее KPI-ряды Истории (4 зоны в строку как приборы) --- */
+/* --- Cockpit: tighter KPI rows on History (4 zones per row, like gauges) --- */
 html[data-layout="cockpit"] .hist-stats { gap: 12px; }
 
 /* ============================================================
-   ДВИЖЕНИЕ: каскадная «сборка» страницы и отклик кнопок.
-   Блоки раздела появляются друг за другом (stagger) при входе —
-   вместе с pageEnter из motion.js даёт ощутимый, но спокойный переход.
+   MOTION: the page "builds" in a cascade, plus button feedback.
+   A section's blocks appear one after another (stagger) on entry —
+   with pageEnter from motion.js this makes a noticeable but calm transition.
    ============================================================ */
 @media (prefers-reduced-motion: no-preference) {
   @keyframes block-rise {
     from { opacity: 0; transform: translateY(12px); }
     to   { opacity: 1; transform: translateY(0); }
   }
-  /* Прямые блоки страницы (внутри page-content > страница) */
+  /* The page's direct blocks (inside page-content > the page) */
   .page-content > * > * { animation: block-rise 0.42s var(--ease) backwards; }
   .page-content > * > :nth-child(1) { animation-delay: 0.02s; }
   .page-content > * > :nth-child(2) { animation-delay: 0.06s; }
@@ -777,9 +777,9 @@ html[data-layout="cockpit"] .hist-stats { gap: 12px; }
   .page-content > * > :nth-child(n+7) { animation-delay: 0.26s; }
 }
 
-/* Кнопки дизайн-системы: живой подъём на hover (в пару к прессу на :active) */
+/* Design-system buttons: a lively lift on hover (paired with the press on :active) */
 .ds-btn:hover:not(:disabled) { transform: translateY(-1px); }
 .ds-btn--primary:hover:not(:disabled) { box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 28%, transparent); }
 
-/* Карточки: плавность тени/рамки при любых hover-эффектах */
+/* Cards: smooth shadow/border transitions for any hover effect */
 .card { transition: box-shadow var(--dur-base) var(--ease), border-color var(--dur-base) var(--ease); }

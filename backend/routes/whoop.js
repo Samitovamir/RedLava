@@ -6,19 +6,19 @@ import { kvGetScoped, kvSetScoped, kvDelScoped, scopedKey, scopeOf } from '../us
 
 const router = Router()
 
-// Базы ключей; реальные ключи — с id владельца данных (см. userScope.js).
-// Замок тоже персональный: обновление токена одного человека не должно
-// блокировать всех остальных.
+// Key prefixes; the real keys carry the data owner's id (see userScope.js).
+// The lock is per-person too: refreshing one person's token must not
+// block everybody else.
 const TOKENS_KEY = 'whoop:tokens'
 const LOCK_KEY = 'whoop:refresh-lock'
 const lockKeyOf = (userId) => scopedKey(LOCK_KEY, userId)
-const ACCESS_SKEW_MS = 60 * 1000   // обновляем access_token за минуту до истечения
-// Критическая секция под замком ЖЁСТКО ограничена таймаутами:
+const ACCESS_SKEW_MS = 60 * 1000   // refresh the access_token a minute before it expires
+// The critical section under the lock is HARD-bounded by timeouts:
 //   kvGet(≤3s) + refreshGrant(≤7s) + persistRotation(3×≤3s + backoff ≈ 9.5s) ≈ 19.5s.
-// LOCK_TTL_S = 35s даёт ~15s запаса, поэтому замок не может истечь под активным
-// держателем (а более долгий процесс убьёт сам Vercel раньше, чем он что-то запишет).
+// LOCK_TTL_S = 35s leaves ~15s of headroom, so the lock cannot expire while its holder
+// is still working (and Vercel kills a longer run before it manages to write anything).
 const LOCK_TTL_S = 35
-const REFRESH_TIMEOUT_MS = 7000   // жёсткий таймаут refresh-гранта
+const REFRESH_TIMEOUT_MS = 7000   // hard timeout on the refresh grant
 const delay = (ms) => new Promise(r => setTimeout(r, ms))
 const AUTH_URL = 'https://api.prod.whoop.com/oauth/oauth2/auth'
 const TOKEN_URL = 'https://api.prod.whoop.com/oauth/oauth2/token'
@@ -35,49 +35,49 @@ function appUrl(req) {
   return `${proto}://${host}`
 }
 
-// Кэш ещё живой? (access_token есть и не истёк с запасом)
+// Is the cache still good? (an access_token exists and hasn't expired, with margin)
 function cacheValid(t) {
   return !!(t?.access_token && t.access_expires_at && Date.now() < t.access_expires_at - ACCESS_SKEW_MS)
 }
 
-// Один refresh-грант. Возвращает { ok:true, data } | { ok:false, terminal:bool }.
-// terminal=true → refresh_token мёртв (invalid_grant) → нужно переподключение.
-// terminal=false → временный сбой (5xx/429/сеть) → токен НЕ трогаем.
+// A single refresh grant. Returns { ok:true, data } | { ok:false, terminal:bool }.
+// terminal=true → the refresh_token is dead (invalid_grant) → a reconnect is needed.
+// terminal=false → a temporary failure (5xx/429/network) → leave the token ALONE.
 async function refreshGrant(refresh_token) {
   const body = new URLSearchParams({
     grant_type: 'refresh_token',
     refresh_token,
     client_id: process.env.WHOOP_CLIENT_ID,
     client_secret: process.env.WHOOP_CLIENT_SECRET,
-    scope: 'offline'   // обязательно: иначе Whoop не вернёт НОВЫЙ refresh_token
+    scope: 'offline'   // required: without it Whoop won't return a NEW refresh_token
   })
   let r
   try {
     r = await fetch(TOKEN_URL, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body, signal: AbortSignal.timeout(REFRESH_TIMEOUT_MS) })
-  } catch { return { ok: false, terminal: false } } // сеть/таймаут — временно
+  } catch { return { ok: false, terminal: false } } // network/timeout — temporary
   if (r.ok) {
     let d
     try { d = await r.json() } catch { return { ok: false, terminal: false } }
     if (!d.access_token) return { ok: false, terminal: false }
     return { ok: true, data: d }
   }
-  // Терминально ТОЛЬКО при invalid_grant (RFC 6749 §5.2) — единственный код, означающий,
-  // что refresh_token использован/протух/отозван. Пустое тело, 429, 5xx, invalid_request,
-  // прокси/WAF 4xx — временно (живой токен НЕ помечаем мёртвым).
+  // Terminal ONLY on invalid_grant (RFC 6749 §5.2) — the one code that means the
+  // refresh_token was already used, has expired or was revoked. An empty body, 429, 5xx,
+  // invalid_request, a proxy/WAF 4xx — all temporary (never mark a live token dead).
   let terminal = false
   if (r.status >= 400 && r.status < 500 && r.status !== 429) {
-    try { const e = await r.json(); terminal = e?.error === 'invalid_grant' } catch { /* нет тела → временно */ }
+    try { const e = await r.json(); terminal = e?.error === 'invalid_grant' } catch { /* no body → temporary */ }
   }
   return { ok: false, terminal }
 }
 
-// Сохранить ротированную запись ПОД ФЕНСИНГОМ замка: пишем только пока реально владеем
-// замком (kvSetIfLocked). Если инстанс «заморозился» и TTL замка истёк — запоздалая
-// запись отвергается, и мы не затрём токен преемника. Возвращает 'saved' | 'lostlock' | 'failed'.
+// Save the rotated record FENCED BY THE LOCK: we write only while we genuinely still hold
+// the lock (kvSetIfLocked). If the instance froze and the lock's TTL expired, the late write
+// is rejected and we don't clobber our successor's token. Returns 'saved' | 'lostlock' | 'failed'.
 async function persistRotation(prev, d, lockToken, userId) {
   const expires_in = Number(d.expires_in) || 3600
   const rec = {
-    refresh_token: d.refresh_token || prev.refresh_token, // offline → новый; иначе оставляем текущий
+    refresh_token: d.refresh_token || prev.refresh_token, // offline → a new one; otherwise keep the current
     access_token: d.access_token,
     access_expires_at: Date.now() + expires_in * 1000,
     connected_at: prev.connected_at || Date.now(),
@@ -86,20 +86,20 @@ async function persistRotation(prev, d, lockToken, userId) {
   for (let i = 0; i < 3; i++) {
     const r = await kvSetIfLocked(scopedKey(TOKENS_KEY, userId), rec, lockKeyOf(userId), lockToken)
     if (r.applied) return 'saved'
-    if (!r.error) return 'lostlock'   // замок потерян (TTL истёк под заморозкой) — не наша запись
-    await delay(150)                  // сетевой сбой — повтор
+    if (!r.error) return 'lostlock'   // lock lost (TTL expired while frozen) — the record isn't ours
+    await delay(150)                  // network failure — retry
   }
   return 'failed'
 }
 
-// Выполнить мутацию TOKENS_KEY под общим замком (сериализация с refresh-холдером).
-// Авторитетные операции (/callback, /disconnect) немного ждут занятый замок, затем
-// выполняются всё равно (последнее намерение пользователя важнее, чем фоновый refresh).
+// Mutate TOKENS_KEY under the shared lock (serialized against the refresh holder).
+// Authoritative operations (/callback, /disconnect) wait a little on a busy lock, then
+// go ahead regardless (the user's latest intent outweighs a background refresh).
 async function withTokenLock(fn, userId) {
   let lockToken = null
-  // Бюджет ~8s покрывает обычного refresh-держателя (refresh ≤7s); затем — авторитетная
-  // запись всё равно (реконнект/отключение важнее фонового refresh; фенсинг на стороне
-  // держателя не даст его stale-записи затереть наш свежий токен/удаление).
+  // The ~8s budget covers a normal refresh holder (refresh ≤7s); after that we write
+  // authoritatively anyway (a reconnect/disconnect outweighs a background refresh; the
+  // fencing on the holder's side stops its stale write clobbering our fresh token/deletion).
   for (let i = 0; i < 20 && !lockToken; i++) {
     lockToken = await kvLock(lockKeyOf(userId), LOCK_TTL_S)
     if (!lockToken) await delay(400)
@@ -107,9 +107,9 @@ async function withTokenLock(fn, userId) {
   try { return await fn() } finally { if (lockToken) await kvUnlock(lockKeyOf(userId), lockToken) }
 }
 
-// Достать рабочий access_token. Возвращает { access } | { error: 'reauth' | 'transient' }.
-// Single-flight через KV-замок: одновременные запросы не жгут одноразовый refresh_token —
-// рефрешит только держатель замка, остальные ждут и переиспользуют свежий access_token.
+// Get a working access_token. Returns { access } | { error: 'reauth' | 'transient' }.
+// Single-flight through the KV lock: concurrent requests don't burn the one-shot refresh_token —
+// only the lock holder refreshes, everyone else waits and reuses the fresh access_token.
 async function getAccessToken({ force = false, staleAccess = null, userId = null } = {}) {
   if (!userId) return { error: 'reauth' }
   let t = await kvGetScoped(TOKENS_KEY, userId)
@@ -119,9 +119,9 @@ async function getAccessToken({ force = false, staleAccess = null, userId = null
 
   const lockToken = await kvLock(lockKeyOf(userId), LOCK_TTL_S)
   if (!lockToken) {
-    // Кто-то уже обновляет — ждём СВЕЖИЙ токен (force: строго отличный от отвергнутого).
-    // Бюджет ожидания (~8s) покрывает типичный refresh держателя (1–2s); при редком
-    // долгом обновлении — transient (один пустой ответ, самоисцеляется на след. заходе).
+    // Someone else is already refreshing — wait for a FRESH token (force: strictly different
+    // from the rejected one). The ~8s wait budget covers a holder's typical refresh (1–2s);
+    // a rare slow one yields transient (a single empty response, self-healing on the next call).
     for (let i = 0; i < 20; i++) {
       await delay(400)
       t = await kvGetScoped(TOKENS_KEY, userId)
@@ -131,7 +131,7 @@ async function getAccessToken({ force = false, staleAccess = null, userId = null
     return { error: 'transient' }
   }
   try {
-    // Перечитываем под замком: предыдущий держатель мог только что ротировать.
+    // Re-read under the lock: the previous holder may have rotated the token just now.
     t = await kvGetScoped(TOKENS_KEY, userId)
     if (!t?.refresh_token) return { error: 'reauth' }
     if (t.dead) return { error: 'reauth' }
@@ -139,29 +139,29 @@ async function getAccessToken({ force = false, staleAccess = null, userId = null
 
     const res = await refreshGrant(t.refresh_token)
     if (res.ok) {
-      // Записали ротированный токен (под фенсингом) → выдаём свежий access;
-      // 'lostlock'/'failed' → transient (на следующем заходе возьмём актуальный токен).
+      // The rotated token was written (fenced) → hand out the fresh access;
+      // 'lostlock'/'failed' → transient (the next call will pick up the current token).
       return (await persistRotation(t, res.data, lockToken, userId)) === 'saved'
         ? { access: res.data.access_token } : { error: 'transient' }
     }
     if (res.terminal) {
-      // Перечитываем под замком:
+      // Re-read under the lock:
       const cur = await kvGetScoped(TOKENS_KEY, userId)
-      // запись удалена (/disconnect) — НЕ воскрешаем зомби-токен.
+      // the record is gone (/disconnect) — do NOT resurrect a zombie token.
       if (!cur?.refresh_token) return { error: 'reauth' }
-      // кто-то реконнектил (другой refresh_token) — это НЕ наш приговор, не трогаем свежий токен.
+      // someone reconnected (a different refresh_token) — the verdict isn't ours; leave the fresh token alone.
       if (cur.refresh_token !== t.refresh_token) {
         return cacheValid(cur) ? { access: cur.access_token } : { error: 'transient' }
       }
-      // Помечаем токен мёртвым ПОД ФЕНСИНГОМ замка (потеряли замок под заморозкой → не
-      // объявляем dead, отдаём transient: следующий держатель выведет истину из консистентного чтения).
+      // Mark the token dead FENCED BY THE LOCK (if we lost the lock while frozen → don't
+      // declare it dead, return transient: the next holder will settle the truth from a consistent read).
       for (let i = 0; i < 3; i++) {
         const r = await kvSetIfLocked(scopedKey(TOKENS_KEY, userId), { ...cur, dead: true, dead_at: Date.now() }, lockKeyOf(userId), lockToken)
         if (r.applied) return { error: 'reauth' }
-        if (!r.error) return { error: 'transient' } // замок потерян
+        if (!r.error) return { error: 'transient' } // lock lost
         await delay(150)
       }
-      return { error: 'transient' } // не смогли записать (сеть) — не врём про dead
+      return { error: 'transient' } // the write failed (network) — don't lie about being dead
     }
     return { error: 'transient' }
   } finally {
@@ -169,8 +169,8 @@ async function getAccessToken({ force = false, staleAccess = null, userId = null
   }
 }
 
-// Возвращает распарсенный JSON, null при обычной ошибке, либо 'unauth' при 401
-// (access_token отвергнут API → дадим /data шанс принудительно обновить токен).
+// Returns the parsed JSON, null on an ordinary error, or 'unauth' on a 401
+// (the API rejected the access_token → give /data a chance to force a refresh).
 async function whoopGet(path, access) {
   let r
   try { r = await fetch(`${API}${path}`, { headers: { Authorization: `Bearer ${access}` }, signal: AbortSignal.timeout(8000) }) }
@@ -185,8 +185,8 @@ const ms2h = (m) => Math.round((m / 3600000) * 10) / 10
 router.get('/connect-url', requireAuth, async (req, res) => {
   if (!configured()) return res.status(503).json({ error: 'not_configured' })
   const state = crypto.randomBytes(16).toString('hex')
-  // state несёт id инициатора: callback приходит из браузера без токена, и без этого
-  // было бы неизвестно, чьё подключение записывать.
+  // state carries the initiator's id: the callback arrives from the browser without a token,
+  // so without this there would be no way to tell whose connection to record.
   await kvSet('whoop:state:' + state, { at: Date.now(), userId: scopeOf(req) })
   const params = new URLSearchParams({
     client_id: process.env.WHOOP_CLIENT_ID,
@@ -215,9 +215,9 @@ router.get('/callback', async (req, res) => {
     if (!r.ok) return back(false)
     const d = await r.json()
     if (!d.refresh_token) return back(false)
-    // Свежее подключение: записываем токен + сразу кэшируем access_token (и НЕ наследуем dead).
-    // Под общим замком — чтобы фоновый refresh не затёр свежий токен (и не пометил dead).
-    if (!pending.userId) return back(false)   // старое состояние без владельца — не угадываем, чьё это
+    // A fresh connection: write the token and cache the access_token right away (and do NOT inherit dead).
+    // Under the shared lock — so a background refresh can't clobber the fresh token (or mark it dead).
+    if (!pending.userId) return back(false)   // old state with no owner — don't guess whose it is
     await withTokenLock(() => kvSetScoped(TOKENS_KEY, pending.userId, {
       refresh_token: d.refresh_token,
       access_token: d.access_token || null,
@@ -230,21 +230,21 @@ router.get('/callback', async (req, res) => {
 
 router.get('/status', requireAuth, async (req, res) => {
   const t = await kvGetScoped(TOKENS_KEY, scopeOf(req))
-  // Честно: помеченный dead токен (refresh упал с invalid_grant) = не подключён,
-  // чтобы UI предложил переподключение. Whoop при этом не дёргаем.
+  // Be honest: a token marked dead (its refresh failed with invalid_grant) means not
+  // connected, so the UI offers a reconnect. Whoop itself isn't called for this.
   res.json({ configured: configured(), connected: !!(t?.refresh_token && !t.dead) })
 })
 
-// Отключает СВОЮ интеграцию: ключ несёт id владельца данных, поэтому чужую задеть нельзя.
-// Гостю здесь делать нечего (у него нет своей ячейки) — его заодно отсекает app.js.
+// Disconnects YOUR OWN integration: the key carries the data owner's id, so nobody else's can be touched.
+// A guest has no business here (they have no slot of their own) — app.js turns them away as well.
 router.post('/disconnect', requireAuth, async (req, res) => {
   if (!scopeOf(req)) return res.status(403).json({ error: 'forbidden' })
-  // Под общим замком — чтобы параллельный refresh не воскресил удалённый токен.
+  // Under the shared lock — so a concurrent refresh can't resurrect the deleted token.
   await withTokenLock(() => kvDelScoped(TOKENS_KEY, scopeOf(req)), scopeOf(req))
   res.json({ ok: true })
 })
 
-// Свежие данные Whoop → форма для страницы «Здоровье»
+// Fresh Whoop data → shaped for the Health page
 router.get('/data', requireAuth, async (req, res) => {
   if (!configured()) return res.json({ connected: false })
   const userId = scopeOf(req)
@@ -257,13 +257,13 @@ router.get('/data', requireAuth, async (req, res) => {
     whoopGet('/v2/cycle?limit=1', access)
   ])
   let [rec, sleep, cycle] = await fetchAll(tok.access)
-  // Кэшированный access_token отвергнут (401) — принудительно обновим токен (требуя СВЕЖИЙ,
-  // отличный от отвергнутого) и повторим один раз.
+  // The cached access_token was rejected (401) — force a refresh (demanding a FRESH token,
+  // different from the rejected one) and retry once.
   if (rec === 'unauth' || sleep === 'unauth' || cycle === 'unauth') {
     tok = await getAccessToken({ force: true, staleAccess: tok.access, userId })
     if (!tok.access) return res.json({ connected: false, needsReauth: tok.error === 'reauth' })
     ;[rec, sleep, cycle] = await fetchAll(tok.access)
-    // Свежий токен всё ещё отвергнут API → подключение нужно пересоздать, а не отдавать нули.
+    // Even the fresh token is rejected by the API → the connection has to be re-created, not zeroed out.
     if (rec === 'unauth' || sleep === 'unauth' || cycle === 'unauth') {
       return res.json({ connected: false, needsReauth: true })
     }
@@ -271,7 +271,7 @@ router.get('/data', requireAuth, async (req, res) => {
 
   const r = rec?.records?.[0]?.score || {}
 
-  // Неделя восстановления — из реальных записей (от старых к новым)
+  // A week of recovery — built from the real records (oldest to newest)
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1).replace('.', '')
   const week = (rec?.records || [])
     .filter(x => x.score?.recovery_score != null)
@@ -280,8 +280,8 @@ router.get('/data', requireAuth, async (req, res) => {
       recovery: Math.round(x.score.recovery_score)
     }))
     .reverse()
-  // Берём последний НОЧНОЙ сон, а не дневной (nap): Whoop пишет дневной сон
-  // отдельной записью, и при limit=1 он может перекрыть основной ночной сон.
+  // Take the last NIGHT sleep, not a nap: Whoop stores a nap as a record of its
+  // own, and with limit=1 it can shadow the main night's sleep.
   const sleepRecords = sleep?.records || []
   const sleepRec = sleepRecords.find(x => x.nap !== true) || sleepRecords[0] || {}
   const sRec = sleepRec.score || {}
@@ -292,7 +292,7 @@ router.get('/data', requireAuth, async (req, res) => {
   const slept = ms2h((stage.total_light_sleep_time_milli || 0) + (stage.total_slow_wave_sleep_time_milli || 0) + (stage.total_rem_sleep_time_milli || 0))
   const needed = ms2h((need.baseline_milli || 0) + (need.need_from_sleep_debt_milli || 0) + (need.need_from_recent_strain_milli || 0))
 
-  // Реальные стадии сна (минуты) — чтобы полоса фаз обновлялась, а не показывала демо
+  // Real sleep stages (minutes) — so the phase bar updates instead of showing demo data
   const ms2min = (m) => Math.round((m || 0) / 60000)
   const stages = {
     awake: ms2min(stage.total_awake_time_milli),
@@ -305,8 +305,8 @@ router.get('/data', requireAuth, async (req, res) => {
     try { return new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Moscow', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(iso)) } catch { return null }
   }
 
-  // Дневной сон (nap) — отдельной плашкой. Показываем только если он свежее
-  // ночного сна (т.е. был сегодня после пробуждения), а не устаревший из истории.
+  // A nap gets a tile of its own. Show it only if it is more recent than the night's
+  // sleep (i.e. it happened today after waking up), not a stale one out of the history.
   const napRec = sleepRecords.find(x => x.nap === true && (!sleepRec.start || new Date(x.start) > new Date(sleepRec.start)))
   const napStage = napRec?.score?.stage_summary || {}
   const nap = napRec ? {

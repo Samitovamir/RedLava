@@ -1,9 +1,9 @@
-// Схематичная диаграмма сна по часам.
-// Whoop отдаёт ИТОГИ по стадиям (сколько всего лёгкого/глубокого/REM/бодрствования)
-// и время засыпания/пробуждения, но НЕ поминутную раскладку. Поэтому строим
-// правдоподобную картину ночи из реальных итогов: глубокий сон — ближе к началу,
-// REM — ближе к утру, короткие пробуждения между циклами. Это наглядно и честно
-// (помечаем как «примерная картина»), точные минуты каждого часа Whoop не даёт.
+// A schematic hour-by-hour chart of the night's sleep.
+// Whoop hands back stage TOTALS (total light/deep/REM/awake time) and the times you fell
+// asleep and woke up, but NOT a minute-by-minute breakdown. So we build a plausible picture
+// of the night out of the real totals: deep sleep nearer the start, REM nearer the morning,
+// short wakes between cycles. That is both readable and honest (we label it an "approximate
+// picture") — Whoop simply doesn't give the exact minutes within each hour.
 
 export const hhmmToMin = (s) => {
   if (!s || typeof s !== 'string') return null
@@ -15,7 +15,7 @@ export const minToHHMM = (min) => {
   return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
 }
 
-// Порядок «глубины» для оси Y (сверху вниз): бодрствование → REM → лёгкий → глубокий
+// The "depth" order for the Y axis (top to bottom): awake → REM → light → deep
 export const STAGE_LEVEL = { awake: 0, rem: 1, light: 2, deep: 3 }
 
 export function buildHypnogram(stages, startHHMM) {
@@ -24,9 +24,9 @@ export function buildHypnogram(stages, startHHMM) {
   const sleepMin = light + deep + rem
   if (sleepMin <= 0) return null
 
-  const n = Math.max(3, Math.min(6, Math.round(sleepMin / 90)))   // циклы сна ~90 мин
+  const n = Math.max(3, Math.min(6, Math.round(sleepMin / 90)))   // sleep cycles run ~90 min
 
-  // Шаблон с весами: глубокий тяжелее в начале, REM — к утру, между циклами — пробуждение
+  // A weighted template: deep weighs more early on, REM towards morning, a wake between cycles
   const tpl = []
   for (let i = 0; i < n; i++) {
     tpl.push({ stage: 'light', w: 1 })
@@ -49,7 +49,7 @@ export function buildHypnogram(stages, startHHMM) {
   }).filter(s => s.end - s.start > 0.3)
 
   const startMin = hhmmToMin(startHHMM) ?? 0
-  // Часовые отметки по реальному времени ночи
+  // Hour marks against the real clock time of the night
   const ticks = []
   const firstHour = Math.ceil(startMin / 60) * 60
   for (let m = firstHour; m <= startMin + t; m += 60) {

@@ -6,12 +6,12 @@ import { isGuest } from '../api/authFetch.js'
 import { useT } from '../context/LanguageContext.jsx'
 
 /*
-  Подсказка новичку на Главной: пока НИ ОДНА интеграция не подключена, дашборду нечего
-  показывать — а попасть к подключениям с Главной было негде (блоки Спорт/Здоровье/Питание
-  с Главной убраны намеренно, а подключения живут в Настройках).
+  A hint for newcomers on Home: while NOT A SINGLE integration is connected the dashboard has
+  nothing to show — and there was no way to reach the connections from Home (the Sport, Health
+  and Nutrition blocks were deliberately taken off Home, and the connections live in Settings).
 
-  Показывается только при полностью пустом наборе интеграций и исчезает сама, как только
-  подключено хоть что-то. У владельца, у которого всё подключено, Главная не меняется.
+  It appears only when the set of integrations is completely empty and disappears on its own
+  the moment anything is connected. For an owner who has everything connected, Home is unchanged.
 */
 
 const SNOOZE_KEY = 'albert-connect-prompt-off'
@@ -33,8 +33,8 @@ const snoozed = () => {
 
 export default function ConnectPrompt() {
   const navigate = useNavigate()
-  // 'checking' — ничего не рисуем: мигнуть подсказкой у подключённого человека хуже,
-  // чем показать её на полсекунды позже.
+  // 'checking' — render nothing: flashing the hint at someone who is already connected is
+  // worse than showing it half a second later.
   const [state, setState] = useState('checking')
   const t = useT({
     ru: {
@@ -52,15 +52,15 @@ export default function ConnectPrompt() {
   })
 
   useEffect(() => {
-    // Гостю подключать нечего: он смотрит демо-данные, а бэкенд его подключения не пускает.
+    // A guest has nothing to connect: they are looking at demo data, and the backend does not let them connect.
     if (isGuest() || snoozed()) { setState('hide'); return }
     let alive = true
     Promise.all(STATUS_URLS.map(u =>
       fetch(u).then(r => (r.ok ? r.json() : null)).catch(() => null)
     )).then(list => {
       if (!alive) return
-      // Сервер не ответил (локальный бэкенд не поднят, сеть отвалилась) — молчим,
-      // иначе подсказка вылезет у того, у кого всё подключено.
+      // The server did not answer (the local backend is not running, the network dropped) —
+      // stay quiet, otherwise the hint pops up for someone who has everything connected.
       if (list.every(d => d === null)) { setState('hide'); return }
       setState(list.some(d => d?.connected) ? 'hide' : 'show')
     })

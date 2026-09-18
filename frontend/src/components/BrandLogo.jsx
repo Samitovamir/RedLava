@@ -1,13 +1,13 @@
 import { useLang } from '../context/LanguageContext.jsx'
 
-// Бренд-марка RED LAVA (щит + «REDLAVA») для шапки Главной.
-// Источник — фирменный логотип команды по триатлону (лого2.cdr → PNG
-// с прозрачным фоном). Слоган «TRIATHLON TEAM» в марке намеренно обрезан:
-// на размере шапки он превращается в нечитаемую кашу из 3–4 px.
+// The RED LAVA brand mark (shield + "REDLAVA") for the Home header.
+// Its source is the triathlon team's official logo (лого2.cdr → PNG with a
+// transparent background). The "TRIATHLON TEAM" tagline is deliberately cropped
+// out of the mark: at header size it turns into unreadable 3–4 px mush.
 //
-// На СВЕТЛЫХ темах лого «парит» прозрачным — чёрно-красные элементы
-// читаются на светлом фоне. На ТЁМНЫХ — садится на белую плашку-патч
-// (токены --brand-badge-* из index.css), иначе «LAVA» и остриё щита тонут.
+// On the LIGHT themes the logo floats transparent — its black-and-red elements
+// read well against a light background. On the DARK ones it sits on a white
+// patch (the --brand-badge-* tokens in index.css), or "LAVA" and the shield's tip drown.
 export default function BrandLogo({ size = 56, className = '' }) {
   const { lang } = useLang()
   const alt = lang === 'en' ? 'RED LAVA Triathlon Team' : 'RED LAVA — команда по триатлону'

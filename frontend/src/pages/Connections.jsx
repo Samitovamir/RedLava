@@ -7,9 +7,9 @@ import { pushSync } from '../utils/sync.js'
 import { Button, Field, SectionHeader, StatusPill } from '../ui'
 
 /*
-  Страница «Подключения».
-   - Google Календарь — ЖИВОЕ подключение (OAuth через сервер).
-   - Whoop / Garmin — пока демо-режим (включим следующими шагами).
+  The "Connections" page.
+   - Google Calendar — a LIVE connection (OAuth through the server).
+   - Whoop / Garmin — demo mode for now (we'll switch them on in the next steps).
 */
 
 const STORE = 'albert-connections'
@@ -73,7 +73,7 @@ const SERVICES = [
   }
 ]
 
-// Английские варианты названий/описаний сервисов (русские — в SERVICES выше).
+// English variants of the service names/descriptions (the Russian ones are in SERVICES above).
 const SERVICES_EN = {
   google: { name: 'Google Calendar', desc: 'Events, meetings and reminders — will appear in the “Schedule” section.' },
   whoop:  { name: 'Whoop',           desc: 'Recovery, sleep, HRV and resting heart rate — “Health” section.' },
@@ -159,7 +159,7 @@ export default function Connections() {
     }
   })
   const { lang } = useLang()
-  // Локализованное имя/описание сервиса (EN-вариант или русский из SERVICES).
+  // Localized service name/description (the EN variant, or the Russian one from SERVICES).
   const svcName = (svc) => (lang === 'en' && SERVICES_EN[svc.id]) ? SERVICES_EN[svc.id].name : svc.name
   const svcDesc = (svc) => (lang === 'en' && SERVICES_EN[svc.id]) ? SERVICES_EN[svc.id].desc : svc.desc
   const [conns, setConns] = useState(() => {
@@ -176,13 +176,10 @@ export default function Connections() {
   const [resetBusy, setResetBusy] = useState(false)
   const [logoutAllBusy, setLogoutAllBusy] = useState(false)
 
-  // «Выйти со всех устройств»: мгновенно отзывает ВСЕ выданные токены (свои и чужие) на
-  // сервере — если телефон потерялся или пароль мог кому-то попасться на глаза, не нужно
-  // менять сам пароль. Разлогинивает и это устройство — дальше вход по паролю заново.
-  // Отзывает сессии этого аккаунта на ДРУГИХ устройствах. Текущее остаётся внутри:
-  // сервер вместе с подтверждением присылает свежий токен с новой эпохой, и мы его
-  // сохраняем. Иначе человек, который чистит сессии украденного телефона, выкидывал бы
-  // заодно и тот ноутбук, с которого это делает.
+  // Revokes this account's sessions on OTHER devices. The current one stays signed in: along
+  // with the confirmation the server sends a fresh token carrying the new session epoch, and
+  // we store it. Otherwise someone clearing the sessions of a stolen phone would throw out
+  // the very laptop they're doing it from as well.
   async function logoutAll() {
     if (logoutAllBusy) return
     setLogoutAllBusy(true)
@@ -194,11 +191,11 @@ export default function Connections() {
     window.location.reload()
   }
 
-  // Сброс СВОИХ данных: отключить все свои интеграции и стереть свой блоб синхронизации.
-  // PIN здесь был от однопользовательской версии, где кнопка распоряжалась единственными
-  // данными в системе. Теперь каждый распоряжается только своей ячейкой (эндпоинты
-  // disconnect работают по id владельца), и секрет на собственные данные лишний —
-  // достаточно явного подтверждения, чтобы не нажать случайно.
+  // Resetting YOUR OWN data: disconnect all of your integrations and erase your sync blob.
+  // The PIN here was left over from the single-user version, where this button disposed of the
+  // only data in the system. Now everyone disposes only of the account's own slot (the
+  // disconnect endpoints work by owner id), so a secret guarding your own data is redundant —
+  // an explicit confirmation is enough to keep it from being pressed by accident.
   async function submitReset(e) {
     e.preventDefault()
     setResetErr('')
@@ -211,21 +208,21 @@ export default function Connections() {
       fetch('/api/labs/disconnect', { method: 'POST' }).catch(() => {}),
       fetch('/api/sync/state', { method: 'DELETE' }).catch(() => {})
     ])
-    // Тем же списком исключений, что и при смене аккаунта: вход, устройство и его
-    // настройки не личные данные и теряться при сбросе не должны.
+    // With the same exclusion list as switching accounts: the sign-in, the device and its
+    // settings are not personal data and must not be lost on a reset.
     wipePersonalData()
     window.location.reload()
   }
 
   const guest = isGuest()
-  // Действия ниже — личные: человек управляет своими сессиями и своими данными.
-  // Гостю они недоступны: у демо нет ни аккаунта, ни своих данных.
+  // The actions below are personal: each person manages their own sessions and their own data.
+  // A guest can't use them: the demo has neither an account nor any data of its own.
   const userName = getUsername()
 
-  // Сменить аккаунт: чистим токен и роль, перезагружаем — AuthGate покажет экран входа
-  // Перед сменой аккаунта дослать несохранённое НА СЕРВЕР, пока мы ещё под своим токеном:
-  // при входе другого человека локальные данные этого аккаунта стираются (accountData.js),
-  // и всё, что не успело уехать, было бы потеряно.
+  // Switch account: clear the token and role, reload — AuthGate will show the sign-in screen.
+  // Before switching, push anything unsaved TO THE SERVER while we still hold our own token:
+  // when another person signs in, this account's local data is wiped (accountData.js), and
+  // whatever hadn't made it out yet would be lost.
   async function switchAccount() {
     await pushSync().catch(() => {})
     clearToken()
@@ -236,7 +233,7 @@ export default function Connections() {
     try { localStorage.setItem(STORE, JSON.stringify(conns)) } catch { /* ignore */ }
   }, [conns])
 
-  // Возврат из Google OAuth + актуальный статус живых сервисов
+  // Returning from Google OAuth + the current status of the live services
   useEffect(() => {
     const p = new URLSearchParams(window.location.search)
     const names = { google: t.googleName, whoop: t.whoopName }
@@ -263,12 +260,12 @@ export default function Connections() {
         const r = await fetch(svc.endpoints.url)
         if (r.status === 503) { setNotice(`${svcName(svc)} ${t.noticeNotConfigured}`); setBusy(null); return }
         const d = await r.json()
-        if (d.url) { window.location.href = d.url; return } // уходим на экран входа Google
+        if (d.url) { window.location.href = d.url; return } // off to the Google sign-in screen
         setNotice(t.noticeStartFail); setBusy(null)
       } catch { setNotice(t.noticeNoServer); setBusy(null) }
       return
     }
-    // демо-режим (Whoop/Garmin пока)
+    // demo mode (Whoop/Garmin for now)
     setBusy(svc.id)
     setTimeout(() => {
       setConns(c => ({ ...c, [svc.id]: { connected: true, account: `${svcName(svc)}` } }))
@@ -280,10 +277,10 @@ export default function Connections() {
 
   function startUrlForm(svc) {
     setOpenForm(svc.id)
-    // Подставляем ТОЛЬКО свою сохранённую ссылку. Раньше в поле по умолчанию падала
-    // вшитая ссылка на папку владельца с его анализами: бэкенд честно отдавал чужому
-    // url: null, а фронт подменял это наследством владельца — и участнику оставалось
-    // тапнуть «Подключить папку», чтобы разобрать ИИ чужие анализы у себя.
+    // Prefill ONLY this account's own saved link. The field used to default to a hard-coded
+    // link to the owner's folder of blood tests: the backend honestly returned url: null to
+    // anyone else, and the frontend filled that in with the owner's leftover link — leaving a
+    // member one tap on "Connect folder" away from parsing someone else's tests as their own.
     setUrlForm('')
     fetch(svc.endpoints.status).then(r => r.json()).then(d => setUrlForm(d.url || '')).catch(() => setUrlForm(''))
   }
@@ -339,7 +336,7 @@ export default function Connections() {
   async function disconnect(svc) {
     if (svc.live) {
       try { await fetch(svc.endpoints.disconnect, { method: 'POST' }) } catch { /* ignore */ }
-      // стираем загруженные данные сервиса, чтобы они не висели после отвязки
+      // wipe the data downloaded from the service so it doesn't linger after disconnecting
       try {
         if (svc.id === 'google') localStorage.removeItem('albert-events')
         if (svc.id === 'whoop') localStorage.removeItem('albert-whoop-live')
@@ -347,7 +344,7 @@ export default function Connections() {
         if (svc.id === 'yandex') { localStorage.removeItem('albert-labs'); localStorage.removeItem('albert-labs-synced') }
       } catch { /* ignore */ }
       setConns(c => ({ ...c, [svc.id]: { connected: false, configured: c[svc.id]?.configured } }))
-      // перезагружаем, чтобы данные исчезли везде (расписание, здоровье, спорт, ИИ)
+      // reload so the data disappears everywhere (schedule, health, sports, AI)
       setTimeout(() => window.location.reload(), 250)
       return
     }

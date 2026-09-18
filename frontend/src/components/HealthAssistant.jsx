@@ -9,10 +9,10 @@ import { useLang, useT } from '../context/LanguageContext.jsx'
 import MicButton from './MicButton.jsx'
 
 /*
-  Плавающий ассистент ИИ в углу страницы «Здоровье» (только здесь).
-  Свёрнут — круглая кнопка снизу-справа; по клику разворачивается в поле ввода с лентой
-  сообщений. Знает текущую вкладку (Активность/Показатели) и весь снимок дашборда; через
-  /api/ai/agent реально умеет создавать/переносить события, писать письма, копить память.
+  A floating AI assistant in the corner of the "Health" page (only there).
+  Collapsed, it's a round button in the bottom right; a click expands it into an input field
+  with a message feed. It knows the current tab (Activity/Metrics) and the whole dashboard
+  snapshot; through /api/ai/agent it really can create and move events, write emails, build memory.
 */
 export default function HealthAssistant({ tab = 'activity' }) {
   const { lang } = useLang()
@@ -39,7 +39,7 @@ export default function HealthAssistant({ tab = 'activity' }) {
   const [input, setInput] = useState('')
   const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(false)
-  const [kb, setKb] = useState(0)   // высота клавиатуры (iOS): поднимаем панель над ней
+  const [kb, setKb] = useState(0)   // keyboard height (iOS): we lift the panel above it
   const endRef = useRef(null)
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, loading])
@@ -49,9 +49,9 @@ export default function HealthAssistant({ tab = 'activity' }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
-  // Клавиатура на телефоне перекрывает ввод (position:fixed считает от layout-вьюпорта,
-  // а не от видимой части). Через visualViewport узнаём, насколько её подняла клавиатура,
-  // и сдвигаем панель ровно над ней — поле ввода всегда видно.
+  // On a phone the keyboard covers the input (position:fixed measures from the layout viewport,
+  // not from the visible part). visualViewport tells us how far the keyboard pushed it up, and
+  // we move the panel to sit right above it — the input field is always in view.
   useEffect(() => {
     const vv = window.visualViewport
     if (!vv) return
@@ -132,8 +132,8 @@ export default function HealthAssistant({ tab = 'activity' }) {
                 <div ref={endRef} />
               </div>
             )}
-            {/* Голос — основной способ: микрофон надиктовывает и сразу отправляет.
-                Текстовое поле остаётся как запасной вариант. */}
+            {/* Voice is the main way in: the mic dictates and sends straight away.
+                The text field stays as a fallback. */}
             <div className="ha-input-row">
               <MicButton primary onText={txt => send((input ? input.trim() + ' ' : '') + txt)} />
               <input className="ha-input" placeholder={t.placeholder} value={input}

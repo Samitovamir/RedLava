@@ -1,38 +1,38 @@
-// Расчёт целевого КБЖУ + хранилища профиля, плана меню, вкусов и списка покупок.
-// Цель считаем детерминированно (формула Миффлина-Сан Жеора), ИИ — только подбор блюд.
+// Calorie/macro targets plus the stores for the profile, meal plan, tastes and shopping list.
+// The target is computed deterministically (Mifflin-St Jeor); the AI only does meal suggestions.
 
 import { mskNow, mskDateKey } from './time.js'
 
 export const PROFILE_KEY = 'albert-nutrition-profile'
-export const SHOPPING_KEY = 'albert-shopping-2'   // v2: копим в базовых единицах, показываем продуктами
+export const SHOPPING_KEY = 'albert-shopping-2'   // v2: accumulated in base units, displayed as products
 export const TASTE_KEY = 'albert-taste'
 export const PLAN_KEY = 'albert-meal-plan'
 
-// Профиль по умолчанию — НЕЙТРАЛЬНАЯ заглушка, а не чьи-то реальные данные:
-// раньше здесь стояли параметры владельца, и каждый новый аккаунт получал его калории.
-// Пока человек не заполнил свой профиль, считаем по этим усреднённым числам и помечаем
-// результат флагом isPlaceholder, чтобы интерфейс мог честно сказать «это прикидка».
-// Уровень активности не выбирается: тренировки берём из Garmin (реальный расход).
+// The default profile is a NEUTRAL placeholder, not anyone's real data: it used to hold the
+// owner's parameters, so every new account inherited his calorie target.
+// Until someone fills in their own profile we compute from these averaged numbers and flag
+// the result with isPlaceholder, so the UI can honestly say "this is a rough estimate".
+// Activity level is not part of it: workouts come from Garmin (real expenditure).
 export const DEFAULT_PROFILE = {
   weight: 75, height: 175, age: 35, sex: 'male',
   goal: 'maintain'
 }
 
-// Множитель повседневной активности (быт без спорта): обмен покоя × NEAT.
-// Сами тренировки НЕ зашиты сюда — они приходят отдельно из Garmin (реальные калории).
+// Everyday activity multiplier (daily life without sport): resting metabolism × NEAT.
+// Workouts themselves are NOT baked in here — they arrive separately from Garmin (real calories).
 const NEAT_MULT = 1.35
 
-// Сколько человек тренируется — спрашиваем в анкете при первом заходе.
-// ВАЖНО: этот множитель применяется ТОЛЬКО когда Garmin не подключён. Если часы есть,
-// реальные калории тренировки приходят из них и добавляются сверху (dynamicTarget) —
-// учитывать спорт ещё и множителем значило бы посчитать его дважды.
+// How often the person trains — asked in the questionnaire on first sign-in.
+// IMPORTANT: this multiplier applies ONLY when Garmin is not connected. With a watch, the real
+// workout calories come from it and are added on top (dynamicTarget) — accounting for sport in
+// the multiplier as well would count it twice.
 export const ACTIVITY_LEVELS = [
   { key: 'none',   mult: 1.20, label: 'Почти не тренируюсь',  labelEn: 'Rarely train' },
   { key: 'light',  mult: 1.35, label: '1–2 раза в неделю',    labelEn: '1–2 times a week' },
   { key: 'medium', mult: 1.50, label: '3–4 раза в неделю',    labelEn: '3–4 times a week' },
   { key: 'high',   mult: 1.65, label: '5 и больше',           labelEn: '5 or more' },
 ]
-// Профиль без поля activity (все, кто был до анкеты) считается как раньше — 1.35.
+// A profile with no activity field (everyone from before the questionnaire) is computed as before — 1.35.
 const activityMult = (key) => (ACTIVITY_LEVELS.find(a => a.key === key) || {}).mult || NEAT_MULT
 
 export const GOALS = [
@@ -41,21 +41,21 @@ export const GOALS = [
   { key: 'gain', label: 'Набрать массу', delta: 300 }
 ]
 
-// isPlaceholder: человек ещё не заполнял профиль — цифры считаются по усреднённой заглушке.
+// isPlaceholder: the profile has never been filled in — the numbers come from the averaged placeholder.
 export function loadProfile() {
   try { const s = localStorage.getItem(PROFILE_KEY); if (s) return { ...DEFAULT_PROFILE, ...JSON.parse(s), isPlaceholder: false } } catch { /* ignore */ }
   return { ...DEFAULT_PROFILE, isPlaceholder: true }
 }
 export function saveProfile(p) { try { localStorage.setItem(PROFILE_KEY, JSON.stringify(p)) } catch { /* ignore */ } }
 
-// BMR по Миффлину-Сан Жеору
+// BMR per Mifflin-St Jeor
 export function mifflinBMR({ weight, height, age, sex }) {
   return 10 * weight + 6.25 * height - 5 * age + (sex === 'female' ? -161 : 5)
 }
 
-// Целевое КБЖУ из профиля (с защитой от пустых/мусорных полей).
-// hasGarmin=true → спорт придёт реальными калориями из часов, поэтому база считается
-// по «быту без спорта» (1.35). Без часов — по ответу из анкеты, сколько человек тренируется.
+// Target calories and macros from the profile (guarding against empty/garbage fields).
+// hasGarmin=true → sport will arrive as real calories from the watch, so the baseline uses
+// "daily life without sport" (1.35). With no watch, use how often the questionnaire says they train.
 export function computeTarget(profile, opts = {}) {
   const { hasGarmin = false } = opts
   const weight = Math.min(250, Math.max(30, +profile.weight || 70))
@@ -66,14 +66,14 @@ export function computeTarget(profile, opts = {}) {
   const goal = GOALS.find(g => g.key === profile.goal) || GOALS[1]
   const neat = bmr * (hasGarmin ? NEAT_MULT : activityMult(profile.activity))
   const kcal = Math.round((neat + goal.delta) / 10) * 10
-  // Белок: 2.0 г/кг при наборе, иначе 1.8; жир ~27% ккал; остальное — углеводы
+  // Protein: 2.0 g/kg when gaining, otherwise 1.8; fat ~27% of kcal; the rest is carbs
   const protein = Math.round(weight * (profile.goal === 'gain' ? 2.0 : 1.8))
   const fat = Math.round((kcal * 0.27) / 9)
   const carb = Math.max(0, Math.round((kcal - protein * 4 - fat * 9) / 4))
   return { kcal, protein, fat, carb, bmr: Math.round(bmr), neat: Math.round(neat) }
 }
 
-// Приёмы пищи: доля от дневной цели + ориентир по времени (для напоминания «оцени блюдо»)
+// Meals: share of the daily target plus a rough time of day (for the "rate this dish" reminder)
 export const MEALS = [
   { key: 'Завтрак', share: 0.3, hour: 9, iconKey: 'meal-breakfast' },
   { key: 'Обед', share: 0.35, hour: 14, iconKey: 'meal-lunch' },
@@ -82,7 +82,7 @@ export const MEALS = [
 ]
 export const MEAL_KEYS = MEALS.map(m => m.key)
 
-// Текущий приём пищи по времени суток (МСК). Пороги: <11 завтрак, <15:30 обед, <18:30 перекус, иначе ужин.
+// Current meal by time of day (Moscow time). Cutoffs: <11 breakfast, <15:30 lunch, <18:30 snack, otherwise dinner.
 export function currentMeal() {
   const now = mskNow()
   const h = now.getHours() + now.getMinutes() / 60
@@ -101,17 +101,17 @@ export function mealTarget(dayTarget, share) {
   }
 }
 
-// ── Динамическая цель на день (тренировки + восстановление + перенос со вчера) ──
+// ── Dynamic daily target (workouts + recovery + carry-over from yesterday) ──
 export function loadGarmin() { try { const s = localStorage.getItem('albert-garmin-live'); if (s) return JSON.parse(s) } catch { /* ignore */ } return null }
 export function loadWhoop() { try { const s = localStorage.getItem('albert-whoop-live'); if (s) return JSON.parse(s) } catch { /* ignore */ } return null }
 
-// АКТИВНЫЕ калории тренировок за дату (из Garmin), т.е. СВЕРХ повседневного расхода.
-// Garmin отдаёт полные калории активности (включая обмен покоя за время тренировки),
-// поэтому вычитаем повседневный расход за минуты тренировки — иначе он бы посчитался
-// дважды: один раз в базе (BMR × NEAT за все 1440 мин суток), второй — здесь.
-// ВАЖНО: вычитаем по той же ставке, что заложена в базу — BMR × NEAT_MULT / 1440,
-// а не «голый» BMR/1440, иначе остаётся остаток ~(NEAT_MULT−1)×BMR/мин, который
-// раздувал дневную норму на ~100 ккал за час тренировки (баг «задвоения калорий»).
+// ACTIVE workout calories for a date (from Garmin), i.e. ON TOP of everyday expenditure.
+// Garmin reports the full activity calories (including resting metabolism during the workout),
+// so we subtract everyday expenditure for the workout's minutes — otherwise it would be
+// counted twice: once in the baseline (BMR × NEAT over all 1440 min of the day), once here.
+// IMPORTANT: subtract at the same rate the baseline uses — BMR × NEAT_MULT / 1440, not a
+// "bare" BMR/1440, or a remainder of ~(NEAT_MULT−1)×BMR per minute is left behind, which
+// inflated the daily target by ~100 kcal per hour of training (the "double-counted calories" bug).
 export function workoutKcal(garmin, dateKey, bmr = 0) {
   if (!garmin?.workouts) return 0
   const perMin = bmr > 0 ? (bmr * NEAT_MULT) / 1440 : 0
@@ -122,7 +122,7 @@ export function workoutKcal(garmin, dateKey, bmr = 0) {
   )
 }
 
-// Сколько примерно уже съедено в этот день: приёмы, оценённые или у которых время уже прошло
+// Roughly how much has already been eaten that day: meals that were rated or whose time has passed
 export function eatenKcal(plan, dateKey) {
   const day = plan[dateKey] || {}
   const todayKey = mskDateKey()
@@ -137,16 +137,16 @@ export function eatenKcal(plan, dateKey) {
   return Math.round(kcal)
 }
 
-// Динамическая цель на конкретный день.
-// База = обмен покоя + быт (без спорта). Сверху ПОЛНОСТЬЮ добавляем реальный активный
-// расход тренировок из Garmin — без срезающих клампов, чтобы тяжёлый день (длинная
-// тренировка на 1500+ ккал) не недодавал. Верхний предел — только защита от сбоя трекера.
+// Dynamic target for one specific day.
+// Baseline = resting metabolism + daily life (no sport). On top of it we add the real active
+// workout expenditure from Garmin IN FULL — no trimming clamps, so a hard day (a long workout
+// burning 1500+ kcal) isn't shortchanged. The upper bound only guards against a tracker glitch.
 export function dynamicTarget(base, profile, opts = {}) {
   const { burned = 0, hasGarmin = false, recovery = null, carry = 0 } = opts
   const trainDelta = hasGarmin ? Math.max(0, Math.min(3000, Math.round(burned))) : 0
-  // Восстановление НЕ трогает калории: расход уже регулируется тренировками (burned из Garmin),
-  // а урезать еду при плохом восстановлении вредно — телу нужны белок/энергия на восстановление.
-  // Оставляем только текстовую подсказку по нагрузке.
+  // Recovery does NOT touch the calories: expenditure is already driven by workouts (burned from
+  // Garmin), and cutting food when recovery is poor does harm — the body needs protein and energy
+  // to recover. All that's left here is a text hint about strain.
   const recDelta = 0
   let recNote = ''
   if (typeof recovery === 'number' && recovery > 0) {
@@ -163,8 +163,8 @@ export function dynamicTarget(base, profile, opts = {}) {
   return { kcal, protein, fat, carb: carbG, base: base.kcal, trainDelta, recDelta, recNote, carryDelta, burned }
 }
 
-// Мягкий перенос со вчера: переел → сегодня чуть меньше, недоел → чуть больше.
-// Считаем по ФАКТИЧЕСКИ съеденному (intake: фото-дневник/CalAI/довески), фолбэк — план.
+// Gentle carry-over from yesterday: overate → a bit less today, undereate → a bit more.
+// Based on what was ACTUALLY eaten (intake: photo diary/CalAI/extras), falling back to the plan.
 export function carryFromYesterday(plan, intake, dateKey, prevTargetKcal) {
   const prev = new Date(dateKey + 'T00:00:00'); prev.setDate(prev.getDate() - 1)
   const p = n => String(n).padStart(2, '0')
@@ -174,7 +174,7 @@ export function carryFromYesterday(plan, intake, dateKey, prevTargetKcal) {
   return Math.round((prevTargetKcal - ate) * 0.5)
 }
 
-// ── Вкусовые предпочтения ──
+// ── Taste preferences ──
 export const CUISINES = ['Русская', 'Итальянская', 'Грузинская', 'Японская', 'Средиземноморская', 'Азиатская', 'Мексиканская']
 
 export const DEFAULT_PREFS = {
@@ -182,19 +182,19 @@ export const DEFAULT_PREFS = {
   pork: true, beef: true, chicken: true, fish: true, seafood: true, dairy: true, eggs: true, mushrooms: true,
   cuisines: [], cookTime: 'any',  // 'fast' | 'any'
   allergies: '', avoid: '',
-  // Low-FODMAP — ЛЕЧЕБНАЯ диета по назначению врача, а не общая настройка: по умолчанию
-  // выключена. Раньше стояло true (одному человеку она действительно назначена), и каждый
-  // новый участник получал элиминационную диету на главном экране и в советах ИИ.
-  // Кому нужна — включает тумблером в шапке раздела «Питание».
+  // Low-FODMAP is a THERAPEUTIC diet a doctor prescribes, not a general setting, so it is off
+  // by default. It used to be true (one person really had been prescribed it), and every new
+  // member ended up with an elimination diet on the home screen and in the AI's advice.
+  // Anyone who needs it turns it on with the toggle in the Nutrition section header.
   fodmap: false,
-  // регулярные «довески», которые тоже идут в КБЖУ
+  // regular "extras" that also count toward calories and macros
   coffee: 'no',        // 'no' | 'black' | 'milk' | 'milk_sugar'
   coffeeCups: 1,
   proteinBar: false, proteinShake: false,
-  likes: [], dislikes: []          // копятся из обратной связи (названия блюд)
+  likes: [], dislikes: []          // built up from feedback (dish names)
 }
 
-// Быстрый учёт «довесков» (приблизительные КБЖУ за штуку/чашку)
+// Quick logging of "extras" (approximate calories and macros per item/cup)
 export const QUICK_ADD = [
   { key: 'coffee_milk', label: 'Кофе с молоком', kcal: 60, protein: 3, fat: 3, carb: 5 },
   { key: 'coffee_milk_sugar', label: 'Кофе с молоком и сахаром', kcal: 100, protein: 3, fat: 3, carb: 15 },
@@ -203,10 +203,10 @@ export const QUICK_ADD = [
   { key: 'protein_shake', label: 'Протеиновый коктейль', kcal: 160, protein: 27, fat: 3, carb: 8 }
 ]
 
-// FODMAP-светофор: уровень → подпись + цвет (токены статуса). null, если уровня нет.
-// Язык по умолчанию — текущий язык интерфейса. LanguageProvider держит его в <html lang>,
-// а fodmapMeta зовут из десятка мест, которые lang не передают — и английский интерфейс
-// получал русские подписи «Высокий/Умеренный/Низкий».
+// FODMAP traffic light: level → label + color (status tokens). null when there is no level.
+// The default language is the current UI language. LanguageProvider keeps it in <html lang>,
+// and fodmapMeta is called from a dozen places that don't pass lang — so the English UI was
+// getting the Russian labels «Высокий/Умеренный/Низкий».
 const uiLang = () => {
   try { return document.documentElement.lang === 'en' ? 'en' : 'ru' } catch { return 'ru' }
 }
@@ -218,17 +218,17 @@ export function fodmapMeta(band, lang = uiLang()) {
   return null
 }
 
-// Грубая оценка FODMAP по названию/составу — для уже залогированной еды без метки ИИ.
+// Rough FODMAP guess from the name/ingredients — for already logged food with no AI label.
 const FOD_HIGH = [['чеснок', 'чеснок'], ['лук', 'лук'], ['пшениц', 'пшеница'], ['хлеб', 'хлеб'], ['булк', 'выпечка'], ['паста', 'паста'], ['макарон', 'макароны'], ['блин', 'пшеница (блин)'], ['кесадиль', 'пшеница (кесадилья)'], ['тортиль', 'тортилья'], ['лаваш', 'лаваш'], ['пельмен', 'пшеница'], ['вареник', 'пшеница'], ['фасол', 'бобовые'], ['бобов', 'бобовые'], ['горох', 'горох'], ['чечевиц', 'чечевица'], ['нут', 'нут'], ['молоко', 'лактоза'], ['сливочн', 'сливки'], ['сливк', 'сливки'], ['сметан', 'сметана'], ['сгущ', 'сгущёнка'], ['йогурт', 'лактоза'], ['мороженое', 'лактоза'], ['яблок', 'яблоко'], ['груш', 'груша'], ['манго', 'манго'], ['медов', 'мёд'], ['гриб', 'грибы'], ['спаржа', 'спаржа'], ['цветная капуст', 'цветная капуста']]
 const FOD_MOD = [['авокадо', 'авокадо'], ['батат', 'батат'], ['свекл', 'свёкла'], ['кукуруз', 'кукуруза'], ['брокколи', 'брокколи'], ['сельдер', 'сельдерей'], ['вишн', 'вишня'], ['черешн', 'черешня'], ['изюм', 'изюм'], ['кешью', 'кешью'], ['фисташ', 'фисташки']]
-// Оценка по НАЗВАНИЮ (items не берём — ИИ мог их додумать и дать ложные срабатывания, напр. «лук» в говядине).
+// Guess from the NAME only (we skip items — the AI may have invented them and caused false positives, e.g. onion in a beef dish).
 function guessFodmap(name) {
   const hay = (name || '').toLowerCase().replace(/ё/g, 'е')
   for (const [k, label] of FOD_HIGH) if (hay.includes(k)) return { band: 'high', reason: label }
   for (const [k, label] of FOD_MOD) if (hay.includes(k)) return { band: 'mod', reason: label }
   return { band: 'low', reason: '' }
 }
-// Уровень FODMAP записи: метка от ИИ если есть, иначе оценка по названию (estimated: true).
+// FODMAP level of an entry: the AI's label when there is one, otherwise a guess from the name (estimated: true).
 export function entryFodmap(entry) {
   if (!entry) return null
   if (entry.fodmap) return { band: entry.fodmap, reason: entry.fodmapReason || '', estimated: false }
@@ -242,17 +242,17 @@ export function loadPrefs() {
 }
 export function savePrefs(p) { try { localStorage.setItem(TASTE_KEY, JSON.stringify(p)) } catch { /* ignore */ } }
 
-// Запомнить реакцию на блюдо (из оценки)
+// Remember the reaction to a dish (from its rating)
 export function rememberDish(prefs, name, liked) {
   if (!name) return prefs
   const likes = new Set(prefs.likes || []), dislikes = new Set(prefs.dislikes || [])
   if (liked) { likes.add(name); dislikes.delete(name) } else { dislikes.add(name); likes.delete(name) }
-  // не разрастаемся бесконечно
+  // keep these from growing without bound
   const trim = arr => [...arr].slice(-30)
   return { ...prefs, likes: trim(likes), dislikes: trim(dislikes) }
 }
 
-// ── План меню на дни ──
+// ── Multi-day meal plan ──
 // plan[dateKey][mealKey] = { name, short, kcal, protein, fat, carb, ingredients, steps, chosenAt, rated, rating, feedback }
 export function loadPlan() {
   try { const s = localStorage.getItem(PLAN_KEY); if (s) return JSON.parse(s) } catch { /* ignore */ }
@@ -276,7 +276,7 @@ export function rateMeal(plan, dateKey, mealKey, rating, feedback) {
   return { ...plan, [dateKey]: day }
 }
 
-// Дни текущей недели (Пн–Вс) по московскому времени
+// Days of the current week (Mon–Sun) in Moscow time
 const WD = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
 const MONTHS = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек']
 const pad = n => String(n).padStart(2, '0')
@@ -285,7 +285,7 @@ const fmtKey = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate
 export function weekDays() {
   const todayKey = mskDateKey()
   const base = new Date(todayKey + 'T00:00:00')
-  const dow = (base.getDay() + 6) % 7  // Пн = 0
+  const dow = (base.getDay() + 6) % 7  // Mon = 0
   const mon = new Date(base); mon.setDate(base.getDate() - dow)
   const out = []
   for (let i = 0; i < 7; i++) {
@@ -296,7 +296,7 @@ export function weekDays() {
   return out
 }
 
-// Подсчёт калорий, уже выбранных на день
+// Total calories already picked for a day
 export function dayPlanned(plan, dateKey) {
   const day = plan[dateKey] || {}
   let kcal = 0, count = 0
@@ -304,7 +304,7 @@ export function dayPlanned(plan, dateKey) {
   return { kcal: Math.round(kcal), count }
 }
 
-// Найти первое блюдо, которое пора оценить (время приёма прошло, оценки ещё нет)
+// Find the first dish that is due for a rating (its meal time has passed, no rating yet)
 export function pendingRating(plan) {
   const todayKey = mskDateKey()
   const hour = mskNow().getHours()
@@ -321,7 +321,7 @@ export function pendingRating(plan) {
   return null
 }
 
-// ── Список покупок (копится за неделю; копим в базовых единицах, показываем продуктами) ──
+// ── Shopping list (builds up over the week; accumulated in base units, shown as products) ──
 const daysSince = iso => { try { return Math.floor((new Date(mskDateKey()) - new Date(iso)) / 86400000) } catch { return 0 } }
 export function loadShopping() {
   try {
@@ -339,10 +339,10 @@ export function saveShopping(list) { try { localStorage.setItem(SHOPPING_KEY, JS
 const normIng = s => String(s || '').trim().toLowerCase()
 const ru = n => String(n).replace('.', ',')
 
-// Кладовка: дома и так есть — в список покупок не добавляем
+// Pantry staples: already at home, so we don't add them to the shopping list
 const PANTRY_RE = /^(соль|перец|вода|специ|приправ|сахар ванил|ванилин)/i
 
-// Единица измерения → [базовая единица, множитель]
+// Unit of measure → [base unit, multiplier]
 const UNIT_MAP = {
   'мл': ['ml', 1], 'ml': ['ml', 1], 'миллилитр': ['ml', 1],
   'л': ['ml', 1000], 'l': ['ml', 1000], 'литр': ['ml', 1000], 'литра': ['ml', 1000], 'литров': ['ml', 1000],
@@ -355,9 +355,9 @@ const UNIT_MAP = {
   'стакан': ['ml', 200], 'стакана': ['ml', 200], 'стаканов': ['ml', 200]
 }
 
-// Канонизация названий: одинаковый продукт под разными именами → одно имя (чтобы не дублировался в списке).
-// Порядок важен: более узкие правила идут раньше общих.
-// (\w в JS не ловит кириллицу — используем [а-я]; clean уже в нижнем регистре и ё→е)
+// Canonical names: the same product under different names → one name (so it isn't listed twice).
+// Order matters: the narrower rules come before the general ones.
+// (\w in JS doesn't match Cyrillic, so we use [а-я]; clean is already lowercased with ё→е)
 const CANON = [
   { label: 'Томатная паста', re: /томатн[а-я]* паст|томат паст/ },
   { label: 'Помидоры', re: /помидор|томат/ },
@@ -399,12 +399,12 @@ const CANON = [
 function canonName(raw) {
   const clean = String(raw || '').toLowerCase().replace(/ё/g, 'е').replace(/\([^)]*\)/g, ' ').replace(/\d+[.,]?\d*\s*%/g, ' ').replace(/\s+/g, ' ').trim()
   for (const c of CANON) { if (c.re.test(clean)) return c.label }
-  // не нашли — оставляем как есть, но аккуратно (первая буква заглавная)
+  // no match — keep it as it came, just tidied up (first letter capitalized)
   const t = String(raw || '').trim()
   return t.charAt(0).toUpperCase() + t.slice(1)
 }
 
-// Привести ингредиент рецепта к {name, base, qty в базовой единице}; null = пропустить (кладовка)
+// Normalize a recipe ingredient to {name, base, qty in the base unit}; null = skip it (pantry staple)
 export function normalizeIngredient(ing) {
   const raw = String(ing.name || '').trim()
   if (!raw) return null
@@ -413,11 +413,11 @@ export function normalizeIngredient(ing) {
   const rawUnit = String(ing.unit || '').trim().toLowerCase().replace(/\s+/g, '')
   const qty = typeof ing.qty === 'number' ? ing.qty : null
   const m = UNIT_MAP[rawUnit]
-  if (qty == null || !m) return { name, base: '', qty: null }  // нет числа/неизвестная единица — просто продукт
+  if (qty == null || !m) return { name, base: '', qty: null }  // no number or an unknown unit — just the product
   return { name, base: m[0], qty: qty * m[1] }
 }
 
-// Добавить ингредиенты в список, суммируя одинаковые (имя + базовая единица)
+// Add ingredients to the list, summing matching ones (name + base unit)
 export function addToShopping(list, ingredients, from) {
   const items = list.items.map(x => ({ ...x }))
   ingredients.forEach(raw => {
@@ -430,32 +430,32 @@ export function addToShopping(list, ingredients, from) {
   return { ...list, items }
 }
 
-// Сколько ПОКУПАТЬ: округляем накопленное до товарных объёмов (0,5 л → 1 л и т.п.)
+// How much to BUY: round the accumulated amount up to retail sizes (0.5 l → 1 l and so on)
 export function formatProduct(it) {
   const { base, qty } = it
   if (qty == null) return '—'
   if (base === 'ml') {
-    const l = Math.ceil(qty / 500) / 2     // шаг 0,5 л, минимум 0,5 л
+    const l = Math.ceil(qty / 500) / 2     // 0.5 l steps, 0.5 l minimum
     return ru(l) + ' л'
   }
   if (base === 'pcs') return Math.ceil(qty) + ' шт'
   if (base === 'g') {
     if (qty >= 900) { const kg = Math.ceil(qty / 100) / 10; return ru(kg) + ' кг' }
-    return Math.ceil(qty / 100) * 100 + ' г'   // шаг 100 г
+    return Math.ceil(qty / 100) * 100 + ' г'   // 100 g steps
   }
   return '—'
 }
 
-// ── Съеденное за день: CalAI-скриншот (точно) или «довески» вручную ──
+// ── Intake for a day: a CalAI screenshot (exact) or "extras" entered by hand ──
 export const INTAKE_KEY = 'albert-intake'
 export function loadIntake() { try { const s = localStorage.getItem(INTAKE_KEY); if (s) return JSON.parse(s) } catch { /* ignore */ } return {} }
 export function saveIntake(o) { try { localStorage.setItem(INTAKE_KEY, JSON.stringify(o)) } catch { /* ignore */ } }
-// Записать итог дня из CalAI (авторитетно)
+// Record the day's total from CalAI (authoritative)
 export function setCalaiIntake(intake, dateKey, data) {
   return { ...intake, [dateKey]: { source: 'calai', kcal: data.kcal || 0, protein: data.protein || 0, fat: data.fat || 0, carb: data.carb || 0, items: data.items || [] } }
 }
-// Добавить «довесок» вручную (кофе, батончик…). Если день уже ведётся фото-дневником —
-// добавляем как его запись (суммируется), иначе legacy-режим manual.
+// Add an "extra" by hand (coffee, a bar…). If the day is already tracked by the photo diary,
+// add it as one of its entries (which get summed); otherwise use the legacy manual mode.
 export function addIntakeExtra(intake, dateKey, item) {
   if (intake[dateKey]?.source === 'photo') {
     return addPhotoIntake(intake, dateKey, { name: item.label || item.name, kcal: item.kcal || 0, protein: item.protein || 0, fat: item.fat || 0, carb: item.carb || 0, manual: true })
@@ -473,7 +473,7 @@ export function addIntakeExtra(intake, dateKey, item) {
 }
 export function clearDayIntake(intake, dateKey) { const n = { ...intake }; delete n[dateKey]; return n }
 
-// Съедено за день: точный итог (CalAI / фото-дневник) авторитетен; иначе оценка по плану + ручные довески
+// Eaten for the day: an exact total (CalAI / photo diary) wins; otherwise estimate from the plan + manual extras
 export function eatenForDay(plan, intake, dateKey) {
   const rec = intake?.[dateKey]
   if (rec?.source === 'calai' || rec?.source === 'photo') return Math.round(rec.kcal || 0)
@@ -482,18 +482,18 @@ export function eatenForDay(plan, intake, dateKey) {
   return Math.round(planned + extra)
 }
 
-// Сводка питания на СЕГОДНЯ для ИИ (статус/снимок/подбор на Главной). Считает ТО ЖЕ, что
-// показывает страница «Питание» (динамическая цель: база + тренировка + восстановление +
-// перенос со вчера, минус фактически съеденное) — один источник, чтобы ИИ и страница не
-// противоречили. hasData=false, если профиль/данные недоступны.
+// TODAY's nutrition summary for the AI (status/snapshot/meal suggestions on the home screen).
+// It computes THE SAME thing the Nutrition page shows (dynamic target: baseline + workout +
+// recovery + carry-over from yesterday, minus what was actually eaten) — one source, so the AI
+// and the page can't contradict each other. hasData=false when the profile/data is unavailable.
 export function nutritionToday() {
   try {
     const profile = loadProfile()
     const intake = loadIntake()
     const plan = loadPlan()
     const garmin = loadGarmin()
-    // База зависит от того, есть ли часы: с ними спорт придёт реальными калориями,
-    // без них — учитываем его множителем активности из анкеты.
+    // The baseline depends on whether there's a watch: with one, sport arrives as real
+    // calories; without one, we account for it through the questionnaire's activity multiplier.
     const base = computeTarget(profile, { hasGarmin: !!garmin })
     const whoop = loadWhoop()
     const today = mskDateKey()
@@ -508,15 +508,15 @@ export function nutritionToday() {
       : { protein: 0, fat: 0, carb: 0 }
     const remaining = Math.max(0, target.kcal - eaten)
     const goalLabel = (GOALS.find(g => g.key === profile.goal) || {}).label || profile.goal
-    // profileIsPlaceholder — анкета ещё не заполнена, цифры посчитаны по усреднённой
-    // заглушке. Интерфейсу это нужно, чтобы не выдавать такую цифру за личную норму.
+    // profileIsPlaceholder — the questionnaire hasn't been filled in, so the numbers come from
+    // the averaged placeholder. The UI needs this so it doesn't present one as a personal target.
     return { hasData: true, target, eaten, remaining, macros, goalLabel, profileIsPlaceholder: !!profile.isPlaceholder }
   } catch { return { hasData: false } }
 }
 
-// Человеческая строка «питание сегодня» для снимков ИИ: цель + СКОЛЬКО УЖЕ СЪЕДЕНО и сколько
-// осталось (а не только цель). Именно за счёт «съедено» меняется снимок → ИИ-статус
-// перегенерируется при каждом новом логе еды (ключ кэша зависит от снимка).
+// Human-readable "nutrition today" line for AI snapshots: the target plus HOW MUCH HAS BEEN
+// EATEN and how much is left (not just the target). It's the "eaten" part that changes the
+// snapshot → the AI status is regenerated on every new food log (the cache key depends on the snapshot).
 export function nutritionTodayLine() {
   const n = nutritionToday()
   if (!n.hasData) return 'Данные питания недоступны.'
@@ -527,14 +527,14 @@ export function nutritionTodayLine() {
   return `${goal} Уже съедено сегодня: ${eaten} ккал (белок ${macros.protein} г, жиры ${macros.fat} г, углеводы ${macros.carb} г). Осталось: ${remaining} ккал${needProtein > 0 ? `, белка добрать ещё ~${needProtein} г` : ''}.`
 }
 
-// ── Фото-дневник: записи приёмов за день (фото/штрих-код/этикетка/сохранённое/довесок) ──
-// Несколько записей за день суммируются. source:'photo' — авторитетный итог дня.
+// ── Photo diary: a day's meal entries (photo/barcode/label/saved dish/extra) ──
+// Several entries in one day are summed. source:'photo' is the authoritative day total.
 function rollupEntries(entries) {
   const sum = k => entries.reduce((s, e) => s + (e[k] || 0), 0)
   return {
     source: 'photo',
     kcal: Math.round(sum('kcal')), protein: Math.round(sum('protein')), fat: Math.round(sum('fat')), carb: Math.round(sum('carb')),
-    items: entries.map(e => ({ name: e.name, kcal: e.kcal })),   // плоский items — для обратной совместимости
+    items: entries.map(e => ({ name: e.name, kcal: e.kcal })),   // flat items — kept for backwards compatibility
     entries
   }
 }
@@ -565,7 +565,7 @@ export function updatePhotoEntry(intake, dateKey, id, patch) {
     : e)
   return { ...intake, [dateKey]: rollupEntries(entries) }
 }
-// Из КБЖУ на 100 г + граммы → запись приёма (штрих-код/этикетка)
+// From per-100 g calories and macros + a weight in grams → a meal entry (barcode/label)
 export function gramsToEntry(per100, grams, name) {
   const k = (grams || 0) / 100
   return {
@@ -576,7 +576,7 @@ export function gramsToEntry(per100, grams, name) {
   }
 }
 
-// ── Сохранённые блюда: быстрый повтор частых приёмов без новой фотографии (синкается) ──
+// ── Saved dishes: repeat a frequent meal quickly without taking a new photo (synced) ──
 export const SAVED_DISHES_KEY = 'albert-saved-dishes'
 export function loadSavedDishes() { try { const s = localStorage.getItem(SAVED_DISHES_KEY); if (s) return JSON.parse(s) } catch { /* ignore */ } return [] }
 export function saveSavedDishes(list) { try { localStorage.setItem(SAVED_DISHES_KEY, JSON.stringify(list)) } catch { /* ignore */ } }
@@ -588,13 +588,13 @@ export function addSavedDish(list, dish) {
 }
 export function removeSavedDish(list, id) { return (list || []).filter(d => d.id !== id) }
 
-// ── Миниатюры фото-дневника: ОТДЕЛЬНЫЙ ключ, НЕ синкается (большой base64) ──
+// ── Photo diary thumbnails: a SEPARATE key, NOT synced (large base64) ──
 export const INTAKE_THUMBS_KEY = 'albert-intake-thumbs'
 export function loadThumbs() { try { const s = localStorage.getItem(INTAKE_THUMBS_KEY); if (s) return JSON.parse(s) } catch { /* ignore */ } return {} }
 export function saveThumbs(o) { try { localStorage.setItem(INTAKE_THUMBS_KEY, JSON.stringify(o)) } catch { /* ignore */ } }
 export function setThumb(id, dataUrl) { const o = loadThumbs(); o[id] = dataUrl; saveThumbs(o) }
 export function getThumb(id) { return loadThumbs()[id] || null }
-// Держим миниатюры только за сегодня+вчера (записи дневника) + миниатюры сохранённых блюд
+// Keep thumbnails only for today and yesterday (diary entries), plus those of saved dishes
 export function pruneIntakeThumbs(intake, savedDishes = []) {
   const p = n => String(n).padStart(2, '0')
   const y = mskNow(); y.setDate(y.getDate() - 1)
@@ -604,24 +604,24 @@ export function pruneIntakeThumbs(intake, savedDishes = []) {
     if (dateKey < yKey) continue
     ;(rec?.entries || []).forEach(e => { if (e.id) keep.add(e.id) })
   }
-  ;(savedDishes || []).forEach(d => { if (d.id) keep.add(d.id) })   // сохранённые блюда держат фото долго
+  ;(savedDishes || []).forEach(d => { if (d.id) keep.add(d.id) })   // saved dishes keep their photos for a long time
   const thumbs = loadThumbs(); let changed = false
   for (const id of Object.keys(thumbs)) { if (!keep.has(id)) { delete thumbs[id]; changed = true } }
   if (changed) saveThumbs(thumbs)
 }
 
-// ── Память покупок: что брали раньше, чтобы не было излишков (специи, масло и т.п.) ──
+// ── Shopping memory: what was bought earlier, to avoid piling up surplus (spices, oil, etc.) ──
 export const PANTRY_KEY = 'albert-pantry'
 export function loadPantry() { try { const s = localStorage.getItem(PANTRY_KEY); if (s) return JSON.parse(s) } catch { /* ignore */ } return {} }
 export function savePantry(o) { try { localStorage.setItem(PANTRY_KEY, JSON.stringify(o)) } catch { /* ignore */ } }
-// Запомнить купленные продукты (имя → дата последней покупки)
+// Remember the products that were bought (name → date of the last purchase)
 export function archivePantry(pantry, items) {
   const today = mskDateKey()
   const next = { ...pantry }
   ;(items || []).forEach(it => { if (it?.name) next[normIng(it.name)] = today })
   return next
 }
-// Долгоиграющие продукты — их обидно покупать дважды
+// Long-lasting products — the kind it stings to buy twice
 const LONG_LIFE = /^(масло|мука|сахар|м[её]д|рис|гречк|овсян|орех|изюм|соус|кетчуп|майонез|уксус|крупа|макарон|паста|чай|кофе|какао|соль|специ|приправ)/i
 export function recentlyBought(pantry, name, days = 14) {
   const d = pantry?.[normIng(name)]

@@ -3,9 +3,9 @@ import { motion } from 'framer-motion'
 import { useLang, useT } from '../context/LanguageContext.jsx'
 
 /*
-  Голосовой ввод как ОСНОВНОЙ способ: большая кнопка-микрофон с живой расшифровкой
-  по-русски (Web Speech API). Текстовый ввод — вторичная альтернатива (раскрывается).
-  Если браузер не поддерживает распознавание — сразу показываем текстовое поле.
+  Voice as the PRIMARY way in: a big microphone button with a live Russian transcript
+  (Web Speech API). Typing is the secondary alternative, revealed on demand.
+  If the browser has no speech recognition we show the text field right away.
   Props: value, onChange(value), onSubmit(), busy.
 */
 const SR = typeof window !== 'undefined' ? (window.SpeechRecognition || window.webkitSpeechRecognition) : null
@@ -63,8 +63,8 @@ export default function VoiceInput({ value, onChange, onSubmit, busy }) {
   }
 
   const hasText = !!(value && value.trim())
-  // Единое редактируемое поле: показываем, как только есть текст, идёт запись или
-  // пользователь сам открыл ручной ввод. Никакого дублирования «плашка + textarea».
+  // One editable field: shown as soon as there is text, recording is under way, or the user
+  // opened manual entry themselves. No duplicated "banner + textarea".
   const showField = hasText || listening || showText
 
   return (

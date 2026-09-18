@@ -1,7 +1,7 @@
 import { isGuest } from '../api/authFetch.js'
 import { useT } from '../context/LanguageContext.jsx'
 
-// Ненавязчивая плашка для гостевого входа: данные — демо, не настоящие.
+// An unobtrusive badge for the guest sign-in: the data is a demo, not the real thing.
 export default function DemoBanner() {
   const t = useT({
     ru: {

@@ -6,10 +6,10 @@ import { useT, useLang } from '../context/LanguageContext.jsx'
 import { mskNow } from '../utils/time.js'
 
 /*
-  Глобальная статус-строка раскладки «Командный центр»: сон · готовность ·
-  питание · следующее событие · часы. Видна на всех страницах (рендерится в App
-  только при data-layout="command"). Только реальные данные — пустые источники
-  просто не показываются. На мобиле скрыта (узко).
+  The global status strip of the "Command center" layout: sleep · readiness ·
+  nutrition · the next event · the clock. Visible on every page (App renders it only
+  when data-layout="command"). Real data only — a source with nothing in it simply
+  isn't shown. Hidden on mobile (too narrow).
 */
 
 function readWhoop() {
@@ -29,7 +29,7 @@ export default function StatusStrip() {
     en: { sleep: 'Sleep', h: 'h', rec: 'Recovery', menuOk: 'Menu ready', menuNo: 'No menu yet', next: 'Next', free: 'Day is free' },
   })
 
-  // Часы — живые, обновление раз в 30 секунд
+  // A live clock, refreshed every 30 seconds
   const [now, setNow] = useState(mskNow)
   useEffect(() => {
     const id = setInterval(() => setNow(mskNow()), 30000)

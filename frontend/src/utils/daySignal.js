@@ -1,11 +1,13 @@
-// Верхний hero-сигнал «СТАТУС» на Главной: заголовок-вывод + короткий разбор по доменам
-// (стресс / впереди / спорт / анализы / питание) + строка обобщённого совета, плюс
-// цветная рамка-оценка (ok / warn / crit). Контент генерит ИИ — потому что ПОРОГИ режимов
-// берутся из ЛИЧНОЙ НОРМЫ пользователя (долгая память), а не из общих мед. таблиц.
+// The "СТАТУС" hero signal at the top of Home: a headline verdict + a short breakdown by
+// domain (stress / ahead / sport / blood tests / nutrition) + a line of overall advice, plus
+// a colored assessment border (ok / warn / crit). The AI generates the content — because the
+// thresholds between modes come from the user's PERSONAL baseline (long-term memory), not
+// from general medical tables.
 //
-// Снимок стабилен в пределах ФАЗЫ дня (утро/день/вечер) и до появления новой тренировки —
-// БЕЗ минутных величин (точное время, Body Battery), чтобы кэш hero не сбрасывался каждую
-// минуту, но окно при этом «живёт» по ходу дня (утром одно, после тренировки другое).
+// The snapshot is stable within a PHASE of the day (morning/afternoon/evening) and until a
+// new workout appears — WITHOUT any minute-level figures (the exact time, Body Battery), so
+// the hero cache is not invalidated every minute while the window still moves along with the
+// day (one thing in the morning, another after a workout).
 
 import { WHOOP_DAYS } from './whoop.js'
 import { mskNow } from './time.js'
@@ -26,7 +28,7 @@ function todayIso(now) {
   return `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`
 }
 
-// Фаза дня — для адаптации текста и для КЭША (без точной минуты).
+// The phase of the day — used to adapt the text and as part of the CACHE key (no exact minute).
 function dayPhase(now) {
   const h = now.getHours()
   if (h < 11) return 'утро'
@@ -34,8 +36,8 @@ function dayPhase(now) {
   return 'вечер'
 }
 
-// Стабильный в пределах фазы дня «снимок» для сигнала: дата + фаза + восстановление/сон +
-// недельный тренд + АКТУАЛЬНЫЙ стресс + последняя тренировка + анализы + питание + память.
+// The signal's snapshot, stable within a phase of the day: date + phase + recovery/sleep +
+// weekly trend + CURRENT stress + last workout + blood tests + nutrition + memory.
 export function buildSignalData({ events = [], facts = [] } = {}) {
   const now = mskNow()
   const today = todayIso(now)
@@ -45,7 +47,7 @@ export function buildSignalData({ events = [], facts = [] } = {}) {
 
   const lines = [`Дата: ${today}. Фаза дня: ${phase}.`]
 
-  // Здоровье: восстановление/сон + недельный тренд
+  // Health: recovery/sleep + the weekly trend
   if (whoop) {
     lines.push(`Восстановление сегодня ${whoop.recovery}% (утренний балл готовности). Нагрузка ${whoop.strain}/21. Сон ${whoop.sleep?.hoursSlept} ч (${whoop.sleep?.performance}% от нормы сна).`)
     const week = Array.isArray(whoop.week) && whoop.week.length ? whoop.week : WHOOP_DAYS
@@ -56,13 +58,13 @@ export function buildSignalData({ events = [], facts = [] } = {}) {
     lines.push('Данных Whoop нет (восстановление/сон неизвестны).')
   }
 
-  // Стресс — недавний (среднее за последний час, обновляется при синке часов)
+  // Stress — the recent figure (averaged over the last hour, refreshed when the watch syncs)
   const stress = garmin?.stress
   if (stress && (stress.recent ?? stress.current ?? stress.avg) != null) {
     lines.push(`Стресс (Garmin) ${stress.recent ?? stress.current ?? stress.avg}/100 за последний час.`)
   }
 
-  // Спорт: последняя тренировка (+ маркер «после тренировки» по дате/названию для кэша)
+  // Sport: the last workout (+ a "post-workout" marker from its date/title, for the cache)
   const lastW = (garmin?.workouts && garmin.workouts[0]) || garmin?.lastWorkout || null
   if (lastW) {
     const parts = [
@@ -75,22 +77,22 @@ export function buildSignalData({ events = [], facts = [] } = {}) {
     lines.push('Тренировок в данных Garmin нет.')
   }
 
-  // Расписание дня → «впереди»
+  // The day's schedule → "ahead"
   const todayEvents = events.filter(e => e.date === today)
   lines.push(todayEvents.length
     ? `Сегодня событий в расписании: ${todayEvents.length} (${todayEvents.map(e => `${e.start} ${e.title}`).slice(0, 6).join('; ')}).`
     : 'Сегодня расписание свободно (событий нет).')
 
-  // Анализы: ключевые отклонения (тот же расчёт, что и в общем снимке сайта)
+  // Blood tests: the key deviations (the same computation as in the site-wide snapshot)
   try {
     const { flagged, hasData } = labsFlagged()
     if (!hasData) lines.push('Анализы крови пока не загружены.')
     else lines.push(flagged.length ? `Анализы вне нормы: ${flagged.join('; ')}.` : 'Анализы крови в норме.')
   } catch { /* ignore */ }
 
-  // Питание: цель + СКОЛЬКО УЖЕ СЪЕДЕНО сегодня и сколько осталось — чтобы статус знал ФАКТ,
-  // а не только цель, и советовал с учётом остатка. «Съедено» меняет снимок → статус
-  // перегенерируется при каждом новом логе еды.
+  // Nutrition: the target + HOW MUCH HAS ALREADY BEEN EATEN today and how much is left — so
+  // the status knows the FACTS and not just the target, and advises against what remains.
+  // "Eaten" changes the snapshot → the status is regenerated with every new meal logged.
   try { lines.push(`Питание: ${nutritionTodayLine()}`) } catch { /* ignore */ }
 
   lines.push(`Личная память о норме и привычках пользователя:\n${facts.length ? facts.map(f => `- ${f.text || f}`).join('\n') : 'пока ничего не запомнено'}`)
@@ -98,12 +100,12 @@ export function buildSignalData({ events = [], facts = [] } = {}) {
   return lines.join('\n')
 }
 
-// Системный промпт «Статуса». Кодирует формат (статус-токен → заголовок → строки по доменам →
-// совет), 4 режима, правила (личная норма, редкий crit, тон-информатор, решение за владельцем,
-// адаптация под фазу дня).
+// The system prompt for "Статус". It encodes the format (status token → headline → one row
+// per domain → advice), the 4 modes, and the rules (personal baseline, crit stays rare, an
+// informational tone, the decision stays the user's, adapt to the phase of the day).
 export const SIGNAL_CONTEXT =
-  'Ты формируешь верхний баннер «СТАТУС» на личном дашборде пользователя (пожилой человек, опытный триатлет). ' +
-  'Это спокойный человеческий разбор сегодняшнего дня по ВСЕМ его данным сразу, с практичным советом. Не диагноз и не команда.\n' +
+  'Ты формируешь верхний баннер «СТАТУС» на личном дашборде пользователя — человека, который занимается триатлоном. ' +
+  'Это спокойный человеческий разбор сегодняшнего дня по ВСЕМ данным сразу, с практичным советом. Не диагноз и не команда.\n' +
   'ФОРМАТ ОТВЕТА — строго так, КАЖДЫЙ пункт с новой строки, без markdown, без кавычек, без лишних строк:\n' +
   'СТАТУС: <ok|warn|crit>\n' +
   'Заголовок: <короткий вывод 3–6 слов, без точки>\n' +
@@ -122,10 +124,11 @@ export const SIGNAL_CONTEXT =
   '4) Адаптируй текст под ФАЗУ ДНЯ из данных: утро — готовность и план на день; день — как идёт день и что осталось; вечер — итог дня, сон, завтра. Если последняя тренировка только что (сегодня) — отметь её и восстановление/дозаправку.\n' +
   '5) Опирайся ТОЛЬКО на данные ниже, ничего не выдумывай. Если данных мало — спокойный нейтральный статус ok.'
 
-// Контекст для ПО-ДОМЕННЫХ СОВЕТОВ статуса (новый «Статус»): у каждого раздела справа от
-// графика — короткий персональный совет ИИ (что делать), а не пересказ цифр с экрана.
+// The context for the status's PER-DOMAIN ADVICE (the new "Статус"): every section carries,
+// to the right of its chart, a short personal piece of AI advice about what to do — not a
+// retelling of the numbers already on screen.
 export const DOMAIN_ADVICE_CONTEXT =
-  'Ты — персональный ассистент пользователя (пожилой опытный триатлет). По данным ниже дай КОРОТКИЙ практичный совет по каждому разделу: 1–1.5 предложения, по-человечески и конкретно. ' +
+  'Ты — персональный ассистент человека, который занимается триатлоном. По данным ниже дай КОРОТКИЙ практичный совет по каждому разделу: 1–1.5 предложения, по-человечески и конкретно. ' +
   'НЕ повторяй цифры — они уже видны на графике рядом; подскажи, ЧТО С ЭТИМ ДЕЛАТЬ сегодня. Тон — информатор, окончательное решение за пользователем.\n' +
   'ФОРМАТ — каждый пункт с новой строки, без markdown, без кавычек, ровно эти ярлыки:\n' +
   'Стресс: <совет>\n' +
@@ -135,7 +138,7 @@ export const DOMAIN_ADVICE_CONTEXT =
   'Питание: <совет по еде на остаток дня, с акцентом на белок при необходимости>\n' +
   'ПРАВИЛА: опирайся ТОЛЬКО на данные ниже; пороги бери из ЛИЧНОЙ нормы пользователя (память ниже), а не из общих таблиц; ничего не выдумывай; если данных мало — мягкий нейтральный совет. Каждый совет самостоятелен, не ссылается на другие разделы и не начинается с ярлыка повторно.'
 
-// Разобрать по-доменные советы в объект { стресс, расписание, спорт, здоровье, питание }.
+// Parse the per-domain advice into an object { стресс, расписание, спорт, здоровье, питание }.
 export function parseAdvice(text) {
   const out = {}
   for (const raw of String(text || '').split('\n')) {
@@ -145,8 +148,8 @@ export function parseAdvice(text) {
   return out
 }
 
-// Разобрать ответ ИИ в { status, headline, rows, advice, note }.
-// note — для обратной совместимости (старые места, что ждут заголовок+подпись).
+// Parse the AI's reply into { status, headline, rows, advice, note }.
+// note is there for backwards compatibility (older call sites expect a headline + caption).
 export function parseSignal(text) {
   const raw = String(text || '').split('\n').map(s => s.trim()).filter(Boolean)
   if (!raw.length) return null
@@ -162,7 +165,7 @@ export function parseSignal(text) {
     if (low === 'заголовок') { headline = val; continue }
     if (low === 'совет' || low === 'итог') { advice = val; continue }
     if (label && ROW_LABELS.some(L => low.startsWith(L))) { rows.push({ label, value: val }); continue }
-    // строка без распознанного ярлыка: первая → заголовок, дальше → совет
+    // a line with no recognized label: the first becomes the headline, the rest the advice
     if (!headline) headline = line.replace(/^[«"]|[»"]$/g, '')
     else advice = advice ? `${advice} ${line}` : line
   }
@@ -173,7 +176,8 @@ export function parseSignal(text) {
   return { status, headline, rows, advice, note }
 }
 
-// Простой фолбэк без ИИ: статус и разбор детерминированно по восстановлению/стрессу.
+// A simple fallback with no AI: the status and breakdown derived deterministically from
+// recovery and stress.
 export function fallbackSignal(lang = 'ru') {
   const en = lang === 'en'
   const whoop = readWhoop()

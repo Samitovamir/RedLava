@@ -1,9 +1,9 @@
 import { ICONS } from './iconMap.js'
 
-// Единая line-иконка. Использование:
-//   <Icon name="lab-blood" color="var(--cat-lab-blood)" />   — по ключу из iconMap
-//   <Icon icon={SomeLucide} size={20} />                     — прямой lucide-компонент
-// Цвет по умолчанию наследуется (currentColor) — задаётся родителем или пропом color.
+// The one line icon. Usage:
+//   <Icon name="lab-blood" color="var(--cat-lab-blood)" />   — by key from iconMap
+//   <Icon icon={SomeLucide} size={20} />                     — a lucide component directly
+// The color is inherited by default (currentColor) — set by the parent or the color prop.
 export default function Icon({ name, icon, size = 18, strokeWidth = 1.7, color, className = '', style, ...rest }) {
   const Cmp = icon || (name ? ICONS[name] : null)
   if (!Cmp) return null

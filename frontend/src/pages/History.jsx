@@ -9,10 +9,10 @@ import {
   ACTION_TYPES, STATUS_INFO, ACTOR_INFO, dayLabel, timeOf, dateOf, pickLabel
 } from '../utils/history.js'
 
-// Иконка по типу действия — единый line-set (lucide) через примитив <Icon>
+// Icon per action type — one line-set (lucide) rendered through the <Icon> primitive
 const TYPE_ICONS = { mail: Mail, calendar: CalendarDays, search: Search, check: Check, bell: Bell, activity: Activity }
 
-// Статус журнала → тон StatusPill (единственный цветной элемент записи)
+// Log status → StatusPill tone (the only coloured element in an entry)
 const STATUS_TONE = { done: 'ok', pending: 'warn', failed: 'crit' }
 
 export default function History() {
@@ -43,7 +43,7 @@ export default function History() {
     [entries, filter, actorFilter]
   )
 
-  // Группировка по дате
+  // Grouped by date
   const groups = useMemo(() => {
     const map = new Map()
     filtered.forEach(a => {
@@ -54,7 +54,7 @@ export default function History() {
     return [...map.entries()]
   }, [filtered])
 
-  // Статистика — числа нейтральные (--text-primary), различие несёт подпись, не цвет
+  // Stats — the numbers stay neutral (--text-primary); the label carries the distinction, not colour
   const stats = [
     { key: 'all', label: t.total, count: entries.length },
     { key: 'email', label: t.emails, count: entries.filter(a => a.type === 'email').length },
@@ -69,10 +69,10 @@ export default function History() {
     <div className="history-page">
       <SectionHeader title={t.heading} subtitle={t.sub} />
 
-      {/* Долгая память помощника */}
+      {/* The assistant's long-term memory */}
       <AssistantMemory />
 
-      {/* Статистика */}
+      {/* Stats */}
       <div className="hist-stats">
         {stats.map(s => (
           <div key={s.key} className="card hist-stat">
@@ -82,7 +82,7 @@ export default function History() {
         ))}
       </div>
 
-      {/* Фильтры — один горизонтальный ряд чипов: автор (Все/ИИ/Сам) + типы */}
+      {/* Filters — a single horizontal row of chips: author (All/AI/You) + types */}
       <div className="hist-filters">
         {actorChips.map(a => (
           <Chip key={`actor-${a.key}`} active={actorFilter === a.key} onClick={() => setActorFilter(a.key)}>
@@ -97,7 +97,7 @@ export default function History() {
         ))}
       </div>
 
-      {/* Таймлайн */}
+      {/* Timeline */}
       <div className="card hist-timeline">
         {groups.length === 0 && (
           <EmptyState icon={Inbox} text={t.empty} />

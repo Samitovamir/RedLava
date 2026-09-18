@@ -8,11 +8,11 @@ import { loadPrefs } from '../../utils/nutrition.js'
 import RichText from '../RichText.jsx'
 
 /*
-  Помощник по питанию в разделе «Питание». Полностью самодостаточная карточка: НЕ наследует
-  общий класс .card (чтобы не зависеть от стилей материала/прошивки) и задаёт ВСЕ цвета с
-  хардкод-фолбэками — поэтому не может отрендериться пустой/невидимой ни при каком состоянии
-  токенов. Контент есть ВСЕГДА: совет ИИ → иначе «Думаю…» → иначе фактическая сводка по дню.
-  Приём пищи определяется по времени и обновляется живьём (useCurrentMeal).
+  The nutrition coach in the "Nutrition" section. A fully self-contained card: it does NOT inherit
+  the shared .card class (to avoid depending on the material/stitching styles) and sets ALL colors
+  with hard-coded fallbacks — so it can never render empty or invisible in any state of the tokens.
+  Content is ALWAYS there: AI advice → otherwise "Thinking…" → otherwise a factual day summary.
+  The meal is determined by the time of day and updates live (useCurrentMeal).
 */
 
 const MEAL_EN = { 'Завтрак': 'Breakfast', 'Обед': 'Lunch', 'Перекус': 'Snack', 'Ужин': 'Dinner' }
@@ -58,7 +58,7 @@ export default function NutritionCoach({ target, eaten = 0, remaining = 0, intak
     fallback: ''
   })
 
-  // Контент ВСЕГДА непустой: совет ИИ → «Думаю…» → фактическая сводка по данным дня.
+  // Content is ALWAYS non-empty: AI advice → "Thinking…" → a factual summary of the day's data.
   const advice = (summary.text || '').trim()
   const eatenR = Math.round(eaten)
   const remR = Math.round(remaining)

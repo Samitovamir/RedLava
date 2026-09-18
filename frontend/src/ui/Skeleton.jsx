@@ -1,5 +1,5 @@
-// Загрузочный плейсхолдер. variant: text|rect|circle|ring|chart.
-// Темо-зависимый shimmer (--bg-tile → --bg-surface).
+// Loading placeholder. variant: text|rect|circle|ring|chart.
+// The shimmer follows the theme (--bg-tile → --bg-surface).
 export default function Skeleton({ variant = 'text', lines = 1, w, h, className = '', style }) {
   const radius = variant === 'circle' || variant === 'ring' ? '50%' : 'var(--radius-sm)'
   const dims = {

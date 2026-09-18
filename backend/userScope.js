@@ -1,25 +1,26 @@
 import { kvGet, kvSet, kvDel } from './store.js'
 
 /*
-  Ключи данных, привязанные к человеку. Это и есть изоляция аккаунтов друг от друга.
+  Data keys tied to a person. This is what isolates accounts from one another.
 
-  Было: один общий ключ на всё приложение — `google:tokens`, `whoop:tokens`,
-  `garmin:token`, `labs:yandex_url`, `labs:store`, `sync:state`. Пока пользователь был
-  один, это работало; с появлением аккаунтов любой второй человек видел бы и
-  перезаписывал данные первого.
+  Before: a single key shared by the whole app — `google:tokens`, `whoop:tokens`,
+  `garmin:token`, `labs:yandex_url`, `labs:store`, `sync:state`. That worked while there
+  was only one user; once accounts existed, any second person would have seen and
+  overwritten the first person's data.
 
-  Стало: `<база>:<id владельца данных>`. Без исключений — привилегированного
-  пользователя с фиксированным id в системе нет, у каждого аккаунта свой UUID.
+  Now: `<base>:<data owner's id>`. No exceptions — the system has no privileged user
+  with a fixed id, every account carries its own UUID.
 
-  Раньше здесь жил ещё ленивый перенос данных с тех старых общих ключей на владельца
-  (и парное удаление, чтобы отключённая интеграция не воскресала при следующем чтении).
-  Это удалено вместе с ролью 'owner': переносить было нечего — токены интеграций за
-  месяцы простоя истекли всё равно, а владелец завёл обычный аккаунт, как все.
+  This file also used to hold a lazy migration of data from those old shared keys onto
+  the owner (plus a paired delete, so that a disconnected integration wouldn't come back
+  to life on the next read). That went away together with the 'owner' role: there was
+  nothing left to migrate — the integration tokens expired over months of idleness
+  anyway, and the owner signed up for an ordinary account like everybody else.
 */
 
 export const scopedKey = (base, userId) => `${base}:${userId}`
 
-// id владельца данных для запроса. У гостя его нет — своих данных у демо не бывает.
+// The data owner's id for this request. A guest has none — the demo never has data of its own.
 export const scopeOf = (req) => req.userId || null
 
 export async function kvGetScoped(base, userId) {

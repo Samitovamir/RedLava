@@ -4,7 +4,7 @@ import { useHistory } from '../context/HistoryContext.jsx'
 import { useMemoryFacts } from '../context/MemoryContext.jsx'
 import { buildSiteSnapshot } from '../utils/siteSnapshot.js'
 
-// Реактивный снимок всего сайта: пересобирается при изменении событий, истории, фактов.
+// A reactive snapshot of the whole site: rebuilt whenever the events, the history or the facts change.
 export function useSiteSnapshot() {
   const { events } = useEvents()
   const { entries } = useHistory()

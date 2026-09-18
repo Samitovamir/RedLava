@@ -1,6 +1,6 @@
-// Единый «снимок» всего сайта для ИИ: расписание + спорт + здоровье + анализы +
-// память о человеке + недавние действия. Любое окно ассистента может опираться на него,
-// чтобы давать связные ответы по всем данным сразу.
+// A single "snapshot" of the whole site for the AI: schedule + sport + health + blood tests +
+// what we remember about the person + recent actions. Any assistant panel can lean on it
+// to give answers that hold together across all the data at once.
 
 import { WORKOUTS, WORKOUT_TYPES, WEEK_STATS, GARMIN } from './workouts.js'
 import { WHOOP, WHOOP_DAYS, recoveryLabel } from './whoop.js'
@@ -9,8 +9,8 @@ import { dueRetests } from './healthSignal.js'
 import { loadProfile, nutritionTodayLine } from './nutrition.js'
 import { mskNow } from './time.js'
 
-// Текстовые подписи приоритетов (соответствуют label из PRIORITIES в AddEventModal;
-// держим локально, чтобы util не тянул компонентный модуль)
+// Text labels for the priorities (they match the label from PRIORITIES in AddEventModal;
+// kept here locally so this util doesn't have to pull in a component module)
 const PRIO = { 1: 'неотложный', 2: 'важный', 3: 'обычный' }
 const WD = ['воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота']
 
@@ -18,8 +18,8 @@ export function labsFlagged() {
   let reports = INITIAL_REPORTS
   try { const s = localStorage.getItem('albert-labs'); if (s) reports = JSON.parse(s) } catch { /* ignore */ }
   const hist = buildHistory(reports)
-  // Важные показатели вне нормы — списком; второстепенные/профильные — только счётчиком,
-  // чтобы ИИ не тонул в огромных панелях (микробиом, метаболомика и т.п.).
+  // Key markers outside their range are listed one by one; secondary or panel-wide ones only
+  // get a count, so the AI doesn't drown in the huge panels (microbiome, metabolomics, etc.).
   const key = [], minorCount = []
   Object.entries(hist).forEach(([name, h]) => {
     const last = h[h.length - 1]
@@ -34,8 +34,8 @@ export function labsFlagged() {
   return { flagged, hasData: Object.keys(hist).length > 0 }
 }
 
-// Краткий бриф состояния для ПОДБОРА БЛЮД (анализы + восстановление + сегодняшняя тренировка +
-// стресс) — чтобы предложения еды опирались на актуальные данные, а не только на цель КБЖУ + вкусы.
+// A short status brief for MEAL SUGGESTIONS (blood tests + recovery + today's workout +
+// stress) — so the food suggestions rest on current data, not just the calorie target and tastes.
 export function nutritionHealthBrief() {
   const parts = []
   try {
@@ -66,8 +66,8 @@ export function buildSiteSnapshot({ events = [], history = [], facts = [] } = {}
   const weekday = WD[now.getDay()]
   const hhmm = `${p(now.getHours())}:${p(now.getMinutes())}`
 
-  // Готовое сопоставление «день недели → точная дата» на 11 дней вперёд,
-  // чтобы ИИ не ошибался при словах «завтра», «в пятницу», «через неделю».
+  // A ready-made "weekday → exact date" mapping for the next 11 days,
+  // so the AI doesn't get "tomorrow", "on Friday" or "in a week" wrong.
   const cal = []
   for (let i = 0; i < 11; i++) {
     const d = new Date(now); d.setDate(now.getDate() + i)
@@ -81,7 +81,7 @@ export function buildSiteSnapshot({ events = [], history = [], facts = [] } = {}
         .map(e => `${e.date} ${e.start}–${e.end} «${e.title}»${e.who ? ` (${e.who})` : ''} [${PRIO[e.priority || 3]}]`).join('\n')
     : 'нет событий'
 
-  // Garmin — только реальные данные (если подключён), иначе честно «нет данных»
+  // Garmin — real data only (when connected), otherwise an honest "no data"
   let liveGarmin = null
   try { const s = localStorage.getItem('albert-garmin-live'); if (s) liveGarmin = JSON.parse(s) } catch { /* ignore */ }
   let sport
@@ -116,11 +116,11 @@ export function buildSiteSnapshot({ events = [], history = [], facts = [] } = {}
     sport = 'Garmin не подключён. Данных о тренировках, шагах, VO2max и форме НЕТ. Не придумывай их — если спросят, скажи, что нужно подключить Garmin.'
   }
 
-  // Whoop — только реальные данные (если подключён), иначе честно «нет данных»
+  // Whoop — real data only (when connected), otherwise an honest "no data"
   let liveWhoop = null
   try { const s = localStorage.getItem('albert-whoop-live'); if (s) liveWhoop = JSON.parse(s) } catch { /* ignore */ }
   const w = liveWhoop ? { ...WHOOP, ...liveWhoop, sleep: { ...WHOOP.sleep, ...liveWhoop.sleep } } : null
-  // Неделя по дням: восстановление (балл готовности) и нагрузка (strain) — РАЗНЫЕ показатели, явно разделяем
+  // The week day by day: recovery (the readiness score) and strain are DIFFERENT metrics, so we split them out explicitly
   const weekDays = w ? (Array.isArray(liveWhoop?.week) && liveWhoop.week.length ? liveWhoop.week : WHOOP_DAYS) : []
   const weekBlock = weekDays.length
     ? `НЕДЕЛЯ ПО ДНЯМ (два РАЗНЫХ показателя, не путай их):\n` +
@@ -138,8 +138,8 @@ export function buildSiteSnapshot({ events = [], history = [], facts = [] } = {}
     : 'Whoop не подключён. Данных о восстановлении, сне, HRV и пульсе НЕТ. Не придумывай их — если спросят, скажи, что нужно подключить Whoop.'
 
   const { flagged, hasData } = labsFlagged()
-  // Пора пересдать: показатели вне нормы, по которым прошёл срок контроля (тот же
-  // расчёт, что и у сигнала «Здоровье» на Главной — чтобы ИИ не противоречил карточке).
+  // Due for a retest: markers outside their range whose follow-up window has passed (the same
+  // calculation as the "Health" signal on the home page, so the AI never contradicts that card).
   let retestReports = INITIAL_REPORTS
   try { const s = localStorage.getItem('albert-labs'); if (s) retestReports = JSON.parse(s) } catch { /* ignore */ }
   const due = dueRetests(retestReports)
@@ -150,7 +150,7 @@ export function buildSiteSnapshot({ events = [], history = [], facts = [] } = {}
     ? 'Анализы крови пока не загружены (подключите Яндекс.Диск с файлами). Не придумывай показатели.'
     : flagged.length ? `Вне нормы: ${flagged.join('; ')}. Остальные показатели в норме.` : 'все показатели в норме.') + retestNote
 
-  // Питание — цель + СКОЛЬКО УЖЕ СЪЕДЕНО сегодня и остаток (а не только цель) + профиль + меню
+  // Nutrition — the target + HOW MUCH HAS ALREADY BEEN EATEN today and what is left (not just the target) + profile + menu
   let nutrition
   try {
     const profile = loadProfile()
@@ -182,7 +182,7 @@ ${labs}
 ПИТАНИЕ (цель КБЖУ и меню):
 ${nutrition}
 
-ПАМЯТЬ О ВЛАДЕЛЬЦЕ (важные факты и предпочтения):
+ПАМЯТЬ О ПОЛЬЗОВАТЕЛЕ (важные факты и предпочтения):
 ${factsBlock}
 
 ЖУРНАЛ ДЕЙСТВИЙ — история того, что делалось раньше. Это НЕ текущее расписание: упомянутые тут события могли быть позже изменены или удалены. НЕ считай событие существующим только потому, что оно есть в журнале — проверяй по РАСПИСАНИЮ:

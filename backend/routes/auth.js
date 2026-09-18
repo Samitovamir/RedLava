@@ -6,16 +6,16 @@ import { createUser, verifyUserPassword, validateCredentials, publicUser, getUse
 
 const router = Router()
 
-// --- Защита от подбора (логин и регистрация) ---
-// Бэкенд serverless (Vercel) — у каждого вызова может быть новый процесс, поэтому счётчик
-// в обычной переменной не сработает (сбрасывается каждый раз). Используем kvGet/kvSet —
-// тот же общий стор, что и для дневного лимита ИИ у гостя.
-const WINDOW_MS = 15 * 60 * 1000  // окно 15 минут
-const LOGIN_MAX_FAILS = 8         // неудачных попыток логина за окно — дальше блок
-// Регистраций с одного IP за окно. Настоящая защита от посторонних — REGISTRATION_CODE;
-// этот лимит нужен только против скриптового потока, поэтому щедрый: клуб может
-// регистрироваться вечером всей командой с одного Wi-Fi (или за NAT оператора),
-// и 5 попыток там упирались мгновенно, блокируя живых людей на 15 минут.
+// --- Brute-force protection (sign-in and registration) ---
+// The backend is serverless (Vercel) — every invocation may get a fresh process, so a counter
+// in a plain variable won't work (it resets every time). We use kvGet/kvSet — the same shared
+// store that holds the guest's daily AI limit.
+const WINDOW_MS = 15 * 60 * 1000  // a 15-minute window
+const LOGIN_MAX_FAILS = 8         // failed sign-ins per window — blocked beyond that
+// Registrations from one IP per window. The real defense against outsiders is REGISTRATION_CODE;
+// this limit only exists to stop a scripted flood, which is why it's generous: a club may
+// sign up as a whole team one evening from a single Wi-Fi (or behind a carrier NAT), and
+// 5 attempts hit the wall there instantly, locking real people out for 15 minutes.
 const REGISTER_MAX = 30
 
 function attemptKey(prefix, req) {
@@ -29,30 +29,30 @@ async function tooManyFails(key, max) {
 async function recordFail(key) {
   await kvSet(key, (Number(await kvGet(key)) || 0) + 1)
 }
-// Успешная регистрация тоже расходует лимит — иначе «5 регистраций с одного IP» не
-// ограничивало бы ничего. НО опечатки в форме (короткий пароль, занятое имя) НЕ считаются:
-// они ничего не создают, а человек за клубным Wi-Fi иначе выжигал бы лимит на всех соседей.
+// A successful registration spends the limit too — otherwise "5 registrations from one IP"
+// would cap nothing. BUT typos in the form (a short password, a name already taken) do NOT
+// count: they create nothing, and on club Wi-Fi one person would burn the limit for everyone.
 const recordAttempt = recordFail
-// Минут до конца окна — чтобы в ответе был срок, а не просто «подождите немного»
+// Minutes left in the window — so the response names a deadline instead of just "wait a bit"
 const minutesLeft = () => Math.max(1, Math.ceil((WINDOW_MS - (Date.now() % WINDOW_MS)) / 60000))
 
-// Сравнение постоянным временем: код приглашения — секрет, а обычное === выдаёт длину
-// совпавшего префикса через время ответа.
+// Constant-time comparison: the invitation code is a secret, and a plain === gives away the
+// length of the matching prefix through the response time.
 function safeEqual(a, b) {
   const ba = Buffer.from(String(a)), bb = Buffer.from(String(b))
   return ba.length === bb.length && crypto.timingSafeEqual(ba, bb)
 }
 
-// Публичная информация об условиях входа — чтобы экран входа знал, показывать ли поле
-// «код приглашения», и не предлагал регистрацию там, где она закрыта.
+// Public information about how sign-in works — so the sign-in screen knows whether to show
+// the invitation code field, and doesn't offer registration where it is closed.
 router.get('/config', (_req, res) => res.json({
   registrationCodeRequired: !!process.env.REGISTRATION_CODE,
   minPasswordLength: MIN_PASSWORD_LENGTH
 }))
 
-// Регистрация обычного аккаунта (username + пароль). Если задан REGISTRATION_CODE —
-// требуем его: так клуб раздаёт доступ по приглашению, а не открывает регистрацию всему
-// интернету. Переменная не задана — регистрация открыта (удобно на время разработки).
+// Registration of an ordinary account (username + password). When REGISTRATION_CODE is set we
+// require it: that way the club hands out access by invitation instead of opening registration
+// to the whole internet. With the variable unset, registration is open (handy while developing).
 router.post('/register', async (req, res) => {
   const key = attemptKey('register', req)
   if (await tooManyFails(key, REGISTER_MAX)) {
@@ -63,13 +63,13 @@ router.post('/register', async (req, res) => {
 
   const required = process.env.REGISTRATION_CODE
   if (required && (typeof code !== 'string' || !code || !safeEqual(code, required))) {
-    await recordFail(key)   // подбор кода — считаем
+    await recordFail(key)   // someone is guessing the code — count it
     return res.status(403).json({ error: 'bad_code' })
   }
 
-  // Опечатку в форме лимитом не наказываем (см. комментарий к recordAttempt).
-  // Текст ошибки НЕ пишем: отдаём код, фронт покажет его на языке интерфейса —
-  // иначе в английском UI вылезала бы русская строка с сервера.
+  // A typo in the form isn't punished by the limit (see the comment on recordAttempt).
+  // We do NOT send error text: we return a code and the frontend renders it in the UI
+  // language — otherwise a Russian string from the server would surface in the English UI.
   const invalid = validateCredentials(username, password)
   if (invalid) return res.status(400).json({ error: invalid, minPasswordLength: MIN_PASSWORD_LENGTH })
 
@@ -77,15 +77,15 @@ router.post('/register', async (req, res) => {
   if (error === 'name_taken') return res.status(409).json({ error })
   if (error) return res.status(503).json({ error })
 
-  await recordAttempt(key)   // успешная регистрация тоже расходует лимит
+  await recordAttempt(key)   // a successful registration spends the limit too
   return res.json({ token: await signToken('user', user.id), role: 'user', user: publicUser(user) })
 })
 
-// Вход — username + пароль. Два пути подряд, а не развилка по вводу:
-//   1) обычный аккаунт (username есть в users:by-login, пароль сходится с хешем);
-//   2) если не подошло — гостевое демо по GUEST_PASSWORD (у него нет записи аккаунта).
-// Отдельного входа для владельца больше нет: он такой же аккаунт, как остальные,
-// а серверные права даёт флаг isAdmin в его записи (см. requireAdmin в authGuard.js).
+// Sign-in — username + password. Two paths tried in order, not a branch on the input:
+//   1) an ordinary account (the username is in users:by-login, the password matches the hash);
+//   2) if that didn't match — the guest demo via GUEST_PASSWORD (which has no account record).
+// There is no separate sign-in for the owner any more: he is an account like everyone else,
+// and his server-side rights come from the isAdmin flag on his record (see requireAdmin in authGuard.js).
 router.post('/login', async (req, res) => {
   const key = attemptKey('fails', req)
   if (await tooManyFails(key, LOGIN_MAX_FAILS)) {
@@ -99,32 +99,33 @@ router.post('/login', async (req, res) => {
 
   const role = guestRoleForLogin(username, password)
   if (!role) {
-    await recordFail(key)  // считаем только неудачи — угадавший с первого раза не наказывается
+    await recordFail(key)  // only failures count — nobody is penalized for getting it right first try
     return res.status(401).json({ error: 'wrong_password' })
   }
   return res.json({ token: await signToken(role), role })
 })
 
-// Проверка действующего токена (для тихого входа при открытии сайта) — возвращаем роль
-// и СВЕЖИЙ токен: активный пользователь так продлевает себе сессию на ещё TOKEN_TTL и никогда
-// не разлогинивается сам по себе, а истинно заброшенный/украденный токен через TOKEN_TTL истечёт.
+// Checking a valid token (for the silent sign-in when the site opens) — we return the role and
+// a FRESH token: an active user thereby extends their session by another TOKEN_TTL and is never
+// signed out on their own, while a genuinely abandoned or stolen token expires after TOKEN_TTL.
 router.get('/verify', requireAuth, async (req, res) => {
-  // Запись аккаунта нужна фронту для двух вещей: показать «Вы вошли как …» в Настройках
-  // и понять, показывать ли админские действия (publicUser отдаёт isAdmin).
+  // The frontend needs the account record for two things: showing "you are signed in as …" in
+  // Settings, and deciding whether to show the admin actions (publicUser exposes isAdmin).
   const user = req.role === 'user' ? publicUser(await getUserById(req.userId)) : null
   res.json({ ok: true, role: req.role, userId: req.userId || null, user, token: await signToken(req.role, req.userId) })
 })
 
-// «Выйти со всех устройств» — СВОИХ. Поднимает персональную эпоху сессий этого аккаунта:
-// все его ранее выданные токены сразу перестают действовать, у остальных ничего не меняется.
-// Раньше эпоха была общей и эта кнопка разлогинивала весь клуб — верно для однопользовательской
-// версии, где «все сессии» и «мои сессии» совпадали, и неверно с появлением аккаунтов.
-// Сценарий: украли телефон → зашёл с ноутбука → (сменил пароль) → выкинул свои сессии.
-// Гостю нечего отзывать: у демо нет аккаунта, а значит и персональной эпохи.
+// "Sign out everywhere" — everywhere of YOUR OWN. Bumps this account's personal session epoch:
+// every token issued to it earlier stops working at once, and nothing changes for anyone else.
+// The epoch used to be shared, so this button signed the whole club out — correct for the
+// single-user version, where "all sessions" and "my sessions" were the same thing, and wrong
+// once accounts arrived. Scenario: phone stolen → sign in from the laptop → (change the
+// password) → throw out your own sessions. A guest has nothing to revoke: the demo has no
+// account, and therefore no personal epoch either.
 router.post('/logout-all', requireAuth, async (req, res) => {
   if (req.role !== 'user' || !req.userId) return res.status(403).json({ error: 'forbidden' })
   await bumpUserEpoch(req.userId)
-  // Свежий токен с новой эпохой — чтобы устройство, с которого нажали, осталось внутри.
+  // A fresh token with the new epoch, so the device the button was pressed on stays signed in.
   res.json({ ok: true, token: await signToken(req.role, req.userId) })
 })
 

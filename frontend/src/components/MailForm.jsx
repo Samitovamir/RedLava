@@ -7,8 +7,8 @@ import { useT } from '../context/LanguageContext.jsx'
 const validEmail = (s) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test((s || '').trim())
 
 /*
-  Форма письма: кому / тема / текст + кнопка отправки.
-  Используется и на странице «Письма», и в окне предпросмотра письма от ИИ.
+  The email form: to / subject / body plus a send button.
+  Used both on the "Mail" page and in the preview window for an email drafted by the AI.
   props: initial {to,subject,body}, onSent(fields), onCancel, sendLabel
 */
 export default function MailForm({ initial, onSent, onCancel, sendLabel }) {
@@ -54,7 +54,7 @@ export default function MailForm({ initial, onSent, onCancel, sendLabel }) {
   const [error, setError] = useState('')
   const bodyRef = useRef(null)
 
-  // Авто-рост textarea по содержимому (resize отключён вручную, чтобы микрофон не налезал на уголок).
+  // The textarea grows with its content (manual resize is off so the mic doesn't cover the handle).
   useEffect(() => {
     const el = bodyRef.current
     if (!el) return
@@ -62,7 +62,7 @@ export default function MailForm({ initial, onSent, onCancel, sendLabel }) {
     el.style.height = Math.max(el.scrollHeight, 150) + 'px'
   }, [body])
 
-  // Честное disabled: «Отправить» неактивна, пока не заполнены Кому + Текст.
+  // Honest disabled state: "Send" stays inactive until both To and Body are filled in.
   const canSend = validEmail(to) && body.trim().length > 0
 
   async function submit() {

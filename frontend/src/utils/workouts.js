@@ -1,4 +1,4 @@
-// Mock-данные тренировок (как будто из Garmin Connect). Заменятся на реальный API.
+// Mock workout data (as if it came from Garmin Connect). To be replaced by the real API.
 
 export const WORKOUT_TYPES = {
   run:   { label: 'Бег',        iconKey: 'sport-run',  colorKey: 'sport-run' },
@@ -8,7 +8,7 @@ export const WORKOUT_TYPES = {
   walk:  { label: 'Ходьба',     iconKey: 'sport-walk', colorKey: 'sport-walk' }
 }
 
-// Случайный ряд пульса для мини-графика
+// A random heart-rate series for the mini chart
 function hrSeries(base, spread, n = 24) {
   const arr = []
   let v = base
@@ -26,15 +26,15 @@ function daysAgo(n) {
   return d
 }
 
-// Расчётный максимальный пульс пользователя — единая база для всех зон.
-// По нему классифицируются точки и на графике, и в полосе зон.
+// The user's estimated maximum heart rate — the single basis for every zone.
+// Points are classified against it both on the chart and in the zone bar.
 export const ZONE_MAX_HR = 185
 
-// Границы зон в долях от макс. пульса: Z1<0.6, Z2 .6–.7, Z3 .7–.8, Z4 .8–.9, Z5≥0.9
+// Zone bounds as fractions of max heart rate: Z1<0.6, Z2 .6–.7, Z3 .7–.8, Z4 .8–.9, Z5≥0.9
 const ZONE_BOUNDS = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 
-// Ряд пульса, согласованный с распределением по зонам.
-// Доля точек в каждой зоне = заданному проценту → график и полоса совпадают.
+// A heart-rate series that agrees with the zone distribution.
+// The share of points in each zone matches the given percentage → chart and bar line up.
 function hrFromZones(zones, n = 30) {
   const counts = zones.map(p => (p > 0 ? Math.max(1, Math.round((p / 100) * n)) : 0))
   const all = []
@@ -47,15 +47,15 @@ function hrFromZones(zones, n = 30) {
       all.push(Math.round(Math.max(lo + 1, Math.min(hi - 1, v))))
     }
   })
-  // Профиль «гора»: подъём к пику и спуск — все зоны видны, проценты сохранены.
+  // A "mountain" profile: a climb to the peak and a descent — every zone shows, percentages hold.
   all.sort((a, b) => a - b)
   const up = [], down = []
   all.forEach((v, i) => (i % 2 === 0 ? up.push(v) : down.unshift(v)))
   return [...up, ...down]
 }
 
-// Последняя тренировка: ряд пульса и метрики выводятся из распределения зон,
-// чтобы график, средний/макс пульс и полоса зон были консистентны.
+// The latest workout: the heart-rate series and the metrics are derived from the zone
+// distribution, so the chart, the avg/max heart rate and the zone bar stay consistent.
 const W1_ZONES = [12, 28, 42, 15, 3]
 const W1_HR = hrFromZones(W1_ZONES)
 const W1_AVG = Math.round(W1_HR.reduce((a, b) => a + b, 0) / W1_HR.length)
@@ -66,7 +66,7 @@ export const WORKOUTS = [
     id: 1, type: 'run', date: daysAgo(0), duration: 42, distance: 8.2,
     avgHr: W1_AVG, maxHr: W1_MAX, calories: 540, hr: W1_HR,
     pace: '5:07', cadence: 172, elevation: 86, aerobicTE: 3.4, anaerobicTE: 1.2,
-    zones: W1_ZONES, // % времени в зонах 1–5 (из них и построен ряд пульса)
+    zones: W1_ZONES, // % of time in zones 1–5 (the heart-rate series is built from these)
     score: 8.5, aiComment: 'Отличный темп — держал зону 3 почти всю дистанцию. Пульс восстанавливался быстро, форма растёт.'
   },
   {
@@ -101,40 +101,40 @@ export const WORKOUTS = [
   }
 ]
 
-// Статистика за неделю
+// Stats for the week
 export const WEEK_STATS = {
-  activityPercent: 82,           // выполнение недельной цели активности
+  activityPercent: 82,           // progress against the weekly activity target
   workoutsCount: WORKOUTS.length,
   totalMinutes: WORKOUTS.reduce((a, w) => a + w.duration, 0),
   totalCalories: WORKOUTS.reduce((a, w) => a + w.calories, 0),
   avgHr: Math.round(WORKOUTS.reduce((a, w) => a + w.avgHr, 0) / WORKOUTS.length),
-  hrZonePercent: 68              // % времени в целевой зоне пульса
+  hrZonePercent: 68              // % of time in the target heart-rate zone
 }
 
-// Распределение по типам (для диаграммы)
+// Distribution by type (for the chart)
 export const TYPE_DISTRIBUTION = Object.entries(
   WORKOUTS.reduce((acc, w) => { acc[w.type] = (acc[w.type] || 0) + 1; return acc }, {})
 ).map(([type, count]) => ({ type, count, percent: Math.round(count / WORKOUTS.length * 100) }))
 
-// Профильные показатели Garmin (как с продвинутых часов: Fenix/Forerunner/Epix)
+// Garmin profile figures (as reported by the high-end watches: Fenix/Forerunner/Epix)
 export const GARMIN = {
-  bodyBattery: 64,          // энергия 0–100
+  bodyBattery: 64,          // energy 0–100
   bodyBatteryMax: 92,
-  stress: 34,               // средний стресс за день 0–100
-  vo2max: 52,               // мл/кг/мин
-  fitnessAge: 31,           // фитнес-возраст
-  restingHr: 48,            // пульс покоя
-  hrv: 68,                  // вариабельность, мс
+  stress: 34,               // average stress for the day 0–100
+  vo2max: 52,               // ml/kg/min
+  fitnessAge: 31,           // fitness age
+  restingHr: 48,            // resting heart rate
+  hrv: 68,                  // variability, ms
   steps: 8420, stepsGoal: 10000,
-  intensityMin: 145, intensityGoal: 150,  // минуты интенсивности за неделю
+  intensityMin: 145, intensityGoal: 150,  // intensity minutes for the week
   floors: 14, floorsGoal: 10,
   trainingStatus: 'Продуктивный',         // Garmin Training Status
-  trainingLoad: 612,                      // 7-дн нагрузка
-  trainingLoadOptimal: [450, 760],        // оптимальный диапазон
-  recoveryTime: 18,                       // часов до полного восстановления
-  spo2: 97,                               // сатурация %
-  respiration: 14,                        // дыхание, вдохов/мин
-  sleepScore: 81                          // оценка сна (есть и в Garmin)
+  trainingLoad: 612,                      // 7-day load
+  trainingLoadOptimal: [450, 760],        // the optimal range
+  recoveryTime: 18,                       // hours until fully recovered
+  spo2: 97,                               // oxygen saturation %
+  respiration: 14,                        // respiration, breaths/min
+  sleepScore: 81                          // sleep score (Garmin reports one too)
 }
 
 export const HR_ZONE_LABELS = ['Зона 1 · Разминка', 'Зона 2 · Лёгкая', 'Зона 3 · Аэробная', 'Зона 4 · Порог', 'Зона 5 · Максимум']

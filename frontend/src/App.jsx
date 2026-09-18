@@ -16,9 +16,9 @@ import { EventsProvider } from './context/EventsContext.jsx'
 import { HistoryProvider } from './context/HistoryContext.jsx'
 import { MemoryProvider } from './context/MemoryContext.jsx'
 import { MailProvider } from './context/MailContext.jsx'
-// Страницы — обычные (не lazy): ленивая загрузка + Suspense + AnimatePresence давали
-// белый экран при переключении вкладок. Тяжёлый сканер (BarcodeScanner) и так отдельным
-// чанком (ленивый импорт в DiaryTab), поэтому бандл остаётся разбит без риска пустого экрана.
+// Pages are imported normally (not lazily): lazy loading + Suspense + AnimatePresence gave a
+// white screen when switching tabs. The heavy scanner (BarcodeScanner) is in its own chunk
+// anyway (lazy import in DiaryTab), so the bundle stays split without risking a blank screen.
 import Home from './pages/Home.jsx'
 import Schedule from './pages/Schedule.jsx'
 import Health from './pages/Health.jsx'
@@ -27,14 +27,14 @@ import Mail from './pages/Mail.jsx'
 import History from './pages/History.jsx'
 import Settings from './pages/Settings.jsx'
 
-// Переходы между разделами: fade + лёгкий подъём (variants.pageEnter из motion.js).
-// useLocation требует Router-контекст, поэтому анимированные роуты — отдельным
-// компонентом внутри BrowserRouter. FluidMenu и модалки живут вне <main> и не дёргаются.
+// Transitions between sections: a fade plus a slight rise (variants.pageEnter from motion.js).
+// useLocation needs the Router context, so the animated routes live in a component of their
+// own inside BrowserRouter. FluidMenu and the modals sit outside <main> and don't twitch.
 function AnimatedRoutes() {
   const location = useLocation()
   const isMobile = useIsMobile()
-  // На мобильном — лёгкий fade (без transform всей страницы и с мгновенным
-  // выходом), чтобы переключение вкладок было плавным и без задержки нажатий.
+  // On mobile, a light fade (no transform on the whole page, and an instant exit),
+  // so switching tabs stays smooth and taps don't feel delayed.
   const pv = isMobile ? variants.pageFade : variants.pageEnter
   return (
     <AnimatePresence mode="wait" initial={false}>
@@ -54,7 +54,7 @@ function AnimatedRoutes() {
           <Route path="/nutrition" element={<Nutrition />} />
           <Route path="/mail" element={MAIL_ENABLED ? <Mail /> : <Navigate to="/" replace />} />
           <Route path="/history" element={HISTORY_ENABLED ? <History /> : <Navigate to="/" replace />} />
-          {/* «Подключения» влиты в Настройки — старые ссылки ведут туда */}
+          {/* "Connections" has been folded into Settings — old links lead there */}
           <Route path="/connections" element={<Navigate to="/settings" replace />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/" replace />} />
@@ -64,18 +64,18 @@ function AnimatedRoutes() {
   )
 }
 
-// Раскладка = ОБОЛОЧКА сайта: своя навигация, окна и структура при общих данных.
-// classic — разделы+сайдбар (как было); cockpit — весь сайт на одном экране,
-// разделы всплывают окнами; journal — главы с вкладками сверху; command —
-// рабочий стол из трёх постоянных панелей.
+// A layout is the site's SHELL: its own navigation, windows and structure over the same data.
+// classic — sections plus a sidebar (the original); cockpit — the whole site on one screen,
+// with sections popping up as windows; journal — chapters with tabs along the top; command —
+// a desktop built from three permanent panels.
 function ShellRouter() {
   const layout = useLayout()
   const isMobile = useIsMobile()
-  // На мобильном — всегда «Классика»: остальные оболочки плохо смотрятся на узком
-  // экране (решение владельца). Предпочтение пользователя сохраняется для десктопа.
+  // On mobile it's always "classic": the other shells look bad on a narrow screen
+  // (the owner's decision). The user's own preference is kept for desktop.
   const effective = isMobile ? 'classic' : layout
-  // Держим html[data-layout] в согласии с эффективной раскладкой, чтобы CSS-правила
-  // journal/cockpit/command не применялись к классике на мобильном.
+  // Keep html[data-layout] in step with the effective layout, so the journal/cockpit/command
+  // CSS rules don't end up applied to classic on mobile.
   useEffect(() => {
     document.documentElement.setAttribute('data-layout', effective)
   }, [effective])
@@ -89,12 +89,12 @@ function ShellRouter() {
 }
 
 export default function App() {
-  // Держим тему в согласии с устройством и оформлением телефона (тёмная/светлая) вживую.
+  // Keep the theme in step, live, with the device and the phone's appearance (dark/light).
   useThemeSync()
 
-  // Синхронизация между устройствами: ДО показа приложения подтягиваем пользовательские
-  // данные с сервера (расписание/память/анализы/питание), затем запускаем фоновый push.
-  // Не блокируем дольше 4 с, если сеть висит.
+  // Cross-device sync: BEFORE showing the app we pull the user's data from the server
+  // (schedule/memory/blood tests/nutrition), then start the background push.
+  // We don't block for longer than 4 s if the network hangs.
   const [synced, setSynced] = useState(false)
   useEffect(() => {
     let done = false
@@ -109,8 +109,8 @@ export default function App() {
     return () => clearTimeout(tmr)
   }, [])
 
-  // Подтягиваем живые данные Whoop и Garmin в localStorage (для страниц и для ИИ).
-  // Гость работает на демо-данных — реальные не запрашиваем (и не затираем демо).
+  // Pull live Whoop and Garmin data into localStorage (for the pages and for the AI).
+  // A guest runs on demo data — we don't request the real thing (and don't overwrite the demo).
   useEffect(() => {
     if (isGuest()) return
     fetch('/api/whoop/data').then(r => r.json()).then(d => {

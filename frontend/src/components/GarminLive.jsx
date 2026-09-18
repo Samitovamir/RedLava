@@ -11,7 +11,7 @@ import { useT, useLang } from '../context/LanguageContext.jsx'
 import { mskDateKey } from '../utils/time.js'
 import ArcGauge from './ArcGauge.jsx'
 
-// Ключ даты N дней назад (YYYY-MM-DD) от сегодняшней МСК-даты
+// The date key (YYYY-MM-DD) for N days before today's Moscow date
 function daysAgoKey(n) {
   const [y, m, d] = mskDateKey().split('-').map(Number)
   const dt = new Date(Date.UTC(y, m - 1, d))
@@ -20,7 +20,7 @@ function daysAgoKey(n) {
   return `${dt.getUTCFullYear()}-${p(dt.getUTCMonth() + 1)}-${p(dt.getUTCDate())}`
 }
 
-// Спорт-тип Garmin → локализованная подпись (для плановых тренировок)
+// A Garmin sport type → a localized label (used by the planned workouts)
 const SPORT_LABELS = {
   ru: {
     running: 'Бег', cycling: 'Велосипед', lap_swimming: 'Плавание', swimming: 'Плавание',
@@ -36,8 +36,8 @@ const sportLabel = (s, map, fallback) => map[s] || (s ? s.replace(/_/g, ' ') : f
 const hmToMin = hm => { const [h, m] = String(hm).split(':').map(Number); return h * 60 + (m || 0) }
 const minToHm = t => `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`
 
-// Подобрать время тренировки: приоритет 06:30, с учётом длительности и БЕЗ наложения
-// на существующие события дня. Если 06:30 занято — ближайшее свободное (сначала утро).
+// Pick a time for the workout: 06:30 preferred, allowing for its duration and WITHOUT
+// overlapping the day's existing events. If 06:30 is taken, the nearest free slot (morning first).
 function proposeSlot(dateStr, durMin, events) {
   const dur = durMin || 60
   const busy = (events || []).filter(e => e.date === dateStr && e.start && e.end).map(e => [hmToMin(e.start), hmToMin(e.end)])
@@ -45,15 +45,15 @@ function proposeSlot(dateStr, durMin, events) {
   const slot = s => ({ start: minToHm(s), end: minToHm(s + dur) })
   const pref = 6 * 60 + 30
   if (fits(pref)) return slot(pref)
-  for (let s = pref; s <= 21 * 60 + 30; s += 15) if (fits(s)) return slot(s)   // позже утра/днём
-  for (let s = 5 * 60; s < pref; s += 15) if (fits(s)) return slot(s)          // совсем рано
+  for (let s = pref; s <= 21 * 60 + 30; s += 15) if (fits(s)) return slot(s)   // later morning / afternoon
+  for (let s = 5 * 60; s < pref; s += 15) if (fits(s)) return slot(s)          // very early
   return slot(pref)
 }
 
 /*
-  Реальные данные Garmin: шаги, пульс покоя, VO2max, объём за неделю,
-  hero-карточка последней тренировки и лента тренировок с полными метриками.
-  Источник: localStorage 'albert-garmin-live' + обновление с сервера.
+  Real Garmin data: steps, resting heart rate, VO2max, the week's volume,
+  a hero card for the latest workout and a feed of workouts with their full metrics.
+  Source: localStorage 'albert-garmin-live' plus a refresh from the server.
 */
 function readLive() {
   try { const s = localStorage.getItem('albert-garmin-live'); return s ? JSON.parse(s) : null } catch { return null }
@@ -69,7 +69,7 @@ function fmtDate(d, months = MONTHS.ru) {
   return `${Number(day)} ${months[Number(m) - 1]}`
 }
 
-// Русская множественная форма: тренировка / тренировки / тренировок
+// Russian plural forms: тренировка / тренировки / тренировок
 function plural(n, one, few, many) {
   const m10 = n % 10, m100 = n % 100
   if (m10 === 1 && m100 !== 11) return one
@@ -77,7 +77,7 @@ function plural(n, one, few, many) {
   return many
 }
 
-// Акцент карточек/точек видов спорта — ЕДИНЫЙ акцент темы (без разноцветья без легенды).
+// Sport cards and dots use the theme's ONE accent (no rainbow of colors without a legend).
 function typeColor() {
   return 'var(--accent)'
 }
@@ -88,9 +88,9 @@ const ICON_HEART = (
   </svg>
 )
 
-// Метрики hero-карточки (показываем только заполненные).
-// primary: ключевые метрики (Дистанция/Время/Темп) — крупнее; остальные мельче/в --muted.
-// Единицы измерения — мелко у базовой линии; никакой выборочной окраски чисел (числа в --foreground).
+// The hero card's metrics (only the ones that have a value are shown).
+// primary: the key metrics (Distance/Duration/Pace) render larger; the rest smaller and in --muted.
+// Units sit small on the baseline; no selective coloring of numbers (numbers stay --foreground).
 function heroMetrics(w, t, trainingLabel) {
   const out = []
   if (w.distanceKm != null) out.push({ k: t.mDistance, v: w.distanceKm, u: t.uKm, primary: true })
@@ -103,7 +103,7 @@ function heroMetrics(w, t, trainingLabel) {
   if (w.elevationGain != null) out.push({ k: t.mElevation, v: w.elevationGain, u: t.uM })
   if (w.cadence != null) out.push({ k: t.mCadence, v: w.cadence, u: t.uSpm })
   if (w.avgPower != null) out.push({ k: t.mPower, v: w.avgPower, u: t.uW })
-  // «Эффект»: число — значение, тип нагрузки (аэробный/анаэробный) уходит в подпись, не в единицу.
+  // "Effect": the number is the value, while the load type (aerobic/anaerobic) goes in the label, not the unit.
   if (w.trainingEffect != null) {
     const eff = (trainingLabel ?? w.trainingLabel) || ''
     out.push({ k: eff ? `${t.mEffect} · ${eff}` : t.mEffect, v: w.trainingEffect, u: '' })
@@ -167,26 +167,26 @@ export default function GarminLive({ embedded = false, listsOnly = false }) {
     }
   })
   const { lang } = useLang()
-  // Разделители тысяч по языку интерфейса: раньше было жёстко 'ru-RU', и в английском
-  // рядом стояли «8 420» (узкий пробел) и подпись «goal 10,000» — два формата в одном гейдже.
+  // Thousands separators follow the interface language: this was hard-coded to 'ru-RU', so in
+  // English "8 420" (a narrow space) sat next to the caption "goal 10,000" — two formats in one gauge.
   const numLocale = lang === 'en' ? 'en-US' : 'ru-RU'
-  // Выбрать английский вариант поля (field+'En') при lang==='en', иначе оригинал.
-  // Реальные данные Garmin не содержат *En — всегда есть RU-фолбэк.
+  // Pick a field's English variant (field+'En') when lang==='en', otherwise the original.
+  // Real Garmin data carries no *En fields — the RU value is always there as a fallback.
   const pickL = (o, f) => (lang === 'en' && o && o[f + 'En']) ? o[f + 'En'] : (o ? o[f] : '')
   const months = MONTHS[lang] || MONTHS.ru
   const sportMap = SPORT_LABELS[lang] || SPORT_LABELS.ru
   const sportRu = s => sportLabel(s, sportMap, t.defaultWorkout)
 
   const [g, setG] = useState(readLive)
-  const [selected, setSelected] = useState(null)   // открытая тренировка (окно деталей)
-  const [pickW, setPickW] = useState(null)         // тренировка, для которой выбираем время колёсиком
+  const [selected, setSelected] = useState(null)   // the open workout (the details modal)
+  const [pickW, setPickW] = useState(null)         // the workout whose time is being set on the wheel
   const [pickTime, setPickTime] = useState('07:00')
 
-  // Плановые тренировки (TrainingPeaks/Garmin) и какие уже добавлены в календарь
+  // Planned workouts (TrainingPeaks/Garmin) and which of them are already in the calendar
   const { events, applyAiActions } = useEvents()
   const [planned, setPlanned] = useState([])
   const [plannedDebug, setPlannedDebug] = useState(null)
-  const [openSec, setOpenSec] = useState({ planned: true, recent: true })  // свёрнутость секций
+  const [openSec, setOpenSec] = useState({ planned: true, recent: true })  // which sections are collapsed
   const toggleSec = k => setOpenSec(s => ({ ...s, [k]: !s[k] }))
   const [added, setAdded] = useState(() => {
     try { return JSON.parse(localStorage.getItem('albert-planned-added') || '{}') } catch { return {} }
@@ -197,13 +197,13 @@ export default function GarminLive({ embedded = false, listsOnly = false }) {
     name: 'create_event',
     input: { type: 'workout', title: w.title || t.defaultWorkout, date: w.date, start, end, who: t.defaultWorkout, priority: 2 }
   })
-  // Уже есть такое событие в календаре? (защита от дублей, в т.ч. с другого устройства)
+  // Is this event already in the calendar? (guards against duplicates, including from another device)
   const existsInCal = (date, start, title) =>
     (events || []).some(e => e.date === date && e.start === start && (e.title || '').trim() === (title || '').trim())
 
-  // Добавить тренировку в календарь: с временем — на него; без — на лучший утренний слот
+  // Add a workout to the calendar: at its own time if it has one, otherwise the best morning slot
   function scheduleWorkout(w) {
-    if (added[w.id]) return            // уже добавлено — не дублируем
+    if (added[w.id]) return            // already added — don't duplicate it
     const dur = w.durationMin || 60
     const { start, end } = w.time
       ? { start: w.time, end: minToHm(hmToMin(w.time) + dur) }
@@ -212,14 +212,14 @@ export default function GarminLive({ embedded = false, listsOnly = false }) {
     persistAdded({ ...added, [w.id]: { date: w.date, start, end } })
   }
 
-  // Открыть колёсико времени: дефолт — время тренировки или предложенный утренний слот
+  // Open the time wheel: it defaults to the workout's own time, or the proposed morning slot
   function openPicker(w) {
     if (added[w.id]) return
     const dur = w.durationMin || 60
     const start = w.time || proposeSlot(w.date, dur, events).start
     setPickTime(start); setPickW(w)
   }
-  // Добавить тренировку на выбранное колёсиком время (тип события — workout)
+  // Add the workout at the time chosen on the wheel (the event type is workout)
   function scheduleWorkoutAt(w, start) {
     const dur = w.durationMin || 60
     const end = minToHm(hmToMin(start) + dur)
@@ -237,8 +237,8 @@ export default function GarminLive({ embedded = false, listsOnly = false }) {
     }).catch(() => {})
   }, [])
 
-  // Плановые тренировки: грузим и СРАЗУ добавляем те, у которых уже есть время.
-  // Гостю бэкенд планы не отдаёт — показываем демо-планы.
+  // Planned workouts: load them and IMMEDIATELY add the ones that already carry a time.
+  // The backend serves a guest no plans, so the demo plans are shown instead.
   useEffect(() => {
     if (isGuest()) { setPlanned(demoPlanned(lang)); return }
     fetch('/api/garmin/planned').then(r => r.json()).then(d => {
@@ -260,9 +260,9 @@ export default function GarminLive({ embedded = false, listsOnly = false }) {
   const workouts = g?.workouts || []
   const accent = typeColor(last?.type)
 
-  // Сводка «Калории» и «План/факт» (сегодня + за последние 7 дней)
+  // The "Calories" and "Plan / actual" summaries (today + the last 7 days)
   const todayKey = mskDateKey()
-  const weekAgoKey = daysAgoKey(6)   // окно последних 7 дней, включая сегодня
+  const weekAgoKey = daysAgoKey(6)   // a 7-day window ending with today
   const inWeek = w => w.date >= weekAgoKey && w.date <= todayKey
   const doneToday = workouts.filter(w => w.date === todayKey)
   const doneWeek = workouts.filter(inWeek)
@@ -275,7 +275,7 @@ export default function GarminLive({ embedded = false, listsOnly = false }) {
   const hasCalData = kcalWeek > 0
   const hasPlanFact = planned.length > 0 || doneWeek.length > 0
 
-  // Гейджи в стиле Garmin: VO₂max с цветными зонами и маркером, кольца шагов/заряда, дуга пульса.
+  // Garmin-style gauges: VO₂max with colored zones and a marker, rings for steps/battery, an arc for heart rate.
   const vo2 = g?.vo2Max
   const vo2Label = vo2 == null ? '' : vo2 >= 50 ? t.fitTop : vo2 >= 45 ? t.fitExc : vo2 >= 40 ? t.fitGood : vo2 >= 35 ? t.fitAvg : t.fitLow
   const VO2_ZONES = [
@@ -286,7 +286,7 @@ export default function GarminLive({ embedded = false, listsOnly = false }) {
   ]
   const bb = g?.bodyBattery?.current
   const bbColor = bb == null ? 'var(--accent)' : bb >= 50 ? 'var(--status-ok)' : bb >= 25 ? 'var(--status-warn)' : 'var(--status-crit)'
-  // Стресс Garmin (0–100, ниже — лучше) — покажем в 4-й плитке, если «Заряд тела» недоступен
+  // Garmin stress (0–100, lower is better) — shown in the 4th tile when Body Battery isn't available
   const stressVal = g?.stress ? (g.stress.recent ?? g.stress.current ?? g.stress.avg ?? null) : null
   const stressColor = v => v <= 25 ? 'var(--status-ok)' : v <= 50 ? 'var(--status-warn)' : v <= 75 ? 'var(--status-warn)' : 'var(--status-crit)'
   const gauges = [
@@ -327,7 +327,7 @@ export default function GarminLive({ embedded = false, listsOnly = false }) {
         </motion.div>
       )}
 
-      {/* Виджеты «Калории» и «План/факт»: расход за день и выполнение плана рядом */}
+      {/* The "Calories" and "Plan / actual" widgets: the day's burn and plan adherence side by side */}
       {!listsOnly && (hasCalData || hasPlanFact) && (
         <div className="gl-summary">
           {hasCalData && (
@@ -396,8 +396,8 @@ export default function GarminLive({ embedded = false, listsOnly = false }) {
         </motion.div>
       )}
 
-      {/* Расширенные метрики Garmin (Training Status/Load, HRV, прогнозы забегов и т.д.) —
-          ниже последней тренировки, но выше «Приближающихся тренировок» */}
+      {/* Advanced Garmin metrics (Training Status/Load, HRV, race predictions and so on) —
+          below the latest workout, but above "Upcoming workouts" */}
       {!listsOnly && (
         <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.16 }}>
           <GarminInsights />
@@ -430,7 +430,7 @@ export default function GarminLive({ embedded = false, listsOnly = false }) {
                       {fmtDate(w.date, months)} · {sportRu(w.sport)}
                       {w.durationMin ? ` · ${w.durationMin} ${t.minShort}` : ''}
                       {w.distanceKm ? ` · ${w.distanceKm} ${t.kmShort}` : ''}
-                      {/* Время: своё (· в 6:30) или предлагаемое утро (· ~6:30) — в мете, не в кнопке */}
+                      {/* The time: its own (· at 6:30) or the proposed morning (· ~6:30) — in the meta line, not the button */}
                       {w.time ? ` · ${t.at} ${w.time}` : ` · ~6:30`}
                     </span>
                   </div>

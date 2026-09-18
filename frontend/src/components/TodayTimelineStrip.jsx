@@ -4,9 +4,9 @@ import { useT, useLang } from '../context/LanguageContext.jsx'
 import { mskNow } from '../utils/time.js'
 
 /*
-  Лента дня — горизонтальная полоса сегодняшних событий (раскладка «Кокпит»).
-  Компактный взгляд «что впереди», не заменяет полный таймлайн на /schedule:
-  клик по событию ведёт туда и фокусирует календарь на нём.
+  Day strip — a horizontal band of today's events (the "Cockpit" layout).
+  A compact "what's ahead" view; it does not replace the full timeline on /schedule:
+  clicking an event takes you there and focuses the calendar on it.
 */
 export default function TodayTimelineStrip() {
   const navigate = useNavigate()

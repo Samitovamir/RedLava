@@ -4,10 +4,10 @@ import { Button } from '../ui'
 import { useLang, useT } from '../context/LanguageContext.jsx'
 
 /*
-  Анкета при первом заходе в «Питание»: пол, возраст, рост, вес, сколько тренируется, цель.
-  Без неё норма считалась бы по усреднённой заглушке — то есть не про этого человека.
-  Показывается, пока профиль не заполнен (profile.isPlaceholder), и больше не возвращается.
-  onDone(profile) — сохранить и перейти к разделу.
+  The questionnaire on the first visit to "Nutrition": sex, age, height, weight, training load, goal.
+  Without it the target would be computed from an averaged stub — i.e. not about this person.
+  Shown while the profile is unfilled (profile.isPlaceholder), and never comes back afterwards.
+  onDone(profile) — save and move on to the section.
 */
 export default function NutritionSetup({ hasGarmin = false, onDone }) {
   const { lang } = useLang()
@@ -54,8 +54,8 @@ export default function NutritionSetup({ hasGarmin = false, onDone }) {
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
   const filled = +form.age > 0 && +form.height > 0 && +form.weight > 0
-  // Границы те же, что в min/max у полей: формула Миффлина за ними даёт бессмысленную
-  // норму, а анкета заполняется один раз — молча принять «5 лет / 300 см» нельзя.
+  // The same bounds as the fields' min/max: beyond them the Mifflin formula gives a meaningless
+  // target, and the form is filled in once — we can't silently accept "5 years old / 300 cm".
   const LIMITS = { age: [14, 100], height: [120, 230], weight: [30, 250] }
   const outOfRange = filled
     ? Object.keys(LIMITS).filter(k => +form[k] < LIMITS[k][0] || +form[k] > LIMITS[k][1])
@@ -79,7 +79,7 @@ export default function NutritionSetup({ hasGarmin = false, onDone }) {
   }
 
   const activityLabel = (a) => (lang === 'en' ? a.labelEn : a.label)
-  // У GOALS английских подписей нет (они живут в словаре страницы) — держим их здесь.
+  // GOALS carries no English labels (those live in the page's dictionary) — we keep them here.
   const GOALS_EN = { lose: 'Lose weight', maintain: 'Maintain', gain: 'Gain mass' }
   const goalLabel = (g) => (lang === 'en' ? (GOALS_EN[g.key] || g.label) : g.label)
 
@@ -131,9 +131,9 @@ export default function NutritionSetup({ hasGarmin = false, onDone }) {
         </div>
       </div>
 
-      {/* Итог + кнопка одним липким блоком: анкета длинная, и на телефоне её конец
-          приходится ровно под плавающую панель вкладок. Причина, по которой кнопка
-          выключена, должна ехать вместе с кнопкой — иначе она остаётся под панелью. */}
+      {/* The result and the button as one sticky block: the form is long, and on a phone its
+          end falls exactly under the floating tab bar. The reason the button is disabled has
+          to travel with the button — otherwise it stays hidden under that bar. */}
       <div className="ns-submit">
         <div className="ns-preview">
           {preview

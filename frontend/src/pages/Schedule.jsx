@@ -11,7 +11,7 @@ export default function Schedule() {
     ru: { title: 'Расписание', source: 'Google Calendar' },
     en: { title: 'Schedule', source: 'Google Calendar' }
   })
-  // Открытый в календаре день — чтобы сводка справа была про него же (синхрон день↔сводка).
+  // The day open in the calendar — so the summary on the right covers it too (day ↔ summary in sync).
   const [viewDay, setViewDay] = useState(null)
   return (
     <div className="schedule-page">

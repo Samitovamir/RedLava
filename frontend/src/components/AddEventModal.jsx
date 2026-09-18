@@ -6,16 +6,16 @@ import { useLang, useT } from '../context/LanguageContext.jsx'
 import { categoryColor, categoryTint } from '../utils/categoryColor.js'
 
 /*
-  Модалка добавления события.
-  Поля: тип, название, время начала/конца, контакт.
-  onAdd(event) — передаёт новое событие наверх, onClose — закрывает.
-  AI-парсинг текста ("завтра в 15:00 встреча") — заглушка на будущее.
+  The "add event" modal.
+  Fields: type, title, start and end time, contact.
+  onAdd(event) hands the new event up; onClose closes the modal.
+  AI parsing of free text ("завтра в 15:00 встреча") is a stub for later.
 */
 
-// Типы событий — общий словарь utils/events.js (один источник с DaySchedule)
+// Event types — the shared dictionary in utils/events.js (one source, shared with DaySchedule)
 const TYPES = EVENT_TYPES.map((t) => ({ value: t.value, label: t.ru, labelEn: t.en, color: categoryColor(t.colorKey) }))
 
-// Варианты повторения (как в Google Calendar)
+// Recurrence options (as in Google Calendar)
 const REPEATS = [
   { value: 'none', label: 'Не повторяется', labelEn: 'Does not repeat' },
   { value: 'daily', label: 'Каждый день', labelEn: 'Every day' },
@@ -39,8 +39,8 @@ const WEEKDAYS = [
 export const REPEAT_LABELS = Object.fromEntries(REPEATS.map(r => [r.value, r.label]))
 export const REPEAT_LABELS_EN = Object.fromEntries(REPEATS.map(r => [r.value, r.labelEn]))
 
-// Приоритеты: 1 — самый важный (неотложный).
-// Цвет — токен темы --cat-pri-*, в рендере categoryColor(p.colorKey).
+// Priorities: 1 is the most important (urgent).
+// The color is the theme token --cat-pri-*, resolved at render time by categoryColor(p.colorKey).
 export const PRIORITIES = [
   { value: 1, label: 'Неотложный', labelEn: 'Urgent', colorKey: 'pri-1' },
   { value: 2, label: 'Важный', labelEn: 'Important', colorKey: 'pri-2' },
@@ -48,7 +48,7 @@ export const PRIORITIES = [
 ]
 export const PRIORITY_MAP = Object.fromEntries(PRIORITIES.map(p => [p.value, p]))
 
-// Человекочитаемая подпись повторения (для отображения в событии)
+// A human-readable recurrence label (for showing on the event itself)
 export function repeatLabel(repeat, customDays, lang = 'ru') {
   const labels = lang === 'en' ? REPEAT_LABELS_EN : REPEAT_LABELS
   if (!repeat || repeat === 'none') return ''
@@ -124,14 +124,14 @@ export default function AddEventModal({ onAdd, onClose, initial, defaultDate, de
   const [repeat, setRepeat] = useState(initial?.repeat || 'none')
   const [customDays, setCustomDays] = useState(initial?.customDays || [])
   const [repeatOpen, setRepeatOpen] = useState(false)
-  const [priority, setPriority] = useState(initial?.priority || null) // не обязателен; по умолчанию «Обычный»
+  const [priority, setPriority] = useState(initial?.priority || null) // optional; defaults to «Обычный»
   const [showPriHelp, setShowPriHelp] = useState(false)
 
   const toMin = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m }
   const toStr = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
-  const invalidTime = toMin(end) <= toMin(start) // конец должен быть позже начала
+  const invalidTime = toMin(end) <= toMin(start) // the end has to be later than the start
 
-  // При выборе начала — конец автоматически +1 час (можно потом исправить)
+  // Picking a start time sets the end an hour later automatically (it can be corrected after)
   function changeStart(v) {
     setStart(v)
     setEnd(toStr(Math.min(toMin(v) + 60, 23 * 60 + 59)))
@@ -207,7 +207,7 @@ export default function AddEventModal({ onAdd, onClose, initial, defaultDate, de
           />
         </label>
 
-        {/* Приоритет (обязательное поле) */}
+        {/* Priority (a required field) */}
         <div className="aem-field">
           <span className="aem-pri-label">
             {t.priority}
@@ -241,7 +241,7 @@ export default function AddEventModal({ onAdd, onClose, initial, defaultDate, de
           </div>
         </div>
 
-        {/* Повторение (как в Google Calendar) */}
+        {/* Recurrence (as in Google Calendar) */}
         <div className="aem-field">
           <span>{t.repeat}</span>
           {!repeatOpen ? (
@@ -259,14 +259,14 @@ export default function AddEventModal({ onAdd, onClose, initial, defaultDate, de
                     className={`aem-repeat-item ${repeat === r.value ? 'active' : ''}`}
                     onClick={() => {
                       setRepeat(r.value)
-                      // для не-кастомных закрываем список, для custom оставляем для выбора дней
+                      // close the list for the non-custom options; keep it open for custom so days can be picked
                       if (r.value !== 'custom') setRepeatOpen(false)
                     }}
                   >
                     <span className="aem-radio">{repeat === r.value && <span className="aem-radio-dot" />}</span>
                     {lang === 'en' ? r.labelEn : r.label}
                   </button>
-                  {/* Выбор конкретных дней недели */}
+                  {/* Picking specific days of the week */}
                   {r.value === 'custom' && repeat === 'custom' && (
                     <div className="aem-weekdays">
                       {WEEKDAYS.map(d => (

@@ -4,8 +4,8 @@ import { variants, Z } from '../motion.js'
 import Icon from './Icon.jsx'
 import { useT } from '../context/LanguageContext.jsx'
 
-// Единая модалка для всех оверлеев. size: sm(440)|md(540)|lg(760)|reading(820).
-// Закрытие по Esc и клику вне; lockScroll блокирует прокрутку фона.
+// One modal for every overlay. size: sm(440)|md(540)|lg(760)|reading(820).
+// Closes on Esc and on a click outside; lockScroll blocks scrolling of the background.
 const SIZES = { sm: 440, md: 540, lg: 760, reading: 820 }
 
 export default function Modal({

@@ -4,19 +4,19 @@ import { useT, useLang } from '../context/LanguageContext.jsx'
 import { useIsMobile } from '../layout.js'
 import { getDesktopTheme, setDesktopTheme, getMobilePref, setMobilePref } from '../theme.js'
 
-// Переключатель тем. На десктопе — кожаные темы (выбор пользователя). На телефоне —
-// только минималистичные iOS-темы + «Авто» (подстраивается под оформление телефона).
-// Тема хранится раздельно (albert-theme / albert-theme-mobile) и применяется к
-// <html data-theme>; все цвета сайта завязаны на CSS-переменные.
+// Theme switcher. On desktop, the leather themes (the user's pick). On a phone, only the
+// minimal iOS themes plus "Auto" (which follows the phone's own appearance setting).
+// The two are stored separately (albert-theme / albert-theme-mobile) and applied to
+// <html data-theme>; every color on the site is wired to CSS variables.
 
-// Десктоп: образцы фон / поверхность / акцент для превью
+// Desktop: background / surface / accent swatches for the preview
 const DESKTOP_THEMES = [
   { id: 'black-leather', ru: 'Тёмная',   en: 'Dark',  sub: { ru: 'Чёрная кожа', en: 'Black leather' }, bg: '#121211', surface: '#1E1E1C', accent: '#8FB2D4' },
   { id: 'brown-leather', ru: 'Коричневая кожа', en: 'Brown leather', bg: '#120E0B', surface: '#271F19', accent: '#C89B6A' },
   { id: 'cream',         ru: 'Кремовая',        en: 'Cream',         bg: '#EFE9DD', surface: '#FDFBF6', accent: '#C97B4A' },
   { id: 'original',      ru: 'Оригинальная',    en: 'Original',      bg: '#1E1B18', surface: '#2C2825', accent: '#818CF8' },
 ]
-// Телефон: «Авто» + две iOS-темы
+// Phone: "Auto" plus two iOS themes
 const MOBILE_OPTIONS = [
   { id: 'auto',      ru: 'Авто',        en: 'Auto',      sub: { ru: 'Как на телефоне', en: 'Matches your phone' }, auto: true },
   { id: 'ios-dark',  ru: 'iOS Тёмная',  en: 'iOS Dark',  bg: '#000000', surface: '#1C1C1E', accent: '#0A84FF' },
@@ -33,7 +33,7 @@ export default function ThemeSwitcher() {
   const isMobile = useIsMobile()
   const [sel, setSel] = useState(() => (isMobile ? getMobilePref() : getDesktopTheme()))
 
-  // Пересинхронизируем выделение при смене устройства / внешней смене темы
+  // Re-sync the selection when the device changes or the theme is changed elsewhere
   useEffect(() => {
     const sync = () => setSel(isMobile ? getMobilePref() : getDesktopTheme())
     sync()

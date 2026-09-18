@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 
-// Простой стабильный хэш строки (для ключа кэша)
+// A simple stable string hash (used for the cache key)
 function hash(str) {
   let h = 5381
   for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0
@@ -8,24 +8,24 @@ function hash(str) {
 }
 
 /*
-  Генерация ИИ-сводки с кэшем.
-  - id: пространство имён (например, 'daysummary')
-  - context: системный контекст с данными — входит в ключ кэша,
-    поэтому при изменении данных текст перегенерируется
-  - message: сам запрос к ИИ
-  - fallback: текст-заглушка, если backend/ключ недоступны (НЕ кэшируется)
+  Generating an AI summary, with a cache.
+  - id: the namespace (for example, 'daysummary')
+  - context: the system context carrying the data — it is part of the cache key,
+    so the text is regenerated whenever the data changes
+  - message: the request to the AI itself
+  - fallback: placeholder text for when the backend or the key is unavailable (NOT cached)
 
-  Возвращает { text, loading, source, refresh }.
+  Returns { text, loading, source, refresh }.
   source: 'ai' | 'cache' | 'fallback'
 */
 export function useAiSummary({ id, context, message, fallback, snapshot, manual = false }) {
-  // Снимок входит в ключ кэша, чтобы сводка перегенерировалась при изменении данных,
-  // но передаётся отдельным полем — на бэкенде он кэшируется как общий блок (экономия токенов).
-  // v2: бамп версии кэша инвалидирует старые значения — в т.ч. залипшие заглушки
-  // «слишком много запросов», которые прежний код по ошибке кэшировал как ответ.
+  // The snapshot is part of the cache key so the summary regenerates when the data changes,
+  // but it is sent as a separate field — the backend caches it as a shared block (saving tokens).
+  // v2: bumping the cache version invalidates the old values, including the stuck
+  // "too many requests" stubs that the previous code mistakenly cached as answers.
   const cacheKey = `ai-sum:v2:${id}:${hash(context + '|' + (snapshot || ''))}`
   const [text, setText] = useState('')
-  const [loading, setLoading] = useState(!manual)   // manual → не грузим сами, ждём кнопку
+  const [loading, setLoading] = useState(!manual)   // manual → we don't load on our own, we wait for the button
   const [source, setSource] = useState('cache')
 
   const load = useCallback((force) => {
@@ -42,8 +42,8 @@ export function useAiSummary({ id, context, message, fallback, snapshot, manual 
       .then(r => r.json())
       .then(d => {
         if (cancelled) return
-        // d.limited === true → это заглушка предохранителя (лимит/троттлинг), а НЕ ответ ИИ.
-        // Такую НЕ кэшируем и не показываем — отдаём fallback, чтобы окно не залипало на ней.
+        // d.limited === true → this is the circuit breaker's stub (a limit or throttling), NOT an
+        // AI answer. We neither cache nor show it — we return the fallback so the panel isn't stuck on it.
         if (d?.reply && !d.limited) {
           localStorage.setItem(cacheKey, d.reply)
           setText(d.reply); setSource('ai')
@@ -60,12 +60,12 @@ export function useAiSummary({ id, context, message, fallback, snapshot, manual 
   }, [cacheKey, context, message, fallback, snapshot])
 
   useEffect(() => {
-    if (manual) return            // ручной режим — без авто-загрузки (ничего не вываливаем сами)
+    if (manual) return            // manual mode — no auto-loading (we don't dump anything on the user)
     const cleanup = load(false)
     return cleanup
   }, [load, manual])
 
-  // Запустить по требованию: берёт кэш, если есть (бесплатно), иначе запрос к ИИ
+  // Run on demand: uses the cache if there is one (free), otherwise calls the AI
   const run = useCallback(() => load(false), [load])
 
   const refresh = useCallback(() => {

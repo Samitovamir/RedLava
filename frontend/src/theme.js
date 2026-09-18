@@ -1,22 +1,22 @@
 import { useEffect } from 'react'
 
 /*
-  Тема оформления. Две раздельные настройки:
-   - albert-theme        — выбор для ДЕСКТОПА (кожаные темы и т.п.), дефолт black-leather.
-   - albert-theme-mobile — выбор для ТЕЛЕФОНА: 'auto' | 'ios-dark' | 'ios-light', дефолт 'auto'.
+  Visual theme. Two independent settings:
+   - albert-theme        — the DESKTOP choice (the leather themes and so on), default black-leather.
+   - albert-theme-mobile — the PHONE choice: 'auto' | 'ios-dark' | 'ios-light', default 'auto'.
 
-  На телефоне доступны только минималистичные iOS-темы. 'auto' подстраивается под
-  оформление телефона (prefers-color-scheme): системная тёмная → ios-dark, светлая → ios-light,
-  и переключается вживую, когда пользователь меняет тему телефона.
+  Only the minimal iOS themes are offered on a phone. 'auto' follows the phone's own
+  appearance (prefers-color-scheme): system dark → ios-dark, light → ios-light, and it
+  switches live when the user changes the phone's theme.
 
-  Источник истины применённой темы — атрибут <html data-theme>. resolveTheme() считает
-  «эффективную» тему с учётом устройства и системы; applyTheme() её проставляет.
+  The source of truth for the applied theme is the <html data-theme> attribute. resolveTheme()
+  works out the "effective" theme from the device and the system; applyTheme() sets it.
 */
 
 const KEY = 'albert-theme'
 const MOBILE_KEY = 'albert-theme-mobile'
 export const DEFAULT_DESKTOP = 'black-leather'
-export const DEFAULT_MOBILE = 'auto'   // по умолчанию следуем оформлению телефона (тёмная/светлая)
+export const DEFAULT_MOBILE = 'auto'   // by default we follow the phone's appearance (dark/light)
 const MOBILE_Q = '(max-width: 640px)'
 const DARK_Q = '(prefers-color-scheme: dark)'
 const EVT = 'albert-theme-change'
@@ -33,25 +33,25 @@ export function getDesktopTheme() {
 export function getMobilePref() {
   try {
     const v = localStorage.getItem(MOBILE_KEY)
-    if (v === 'red-lava') return 'auto'   // RedLava убран — мигрируем на авто
+    if (v === 'red-lava') return 'auto'   // RedLava is gone — migrate it to auto
     return v || DEFAULT_MOBILE
   } catch { return DEFAULT_MOBILE }
 }
 
-// Эффективная data-theme с учётом устройства и системной темы телефона.
+// The effective data-theme, accounting for the device and the phone's system theme.
 export function resolveTheme() {
   if (isMobileViewport()) {
     const m = getMobilePref()
     if (m === 'ios-dark' || m === 'ios-light' || m === 'brown-leather') return m
-    return prefersDark() ? 'ios-dark' : 'ios-light' // 'auto' → следуем телефону
+    return prefersDark() ? 'ios-dark' : 'ios-light' // 'auto' → follow the phone
   }
   return getDesktopTheme()
 }
 
-// В Safari (вкладка) верхняя полоса со статус-баром тонируется в <meta theme-color>.
-// Красим её в фон приложения (--bg-app) — тогда «чёлка/граница» сливается с сайтом,
-// а не выглядит чужой полосой. На домашнем экране (standalone) контент и так уходит
-// под Dynamic Island (apple-mobile-web-app-status-bar-style=black-translucent).
+// In Safari (in a tab) the top strip holding the status bar is tinted from <meta theme-color>.
+// We paint it with the app background (--bg-app) so the notch/edge blends into the site
+// instead of looking like a strip borrowed from elsewhere. On the home screen (standalone)
+// the content already runs under the Dynamic Island (apple-mobile-web-app-status-bar-style=black-translucent).
 function syncThemeColor() {
   try {
     const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg-app').trim()
@@ -76,8 +76,8 @@ function emit() { try { window.dispatchEvent(new CustomEvent(EVT)) } catch { /* 
 export function setDesktopTheme(id) { try { localStorage.setItem(KEY, id) } catch { /* ignore */ } applyTheme(); emit() }
 export function setMobilePref(id) { try { localStorage.setItem(MOBILE_KEY, id) } catch { /* ignore */ } applyTheme(); emit() }
 
-// Держит <html data-theme> в согласии с устройством и системной темой вживую.
-// Вызывать один раз в App. onChange (опц.) дёргается при любой смене, чтобы UI обновил выделение.
+// Keeps <html data-theme> in step with the device and the system theme, live.
+// Call it once in App. onChange (optional) fires on every change, so the UI can refresh its selection.
 export function useThemeSync(onChange) {
   useEffect(() => {
     applyTheme()

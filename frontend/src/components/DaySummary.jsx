@@ -13,15 +13,15 @@ import { mskNow } from '../utils/time.js'
 import { useLang, useT } from '../context/LanguageContext.jsx'
 
 /*
-  Сводка дня + мини-чат с ИИ в контексте расписания.
-  Чат идёт через /agent — умеет реально создавать/переносить/удалять события.
-  Контекст строится из реальных событий — отражает все перестановки.
+  The day summary plus a mini chat with the AI in the context of the schedule.
+  The chat goes through /agent — it can genuinely create, move and delete events.
+  The context is built from the real events, so it reflects every rearrangement.
 */
 
 function readWhoopLive() { try { const s = localStorage.getItem('albert-whoop-live'); return s ? JSON.parse(s) : null } catch { return null } }
 function readGarminLive() { try { const s = localStorage.getItem('albert-garmin-live'); return s ? JSON.parse(s) : null } catch { return null } }
 
-// Маленькие чипы-метрики дня из реальных данных (тренировка / нагрузка / восстановление)
+// Small metric chips for the day, from real data (workout / strain / recovery)
 function buildMetrics(whoop, garmin, todayKey, en) {
   const m = []
   const todW = (garmin?.workouts || []).filter(w => w.date === todayKey)
@@ -33,7 +33,7 @@ function buildMetrics(whoop, garmin, todayKey, en) {
   return m
 }
 
-// Относительный день для eyebrow и промпта: сегодня/завтра/вчера/дата.
+// The day stated relatively, for the eyebrow and the prompt: today/tomorrow/yesterday/a date.
 function dayRelative(dayKey, todayKey, lang) {
   const d0 = new Date(todayKey + 'T00:00:00'), d1 = new Date(dayKey + 'T00:00:00')
   const diff = Math.round((d1 - d0) / 86400000)
@@ -48,8 +48,8 @@ function dayRelative(dayKey, todayKey, lang) {
   return `${dd} ${MM[m - 1]}`
 }
 
-// Короткий чип готовности (только для сегодня и при данных Whoop).
-// Возвращает { label, tone }: tone = ok/warn/crit — цвет точки-индикатора.
+// A short readiness chip (today only, and only when Whoop data is present).
+// Returns { label, tone }: tone = ok/warn/crit, which colors the indicator dot.
 function readinessChip(whoop, lang) {
   const r = whoop?.recovery
   if (r == null) return null
@@ -70,12 +70,12 @@ export default function DaySummary({ dayKey: dayKeyProp } = {}) {
   const dayEvents = events.filter(e => e.date === dayKey)
   const word = dayRelative(dayKey, todayKey, lang)
   const eyebrow = `${lang === 'en' ? 'Summary' : 'Сводка'} ${word}`.toUpperCase()
-  // Чипы текущего состояния тела: нагрузка/восстановление (нейтральные) + готовность (зелёный).
+  // Chips for the body's current state: strain/recovery (neutral) + readiness (green).
   const whoop = readWhoopLive()
   const metrics = buildMetrics(whoop, readGarminLive(), dayKey, lang === 'en')
   const chip = readinessChip(whoop, lang)
 
-  // Пока долгосрочная память не наполнилась — не советуем по рабочим встречам/звонкам.
+  // Until the long-term memory has filled up, we give no advice about work meetings or calls.
   const memThin = (facts?.length || 0) < 8
   const DAY_CONTEXT =
     `Ты помощник пользователя по организации дня. Фокусируйся на расписании и планах, но ты ВИДИШЬ всю картину (спорт, здоровье, анализы) и учитываешь её в советах. ` +
@@ -131,7 +131,7 @@ function DaySummaryInner({ dayContext, snapshot, eyebrow, eventCount, metrics = 
   const [loading, setLoading] = useState(false)
   const msgsRef = useRef(null)
 
-  // ИИ-сводка дня (с кэшем; шаблон — как фолбэк без backend)
+  // The AI day summary (cached; the template serves as the fallback with no backend)
   const fallbackSummary = lang === 'en'
     ? (eventCount > 0
         ? `Wrap up the day calmly\nToday: ${eventCount} ${eventCount === 1 ? 'event' : 'events'}. Do the important tasks first, leave the workout for the evening.`
@@ -159,7 +159,7 @@ function DaySummaryInner({ dayContext, snapshot, eyebrow, eventCount, metrics = 
     setMessages(m => [...m, { role: 'user', text: q }])
     setLoading(true)
     try {
-      // Через /agent — ассистент реально умеет создавать/переносить/удалять события
+      // Through /agent — the assistant really can create, move and delete events
       const res = await fetch('/api/ai/agent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -238,7 +238,7 @@ function DaySummaryInner({ dayContext, snapshot, eyebrow, eventCount, metrics = 
         </div>
       )}
 
-      {/* Мини-чат: история (если есть) + ввод, прижатый к низу */}
+      {/* Mini chat: the history, if any, plus the input pinned to the bottom */}
       <div className="ds-chat">
         {messages.length > 0 && (
           <div className="ds-chat-msgs" ref={msgsRef}>
@@ -251,7 +251,7 @@ function DaySummaryInner({ dayContext, snapshot, eyebrow, eventCount, metrics = 
             {loading && <div className="ds-chat-msg assistant thinking">{t.thinking}</div>}
           </div>
         )}
-        {/* Голос — основной способ обращения к ИИ: микрофон надиктовывает и сразу отправляет */}
+        {/* Voice is the main way to reach the AI: the mic dictates and sends straight away */}
         <div className="ds-chat-input-row">
           <MicButton primary onText={txt => send((input ? input.trim() + ' ' : '') + txt)} />
           <input

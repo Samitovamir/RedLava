@@ -1,26 +1,26 @@
-// Единый icon-set (lucide-react) вместо разрозненных эмодзи в данных.
-// Данные хранят iconKey-строку; компонент <Icon name={iconKey}/> рендерит line-иконку.
-// Один стиль штриха по всему продукту — премиальный, тонкий, как приборка Porsche.
+// A single icon set (lucide-react) instead of assorted emoji scattered through the data.
+// The data stores an iconKey string; <Icon name={iconKey}/> renders the matching line icon.
+// One stroke style across the whole product — premium and thin, like a Porsche gauge cluster.
 import {
-  // анализы / лаборатория
+  // blood tests / lab
   Droplet, Heart, Candy, FlaskConical, TestTube, Magnet, Pill, Zap, Activity,
   Beaker, Flame, Bandage, Bug, Microscope,
-  // спорт
+  // sport
   Footprints, Bike, Waves, Dumbbell,
-  // приёмы пищи
+  // meals
   Sunrise, Salad, Apple, Moon, Sun,
-  // события
+  // events
   Phone, CalendarDays, Mail, Users, User,
-  // приоритеты / статусы
+  // priorities / statuses
   AlertTriangle, Circle,
-  // интерфейс / ИИ
+  // UI / AI
   Sparkles, Brain, Globe, Settings, X, Check, Bot, Lock, UtensilsCrossed,
-  // задачи по дому
+  // household tasks
   CheckSquare,
 } from 'lucide-react'
 
 export const ICONS = {
-  // лаборатория (14 групп)
+  // lab (14 groups)
   'lab-blood': Droplet,
   'lab-lipids': Heart,
   'lab-metabolic': Candy,
@@ -35,29 +35,29 @@ export const ICONS = {
   'lab-coagulation': Bandage,
   'lab-infections': Bug,
   'lab-other': Microscope,
-  // спорт
+  // sport
   'sport-run': Footprints,
   'sport-bike': Bike,
   'sport-swim': Waves,
   'sport-gym': Dumbbell,
   'sport-walk': Footprints,
-  // приёмы пищи
+  // meals
   'meal-breakfast': Sunrise,
   'meal-lunch': Salad,
   'meal-snack': Apple,
   'meal-dinner': Moon,
-  // события календаря
+  // calendar events
   'event-call': Phone,
   'event-calendar': CalendarDays,
   'event-email': Mail,
   'event-meeting': Users,
   'event-workout': Activity,
   'event-personal': User,
-  // приоритеты (как маркер; цвет — через StatusPill)
+  // priorities (used as a marker; the color comes from StatusPill)
   'priority-urgent': AlertTriangle,
   'priority-important': Circle,
   'priority-normal': Circle,
-  // интерфейс / ИИ
+  // UI / AI
   ai: Sparkles,
   bot: Bot,
   memory: Brain,
@@ -69,7 +69,7 @@ export const ICONS = {
   nutrition: UtensilsCrossed,
   health: Heart,
   nap: Sun,
-  // задачи по дому
+  // household tasks
   tasks: CheckSquare,
   helper: Users,
 }

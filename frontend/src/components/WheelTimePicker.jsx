@@ -1,33 +1,33 @@
 import { useRef, useEffect, useCallback, useMemo } from 'react'
 import { motion } from 'framer-motion'
 
-// iOS-style колёсико времени (барабан): два вертикальных скролл-барабана —
-// часы (00–23) и минуты (00..60-шаг). По центру — подсвеченная полоса выбора.
-// Используется при добавлении запланированной тренировки в календарь, чтобы
-// выбрать удобное время вместо только авто-предложенного слота.
+// An iOS-style time wheel (a drum): two vertical scroll drums —
+// hours (00–23) and minutes (00..60 by step). A highlighted selection band sits in the middle.
+// Used when adding a planned workout to the calendar, so a convenient time
+// can be chosen instead of only the auto-suggested slot.
 //
 // API:
 //   <WheelTimePicker value="07:00" onChange={(next) => ...} minuteStep={5} />
-//   value      — строка "HH:MM" (по умолчанию "07:00")
-//   onChange   — (next: "HH:MM") => void; вызывается при остановке прокрутки
-//   minuteStep — шаг минут (по умолчанию 5)
+//   value      — an "HH:MM" string (defaults to "07:00")
+//   onChange   — (next: "HH:MM") => void; fired once the scrolling stops
+//   minuteStep — the minute step (defaults to 5)
 //
-// Технические заметки:
-//   • CSS scroll-snap (mandatory + align center) даёт нативную инерцию/привязку.
-//   • Высота элемента и барабана фиксированы (ITEM=40px, 5 рядов → 200px).
-//   • Прокрутка центрального элемента читается по scrollTop / ITEM_HEIGHT,
-//     debounce 120ms на событии 'scroll'.
+// Implementation notes:
+//   • CSS scroll-snap (mandatory + align center) gives native momentum and snapping.
+//   • The item and drum heights are fixed (ITEM=40px, 5 rows → 200px).
+//   • The centered item is read from scrollTop / ITEM_HEIGHT, debounced by 120ms
+//     on the 'scroll' event.
 
-const ITEM_HEIGHT = 40   // высота одного ряда, px
-const VISIBLE_ROWS = 5   // видимых рядов (нечётное → есть точный центр)
+const ITEM_HEIGHT = 40   // height of one row, px
+const VISIBLE_ROWS = 5   // visible rows (odd → there is an exact center)
 const DRUM_HEIGHT = ITEM_HEIGHT * VISIBLE_ROWS // 200px
-// сколько рядов-«пустышек» сверху/снизу, чтобы первый/последний элемент
-// мог встать ровно по центру барабана
+// how many blank filler rows go above/below, so that the first/last item
+// can sit exactly in the center of the drum
 const PAD_ROWS = Math.floor(VISIBLE_ROWS / 2) // 2
 
 const pad2 = (n) => String(n).padStart(2, '0')
 
-// Разбор "HH:MM" → { h, m }; устойчиво к мусору/undefined.
+// Parse "HH:MM" → { h, m }; tolerant of garbage/undefined.
 function parseValue(value) {
   const s = typeof value === 'string' ? value : ''
   const m = s.match(/^(\d{1,2}):(\d{1,2})$/)
@@ -38,7 +38,7 @@ function parseValue(value) {
   return { h, m: mi }
 }
 
-// Ближайший допустимый индекс минут для заданного шага.
+// The nearest valid minute index for the given step.
 function nearestMinuteIndex(minute, minutes) {
   let best = 0
   let bestDist = Infinity
@@ -49,15 +49,15 @@ function nearestMinuteIndex(minute, minutes) {
   return best
 }
 
-// Один барабан (часы или минуты). Управляет своим scroll, snap и подсветкой.
+// A single drum (hours or minutes). Manages its own scroll, snap and highlight.
 function Drum({ items, selectedIndex, onSettle, ariaLabel }) {
   const ref = useRef(null)
   const settleTimer = useRef(null)
   const didInit = useRef(false)
-  // индекс, который мы выставили программно — чтобы не зациклить onChange
+  // the index we set programmatically — so that onChange doesn't loop
   const lastReported = useRef(selectedIndex)
 
-  // Инициализация позиции на текущее значение без плавной анимации (первый кадр).
+  // Set the initial position to the current value without a smooth animation (first frame).
   useEffect(() => {
     const el = ref.current
     if (!el) return
@@ -68,8 +68,8 @@ function Drum({ items, selectedIndex, onSettle, ariaLabel }) {
     }
   }, [selectedIndex])
 
-  // Внешнее изменение value → плавно подкрутить барабан к новому индексу,
-  // если он реально отличается от текущего центрального.
+  // An external change to value → smoothly spin the drum to the new index,
+  // but only if it really differs from the one currently centered.
   useEffect(() => {
     const el = ref.current
     if (!el || !didInit.current) return
@@ -96,7 +96,7 @@ function Drum({ items, selectedIndex, onSettle, ariaLabel }) {
 
   useEffect(() => () => { if (settleTimer.current) clearTimeout(settleTimer.current) }, [])
 
-  // Тап по элементу → прокрутить к центру и выбрать его.
+  // A tap on an item → scroll it to the center and select it.
   const handleTap = (i) => {
     const el = ref.current
     if (!el) return
@@ -139,7 +139,7 @@ function Drum({ items, selectedIndex, onSettle, ariaLabel }) {
 }
 
 export default function WheelTimePicker({ value = '07:00', onChange, minuteStep = 5 }) {
-  // Нормализуем шаг: целое в [1..30], делитель 60 не обязателен, но >=1.
+  // Normalize the step: an integer in [1..30]; it need not divide 60, but must be >= 1.
   const step = useMemo(() => {
     const n = Math.round(Number(minuteStep))
     return Number.isFinite(n) && n >= 1 && n <= 30 ? n : 5
@@ -178,7 +178,7 @@ export default function WheelTimePicker({ value = '07:00', onChange, minuteStep 
       transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
     >
       <div className="wtp-drums">
-        {/* центральная полоса выбора — поверх барабанов, по центру */}
+        {/* the central selection band — on top of the drums, centered */}
         <div className="wtp-band" aria-hidden="true" />
 
         <Drum
@@ -197,7 +197,7 @@ export default function WheelTimePicker({ value = '07:00', onChange, minuteStep 
           ariaLabel="Минуты"
         />
 
-        {/* верхняя/нижняя растушёвка, чтобы крайние ряды «уходили в туман» */}
+        {/* top/bottom feathering, so the outermost rows "fade into the mist" */}
         <div className="wtp-fade wtp-fade--top" aria-hidden="true" />
         <div className="wtp-fade wtp-fade--bot" aria-hidden="true" />
       </div>

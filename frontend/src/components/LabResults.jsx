@@ -34,7 +34,7 @@ const STR = {
     status: { ok: 'норма', low: 'понижен', high: 'повышен', unknown: 'нет нормы' },
     fileFail: 'Не удалось загрузить файл. Попробуйте ещё раз или другой файл.',
     parseFail: 'Не удалось распознать показатели в этом файле. Проверьте, что это анализ крови.',
-    groups: {}   // ru: показываем названия групп как есть
+    groups: {}   // ru: group names are shown as they are
   },
   en: {
     aiBadge: 'AI',
@@ -58,7 +58,7 @@ const STR = {
     status: { ok: 'normal', low: 'low', high: 'high', unknown: 'no range' },
     fileFail: 'Could not upload the file. Try again or use a different file.',
     parseFail: 'Could not recognize any markers in this file. Make sure it is a blood test.',
-    // Названия групп показателей по их стабильному key (см. buildGroups в labs.js)
+    // Marker group names keyed by their stable key (see buildGroups in labs.js)
     groups: {
       blood: 'Complete blood count', lipids: 'Lipids & heart', metabolic: 'Sugar & metabolism',
       liver: 'Liver', kidney: 'Kidneys', iron: 'Iron metabolism', vitamins: 'Vitamins',
@@ -69,7 +69,7 @@ const STR = {
   }
 }
 
-// Демо-расшифровка для гостя (английская версия — выбирается по языку интерфейса)
+// The guest's demo decoding (the English version — chosen by the interface language)
 const GUEST_DEMO_DECODE_EN =
   'Overall the picture is calm: the complete blood count, liver enzymes (ALT, AST), ' +
   'kidneys (creatinine), blood sugar and thyroid hormones are all within range. ' +
@@ -80,18 +80,18 @@ const GUEST_DEMO_DECODE_EN =
   'less fatty and sugary food, regular activity and taking vitamin D will help. ' +
   'This is not a diagnosis: if the deviations persist, it is better to show the tests to a doctor.'
 
-// Английские названия демо-файлов гостя (имена показателей-ключей не трогаем)
+// English names for the guest's demo files (the marker key names are left alone)
 const GUEST_DEMO_FILE_EN = {
   'ОАК и биохимия.pdf': 'CBC and biochemistry.pdf',
   'Гормоны и витамины.pdf': 'Hormones and vitamins.pdf',
   'Липидограмма (пересдача).pdf': 'Lipid panel (retest).pdf'
 }
 
-// Демо-данные для гостя: реальные результаты заблокированы на сервере, поэтому
-// показываем правдоподобный пример (несколько отчётов в разные даты + готовую
-// расшифровку), чтобы функциональность была видна. Имена показателей — строго
-// из справочника labs.js, чтобы нормы и статусы считались правильно. Часть значений
-// намеренно вне нормы (Холестерин/ЛПНП/СРБ), остальные — в пределах нормы.
+// Demo data for the guest: the real results are blocked on the server, so we show a
+// plausible example (several reports on different dates plus a ready-made decoding) to
+// make the functionality visible. The marker names come strictly from the labs.js
+// reference, so that ranges and statuses are computed correctly. Some values are
+// deliberately out of range (cholesterol/LDL/CRP), the rest sit within range.
 const GUEST_DEMO_REPORTS = [
   {
     id: 'demo-2026-04-12', date: '2026-04-12', fileName: 'ОАК и биохимия.pdf',
@@ -101,8 +101,8 @@ const GUEST_DEMO_REPORTS = [
       'Лейкоциты': 6.1,
       'Тромбоциты': 248,
       'Глюкоза': 5.2,
-      'Холестерин общий': 5.8,        // повышен (норма до 5.2)
-      'ЛПНП («плохой»)': 3.6,         // повышен (норма до 3.0)
+      'Холестерин общий': 5.8,        // high (range up to 5.2)
+      'ЛПНП («плохой»)': 3.6,         // high (range up to 3.0)
       'ЛПВП («хороший»)': 1.2,
       'Креатинин': 92,
       'АЛТ': 28,
@@ -114,20 +114,20 @@ const GUEST_DEMO_REPORTS = [
     values: {
       'ТТГ': 2.1,
       'Тестостерон': 18.4,
-      'Витамин D': 24,               // понижен (норма от 30)
+      'Витамин D': 24,               // low (range from 30)
       'Витамин B12': 410,
-      'СРБ': 7.2                      // повышен (норма до 5.0)
+      'СРБ': 7.2                      // high (range up to 5.0)
     }
   },
   {
     id: 'demo-2026-05-29', date: '2026-05-29', fileName: 'Липидограмма (пересдача).pdf',
     values: {
-      'Холестерин общий': 5.5,        // всё ещё повышен, но динамика вниз
+      'Холестерин общий': 5.5,        // still high, but the trend is downward
       'ЛПНП («плохой»)': 3.3,
       'ЛПВП («хороший»)': 1.3,
       'Триглицериды': 1.5,
       'Глюкоза': 5.0,
-      'СРБ': 4.1                      // вернулся в норму
+      'СРБ': 4.1                      // back within range
     }
   }
 ]
@@ -142,7 +142,7 @@ const GUEST_DEMO_DECODE =
   'меньше жирного и сладкого, регулярная активность и приём витамина D. ' +
   'Это не диагноз: при сохраняющихся отклонениях лучше показать анализы врачу.'
 
-// Мини-тренд значения по истории
+// A mini trend of the value across its history
 function MiniSpark({ points, color }) {
   if (points.length < 2) return null
   const vals = points.map(p => p.value)
@@ -161,18 +161,18 @@ function MiniSpark({ points, color }) {
 export default function LabResults() {
   const { lang } = useLang()
   const t = useT(STR)
-  // Англ. название маркера/группы, если оно есть (name — русский ключ разбора PDF)
+  // The marker/group's English name when it has one (name is the Russian key from the PDF parse)
   const dn = d => (lang === 'en' && d?.nameEn) || d?.name
   const [reports, setReports] = useState(() => {
     try {
-      // Старые демо-данные уже вычищены централизованно при импорте labs.js (по версии).
+      // Old demo data is already purged centrally when labs.js is imported (by version).
       const saved = localStorage.getItem(STORE_KEY)
       if (saved) {
         const parsed = JSON.parse(saved)
         if (Array.isArray(parsed) && parsed.length) return parsed
       }
-      // Гость: реальные анализы заблокированы на сервере — показываем демо-пример,
-      // чтобы функциональность (история, нормы, отклонения, расшифровка) была видна.
+      // Guest: the real blood tests are blocked on the server — we show the demo example
+      // so that the functionality (history, ranges, deviations, decoding) is visible.
       if (isGuest()) {
         localStorage.setItem(STORE_KEY, JSON.stringify(GUEST_DEMO_REPORTS))
         localStorage.setItem('albert-labs-ver', LABS_STORE_VERSION)
@@ -182,14 +182,14 @@ export default function LabResults() {
     return INITIAL_REPORTS
   })
   const [dragOver, setDragOver] = useState(false)
-  const [analyzing, setAnalyzing] = useState(false)   // идёт распознавание загруженного файла
+  const [analyzing, setAnalyzing] = useState(false)   // an uploaded file is being read
   const [busyName, setBusyName] = useState(null)
   const fileInput = useRef(null)
-  // Полная расшифровка от ИИ (гостю — готовый демо-текст)
+  // The full AI decoding (a guest gets the ready-made demo text)
   const [aiText, setAiText] = useState(() => (isGuest() ? (lang === 'en' ? GUEST_DEMO_DECODE_EN : GUEST_DEMO_DECODE) : ''))
   const [decoding, setDecoding] = useState(false)
 
-  // Гость + смена языка интерфейса → переключаем язык демо-расшифровки
+  // Guest plus an interface language change → switch the demo decoding's language
   useEffect(() => {
     if (!isGuest()) return
     setAiText(prev => (prev === GUEST_DEMO_DECODE || prev === GUEST_DEMO_DECODE_EN || !prev)
@@ -197,17 +197,17 @@ export default function LabResults() {
       : prev)
   }, [lang])
 
-  // Распознавание анализов из Яндекс.Диска (если подключён)
+  // Reading blood tests from Yandex.Disk (when it is connected)
   const [syncing, setSyncing] = useState(false)
   const [syncTotal, setSyncTotal] = useState(0)
   const [syncDone, setSyncDone] = useState(0)
-  const [filesOpen, setFilesOpen] = useState(false)   // список загруженных файлов по умолчанию скрыт
+  const [filesOpen, setFilesOpen] = useState(false)   // the uploaded file list is hidden by default
 
   useEffect(() => {
     try { localStorage.setItem(STORE_KEY, JSON.stringify(reports)) } catch { /* ignore */ }
   }, [reports])
 
-  // При подключённом Яндекс.Диске: разбираем новые файлы по очереди и подставляем реальные анализы
+  // With Yandex.Disk connected: parse the new files one by one and swap in the real blood tests
   useEffect(() => {
     let alive = true
     fetch('/api/labs/status').then(r => r.json()).then(async st => {
@@ -230,8 +230,8 @@ export default function LabResults() {
       }
       const rep = await fetch('/api/labs/reports').then(r => r.json()).catch(() => null)
       if (!alive || !rep?.reports?.length) { setSyncing(false); return }
-      // Сохраняем значения как есть ({v, unit, min, max}) — чтобы знать единицы и нормы
-      // даже для показателей вне нашего справочника.
+      // Store the values as they come ({v, unit, min, max}) — so we know the units and ranges
+      // even for markers that aren't in our own reference.
       const flat = rep.reports.map(r => ({
         id: r.date, date: r.date, fileName: r.fileName || 'Яндекс.Диск', values: r.values
       }))
@@ -243,17 +243,17 @@ export default function LabResults() {
 
   const history = useMemo(() => buildHistory(reports), [reports])
 
-  // Все показатели, разложенные по системам организма (важные + второстепенные)
+  // Every marker, sorted by body system (major + secondary)
   const groups = useMemo(() => buildGroups(history), [history])
-  // Какие группы «второстепенных» развёрнуты пользователем
+  // Which "secondary" groups the user has expanded
   const [openMinor, setOpenMinor] = useState({})
 
-  // Сводка сверху — ТОЛЬКО важные показатели вне нормы (второстепенные/профильные
-  // живут в своих свёрнутых группах, иначе лента превращается в стену из чипов)
+  // The summary on top — ONLY major markers out of range (secondary/panel markers
+  // stay inside their collapsed groups, or the strip turns into a wall of chips)
   const flagged = groups.flatMap(g => g.major)
     .filter(it => ['low', 'high'].includes(markerStatus(it.last.value, it.def.min, it.def.max)))
 
-  // Полная карточка показателя (для важных и для одиночных групп)
+  // The full marker card (for major markers and for single-marker groups)
   function renderMarker({ key, def, h, last }) {
     const prev = h.length >= 2 ? h[h.length - 2] : null
     const st = markerStatus(last.value, def.min, def.max)
@@ -285,7 +285,7 @@ export default function LabResults() {
     )
   }
 
-  // Компактная строка второстепенного показателя
+  // The compact row for a secondary marker
   function renderMinorRow({ key, def, last }) {
     const st = markerStatus(last.value, def.min, def.max)
     const c = STATUS_INFO[st].color
@@ -301,7 +301,7 @@ export default function LabResults() {
 
   const reportsByDate = [...reports].sort((a, b) => b.date.localeCompare(a.date))
 
-  // Текстовая выжимка показателей (последние значения) для контекста ИИ
+  // A text digest of the markers (their latest values) for the AI context
   function labSummaryText(snapshotReports) {
     const hist = buildHistory(snapshotReports)
     return buildGroups(hist).map(g => {
@@ -317,7 +317,7 @@ export default function LabResults() {
 
   function doctorContext(snapshotReports) {
     return (
-      `Ты — внимательный врач-терапевт, который объясняет анализы крови пользователю, пожилому человеку без медицинского образования. ` +
+      `Ты — внимательный врач-терапевт, который объясняет анализы крови человеку без медицинского образования. ` +
       `Вот его последние результаты: ${labSummaryText(snapshotReports)}. ` +
       `Отвечай простыми словами, спокойно и поддерживающе. Опирайся на эти цифры и их динамику. ` +
       `Не ставь диагноз и не назначай лекарства — при отклонениях мягко советуй обратиться к врачу.` +
@@ -333,8 +333,8 @@ export default function LabResults() {
     try {
       const res = await fetch('/api/ai/chat', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        // Полная расшифровка — длинный многораздельный текст, поэтому просим больший
-        // лимит вывода, чтобы ответ не обрывался на полуслове.
+        // The full decoding is a long, multi-section text, so we ask for a bigger output
+        // limit to keep the answer from being cut off mid-word.
         body: JSON.stringify({ message: 'Расшифруй мои анализы крови с учётом динамики', context, maxTokens: 4096 })
       })
       const data = await res.json()
@@ -346,7 +346,7 @@ export default function LabResults() {
     }
   }
 
-  // Прочитать файл как base64 (без data: префикса)
+  // Read a file as base64 (without the data: prefix)
   function fileToBase64(file) {
     return new Promise((resolve, reject) => {
       const fr = new FileReader()
@@ -356,7 +356,7 @@ export default function LabResults() {
     })
   }
 
-  // Реальное распознавание загруженного файла через ИИ (никаких выдуманных значений)
+  // Real recognition of an uploaded file through the AI (no made-up values)
   const [notice, setNotice] = useState('')
 
   async function ingest(file) {
@@ -376,10 +376,10 @@ export default function LabResults() {
       }
       const r = out.report
       const flat = { id: r.id, date: r.date, fileName: r.fileName || file.name, values: r.values }
-      // Заменяем отчёт той же даты, если он уже есть, иначе добавляем
+      // Replace the report for the same date if one already exists, otherwise append it
       const next = [...reports.filter(x => x.date !== flat.date), flat]
       setReports(next)
-      runAi(next)   // сразу даём полную расшифровку с учётом нового файла
+      runAi(next)   // give the full decoding right away, accounting for the new file
     } catch {
       setNotice(t.fileFail)
     } finally {
@@ -403,8 +403,8 @@ export default function LabResults() {
           <div className="lab-title">{t.title}</div>
           <div className="lab-sub muted">{t.sub}</div>
         </div>
-        {/* Пока анализов нет, кнопку не показываем: выключенная кнопка без объяснения
-            читалась как «сломано», а что делать дальше говорит зона загрузки ниже. */}
+        {/* While there are no blood tests we hide the button: a disabled button with no
+            explanation read as "broken", and the upload zone below says what to do next. */}
         {reports.length > 0 && (
           <button className="lab-ai-btn" onClick={analyzeExisting} disabled={decoding}
             title={decoding ? t.decodePrep : undefined}>
@@ -423,7 +423,7 @@ export default function LabResults() {
         </div>
       )}
 
-      {/* Зона загрузки */}
+      {/* The upload zone */}
       <div
         className={`lab-drop ${dragOver ? 'over' : ''} ${analyzing ? 'busy' : ''}`}
         onDragOver={e => { e.preventDefault(); setDragOver(true) }}
@@ -450,7 +450,7 @@ export default function LabResults() {
         )}
       </div>
 
-      {/* Журнал загруженных отчётов — по умолчанию скрыт, открывается по кнопке */}
+      {/* The log of uploaded reports — hidden by default, opened by the button */}
       {reportsByDate.length > 0 && (
         <div className="lab-timeline">
           <button className="lab-tl-toggle" onClick={() => setFilesOpen(o => !o)} aria-expanded={filesOpen}>
@@ -480,7 +480,7 @@ export default function LabResults() {
 
       {notice && <div className="lab-notice">{notice}</div>}
 
-      {/* Полная расшифровка от ИИ (по кнопке / после загрузки) */}
+      {/* The full AI decoding (on the button / after an upload) */}
       <AnimatePresence>
         {(decoding || aiText) && (
           <motion.div className="lab-ai"
@@ -494,7 +494,7 @@ export default function LabResults() {
         )}
       </AnimatePresence>
 
-      {/* Сводка отклонений */}
+      {/* The summary of deviations */}
       {flagged.length > 0 && (
         <div className="lab-flags">
           <span className="lab-flags-lbl muted">{t.outOfNorm}</span>
@@ -509,7 +509,7 @@ export default function LabResults() {
         </div>
       )}
 
-      {/* Панели по системам организма: важные показатели на виду, второстепенные сворачиваются */}
+      {/* Panels by body system: the major markers on show, the secondary ones collapsible */}
       <div className="lab-panels">
         {groups.map(group => {
           const hasMajor = group.major.length > 0
@@ -525,10 +525,10 @@ export default function LabResults() {
               {hasMajor && <div className="lab-markers">{group.major.map(renderMarker)}</div>}
 
               {group.minor.length > 0 && (!hasMajor && group.minor.length <= 6 ? (
-                // Небольшая группа без важных — показываем компактные строки сразу
+                // A small group with no major markers — show the compact rows straight away
                 <div className="lab-minor-list">{group.minor.map(renderMinorRow)}</div>
               ) : (
-                // Иначе — прячем под кнопку (важно для огромных профилей: микробиом и т.п.)
+                // Otherwise hide them behind a button (it matters for huge panels: microbiome, etc.)
                 <div className="lab-minor">
                   <button className="lab-minor-toggle" onClick={() => setOpenMinor(s => ({ ...s, [group.key]: !s[group.key] }))}>
                     <span>{open ? t.minorHide : (hasMajor ? t.minor : t.minorShow)} ({group.minor.length}){!open && minorFlags > 0 ? t.minorFlags(minorFlags) : ''}</span>

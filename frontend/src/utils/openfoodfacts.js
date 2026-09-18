@@ -1,5 +1,5 @@
-// Open Food Facts: штрих-код (EAN/UPC) → название + КБЖУ на 100 г. Бесплатно, без ключа.
-// Покрытие РФ-товаров неполное → вызывающий код делает фолбэк на фото еды.
+// Open Food Facts: a barcode (EAN/UPC) → the name + calories/protein/fat/carbs per 100 g. Free, no key.
+// Coverage of Russian products is patchy → the calling code falls back to a photo of the food.
 export async function lookupBarcode(ean) {
   const code = String(ean || '').replace(/\D/g, '')
   if (code.length < 8) return null
@@ -12,7 +12,7 @@ export async function lookupBarcode(ean) {
     const p = d.product
     const n = p.nutriments || {}
     const kcal = n['energy-kcal_100g'] != null ? n['energy-kcal_100g']
-      : (n['energy_100g'] != null ? n['energy_100g'] / 4.184 : 0)   // кДж → ккал
+      : (n['energy_100g'] != null ? n['energy_100g'] / 4.184 : 0)   // kJ → kcal
     const per100 = {
       kcal: Math.round(kcal || 0),
       protein: Math.round(n.proteins_100g || 0),

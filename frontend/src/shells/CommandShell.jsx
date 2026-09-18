@@ -16,10 +16,10 @@ import { mskNow } from '../utils/time.js'
 import { MAIL_ENABLED, HISTORY_ENABLED } from '../config/features.js'
 
 /*
-  Оболочка «Командный центр» — рабочий стол: НИЧЕГО не «переходит».
-  Сверху статус-строка и вкладки; слева постоянная панель «Сегодня»,
-  справа постоянный «Помощник»; центр переключается вкладками мгновенно
-  (без анимаций страниц — как панели терминала).
+  The "Command center" shell — a workbench: NOTHING "transitions".
+  The status strip and the tabs on top; a permanent "Today" pane on the left,
+  a permanent "Assistant" on the right; the center switches tabs instantly
+  (no page animations — like panes in a terminal).
 */
 
 const TABS = [
@@ -47,11 +47,11 @@ export default function CommandShell() {
   const dateStr = lang === 'en' ? `${d.getDate()}.${String(d.getMonth() + 1).padStart(2, '0')}` : `${d.getDate()} ${MONTHS_RU[d.getMonth()]}`
   const isActive = (p) => (p === '/' ? location.pathname === '/' : location.pathname.startsWith(p))
 
-  // Мост колёсика: боковые панели почти не скроллятся, и курсор над ними «глох».
-  // Прокрутка над «Сегодня»/«Помощником» листает центральную панель — листать сайт
-  // можно с любого места экрана. НО если под курсором есть свой живой скролл
-  // (чат ИИ, журнал, сама панель) — мост молчит ВСЕГДА, даже когда тот упёрся
-  // в край: докрутил чат до конца — сайт не дёргается (как overscroll-contain).
+  // A wheel bridge: the side panes barely scroll, so the cursor over them went "dead".
+  // Scrolling over "Today"/"Assistant" moves the center pane — the site can be scrolled from
+  // anywhere on the screen. BUT if something under the cursor has a live scroll of its own
+  // (the AI chat, the log, the pane itself), the bridge stays quiet ALWAYS, even when that one
+  // has hit its end: scroll the chat to the bottom and the site doesn't jump (like overscroll-contain).
   const bodyRef = useRef(null)
   const centerRef = useRef(null)
   useEffect(() => {
@@ -67,7 +67,7 @@ export default function CommandShell() {
       if (!center) return
       const pane = e.target.closest?.('.cmd-left, .cmd-right')
       if (!pane) return
-      // Есть скроллящийся элемент между курсором и панелью? Тогда это его зона.
+      // Is there a scrollable element between the cursor and the pane? Then it owns this zone.
       let n = e.target
       while (n && n.nodeType === 1) {
         if (scrollable(n)) return

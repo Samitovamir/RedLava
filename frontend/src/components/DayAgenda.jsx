@@ -9,26 +9,26 @@ import { useLang, useT } from '../context/LanguageContext.jsx'
 import AiAdvice from './AiAdvice.jsx'
 
 /*
-  «Расписание» на Главной: один развёрнутый ближайший/текущий ивент,
-  компактная сводка дня (тренировки + встречи) и ОДНО предложение от ИИ снизу.
-  Клик по карточке ведёт в /schedule с фокусом на ближайшее событие.
-  Только реальные данные: события из расписания, тренировки из Garmin (localStorage).
+  "Расписание" on Home: one expanded upcoming/current event, a compact summary of the day
+  (workouts + meetings) and ONE sentence from the AI at the bottom.
+  Clicking the card leads to /schedule, focused on the upcoming event.
+  Real data only: events from the schedule, workouts from Garmin (localStorage).
 */
 
-// «сейчас» как сравнимый ключ «YYYY-MM-DD HH:MM» (московское время)
+// "now" as a comparable "YYYY-MM-DD HH:MM" key (Moscow time)
 function nowKey() {
   const now = mskNow(); const p = n => String(n).padStart(2, '0')
   return `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())} ${p(now.getHours())}:${p(now.getMinutes())}`
 }
 
-// Ближайшее (или текущее) событие — как nextEvent() на Главной: сортируем по date+start,
-// берём первое, чей конец (или начало) ещё не прошёл.
+// The upcoming (or current) event — as nextEvent() does on Home: sort by date+start and take
+// the first one whose end (or start) has not passed yet.
 function nextEvent(events, nk) {
   return [...events].sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start))
     .find(e => `${e.date} ${e.end || e.start}` >= nk) || null
 }
 
-// Минуты от «сейчас» до начала события (по тому же московскому «сейчас»)
+// Minutes from "now" until the event starts (against that same Moscow "now")
 function minutesUntil(ev, now) {
   const [h, m] = String(ev.start).split(':').map(Number)
   const start = new Date(now); start.setHours(h, m || 0, 0, 0)
@@ -39,7 +39,7 @@ function readGarminLive() {
   try { const s = localStorage.getItem('albert-garmin-live'); return s ? JSON.parse(s) : null } catch { return null }
 }
 
-// Спорт-тип Garmin → короткая локализованная подпись (строчная — для «была: бег 8 км»)
+// A Garmin sport type → a short localized label (lowercase, for «была: бег 8 км»)
 const SPORT_LABELS = {
   ru: { running: 'бег', cycling: 'велосипед', lap_swimming: 'плавание', swimming: 'плавание', strength_training: 'силовая', cardio: 'кардио', walking: 'ходьба', other: 'тренировка' },
   en: { running: 'run', cycling: 'ride', lap_swimming: 'swim', swimming: 'swim', strength_training: 'strength', cardio: 'cardio', walking: 'walk', other: 'workout' },
@@ -87,22 +87,22 @@ export default function DayAgenda() {
   const todayKey = dateKey(now)
   const nextEv = nextEvent(events, nk)
 
-  // ── Относительная подсказка к ближайшему событию ──
+  // ── A relative hint for the upcoming event ──
   let hint = null
   if (nextEv) {
     const startKey = `${nextEv.date} ${nextEv.start}`
-    if (startKey <= nk) hint = t.now                              // уже началось, ещё не кончилось
+    if (startKey <= nk) hint = t.now                              // already started, not over yet
     else if (nextEv.date === todayKey) {
       const mins = minutesUntil(nextEv, now)
       hint = mins >= 60 ? t.inHour(Math.round(mins / 60)) : t.inMin(Math.max(1, mins))
     }
   }
 
-  // ── Сводка дня (только сегодня) ──
+  // ── The day's summary (today only) ──
   const garmin = readGarminLive()
   const sportMap = SPORT_LABELS[en ? 'en' : 'ru']
 
-  // Тренировки: уже сделанные сегодня (Garmin) + предстоящие сегодняшние ивенты-тренировки
+  // Workouts: the ones already done today (Garmin) + today's upcoming workout events
   const doneToday = (garmin?.workouts || []).filter(w => w.date === todayKey)
   const workoutRows = []
   doneToday.forEach(w => {
@@ -114,12 +114,12 @@ export default function DayAgenda() {
     .filter(e => e.date === todayKey && eventCategory(e) === 'workout' && `${e.date} ${e.end || e.start}` >= nk)
     .forEach(e => workoutRows.push(t.ahead(`${e.title} ${e.start}`)))
 
-  // Встречи: сегодняшние НЕ-тренировочные события, поделённые на «позади / впереди»
+  // Meetings: today's non-workout events, split into "behind / ahead"
   const meetings = events.filter(e => e.date === todayKey && eventCategory(e) !== 'workout')
   const meetBack = meetings.filter(e => `${e.date} ${e.end || e.start}` < nk).length
   const meetFwd = meetings.length - meetBack
 
-  // ── ОДНО предложение от ИИ ──
+  // ── ONE sentence from the AI ──
   const AI_CONTEXT =
     'Ты помощник пользователя по дню. Дай ОДНО короткое практичное предложение: как пройти сегодняшний день с учётом расписания и состояния (спорт/здоровье). Без вступлений, одно предложение.' +
     (en ? ' Always reply to the user in English.' : '')
@@ -132,7 +132,7 @@ export default function DayAgenda() {
   })
   const aiLine = !ai.loading && ai.text ? ai.text.trim() : ''
 
-  // Клик по карточке → /schedule с фокусом на ближайшее событие
+  // Clicking the card → /schedule, focused on the upcoming event
   const goToEvent = () => {
     if (nextEv) setFocusSignal({ date: nextEv.date, time: nextEv.start, n: Date.now() })
     navigate('/schedule')

@@ -3,22 +3,23 @@ import Anthropic from '@anthropic-ai/sdk'
 import { kvGet, kvSet } from '../store.js'
 
 /*
-  Питание: ИИ подбирает блюда под целевое КБЖУ и вкусы пользователя, и пишет рецепты
-  с ингредиентами (для недельного списка покупок). Цель КБЖУ считается на фронте
-  по профилю + активности; здесь — генерация блюд и рецептов.
+  Nutrition: the AI suggests meals that fit the target calories and macros and the user's
+  tastes, and writes recipes with ingredients (for the weekly shopping list). The target
+  itself is computed on the frontend from the profile + activity; this file generates the
+  meals and the recipes.
 */
 
 const router = Router()
 function getClient() { return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }) }
 
-// Стиль блюд — общее для всех. Про конкретную технику на кухне (есть ли духовка,
-// конвектомат и т.п.) НЕ додумываем: если это важно человеку, он скажет, и факт
-// попадёт в его личную ПАМЯТЬ, откуда и придёт в подсказки.
+// The style of the dishes — the same for everyone. We do NOT guess at specific kitchen
+// equipment (whether there's an oven, a combi oven and so on): if it matters to the person,
+// they'll say so, the fact lands in their personal MEMORY, and from there it reaches the prompts.
 const KITCHEN = 'Блюда и рецепты — простые, домашние, привычные; без высокой/ресторанной кухни, ' +
   'без редких или дорогих экзотических ингредиентов. Не предполагай наличие особой техники: ' +
   'если про кухонную технику ничего не известно, ориентируйся на обычную плиту и духовку.'
 
-// Собираем вкусовые предпочтения в текст для промпта (со здравым смыслом!)
+// Assemble the taste preferences into prompt text (with some common sense!)
 function prefsBrief(p) {
   if (!p || typeof p !== 'object') return ''
   const parts = []
@@ -129,7 +130,7 @@ const RECIPE_TOOL = [{
   }
 }]
 
-// Подобрать блюда под цель
+// Suggest meals that fit the target
 router.post('/meals', async (req, res) => {
   if (!process.env.ANTHROPIC_API_KEY) return res.json({ ok: false, message: 'Нет ключа ИИ', meals: [] })
   const { target = {}, mealType = 'обед', prefs = null, likes = [], dislikes = [], count = 5, note = '', exclude = [], components = [], health = '' } = req.body || {}
@@ -145,7 +146,7 @@ router.post('/meals', async (req, res) => {
         ? `Тип блюда: ${comps[0]}. Одно блюдо на вариант (parts можно из одного элемента). `
         : ''
     const prompt =
-      `Подбери ${count} вариантов для приёма пищи «${mealType}» для пользователя (взрослый мужчина, триатлет). ` +
+      `Подбери ${count} вариантов для приёма пищи «${mealType}» для человека, который занимается триатлоном. ` +
       `Целевые ориентиры на этот приём: ~${target.kcal ?? '?'} ккал, белки ~${target.protein ?? '?'} г, жиры ~${target.fat ?? '?'} г, углеводы ~${target.carb ?? '?'} г. ` +
       compText +
       (brief ? `Вкусовые предпочтения: ${brief} ` : '') +
@@ -169,12 +170,12 @@ router.post('/meals', async (req, res) => {
   }
 })
 
-// Рецепт блюда
+// A dish's recipe
 router.post('/recipe', async (req, res) => {
   if (!process.env.ANTHROPIC_API_KEY) return res.json({ ok: false, message: 'Нет ключа ИИ' })
   const { dish, servings = 1, prefs = null } = req.body || {}
   if (!dish) return res.status(400).json({ ok: false, message: 'dish required' })
-  // Кэш рецепта по названию: один раз сгенерировали — дальше из памяти
+  // Recipe cache keyed by dish name: generated once, served from memory after that
   const rk = 'nurecipe:v1:' + String(dish).trim().toLowerCase().slice(0, 90) + '|' + servings
   try {
     const cached = await kvGet(rk)
@@ -195,14 +196,14 @@ router.post('/recipe', async (req, res) => {
     })
     const block = resp.content.find(b => b.type === 'tool_use')
     const recipe = block?.input || null
-    if (recipe) await kvSet(rk, recipe)   // закрепляем рецепт за блюдом
+    if (recipe) await kvSet(rk, recipe)   // tie this recipe to the dish
     res.json({ ok: true, recipe })
   } catch (e) {
     res.json({ ok: false, message: String(e?.message || e).slice(0, 150) })
   }
 })
 
-// ── Фото блюд (Unsplash) с кэшем: одно блюдо — один запрос, дальше из KV ──
+// ── Dish photos (Unsplash) with a cache: one request per dish, then straight from KV ──
 const UTM = 'utm_source=albert_dashboard&utm_medium=referral'
 const normKey = s => 'nuimg:v1:' + String(s || '').trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 80)
 
@@ -216,7 +217,7 @@ async function unsplashFor(query) {
     const d = await r.json()
     const p = d?.results?.[0]
     if (!p) return null
-    // По правилам Unsplash: дёргаем download_location (fire-and-forget)
+    // Per Unsplash's rules: ping download_location (fire-and-forget)
     if (p.links?.download_location) {
       fetch(`${p.links.download_location}&client_id=${KEY}`).catch(() => {})
     }
@@ -230,7 +231,7 @@ async function unsplashFor(query) {
   } catch { return null }
 }
 
-// Получить картинки для списка блюд. body: { items: [{name, query}] } → { images: { name: {...} } }
+// Fetch images for a list of dishes. body: { items: [{name, query}] } → { images: { name: {...} } }
 router.post('/images', async (req, res) => {
   const { items = [] } = req.body || {}
   if (!process.env.UNSPLASH_ACCESS_KEY) return res.json({ ok: false, images: {} })
@@ -243,14 +244,14 @@ router.post('/images', async (req, res) => {
     let obj = await kvGet(k)
     if (!obj) {
       obj = await unsplashFor(query)
-      if (obj?.url) await kvSet(k, obj)        // закрепляем за блюдом навсегда
+      if (obj?.url) await kvSet(k, obj)        // tied to the dish for good
     }
     if (obj?.url) images[name] = obj
   }))
   res.json({ ok: true, images })
 })
 
-// ── CalAI: читаем скриншот сводки и достаём съеденное за день ──
+// ── CalAI: read the summary screenshot and extract the day's intake ──
 const INTAKE_TOOL = [{
   name: 'log_intake',
   description: 'Записать оценку КБЖУ съеденного по фотографии еды (или по этикетке/скриншоту).',
@@ -286,8 +287,8 @@ const INTAKE_TOOL = [{
   }
 }]
 
-// Промпты по режиму. food — фото реальной еды (основной путь, с персональной оценкой полезности
-// по состоянию пользователя); label — таблица пищевой ценности (числа на 100 г); calai — legacy-скриншот.
+// Prompts by mode. food — a photo of real food (the main path, with a healthiness score personal
+// to the user's state); label — a nutrition facts table (numbers per 100 g); calai — a legacy screenshot.
 const FOOD_PROMPT = (health) =>
   'Это фотография РЕАЛЬНОЙ еды (тарелка/продукты), НЕ скриншот приложения. ' +
   'Определи блюда/продукты, оцени порции и КБЖУ по КАЖДОЙ позиции (items: name, kcal, protein, fat, carb) ' +

@@ -4,9 +4,9 @@ import LayoutSwitcher from '../components/LayoutSwitcher.jsx'
 import Connections from './Connections.jsx'
 import { useLang, useT } from '../context/LanguageContext.jsx'
 
-// Настройки: язык + оформление (темы) + раскладка + подключения сервисов.
-// Раздел «Подключения» влит сюда целиком (решение владельца) — отдельной
-// страницы больше нет, /connections перенаправляет сюда.
+// Settings: language + appearance (themes) + layout + service connections.
+// The "Connections" section has been folded in here whole (the owner's decision) — there
+// is no separate page any more, and /connections redirects here.
 export default function Settings() {
   const { lang, setLang } = useLang()
   const t = useT({

@@ -17,40 +17,41 @@ import syncRoutes from './routes/sync.js'
 import authRoutes from './routes/auth.js'
 import { requireAuth, roleFromReq } from './authGuard.js'
 
-// Локально читаем ../.env. На Vercel переменные приходят из настроек проекта (process.env),
-// файла .env там нет — config просто ничего не делает, это нормально.
+// Locally we read ../.env. On Vercel the variables come from the project settings
+// (process.env) and there is no .env file — config simply does nothing, which is fine.
 config({ path: join(dirname(fileURLToPath(import.meta.url)), '../.env') })
 
 const app = express()
 
-// Заголовки безопасности ответа (CSP отдельно настроен для самой страницы в vercel.json —
-// здесь API отдаёт только JSON, CSP на него не влияет, поэтому отключаем, чтобы не мешал).
+// Security headers on responses (CSP for the page itself is configured separately in
+// vercel.json — here the API only returns JSON, which CSP does not affect, so we turn it
+// off to keep it out of the way).
 app.use(helmet({ contentSecurityPolicy: false }))
 
-// В проде фронт и API на одном домене — кросс-доменные запросы браузеру идти неоткуда,
-// поэтому по умолчанию (без ALLOWED_ORIGIN) CORS для чужих доменов ЗАКРЫТ. Локально
-// (frontend на :5173, backend на :3001) держим открытым, иначе разработка не заведётся.
-// ALLOWED_ORIGIN можно задать в настройках Vercel (через запятую — несколько доменов),
-// если когда-нибудь понадобится доступ с другого домена.
+// In production the frontend and the API share one domain, so the browser has nowhere to
+// make a cross-origin request from; by default (no ALLOWED_ORIGIN) CORS for other domains
+// is CLOSED. Locally (frontend on :5173, backend on :3001) we keep it open, otherwise
+// development does not work at all. ALLOWED_ORIGIN can be set in the Vercel settings
+// (comma-separated for several domains) if access from another domain is ever needed.
 const allowedOrigins = (process.env.ALLOWED_ORIGIN || '').split(',').map(s => s.trim()).filter(Boolean)
 app.use(cors({ origin: process.env.LOCAL_DEV === '1' ? true : (allowedOrigins.length ? allowedOrigins : false) }))
 app.use(express.json({ limit: '10mb' }))
 
-// На Vercel catch-all-функция получает путь /api/*. На всякий случай гарантируем
-// префикс /api, чтобы маршруты совпадали независимо от того, как платформа передаёт путь.
+// On Vercel the catch-all function receives the path /api/*. To be safe we guarantee the
+// /api prefix, so the routes match no matter how the platform hands us the path.
 app.use((req, _res, next) => {
   if (!req.url.startsWith('/api/') && req.url !== '/api') req.url = '/api' + req.url
   next()
 })
 
-// ГОСТЬ: реальные данные пользователя недоступны в принципе. Любой запрос к эндпоинтам
-// интеграций под гостевым токеном перехватывается ЗДЕСЬ и отдаёт демо/пусто, не доходя
-// до реальных Google/Whoop/Garmin/Gmail. Так гость физически не может увидеть данные владельца.
-// disconnect-эндпоинты — тоже сюда: они лишь проверяли requireAuth (валидный ЛЮБОЙ токен),
-// а guest/123 общеизвестен (написан прямо на экране входа и в README) — без этой строки гость
-// мог бы по-настоящему отключить чужие интеграции. Роут-хендлеры теперь ТОЖЕ проверяют
-// наличие своей ячейки данных (scopeOf) сами — защита не только тут, на случай будущего
-// рефакторинга этого мидлвара.
+// GUEST: the user's real data is out of reach in principle. Any request to an integration
+// endpoint carrying a guest token is intercepted HERE and answered with demo/empty data,
+// never reaching the real Google/Whoop/Garmin/Gmail. That way a guest physically cannot see
+// the owner's data. The disconnect endpoints belong here too: they only checked requireAuth
+// (ANY valid token), and guest/123 is common knowledge (it is printed right on the sign-in
+// screen and in the README) — without this line a guest could genuinely disconnect someone
+// else's integrations. The route handlers now ALSO check for the account's own slot (scopeOf)
+// themselves — the guard is not only here, in case this middleware is refactored later.
 const GUEST_BLOCK = new Set([
   '/api/whoop/data', '/api/whoop/status', '/api/whoop/connect-url', '/api/whoop/disconnect',
   '/api/garmin/data', '/api/garmin/status', '/api/garmin/planned', '/api/garmin/connect', '/api/garmin/connect-url', '/api/garmin/disconnect',
@@ -59,35 +60,35 @@ const GUEST_BLOCK = new Set([
   '/api/gmail/status', '/api/gmail/send',
   '/api/labs/status', '/api/labs/files', '/api/labs/reports', '/api/labs/parse', '/api/labs/upload', '/api/labs/disconnect'
 ])
-// Гость — публичное демо: реальных данных не видит никогда, своих у него нет.
-// Обычные аккаунты (роль 'user') сюда НЕ ПОПАДАЮТ, и это намеренно: каждый ключ
-// данных несёт id владельца (userScope.js), поэтому аккаунт физически ходит только
-// в свою ячейку — отдельный запрет ему не нужен.
+// The guest is a public demo: it never sees real data and has none of its own.
+// Ordinary accounts (the 'user' role) do NOT reach this block, and that is deliberate:
+// every data key carries its owner's id (userScope.js), so an account can physically
+// only reach its own slot — it needs no separate ban.
 app.use(async (req, res, next) => {
   if ((await roleFromReq(req)) !== 'guest') return next()
   const p = req.path
   if (p.startsWith('/api/garmin/activity')) return res.json({ connected: false, demo: true })
   if (!GUEST_BLOCK.has(p)) return next()
-  if (p === '/api/gmail/send') return res.json({ ok: true, demo: true })        // делаем вид — реально не отправляем
+  if (p === '/api/gmail/send') return res.json({ ok: true, demo: true })        // pretend we did — nothing is actually sent
   if (p === '/api/calendar/create' || p === '/api/calendar/update' || p === '/api/calendar/delete') return res.json({ success: true, demo: true })
-  if (p.endsWith('/disconnect')) return res.json({ ok: true, demo: true })      // делаем вид — реально не отключаем
+  if (p.endsWith('/disconnect')) return res.json({ ok: true, demo: true })      // pretend we did — nothing is actually disconnected
   if (p === '/api/labs/parse' || p === '/api/labs/upload') return res.json({ ok: false, message: 'В демо-режиме загрузка анализов отключена' })
   return res.json({ connected: false, planned: [], reports: [], files: [], events: [], demo: true })
 })
 
-// Открытые маршруты
+// Public routes
 app.use('/api/auth', authRoutes)
 app.get('/api/health', (_, res) => res.json({ status: 'ok' }))
 
-// Приватные маршруты — только после входа по паролю
+// Private routes — only after signing in with a password
 app.use('/api/ai', requireAuth, aiRoutes)
 app.use('/api/history', requireAuth, historyRoutes)
 app.use('/api/labs', labsRoutes)
 app.use('/api/nutrition', requireAuth, nutritionRoutes)
 app.use('/api/sync', requireAuth, syncRoutes)
 
-// Интеграции: внутри есть публичный OAuth-callback (переход в браузере),
-// поэтому требование входа применяется точечно внутри роутов.
+// Integrations: these contain a public OAuth callback (a browser redirect),
+// so the sign-in requirement is applied selectively inside the routes.
 app.use('/api/calendar', calendarRoutes)
 app.use('/api/gmail', requireAuth, gmailRoutes)
 app.use('/api/whoop', whoopRoutes)

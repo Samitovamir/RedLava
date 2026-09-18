@@ -1,7 +1,7 @@
 /*
-  Верхняя сводка «Питания»: калории — крупная полусфера-гейдж, рядом (если включён
-  FODMAP) — светофор-циферблат с уровнем; ниже — Б/Ж/У лёгкими полосками. Компактно,
-  в стиле гейджей раздела «Здоровье». Только CSS-переменные.
+  The summary at the top of "Nutrition": calories as a large semicircular gauge, next to it
+  (when FODMAP is on) a traffic-light dial with the level; below that protein/fat/carbs as
+  light bars. Compact, in the style of the gauges in "Health". CSS variables only.
 */
 
 import { useT } from '../../context/LanguageContext.jsx'
@@ -17,7 +17,7 @@ const FOD = {
   high: { c: 'var(--status-crit)', frac: 0.84 },
 }
 
-// Полусфера-гейдж заполнения (калории)
+// A semicircular fill gauge (calories)
 function SemiGauge({ pct, centerText, unit, color, size = 148, label }) {
   const stroke = 10, r = (size - stroke) / 2, cx = size / 2, cy = size / 2, h = size / 2 + stroke / 2 + 4
   const f = Math.max(0, Math.min(1, pct / 100))
@@ -40,7 +40,7 @@ function SemiGauge({ pct, centerText, unit, color, size = 148, label }) {
   )
 }
 
-// Светофор-циферблат FODMAP (3 зоны + стрелка). band=null → нейтральное состояние («—», без стрелки).
+// The FODMAP traffic-light dial (3 zones + a needle). band=null → the neutral state ("—", no needle).
 function FodmapDial({ band, size = 120 }) {
   const s = useT(STR)
   const stroke = 10, r = (size - stroke) / 2, cx = size / 2, cy = size / 2, h = size / 2 + stroke / 2 + 4
@@ -78,7 +78,7 @@ export default function NutriSummary({ eatenK, target, remK, over, pct, eatenP, 
     { l: t.fat, e: eatenF, g: target.fat, c: 'var(--c-amber)' },
     { l: t.carb, e: eatenC, g: target.carb, c: 'var(--c-sage)' },
   ]
-  const showDial = fodmapOn   // светофор всегда виден при включённой диете (без данных — нейтральный «—»)
+  const showDial = fodmapOn   // the traffic light is always shown while the diet is on (with no data, a neutral "—")
   return (
     <div className="card ns-summary">
       <div className={`ns-heroes ${onOpenBreakdown ? 'ns-click' : ''}`}

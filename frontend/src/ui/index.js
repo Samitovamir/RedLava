@@ -1,4 +1,4 @@
-// Барель примитивов дизайн-системы. Импорт: import { Button, Card, Field } from '../ui'
+// Barrel for the design-system primitives. Import: import { Button, Card, Field } from '../ui'
 export { default as Button } from './Button.jsx'
 export { default as Card } from './Card.jsx'
 export { default as Chip } from './Chip.jsx'

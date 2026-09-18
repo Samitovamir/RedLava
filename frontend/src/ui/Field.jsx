@@ -1,5 +1,5 @@
-// Поле ввода с подписью. type: text|email|number|date|time|textarea.
-// Прочие props (value, onChange, placeholder, rows…) пробрасываются на input/textarea.
+// A labelled input. type: text|email|number|date|time|textarea.
+// Any other props (value, onChange, placeholder, rows…) are forwarded to the input/textarea.
 export default function Field({ label, type = 'text', error, hint, className = '', children, ...rest }) {
   const isArea = type === 'textarea'
   return (

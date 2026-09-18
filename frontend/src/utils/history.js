@@ -1,6 +1,6 @@
-// Журнал действий. Копит и то, что сделал ИИ-помощник (письма, события, поиск),
-// и то, что пользователь сделал сам (добавил событие, отметил тренировку).
-// actor: 'ai' — сделал помощник, 'user' — сделал сам.
+// Activity log. It collects both what the AI assistant did (emails, events, searches)
+// and what the user did themselves (added an event, logged a workout).
+// actor: 'ai' — the assistant did it, 'user' — the person did it themselves.
 
 export const ACTION_TYPES = {
   email:    { label: 'Письмо',      labelEn: 'Email',     color: '#B07B52', icon: 'mail' },
@@ -22,11 +22,11 @@ export const ACTOR_INFO = {
   user: { label: 'Вы', labelEn: 'You', color: 'var(--muted-foreground)' }
 }
 
-// Выбор подписи (label) с учётом языка интерфейса.
+// Picks the label to show according to the UI language.
 export const pickLabel = (info, lang) => (lang === 'en' && info && info.labelEn) || (info && info.label) || ''
 
-// datetime в формате 'YYYY-MM-DD HH:MM' (сегодня — 2026-06-04)
-// Журнал начинается пустым — наполняется реальными действиями (демо-данные убраны)
+// datetime in 'YYYY-MM-DD HH:MM' format (today being 2026-06-04)
+// The log starts out empty and fills with real actions (the demo data has been removed)
 export const INITIAL_HISTORY = []
 const _DEMO_HISTORY = [
   { id: 1,  actor: 'ai',   type: 'email',    status: 'done',    datetime: '2026-06-04 09:24', title: 'Письмо Ивану отправлено',           detail: 'Ответ по встрече в четверг — подтвердил время 14:00.' },
@@ -52,16 +52,16 @@ const _DEMO_HISTORY = [
 const MONTHS = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
 const MONTHS_EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
-// Сегодняшняя дата в формате 'YYYY-MM-DD' (считается каждый раз, не «замораживается»)
+// Today's date in 'YYYY-MM-DD' format (recomputed on every call, never frozen)
 function todayStr() {
   const d = new Date()
   const p = n => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
 }
 
-// Демо-журнал для гостя. Даты считаются от сегодняшнего дня, чтобы
-// записи всегда выглядели свежими («Сегодня» / «Вчера» / последние дни).
-// daysAgo — сколько дней назад, time — 'HH:MM'.
+// The guest's demo log. Dates are computed relative to today, so the entries
+// always look fresh ("Today" / "Yesterday" / the last few days).
+// daysAgo — how many days back, time — 'HH:MM'.
 export function buildGuestHistory() {
   const stamp = (daysAgo, time) => {
     const d = new Date()
@@ -70,16 +70,16 @@ export function buildGuestHistory() {
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${time}`
   }
   const raw = [
-    // Сегодня
+    // Today
     { actor: 'ai',   type: 'event',    status: 'done',    daysAgo: 0, time: '09:24', title: 'ИИ создал событие «Звонок с врачом»', detail: 'Сегодня 15:00–15:30, добавлено в расписание.', titleEn: 'AI created event “Call with doctor”', detailEn: 'Today 15:00–15:30, added to the schedule.' },
     { actor: 'ai',   type: 'email',    status: 'done',    daysAgo: 0, time: '09:40', title: 'ИИ подготовил письмо Ивану',          detail: 'Ответ по встрече в четверг — предложил время 14:00.', titleEn: 'AI drafted an email to Ivan',         detailEn: 'Reply about Thursday’s meeting — suggested 14:00.' },
     { actor: 'user', type: 'workout',  status: 'done',    daysAgo: 0, time: '07:40', title: 'Вы отметили тренировку «Бег 8.2 км»',  detail: '42 мин, средний пульс 133. Данные из Garmin.', titleEn: 'You logged workout “Run 8.2 km”',     detailEn: '42 min, average heart rate 133. Data from Garmin.' },
     { actor: 'ai',   type: 'task',     status: 'pending', daysAgo: 0, time: '11:35', title: 'ИИ готовит сводку по анализам',         detail: 'Жду загрузки последнего файла с гормонами.', titleEn: 'AI is preparing a lab results summary', detailEn: 'Waiting for the latest hormone file to upload.' },
-    // Вчера
+    // Yesterday
     { actor: 'ai',   type: 'reminder', status: 'done',    daysAgo: 1, time: '20:00', title: 'ИИ напомнил о приёме лекарств',        detail: 'Ежедневное напоминание в 20:00.', titleEn: 'AI reminded about medication',        detailEn: 'Daily reminder at 20:00.' },
     { actor: 'user', type: 'event',    status: 'done',    daysAgo: 1, time: '18:10', title: 'Вы перенесли тренировку',              detail: 'С 18:00 на 19:30 вручную.', titleEn: 'You rescheduled a workout',           detailEn: 'From 18:00 to 19:30 manually.' },
     { actor: 'ai',   type: 'search',   status: 'done',    daysAgo: 1, time: '13:15', title: 'ИИ нашёл ресторан на годовщину',       detail: '3 варианта рядом, забронировал «Веранду» на 19:00.', titleEn: 'AI found a restaurant for the anniversary', detailEn: '3 options nearby, booked “Veranda” for 19:00.' },
-    // Позавчера
+    // The day before yesterday
     { actor: 'ai',   type: 'task',     status: 'done',    daysAgo: 2, time: '10:05', title: 'ИИ запомнил факт о вас',               detail: 'Кофе пьёте только до обеда — учту при планировании дня.', titleEn: 'AI saved a fact about you',           detailEn: 'You drink coffee only before noon — I’ll factor it into the day’s plan.' },
     { actor: 'user', type: 'workout',  status: 'done',    daysAgo: 2, time: '19:20', title: 'Вы отметили силовую тренировку',       detail: '55 мин, зал. Хорошее восстановление после.', titleEn: 'You logged a strength workout',       detailEn: '55 min, gym. Good recovery afterwards.' },
     { actor: 'ai',   type: 'email',    status: 'failed',  daysAgo: 3, time: '19:50', title: 'ИИ не смог отправить письмо риелтору', detail: 'Не удалось приложить документ — нужно прикрепить файл вручную.', titleEn: 'AI couldn’t send the email to the realtor', detailEn: 'Couldn’t attach the document — please attach the file manually.' }
@@ -97,7 +97,7 @@ export function buildGuestHistory() {
   }))
 }
 
-// Метка группы по дате: Сегодня / Вчера / 1 июня (с учётом языка интерфейса)
+// Group heading for a date: Today / Yesterday / June 1 (in the UI language)
 export function dayLabel(dateStr, lang = 'ru') {
   const en = lang === 'en'
   const today = todayStr()
@@ -112,7 +112,7 @@ export function dayLabel(dateStr, lang = 'ru') {
 export function timeOf(datetime) { return datetime.split(' ')[1] }
 export function dateOf(datetime) { return datetime.split(' ')[0] }
 
-// Текущий момент в формате журнала
+// The current moment in the log's format
 export function nowStamp() {
   const d = new Date()
   const p = n => String(n).padStart(2, '0')

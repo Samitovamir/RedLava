@@ -26,7 +26,7 @@ const FOODS = [
   ['seafood', 'Морепродукты'], ['dairy', 'Молочное'], ['eggs', 'Яйца'], ['mushrooms', 'Грибы']
 ]
 
-// Line-иконка приёма пищи: ключ иконки берём из MEALS (поле iconKey)
+// The line icon for a meal: the icon key comes from MEALS (its iconKey field)
 const MEAL_ICON_KEYS = Object.fromEntries(MEALS.map(m => [m.key, m.iconKey]))
 function MealIcon({ mealKey, size = 16 }) {
   return <Icon name={MEAL_ICON_KEYS[mealKey] || 'meal-lunch'} size={size} strokeWidth={1.5} />
@@ -43,7 +43,7 @@ const COMPONENT_DEFAULTS = {
 export default function Nutrition() {
   const t = useT({
     ru: {
-      // Заголовок страницы
+      // Page heading
       title: 'Питание',
       subtitle: 'Фото-дневник · советник · подбор блюд',
       prefsBtn: 'Настроить предпочтения',
@@ -56,19 +56,19 @@ export default function Nutrition() {
       on: 'ВКЛ', off: 'ВЫКЛ',
       fodmapSection: 'FODMAP-диета',
       fodmapNote: 'Лечебное питание — по назначению врача. При включении ИИ подбирает блюда и рецепты с низким FODMAP и помечает уровень.',
-      // Вход в профиль и общая единица
+      // The profile entry point and the shared unit
       editProfile: 'Изменить профиль',
       kcal: 'ккал',
-      // Профиль
+      // Profile
       fWeight: 'Вес, кг', fHeight: 'Рост, см', fAge: 'Возраст', fSex: 'Пол',
       male: 'Мужской', female: 'Женский',
       activity: 'Активность', goal: 'Цель',
       activityGarminNote: 'Garmin подключён — тренировки считаются по реальным калориям с часов, поэтому ответ про частоту на норму не влияет.',
-      // Кнопки подбора по приёмам
+      // The per-meal pick buttons
       mealApprox: '≈',
       picking: 'Подбираю…', pickBtn: 'Подобрать',
       bMacro: 'Б', fMacro: 'Ж', uMacro: 'У',
-      // Окно подбора
+      // The picker window
       pickHead: 'Подбор: ', perMeal: ' ккал на приём',
       close: 'Закрыть',
       inMeal: 'Что в приёме:',
@@ -76,11 +76,11 @@ export default function Nutrition() {
       pickAgain: 'Подобрать заново',
       more: 'Подробнее →',
       pickingMore: 'Подбираю ещё…', showMore: 'Показать ещё блюда',
-      // Детальная карточка / рецепт
+      // The detail card / recipe
       recipeBuilding: 'ИИ собирает рецепт…', recipeUnavailable: 'Рецепт недоступен',
       ingredients: 'Ингредиенты', steps: 'Приготовление',
       photoBy: 'Фото: ',
-      // Предпочтения
+      // Preferences
       prefsTitle: 'Профиль и предпочтения',
       prefsSub: 'Параметры тела и цель задают калории. Вкусы ИИ учитывает при подборе — но со здравым смыслом.',
       profileSection: 'Профиль',
@@ -99,15 +99,15 @@ export default function Nutrition() {
       allergies: 'Аллергии (строго исключить)', allergiesPlaceholder: 'Например: орехи, мёд',
       avoid: 'Не люблю', avoidPlaceholder: 'Например: кинза, печень',
       save: 'Сохранить', reset: 'Сбросить',
-      // Оценка
+      // Rating
       rateHow: ' · как вам было?',
       ratePlaceholder: 'Пара слов (необязательно): что понравилось / что поменять',
       rateUp: 'Понравилось', rateDown: 'Не очень', rateLater: 'Позже',
-      // Тосты / сообщения
+      // Toasts / messages
       noServer: 'Нет связи с сервером. Запустите backend с ключом ИИ.',
       tookTooLong: 'Подбор занял слишком долго. Попробуйте ещё раз.',
       prefsSaved: 'Предпочтения сохранены ✓',
-      // Карты значений (RU → подпись), payload остаётся русским
+      // Value maps (RU → label); the payload stays Russian
       meals: { 'Завтрак': 'Завтрак', 'Обед': 'Обед', 'Перекус': 'Перекус', 'Ужин': 'Ужин' },
       comps: { 'Суп': 'Суп', 'Салат': 'Салат', 'Основное': 'Основное', 'Гарнир': 'Гарнир', 'Напиток': 'Напиток', 'Десерт': 'Десерт' },
       cuisines: { 'Русская': 'Русская', 'Итальянская': 'Итальянская', 'Грузинская': 'Грузинская', 'Японская': 'Японская', 'Средиземноморская': 'Средиземноморская', 'Азиатская': 'Азиатская', 'Мексиканская': 'Мексиканская' },
@@ -184,7 +184,7 @@ export default function Nutrition() {
   const { lang } = useLang()
   const [profile, setProfile] = useState(loadProfile)
 
-  // Живые данные Garmin/Whoop (App.jsx кладёт их в localStorage асинхронно — перечитываем чуть позже)
+  // Live Garmin/Whoop data (App.jsx writes it to localStorage asynchronously — so we re-read a bit later)
   const [garmin, setGarmin] = useState(loadGarmin)
   const [whoop, setWhoop] = useState(loadWhoop)
   useEffect(() => {
@@ -192,16 +192,16 @@ export default function Nutrition() {
     return () => clearTimeout(t)
   }, [])
 
-  // С часами спорт приходит реальными калориями (dynamicTarget), без часов — учитываем
-  // его множителем активности из анкеты, иначе тренировки не попали бы в норму вовсе.
+  // With a watch, sport arrives as real calories (dynamicTarget); without one we account for it
+  // via the activity multiplier from the questionnaire, or workouts would miss the target entirely.
   const base = useMemo(() => computeTarget(profile, { hasGarmin: !!garmin }), [profile, garmin])
 
   const week = useMemo(() => weekDays(), [])
   const [selectedDay, setSelectedDay] = useState(mskDateKey())
   const [plan, setPlan] = useState(loadPlan)
   const location = useLocation()
-  // Раздел «Питание» — единый экран: фото-дневник + советник + подбор блюд (без вкладок).
-  // С Главной приходит autoSuggest/openDish → подбираем нужный приём прямо здесь.
+  // The "Nutrition" section is a single screen: photo diary + advisor + meal suggestions (no tabs).
+  // Home arrives with autoSuggest/openDish → we pick for the requested meal right here.
 
   const [prefs, setPrefs] = useState(loadPrefs)
   const [prefsOpen, setPrefsOpen] = useState(false)
@@ -213,10 +213,10 @@ export default function Nutrition() {
   const [mealsMsg, setMealsMsg] = useState('')
   const [loadingMeals, setLoadingMeals] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
-  const [images, setImages] = useState({})              // имя блюда → {url, author, authorUrl, unsplashUrl}
-  const [resultsOpen, setResultsOpen] = useState(false) // окно с подобранными блюдами
+  const [images, setImages] = useState({})              // dish name → {url, author, authorUrl, unsplashUrl}
+  const [resultsOpen, setResultsOpen] = useState(false) // the window with the suggested dishes
 
-  // Детальная карточка (рецепт): из подбора (source 'suggest') или из плана ('planned')
+  // The detail card (recipe): either from the suggestions (source 'suggest') or from the plan ('planned')
   const [detail, setDetail] = useState(null)
   const [detailParts, setDetailParts] = useState([])   // [{component, name, recipe|null}]
   const [detailLoading, setDetailLoading] = useState(false)
@@ -226,7 +226,7 @@ export default function Nutrition() {
   const weekRef = useRef(null)
   const [toast, setToast] = useState('')
 
-  // Оценка съеденного блюда
+  // Rating a dish that was eaten
   const [rate, setRate] = useState(null)
   const [rateText, setRateText] = useState('')
   const dismissedRate = useRef(new Set())
@@ -239,9 +239,9 @@ export default function Nutrition() {
     else setRate(null)
   }, [plan])
 
-  // Переход из окна «Питание» на Главной (единый экран раздела):
-  //  • state.openDish — тап по конкретному блюду → сразу открываем ЕГО детали (рецепт/«в меню»);
-  //  • state.autoSuggest — «другие блюда» → открываем окно подбора СРАЗУ (видна загрузка) и подбираем.
+  // Arriving from the "Nutrition" panel on Home (this section is one screen):
+  //  • state.openDish — a tap on a specific dish → open THAT dish's details at once (recipe/"add to menu");
+  //  • state.autoSuggest — "other dishes" → open the picker window IMMEDIATELY (so loading shows) and pick.
   useEffect(() => {
     const st = location.state
     if (!st) return
@@ -268,7 +268,7 @@ export default function Nutrition() {
     setProfile(next); saveProfile(next)
   }
 
-  // Динамическая цель на выбранный день: база + тренировки + восстановление + перенос со вчера
+  // The dynamic target for the selected day: baseline + workouts + recovery + carry-over from yesterday
   const isToday = selectedDay === mskDateKey()
   const burned = workoutKcal(garmin, selectedDay, base.bmr)
   const recovery = isToday ? (whoop?.recovery ?? null) : null
@@ -278,7 +278,7 @@ export default function Nutrition() {
   const remaining = Math.max(0, target.kcal - eaten)
   const intakeRec = intake[selectedDay] || null
 
-  // Цель на приём с учётом остатка дня: незанятые приёмы делят остаток между собой
+  // The per-meal target given what's left of the day: the unfilled meals split the remainder
   function perMealTarget(mt) {
     const share = MEALS.find(m => m.key === mt)?.share ?? 0.33
     const unchosen = MEALS.filter(m => !plan[selectedDay]?.[m.key])
@@ -295,7 +295,7 @@ export default function Nutrition() {
   const dayLabel = selDay ? `${t.wd[selDay.wd] || selDay.wd}, ${selDay.day} ${t.months[selDay.month] || selDay.month}` : selectedDay
 
   function selectDay(key) { setSelectedDay(key); setMeals([]); setMealsMsg('') }
-  // Клик «＋ Подобрать» в слоте: выбираем приём, подставляем типовой состав и сразу подбираем
+  // A "＋ Pick" click in a slot: select the meal, fill in its typical courses and pick right away
   function pickSlot(mealKey) {
     const comps = COMPONENT_DEFAULTS[mealKey] || ['Основное']
     setMealType(mealKey); setComponents(comps); setMeals([]); setMealsMsg('')
@@ -308,7 +308,7 @@ export default function Nutrition() {
   async function suggestMeals(mt = mealType, comps = components) {
     const pm = perMealTarget(mt)
     setLoadingMeals(true); setMeals([]); setMealsMsg('')
-    // Таймаут: подбор идёт через LLM и может зависнуть — не оставляем «Подбираю…» навсегда
+    // A timeout: the suggestions go through an LLM and can hang — we don't leave "Picking…" forever
     const ctrl = new AbortController()
     const timer = setTimeout(() => ctrl.abort(), 35000)
     try {
@@ -331,7 +331,7 @@ export default function Nutrition() {
     }
   }
 
-  // Фото блюд (Unsplash, кэшируются на сервере по блюду)
+  // Dish photos (Unsplash, cached on the server per dish)
   async function fetchImages(list) {
     if (!list.length) return
     try {
@@ -344,7 +344,7 @@ export default function Nutrition() {
     } catch { /* ignore */ }
   }
 
-  // Показать ещё блюда — дополняем список, не теряя текущие
+  // Show more dishes — we extend the list without losing the current ones
   async function moreMeals() {
     setLoadingMore(true)
     const ctrl = new AbortController()
@@ -374,7 +374,7 @@ export default function Nutrition() {
     return data.recipe || null
   }
 
-  // Части варианта (если комбо — несколько блюд; иначе одно)
+  // The parts of an option (a combo has several dishes; otherwise just one)
   function partsOf(meal) {
     if (meal.parts && meal.parts.length) return meal.parts
     return [{ component: (components[0] || 'Основное'), name: meal.name, kcal: meal.kcal, protein: meal.protein, fat: meal.fat, carb: meal.carb }]
@@ -392,23 +392,23 @@ export default function Nutrition() {
   }
   function closeDetail() { setDetail(null); setDetailParts([]) }
 
-  // Оценка ранее выбранного блюда. Планировщик меню недели из раздела убран
-  // (см. 32350f0), так что новых записей в плане не появляется — но у кого план
-  // остался с тех времён, тому всё ещё есть что оценить.
+  // Rating a dish chosen earlier. The weekly menu planner was removed from this section
+  // (see 32350f0), so no new plan entries appear — but anyone whose plan survived from
+  // back then still has something left to rate.
   function submitRate(liked) {
     const np = rateMeal(plan, rate.dateKey, rate.mealKey, liked ? 'up' : 'down', rateText)
     setPlan(np); savePlan(np)
     const npref = rememberDish(prefs, rate.dish.name, liked)
     setPrefs(npref); savePrefs(npref)
     setRateText('')
-    // эффект по plan покажет следующее блюдо к оценке (если есть)
+    // the effect on plan will surface the next dish to rate (if there is one)
   }
   function laterRate() {
     dismissedRate.current.add(rate.dateKey + '|' + rate.mealKey)
     setRate(null); setRateText('')
   }
 
-  // ── Предпочтения ──
+  // ── Preferences ──
   function openPrefs() { setPrefsDraft(prefs); setPrefsOpen(true) }
   function setDraft(field, value) { setPrefsDraft(d => ({ ...d, [field]: value })) }
   function toggleCuisine(c) {
@@ -419,15 +419,15 @@ export default function Nutrition() {
   }
   function savePrefsModal() { savePrefs(prefsDraft); setPrefs(prefsDraft); setPrefsOpen(false); flash(t.prefsSaved) }
 
-  // Тумблер FODMAP вынесен в шапку раздела, а не спрятан в профиль: лечебная диета
-  // нужна меньшинству, но кому нужна — переключает её часто.
+  // The FODMAP toggle sits in the section header rather than buried in the profile: a medical
+  // diet matters to a minority, but those who need it switch it often.
   function toggleFodmap() {
     const np = { ...prefs, fodmap: !prefs.fodmap }
     setPrefs(np); savePrefs(np)
     flash(np.fodmap ? t.fodmapOnMsg : t.fodmapOffMsg)
   }
 
-  // Собрать рецепт в читаемый текст и отправить (домработнице): системный share-sheet, фолбэк — буфер обмена.
+  // Assemble the recipe into readable text and send it (to the housekeeper): the system share sheet, falling back to the clipboard.
   async function shareRecipe() {
     if (!detail) return
     const parts = detailParts.filter(p => p.recipe)
@@ -453,13 +453,13 @@ export default function Nutrition() {
     const text = lines.join('\n').trim()
     try {
       if (navigator.share) { await navigator.share({ title: detail.meal.name, text }); return }
-    } catch { /* пользователь отменил share — падаем в копирование */ }
+    } catch { /* the user cancelled the share — fall through to copying */ }
     try { await navigator.clipboard.writeText(text); flash(t.recipeCopied) }
     catch { flash(t.recipeCopied) }
   }
 
-  // Первый заход: профиль ещё не заполнен — сначала анкета, иначе норма считалась бы
-  // по усреднённой заглушке и была бы не про этого человека.
+  // First visit: the profile isn't filled in yet — the questionnaire comes first, or the target
+  // would be computed from an averaged stub and would not be about this person.
   if (profile.isPlaceholder) {
     return (
       <div className="nu-page">
@@ -479,9 +479,9 @@ export default function Nutrition() {
         subtitle={t.subtitle}
       />
 
-      {/* Слева вход в профиль: рост/вес/цель задают норму калорий, а попасть туда раньше
-          можно было только из окна подбора блюд — то есть после ожидания ИИ.
-          Справа тумблер FODMAP: см. toggleFodmap выше. */}
+      {/* On the left, the way into the profile: height/weight/goal set the calorie target, and
+          the only way in used to be the meal suggestions window — i.e. after waiting on the AI.
+          On the right, the FODMAP toggle: see toggleFodmap above. */}
       <div className="nu-top-row">
         <button className="nu-prefs-top" onClick={openPrefs}>
           <SlidersHorizontal size={15} strokeWidth={1.5} /> {t.editProfile}
@@ -493,13 +493,13 @@ export default function Nutrition() {
         </button>
       </div>
 
-      {/* Единый экран раздела: фото-дневник → советник → подбор блюд по приёмам */}
+      {/* The section as one screen: photo diary → advisor → meal suggestions per meal */}
       <DiaryTab target={target} eaten={eaten} remaining={remaining} plan={plan} intake={intake} setIntake={setIntake} selectedDay={selectedDay} selectDay={selectDay} week={week} profile={profile} flash={flash} />
 
-      {/* Помощник по питанию: что есть в целом + к ближайшему приёму (по времени, с учётом съеденного) */}
+      {/* The nutrition coach: what to eat overall + for the next meal (by time, counting what was eaten) */}
       <NutritionCoach target={target} eaten={eaten} remaining={remaining} intake={intake} selectedDay={selectedDay} />
 
-      {/* Подбор блюда по приёмам (по времени суток) */}
+      {/* Meal suggestions per meal (by time of day) */}
       <motion.div className="card" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
         <div className="nu-slots">
           {MEALS.map(m => {
@@ -520,14 +520,14 @@ export default function Nutrition() {
         </div>
       </motion.div>
 
-      {/* Если подбор не дал результата — короткое сообщение */}
+      {/* If the suggestions came back empty — a short message */}
       {!loadingMeals && mealsMsg && (
         <motion.div className="card nu-msg-card" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
           <div className="nu-empty muted">{mealsMsg}</div>
         </motion.div>
       )}
 
-      {/* Окно с подобранными блюдами */}
+      {/* The window with the suggested dishes */}
       <AnimatePresence>
         {resultsOpen && (
           <Portal>
@@ -600,7 +600,7 @@ export default function Nutrition() {
         )}
       </AnimatePresence>
 
-      {/* Детальная карточка / рецепт */}
+      {/* The detail card / recipe */}
       <AnimatePresence>
         {detail && (
           <Portal>
@@ -665,7 +665,7 @@ export default function Nutrition() {
         )}
       </AnimatePresence>
 
-      {/* Предпочтения */}
+      {/* Preferences */}
       <AnimatePresence>
         {prefsOpen && (
           <Portal>
@@ -700,8 +700,8 @@ export default function Nutrition() {
                   ))}
                 </div>
               </div>
-              {/* Сколько тренируется — влияет на норму только без Garmin (с часами спорт
-                  приходит реальными калориями, иначе посчитали бы его дважды). */}
+              {/* How much they train — this only affects the target without Garmin (with a watch,
+                  sport arrives as real calories, so otherwise we'd count it twice). */}
               <div className="nu-seg-row">
                 <span className="nu-seg-lbl muted">{t.activity}</span>
                 <div className="nu-seg">
@@ -790,7 +790,7 @@ export default function Nutrition() {
         )}
       </AnimatePresence>
 
-      {/* Оценка съеденного блюда */}
+      {/* Rating a dish that was eaten */}
       <AnimatePresence>
         {rate && (
           <Portal>
@@ -812,7 +812,7 @@ export default function Nutrition() {
         )}
       </AnimatePresence>
 
-      {/* Тост */}
+      {/* The toast */}
       <AnimatePresence>
         {toast && (
           <motion.div className="nu-toast" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}>{toast}</motion.div>

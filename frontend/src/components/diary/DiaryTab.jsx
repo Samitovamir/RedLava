@@ -13,16 +13,17 @@ import {
   loadPrefs, fodmapMeta, entryFodmap
 } from '../../utils/nutrition.js'
 
-// Сканер штрих-кода тянет тяжёлый ZXing (~480 КБ) — грузим лениво, только при открытии.
+// The barcode scanner pulls in a heavy ZXing (~480 KB) — load it lazily, only when it opens.
 const BarcodeScanner = lazy(() => import('./BarcodeScanner.jsx'))
 
 /*
-  Вкладка «Дневник» — фотолог (свой CalAI). Кольцо «съедено/цель» + плитки Б/Ж/У +
-  лента «съедено сегодня» с фото. Захват: «Сфотографировать еду» → ИИ оценивает КБЖУ
-  по позициям с ПЕРСОНАЛЬНОЙ оценкой полезности (по состоянию пользователя) → экран правки →
-  подтверждение прибавляет приём (несколько фото за день суммируются).
-  Общее состояние (intake/plan/target/selectedDay) приходит пропсами — единый источник
-  истины со вкладкой «Меню».
+  The "Дневник" tab — a photo log (our own CalAI). An "eaten/target" ring + macro tiles +
+  the "съедено сегодня" feed with photos. Capture: "Сфотографировать еду" → the AI estimates
+  calories and macros item by item, with a PERSONAL verdict on how good it is for the user
+  (given their current state) → the edit screen → confirming adds the meal (several photos in
+  one day add up).
+  The shared state (intake/plan/target/selectedDay) arrives through props — one source of
+  truth shared with the "Меню" tab.
 */
 
 const fmtTime = (ts) => {
@@ -78,21 +79,21 @@ export default function DiaryTab({ target, intake, setIntake, selectedDay, flash
   const galleryRef = useRef(null)
   const labelRef = useRef(null)
   const [estBusy, setEstBusy] = useState(false)
-  const [estimate, setEstimate] = useState(null)   // оценка фото для экрана правки
-  const [detail, setDetail] = useState(null)        // просмотр записи
-  const [grams, setGrams] = useState(null)          // { name, per100 } — ввод граммов (этикетка/штрих-код)
-  const [savedOpen, setSavedOpen] = useState(false) // список сохранённых блюд
+  const [estimate, setEstimate] = useState(null)   // the photo's estimate, for the edit screen
+  const [detail, setDetail] = useState(null)        // viewing one entry
+  const [grams, setGrams] = useState(null)          // { name, per100 } — entering grams (label/barcode)
+  const [savedOpen, setSavedOpen] = useState(false) // the list of saved dishes
   const [barcodeOpen, setBarcodeOpen] = useState(false)
-  const [breakdownOpen, setBreakdownOpen] = useState(false) // таблица «съедено сегодня» + FODMAP
+  const [breakdownOpen, setBreakdownOpen] = useState(false) // the "съедено сегодня" table + FODMAP
 
-  // Чистим миниатюры старше вчера при входе
+  // Prune thumbnails older than yesterday on entry
   useEffect(() => { pruneIntakeThumbs(intake, loadSavedDishes()) }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Блокируем прокрутку фона, пока открыто любое окно дневника. На мобильном
-  // прокручивается САМ ДОКУМЕНТ (см. index.css), поэтому обычного overflow:hidden
-  // мало — iOS всё равно листает страницу за модалкой (тач-скролл «протекает»
-  // сквозь position:fixed бэкдроп). Фиксируем body на текущей позиции и
-  // возвращаем скролл при закрытии — тогда листается только само окно.
+  // Lock background scrolling while any diary window is open. On mobile it is THE DOCUMENT
+  // ITSELF that scrolls (see index.css), so a plain overflow:hidden is not enough — iOS still
+  // scrolls the page behind the modal (touch scroll "leaks" through a position:fixed
+  // backdrop). We pin the body at its current position and restore the scroll on close, and
+  // then only the window itself scrolls.
   const modalOpen = !!(estimate || detail || grams || savedOpen || barcodeOpen || breakdownOpen)
   useEffect(() => {
     if (!modalOpen) return
@@ -111,8 +112,9 @@ export default function DiaryTab({ target, intake, setIntake, selectedDay, flash
     }
   }, [modalOpen])
 
-  // Дневник показывает ЗАЛОГИРОВАННОЕ (фото/штрих-код/этикетка/сохранённое/довесок) — кольцо,
-  // плитки и лента из одного источника (intake), без плановых блюд (план — на вкладке «Меню»).
+  // The diary shows what was LOGGED (photo/barcode/label/saved dish/top-up) — the ring, the
+  // tiles and the feed all read one source (intake), with no planned dishes (the plan lives
+  // on the "Меню" tab).
   const dayRec = intake[selectedDay]
   const tracked = !!dayRec && (dayRec.source === 'photo' || dayRec.source === 'calai' || dayRec.source === 'manual')
   const rec = dayRec?.source === 'photo' ? dayRec : null
@@ -125,9 +127,9 @@ export default function DiaryTab({ target, intake, setIntake, selectedDay, flash
   const pct = target.kcal > 0 ? Math.min(100, Math.round(eatenK / target.kcal * 100)) : 0
   const over = eatenK > target.kcal
   const ringColor = over ? 'var(--status-warn)' : 'var(--accent)'
-  // FODMAP за день: худший уровень среди записей + причина для него
+  // FODMAP for the day: the worst level among the entries, plus the reason behind it
   const fodmapOn = loadPrefs().fodmap
-  const entryFods = entries.map(en => ({ en, f: entryFodmap(en) }))   // уровень FODMAP каждой записи (метка ИИ или оценка)
+  const entryFods = entries.map(en => ({ en, f: entryFodmap(en) }))   // each entry's FODMAP level (the AI's label, or an estimate)
   const dayFodmap = (() => {
     const bands = entryFods.map(x => x.f?.band).filter(Boolean)
     if (!bands.length) return null
@@ -150,7 +152,7 @@ export default function DiaryTab({ target, intake, setIntake, selectedDay, flash
       const data = await res.json()
       if (!data.ok || !data.intake) { flash(data.message || t.failRecognize); setEstBusy(false); return }
       let thumb = null
-      try { thumb = await compressToThumb(dataUrl) } catch { /* без миниатюры — оценку не теряем */ }
+      try { thumb = await compressToThumb(dataUrl) } catch { /* no thumbnail — we still keep the estimate */ }
       const ink = data.intake
       setEstimate({
         name: ink.name || (ink.items?.[0]?.name) || 'Приём пищи',
@@ -193,11 +195,11 @@ export default function DiaryTab({ target, intake, setIntake, selectedDay, flash
     const list = addSavedDish(loadSavedDishes(), { id: sid, name: entry.name, kcal: entry.kcal, protein: entry.protein, fat: entry.fat, carb: entry.carb })
     saveSavedDishes(list)
     const thumb = entry.hasPhoto ? getThumb(entry.id) : null
-    if (thumb) setThumb(sid, thumb)   // фото блюда живёт под id сохранённого (не пруним)
+    if (thumb) setThumb(sid, thumb)   // the dish photo lives under the saved dish's id (never pruned)
     flash(t.saved)
   }
 
-  // Общий помощник: добавить любую запись (этикетка/штрих-код/сохранённое) — без фото
+  // Shared helper: add any entry (label/barcode/saved dish) — without a photo
   function logEntry(entry) {
     const id = `e${Date.now()}${Math.round(Math.random() * 1000)}`
     const next = addPhotoIntake(intake, selectedDay, { ...entry, id })
@@ -227,7 +229,7 @@ export default function DiaryTab({ target, intake, setIntake, selectedDay, flash
   function confirmGrams(g, gramsVal) { logEntry(gramsToEntry(g.per100, gramsVal, g.name)); setGrams(null) }
   function logSaved(dish) {
     const id = `e${Date.now()}${Math.round(Math.random() * 1000)}`
-    const thumb = getThumb(dish.id)   // фото сохранённого блюда → переносим в новую запись
+    const thumb = getThumb(dish.id)   // the saved dish's photo → carried over to the new entry
     const next = addPhotoIntake(intake, selectedDay, { id, name: dish.name, kcal: dish.kcal, protein: dish.protein, fat: dish.fat, carb: dish.carb, hasPhoto: !!thumb })
     setIntake(next); saveIntake(next)
     if (thumb) setThumb(id, thumb)
@@ -245,7 +247,7 @@ export default function DiaryTab({ target, intake, setIntake, selectedDay, flash
 
   return (
     <motion.div className="nu-diary" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-      {/* Верхняя сводка: полусферы калорий + светофор FODMAP + бары Б/Ж/У */}
+      {/* Summary at the top: the calorie half-rings + the FODMAP traffic light + macro bars */}
       <NutriSummary
         eatenK={eatenK} target={target} remK={remK} over={over} pct={pct}
         eatenP={eatenP} eatenF={eatenF} eatenC={eatenC}
@@ -294,8 +296,8 @@ export default function DiaryTab({ target, intake, setIntake, selectedDay, flash
         </Portal>
       )}
 
-      {/* Захват: фото еды (камера ИЛИ галерея) + этикетка + сохранённые (штрих-код — отдельным шагом).
-          Камера-инпут с capture, галерея — без capture (чтобы открывалась медиатека, а не камера). */}
+      {/* Capture: a food photo (camera OR gallery) + a label + saved dishes (the barcode is its own step).
+          The camera input uses capture; the gallery one does not, so it opens the media library, not the camera. */}
       <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={onFile} style={{ display: 'none' }} />
       <input ref={galleryRef} type="file" accept="image/*" onChange={onFile} style={{ display: 'none' }} />
       <input ref={labelRef} type="file" accept="image/*" capture="environment" onChange={onLabelFile} style={{ display: 'none' }} />
@@ -315,7 +317,7 @@ export default function DiaryTab({ target, intake, setIntake, selectedDay, flash
         </div>
       </div>
 
-      {/* Лента «съедено сегодня» */}
+      {/* The "съедено сегодня" feed */}
       {entries.length === 0 ? (
         <div className="card nd-empty">
           <span className="nd-empty-ic"><Plus size={26} strokeWidth={1.6} /></span>
@@ -340,27 +342,27 @@ export default function DiaryTab({ target, intake, setIntake, selectedDay, flash
         </div>
       )}
 
-      {/* Экран правки оценки перед добавлением */}
+      {/* The screen for editing the estimate before adding it */}
       <AnimatePresence>
         {estimate && <EstimateEditScreen est={estimate} t={t} onCancel={() => setEstimate(null)} onConfirm={confirmEstimate} />}
       </AnimatePresence>
 
-      {/* Деталь записи */}
+      {/* One entry's details */}
       <AnimatePresence>
         {detail && <EntryDetailModal entry={detail} t={t} onClose={() => setDetail(null)} onDelete={() => deleteEntry(detail.id)} onSave={() => saveDish(detail)} />}
       </AnimatePresence>
 
-      {/* Ввод граммов (этикетка/штрих-код) */}
+      {/* Entering grams (label/barcode) */}
       <AnimatePresence>
         {grams && <GramsModal data={grams} t={t} onCancel={() => setGrams(null)} onConfirm={confirmGrams} />}
       </AnimatePresence>
 
-      {/* Сохранённые блюда */}
+      {/* Saved dishes */}
       <AnimatePresence>
         {savedOpen && <SavedDishesModal t={t} onClose={() => setSavedOpen(false)} onLog={logSaved} />}
       </AnimatePresence>
 
-      {/* Сканер штрих-кода (ленивый) */}
+      {/* The barcode scanner (lazy-loaded) */}
       <Suspense fallback={null}>
         <AnimatePresence>
           {barcodeOpen && <BarcodeScanner onDetected={onBarcode} onClose={() => setBarcodeOpen(false)} onError={() => flash(t.camFail)} />}
@@ -430,7 +432,7 @@ export default function DiaryTab({ target, intake, setIntake, selectedDay, flash
   )
 }
 
-// ── Экран правки оценки ──
+// ── The estimate edit screen ──
 function EstimateEditScreen({ est, t, onCancel, onConfirm }) {
   const [edit, setEdit] = useState({ name: est.name, kcal: est.kcal, protein: est.protein, fat: est.fat, carb: est.carb })
   const set = (k, v) => setEdit(e => ({ ...e, [k]: k === 'name' ? v : num(v) }))
@@ -511,7 +513,7 @@ function EstimateEditScreen({ est, t, onCancel, onConfirm }) {
   )
 }
 
-// ── Деталь записи дневника ──
+// ── A diary entry's details ──
 function EntryDetailModal({ entry, t, onClose, onDelete, onSave }) {
   const thumb = entry.hasPhoto ? getThumb(entry.id) : null
   return (
@@ -563,7 +565,7 @@ function EntryDetailModal({ entry, t, onClose, onDelete, onSave }) {
   )
 }
 
-// ── Ввод граммов для этикетки/штрих-кода (КБЖУ на 100 г → за порцию) ──
+// ── Entering grams for a label or barcode (calories and macros per 100 g → per portion) ──
 function GramsModal({ data, t, onCancel, onConfirm }) {
   const [g, setG] = useState(100)
   const k = (g || 0) / 100
@@ -592,7 +594,7 @@ function GramsModal({ data, t, onCancel, onConfirm }) {
   )
 }
 
-// ── Сохранённые блюда: быстрый повтор в один тап ──
+// ── Saved dishes: repeat one in a single tap ──
 function SavedDishesModal({ t, onClose, onLog }) {
   const [list, setList] = useState(loadSavedDishes())
   const del = (id) => { const next = removeSavedDish(list, id); setList(next); saveSavedDishes(next) }

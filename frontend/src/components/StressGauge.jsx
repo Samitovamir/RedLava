@@ -1,8 +1,8 @@
 /*
-  Спидометр стресса (полукруг-заливка, без стрелки) — в стиле гейджей калорий/FODMAP.
-  Шкала 0–100 (Garmin), ниже — лучше. Дуга заливается цветом текущего уровня;
-  число и словесная оценка — по центру под дугой. value=null → нейтральное «—».
-  Только CSS-переменные.
+  A stress gauge (a filled half-circle, no needle) — in the style of the calorie/FODMAP gauges.
+  Scale 0–100 (Garmin), lower is better. The arc fills with the colour of the current level;
+  the number and the verbal rating sit centred beneath it. value=null → a neutral "—".
+  CSS variables only.
 */
 
 function level(v) {
@@ -24,9 +24,9 @@ export default function StressGauge({ value = null, size = 148, label = 'Стр�
     <div className="sg">
       <div className="sg-wrap" style={{ width: size, height: h }}>
         <svg width={size} height={h} viewBox={`0 0 ${size} ${h}`}>
-          {/* фон-дуга (видима на любой теме) */}
+          {/* the background arc (visible on every theme) */}
           <path d={`M ${sx} ${sy} A ${r} ${r} 0 0 1 ${ex} ${ey}`} fill="none" stroke="color-mix(in srgb, var(--text-faint) 32%, transparent)" strokeWidth={stroke} strokeLinecap="round" />
-          {/* заполнение до текущего уровня */}
+          {/* the fill up to the current level */}
           {has && <path d={`M ${sx} ${sy} A ${r} ${r} 0 0 1 ${fx} ${fy}`} fill="none" stroke={meta.c} strokeWidth={stroke} strokeLinecap="round" />}
         </svg>
         <div className="sg-center" style={{ top: size * 0.34 }}>

@@ -17,7 +17,7 @@
         { "key": "Permissions-Policy", "value": "geolocation=(), microphone=(), camera=(self)" },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'sha256-gEdBeL1zYJceVBHo+2NAzDFdN3dFz+ftA91GOKDualc=' 'sha256-dXgog2gsVdAD6wbFfX6ayAmp8j1t7PV92vhg9sU9154='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://upload.wikimedia.org https://*.wikimedia.org; connect-src 'self' https://*.wikipedia.org https://world.openfoodfacts.org https://disk.yandex.ru; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+          "value": "default-src 'self'; script-src 'self' 'sha256-7UeA8F4xHx5z+hWi2Ad+tCkBTqPFZiD03ejrsIcTwLI=' 'sha256-mYR5+fysEQX2u0DWdCQ9jVdHORT6CJSWntKe0UdAP1E='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://upload.wikimedia.org https://*.wikimedia.org; connect-src 'self' https://*.wikipedia.org https://world.openfoodfacts.org https://disk.yandex.ru; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
         }
       ]
     }

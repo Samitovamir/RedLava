@@ -4,22 +4,22 @@ import { recoveryColor, fmtHm } from '../utils/whoop.js'
 import { useT, useLang } from '../context/LanguageContext.jsx'
 
 /*
-  Кольца готовности: Whoop (Сон / Восстановление / Нагрузка) + Garmin (Заряд тела / Стресс).
-  СМЫСЛ (чтобы не путать):
-   - Восстановление (Whoop) — УТРЕННИЙ балл готовности: «с чем проснулся», на день фиксирован.
-   - Заряд тела (Body Battery, Garmin) — ЖИВОЙ остаток энергии: тратится в течение дня
-     (заряжается во сне/отдыхе, расходуется активностью и стрессом).
-   - Стресс (Garmin) — текущий уровень напряжения 0–100 (ниже — лучше).
-  props: w — объект Whoop; garmin — { bodyBattery:{current,charged,drained}, stress:{current,avg,max} }
+  Readiness rings: Whoop (Sleep / Recovery / Strain) + Garmin (Body Battery / Stress).
+  WHAT THEY MEAN (so they don't get mixed up):
+   - Recovery (Whoop) is a MORNING readiness score: "what you woke up with", fixed for the day.
+   - Body Battery (Garmin) is your LIVE energy reserve: it drains over the course of the day
+     (it charges during sleep and rest, and is spent by activity and stress).
+   - Stress (Garmin) is the current tension level, 0–100 (lower is better).
+  props: w — the Whoop object; garmin — { bodyBattery:{current,charged,drained}, stress:{current,avg,max} }
 */
 
-// Заряд тела: выше — лучше
+// Body Battery: higher is better
 function bbColor(v) {
   if (v >= 50) return 'var(--green)'
   if (v >= 25) return 'var(--yellow)'
   return 'var(--red)'
 }
-// Стресс: ниже — лучше (шкала Garmin 0–100)
+// Stress: lower is better (Garmin's 0–100 scale)
 function stressColor(v) {
   if (v <= 25) return 'var(--green)'
   if (v <= 50) return 'var(--yellow)'

@@ -1,4 +1,4 @@
-// Маленькая кнопка «сгенерировать ИИ-текст заново»
+// A small "regenerate the AI text" button
 import { useT } from '../context/LanguageContext.jsx'
 
 export default function AiRefreshButton({ onClick, loading }) {

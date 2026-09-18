@@ -1,26 +1,26 @@
-/* ШАБЛОН для визуальной проверки. Скопируй под своим именем, поменяй CONFIG.
-   Запускать ИЗ ПАПКИ frontend:  node _review_<твоё>.mjs
-   Дев-сервер уже поднят: http://localhost:5173 (vite сам проксирует /api на :3001). */
+/* TEMPLATE for a visual review. Copy it under your own name and edit CONFIG.
+   Run it FROM THE frontend FOLDER:  node _review_<yours>.mjs
+   The dev server is already up: http://localhost:5173 (vite proxies /api to :3001 itself). */
 import puppeteer from 'puppeteer'
 
 const CONFIG = {
-  account: { name: 'Ревизор1', password: 'reviewpass123' },  // свой из выданных
+  account: { name: 'Ревизор1', password: 'reviewpass123' },  // one of the accounts you were given
   outDir: './temp_screenshots/review',
   prefix: 'agent1',
   lang: 'ru',                       // 'ru' | 'en'
-  viewport: { width: 390, height: 844 },   // iPhone 14. Для десктопа: 1440x900
+  viewport: { width: 390, height: 844 },   // iPhone 14. For desktop: 1440x900
 }
 
 const browser = await puppeteer.launch({ headless: 'new' })
-const ctx = await browser.createBrowserContext()      // изоляция: свой localStorage
+const ctx = await browser.createBrowserContext()      // isolated: its own localStorage
 const page = await ctx.newPage()
 await page.setViewport({ ...CONFIG.viewport, deviceScaleFactor: 2 })
 
 const problems = []
-page.on('pageerror', e => problems.push('JS-ОШИБКА: ' + String(e.message).slice(0, 200)))
+page.on('pageerror', e => problems.push('JS ERROR: ' + String(e.message).slice(0, 200)))
 page.on('console', m => { if (m.type() === 'error') problems.push('CONSOLE: ' + m.text().slice(0, 200)) })
 
-// ВАЖНО: домcontentloaded + пауза. networkidle0 ЗАВИСАЕТ — приложение постоянно опрашивает API.
+// IMPORTANT: domcontentloaded + a pause. networkidle0 HANGS — the app polls the API constantly.
 const go = async (path, waitMs = 2500) => {
   await page.goto('http://localhost:5173' + path, { waitUntil: 'domcontentloaded' })
   await new Promise(r => setTimeout(r, waitMs))
@@ -28,11 +28,11 @@ const go = async (path, waitMs = 2500) => {
 const shot = async (name) => {
   const p = `${CONFIG.outDir}/${CONFIG.prefix}-${name}.png`
   await page.screenshot({ path: p })
-  console.log('СКРИНШОТ:', p)
+  console.log('SCREENSHOT:', p)
   return p
 }
 
-// вход
+// sign in
 await go('/', 1500)
 const inputs = await page.$$('.auth-input')
 if (inputs.length) {
@@ -41,19 +41,19 @@ if (inputs.length) {
   await page.click('.auth-btn')
   await new Promise(r => setTimeout(r, 3000))
 }
-// язык (приложение берёт из локали браузера, поэтому выставляем явно)
+// language (the app takes it from the browser locale, so set it explicitly)
 await page.evaluate((l) => localStorage.setItem('redlava-lang', l), CONFIG.lang)
 await go('/', 2500)
 
-// --- дальше твои экраны ---
+// --- your own screens go below ---
 await shot('home')
 
-// Полезные приёмы:
-//   текст страницы:      await page.evaluate(() => document.body.innerText)
-//   не влез ли контент:  await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)
-//   «undefined» в UI:    (await page.evaluate(() => document.body.innerText)).includes('undefined')
-//   обрезка текста:      проверь элементы с text-overflow/ellipsis на длинных значениях
-//   полная страница:     await page.screenshot({ path, fullPage: true })
+// Handy checks:
+//   page text:              await page.evaluate(() => document.body.innerText)
+//   content overflowing:    await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)
+//   "undefined" in the UI:  (await page.evaluate(() => document.body.innerText)).includes('undefined')
+//   truncated text:         check elements with text-overflow/ellipsis against long values
+//   full page:              await page.screenshot({ path, fullPage: true })
 
-console.log('\nПРОБЛЕМЫ:', problems.length ? problems : 'нет')
+console.log('\nPROBLEMS:', problems.length ? problems : 'none')
 await browser.close()

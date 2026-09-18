@@ -1,5 +1,5 @@
-// Чип/тег/фильтр. active — выбранное состояние; color — цвет точки-индикатора
-// (обычно categoryColor(key)); onClick делает его кнопкой.
+// A chip/tag/filter. active is the selected state; color is the indicator dot's color
+// (usually categoryColor(key)); passing onClick turns it into a button.
 export default function Chip({
   active = false, color, dot = false, onClick, as, className = '', children, ...rest
 }) {

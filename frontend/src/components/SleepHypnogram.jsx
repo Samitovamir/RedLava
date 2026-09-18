@@ -3,13 +3,13 @@ import { SLEEP_STAGES } from '../utils/whoop.js'
 import { useT } from '../context/LanguageContext.jsx'
 
 /*
-  График стадий сна по ходу ночи (гипнограмма). Строится из реальных итогов Whoop
-  по стадиям + времени засыпания. Поминутных данных Whoop не даёт, поэтому это
-  ПРИМЕРНАЯ картина — об этом честно подписано под графиком.
-  props: stages {awake,light,rem,deep} (минуты), start "HH:MM", end "HH:MM"
+  A chart of the sleep stages through the night (a hypnogram). Built from Whoop's real
+  per-stage totals plus the time the person fell asleep. Whoop gives no minute-by-minute
+  data, so this is an APPROXIMATE picture — the caption under the chart says so plainly.
+  props: stages {awake,light,rem,deep} (minutes), start "HH:MM", end "HH:MM"
 */
 const COLOR = Object.fromEntries(SLEEP_STAGES.map(s => [s.key, s.color]))
-const ROWS = ['awake', 'rem', 'light', 'deep']   // сверху вниз
+const ROWS = ['awake', 'rem', 'light', 'deep']   // top to bottom
 
 const STR = {
   ru: {
@@ -39,7 +39,7 @@ export default function SleepHypnogram({ stages, start, end }) {
   const xOf = (min) => leftPad + (hyp.totalMin ? (min / hyp.totalMin) * plotW : 0)
   const yOf = (level) => padTop + level * rowH + rowH / 2
 
-  // Часовые отметки
+  // Hour ticks
   const ticks = []
   const firstHour = Math.ceil(hyp.startMin / 60) * 60
   for (let m = firstHour; m <= hyp.startMin + hyp.totalMin + 1; m += 60) {
@@ -49,7 +49,7 @@ export default function SleepHypnogram({ stages, start, end }) {
   return (
     <div className="hyp">
       <svg viewBox={`0 0 ${W} ${H}`} className="hyp-svg" preserveAspectRatio="none">
-        {/* строки стадий: подпись + сетка */}
+        {/* stage rows: label + grid */}
         {ROWS.map((st, i) => (
           <g key={st}>
             <line x1={leftPad} y1={yOf(i)} x2={W - rightPad} y2={yOf(i)} stroke="var(--border)" strokeWidth="1" strokeDasharray="3 5" />
@@ -57,21 +57,21 @@ export default function SleepHypnogram({ stages, start, end }) {
             <text x={32} y={yOf(i) + 5} textAnchor="start" className="hyp-row-lbl" fill="var(--muted)">{LABEL[st]}</text>
           </g>
         ))}
-        {/* часовые линии + подписи */}
+        {/* hour lines + labels */}
         {ticks.map((t, i) => (
           <g key={i}>
             <line x1={t.x} y1={padTop} x2={t.x} y2={padTop + ROWS.length * rowH} stroke="var(--border)" strokeWidth="1" opacity="0.4" />
             <text x={t.x} y={H - 8} textAnchor="middle" className="hyp-tick" fill="var(--muted)">{t.label}</text>
           </g>
         ))}
-        {/* вертикальные переходы между стадиями */}
+        {/* vertical transitions between stages */}
         {hyp.segments.map((s, i) => {
           if (i === 0) return null
           const prev = hyp.segments[i - 1]
           const x = xOf(s.start)
           return <line key={`v${i}`} x1={x} y1={yOf(STAGE_LEVEL[prev.stage])} x2={x} y2={yOf(STAGE_LEVEL[s.stage])} stroke="var(--muted)" strokeWidth="2" opacity="0.5" />
         })}
-        {/* горизонтальные отрезки стадий (цветные) */}
+        {/* horizontal stage segments (colored) */}
         {hyp.segments.map((s, i) => (
           <line key={`h${i}`} x1={xOf(s.start)} y1={yOf(STAGE_LEVEL[s.stage])} x2={xOf(s.end)} y2={yOf(STAGE_LEVEL[s.stage])}
             stroke={COLOR[s.stage]} strokeWidth="5" strokeLinecap="round" />

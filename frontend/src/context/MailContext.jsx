@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 
-// Почта: общий черновик (для предпросмотра письма, подготовленного ИИ) + отправка через бэкенд.
-// Письмо уходит ТОЛЬКО после явного подтверждения пользователем.
+// Mail: a shared draft (for previewing an email the AI has prepared) + sending via the backend.
+// An email goes out ONLY after the user explicitly confirms it.
 const MailContext = createContext(null)
 
 export function MailProvider({ children }) {

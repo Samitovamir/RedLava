@@ -1,9 +1,9 @@
 import { useRef, useState, useEffect } from 'react'
 
 /*
-  Кнопка голосового ввода (диктовка по-русски) через Web Speech API браузера.
-  Бесплатно, работает в Chrome/Edge/Safari. Если браузер не поддерживает — кнопка не показывается.
-  onText(текст) вызывается с распознанной фразой; родитель сам решает, куда её добавить.
+  A voice input button (Russian dictation) built on the browser's Web Speech API.
+  Free, and works in Chrome/Edge/Safari. If the browser doesn't support it, the button is hidden.
+  onText(text) is called with the recognised phrase; the parent decides where to put it.
 */
 const SR = typeof window !== 'undefined' ? (window.SpeechRecognition || window.webkitSpeechRecognition) : null
 

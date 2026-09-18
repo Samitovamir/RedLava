@@ -1,12 +1,12 @@
 import app from './app.js'
 
-// Этот файл запускается ТОЛЬКО локально (на Vercel — api/index.js без listen).
-// Помечаем процесс как локальный: в демо-режиме (роль guest) дневной лимит ИИ
-// снимается ТОЛЬКО здесь, на проде (где этого флага нет) лимит остаётся прежним.
+// This file runs ONLY locally (on Vercel it is api/index.js, with no listen).
+// Mark the process as local: the daily AI limit in demo mode (the guest role) is
+// lifted ONLY here; in production, where this flag is absent, the limit still applies.
 process.env.LOCAL_DEV = '1'
 
-// Локальный запуск (на Vercel используется api/index.js, без listen).
+// Local startup (on Vercel api/index.js is used instead, with no listen).
 const PORT = process.env.PORT || 3001
 app.listen(PORT, () => {
-  console.log(`Backend запущен: http://localhost:${PORT}`)
+  console.log(`Backend running: http://localhost:${PORT}`)
 })

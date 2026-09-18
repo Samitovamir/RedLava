@@ -1,27 +1,27 @@
-// Mock-данные Whoop (как из приложения Whoop). Заменятся на реальный API
+// Mock Whoop data (shaped like the Whoop app's). To be replaced by the real API
 // (OAuth 2.0, WHOOP_CLIENT_ID / WHOOP_CLIENT_SECRET).
 
 export const WHOOP = {
-  recovery: 78,          // % восстановления — главная метрика Whoop
-  strain: 12.4,          // дневная нагрузка по шкале 0–21
+  recovery: 78,          // recovery %, Whoop's headline metric
+  strain: 12.4,          // the day's strain on a 0–21 scale
   strainMax: 21,
-  hrv: 68,               // вариабельность пульса, мс
-  rhr: 48,               // пульс покоя, уд/мин
-  respiratoryRate: 14.2, // частота дыхания во сне, вдох/мин
-  spo2: 97,              // насыщение крови кислородом, %
-  skinTemp: 33.4,        // температура кожи, °C
-  skinTempDelta: -0.2,   // отклонение от нормы, °C
+  hrv: 68,               // heart rate variability, ms
+  rhr: 48,               // resting heart rate, bpm
+  respiratoryRate: 14.2, // respiratory rate during sleep, breaths/min
+  spo2: 97,              // blood oxygen saturation, %
+  skinTemp: 33.4,        // skin temperature, °C
+  skinTempDelta: -0.2,   // deviation from the norm, °C
   sleep: {
-    performance: 84,     // % выполнения потребности во сне
-    hoursSlept: 7.3,     // фактически проспал, ч
-    hoursNeeded: 8.1,    // потребность во сне, ч
-    efficiency: 91,      // эффективность сна, %
-    // длительность фаз сна, минут
+    performance: 84,     // % of the sleep need met
+    hoursSlept: 7.3,     // hours actually slept
+    hoursNeeded: 8.1,    // sleep need, hours
+    efficiency: 91,      // sleep efficiency, %
+    // sleep stage durations, in minutes
     stages: { awake: 22, light: 198, rem: 96, deep: 122 }
   }
 }
 
-// Тренд за неделю (сегодня — последний день)
+// The week's trend (today is the last day)
 export const WHOOP_DAYS = [
   { day: 'Пн', recovery: 64, strain: 14.2 },
   { day: 'Вт', recovery: 72, strain: 9.8 },
@@ -32,7 +32,7 @@ export const WHOOP_DAYS = [
   { day: 'Вс', recovery: 78, strain: 12.4 }
 ]
 
-// Цвет восстановления по уровню Whoop: зелёный / жёлтый / красный
+// Recovery color by Whoop's bands: green / yellow / red
 export function recoveryColor(r) {
   if (r >= 67) return 'var(--green)'
   if (r >= 34) return 'var(--yellow)'
@@ -44,10 +44,10 @@ export function recoveryLabel(r) {
   return 'Низкое'
 }
 
-// Фазы сна — для полосы и легенды (порядок: бодрствование → лёгкий → REM → глубокий).
-// Цвета — категорийные токены палитры темы, а не hex: раньше здесь были замороженные
-// цвета тёмной темы, и на светлых они выпадали из палитры. Подписи — фолбэк: оба
-// потребителя (MetricsView, SleepHypnogram) подставляют свои переводы по key.
+// Sleep stages — for the bar and the legend (order: awake → light → REM → deep).
+// Colors are the theme palette's category tokens, not hex: these used to be hard-coded
+// dark-theme colors, which fell outside the palette on the light ones. The labels are a
+// fallback: both consumers (MetricsView, SleepHypnogram) substitute translations by key.
 export const SLEEP_STAGES = [
   { key: 'awake', label: 'Бодрствование', color: 'var(--c-neutral)' },
   { key: 'light', label: 'Лёгкий сон',    color: 'var(--c-steel)' },
@@ -55,7 +55,7 @@ export const SLEEP_STAGES = [
   { key: 'deep',  label: 'Глубокий сон',  color: 'var(--c-sage)' }
 ]
 
-// Часы:минуты из минут
+// Hours:minutes from minutes
 export function fmtHm(min, lang = 'ru') {
   const h = Math.floor(min / 60), m = Math.round(min % 60)
   return lang === 'en' ? `${h}h ${m}m` : `${h} ч ${m} мин`

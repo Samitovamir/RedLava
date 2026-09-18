@@ -13,10 +13,10 @@ import { WHOOP, WHOOP_DAYS, SLEEP_STAGES, recoveryColor, fmtHm } from '../utils/
 import { loadSourcePref, saveSourcePref, resolveSource, hasWhoopData, hasGarminData } from '../utils/healthSource.js'
 
 /*
-  Вкладка «Показатели» страницы «Здоровье» (без ИИ).
-  Восстановление/сон/тренд/мини-показатели (Whoop) + метрики Garmin (VO2max и т.д.)
-  + анализы крови (LabResults). Whoop-секции гейтятся при отсутствии Whoop, анализы
-  показываются всегда (работают офлайн).
+  The "Metrics" tab of the "Health" page (no AI here).
+  Recovery/sleep/trend/mini-metrics (Whoop) + Garmin metrics (VO2max and so on)
+  + blood tests (LabResults). The Whoop sections are gated when there's no Whoop; the
+  blood tests are always shown (they work offline).
 */
 
 const STR = {
@@ -106,7 +106,7 @@ export default function MetricsView() {
   const navigate = useNavigate()
   const recLabel = { high: t.recHigh, mid: t.recMid, low: t.recLow }
 
-  // Живые данные Whoop / Garmin (как на старой странице Здоровье)
+  // Live Whoop / Garmin data (same as on the old Health page)
   const [live, setLive] = useState(() => {
     try { const s = localStorage.getItem('albert-whoop-live'); return s ? JSON.parse(s) : null } catch { return null }
   })
@@ -133,7 +133,7 @@ export default function MetricsView() {
   const [selDay, setSelDay] = useState(null)
   const [sleepOpen, setSleepOpen] = useState(false)
 
-  // Приоритет источника: Whoop → Garmin (с ручным оверрайдом). Экран меняется под источник.
+  // Source priority: Whoop → Garmin (with a manual override). The screen adapts to the source.
   const [sourcePref, setSourcePref] = useState(loadSourcePref)
   const hasW = hasWhoopData(live)
   const hasG = hasGarminData(garmin)
@@ -161,12 +161,12 @@ export default function MetricsView() {
   const stages = SLEEP_STAGES.map(s => ({ ...s, label: t.stages[s.key] || s.label, min: w.sleep.stages[s.key] }))
   const totalSleepMin = stages.reduce((a, s) => a + s.min, 0)
 
-  // Метрики Garmin — только реально присутствующие (VO2max и т.д.).
-  // Body Battery и стресс показываем кольцами (см. ниже), поэтому в сетку карточек НЕ дублируем.
+  // Garmin metrics — only the ones actually present (VO2max and so on).
+  // Body Battery and stress are drawn as rings (see below), so they are NOT duplicated in the card grid.
   const G = t.gm
   const bb = garmin?.bodyBattery, str = garmin?.stress
-  // Близко к «сейчас»: среднее за последний час → последний замер → среднее дня.
-  // Облачный Garmin обновляется только при синке часов, поэтому подписываем время последнего замера.
+  // As close to "now" as we can get: the last hour's average → the latest sample → the day's average.
+  // Garmin's cloud only updates when the watch syncs, so we caption it with the latest sample's time.
   const stressVal = str ? (str.recent ?? str.current ?? str.avg) : null
   const stressAt = str?.currentTs ? new Date(str.currentTs) : null
   const stressSub = stressAt
@@ -179,11 +179,11 @@ export default function MetricsView() {
     garmin?.trainingStatus && { val: (typeof garmin.trainingStatus === 'string' ? garmin.trainingStatus : (garmin.trainingStatus.statusRu || garmin.trainingStatus.status || '—')), lbl: G.status }
   ].filter(Boolean)
 
-  // Стресс для кольца Garmin: ниже — лучше
+  // Stress for the Garmin ring: lower is better
   const stressColor = v => v <= 25 ? 'var(--green)' : v <= 50 ? 'var(--yellow)' : v <= 75 ? 'var(--orange)' : 'var(--red)'
   const bbColor = v => v >= 50 ? 'var(--green)' : v >= 25 ? 'var(--yellow)' : 'var(--red)'
 
-  // Данные для виджета «Восстановление ↔ Нагрузка» под текущий источник
+  // Data for the "Recovery ↔ Strain" widget, shaped for the current source
   const strainMaxW = w.strainMax || 21
   const balance = source === 'whoop'
     ? { recovery: w.recovery, recoveryLabel: t.recoveryWord, load: (w.strain / strainMaxW) * 100, loadDisplay: `${w.strain} ${t.of} ${strainMaxW}`, loadLabel: t.loadLabel }
@@ -191,7 +191,7 @@ export default function MetricsView() {
       ? { recovery: bb.current, recoveryLabel: t.bbLabel, load: stressVal, loadDisplay: `${stressVal} /100`, loadLabel: t.stressLabel }
       : null
 
-  // Сегменты переключателя источника
+  // The segments of the source switcher
   const srcSegs = [
     { key: 'auto', lbl: t.srcAuto },
     { key: 'whoop', lbl: t.srcWhoop, disabled: !hasW },
@@ -200,7 +200,7 @@ export default function MetricsView() {
 
   return (
     <div className="metrics-view">
-      {/* Переключатель источника: Whoop → Garmin. Экран ниже меняется под выбранный источник. */}
+      {/* The source switcher: Whoop → Garmin. Everything below adapts to the chosen source. */}
       {(hasW || hasG) && (
         <div className="src-switch">
           <span className="src-title">{t.srcTitle}</span>
@@ -216,7 +216,7 @@ export default function MetricsView() {
       )}
 
       {source === 'whoop' && (<>
-        {/* Восстановление */}
+        {/* Recovery */}
         <motion.div className="card recovery-card"
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
           <WhoopRings w={w} garmin={garmin} />
@@ -231,10 +231,10 @@ export default function MetricsView() {
           </div>
         </motion.div>
 
-        {/* Восстановление ↔ Нагрузка (сопоставление ёмкости и нагрузки) */}
+        {/* Recovery ↔ Strain (capacity set against the load) */}
         {balance && <RecoveryBalance {...balance} />}
 
-        {/* Сон */}
+        {/* Sleep */}
         <div className="card sleep-card">
           <div className="sleep-head">
             <div className="card-title" style={{ margin: 0 }}>{t.sleep}</div>
@@ -284,7 +284,7 @@ export default function MetricsView() {
           </AnimatePresence>
         </div>
 
-        {/* Тренд восстановления за неделю */}
+        {/* The week's recovery trend */}
         <div className="card trend-card">
           <div className="card-title">{t.weekRecovery}</div>
           <div className="trend-bars">
@@ -316,7 +316,7 @@ export default function MetricsView() {
           )}
         </div>
 
-        {/* Мини-показатели (Whoop) */}
+        {/* Mini-metrics (Whoop) */}
         <div className="health-metrics">
           {HEALTH_METRICS.map(m => (
             <div key={m.key} className="card hm-card">
@@ -329,7 +329,7 @@ export default function MetricsView() {
       </>)}
 
       {source === 'garmin' && (<>
-        {/* Garmin-режим: заряд тела + стресс кольцами (сна/recovery в API Garmin нет) */}
+        {/* Garmin mode: body battery + stress as rings (the Garmin API has no sleep/recovery) */}
         <motion.div className="card recovery-card"
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
           <div className="garmin-rings">
@@ -347,7 +347,7 @@ export default function MetricsView() {
           <p className="rc-text muted">{t.garminMode}</p>
         </motion.div>
 
-        {/* Восстановление ↔ Нагрузка (заряд тела ↔ стресс) */}
+        {/* Recovery ↔ Strain (body battery ↔ stress) */}
         {balance && <RecoveryBalance {...balance} />}
       </>)}
 
@@ -362,7 +362,7 @@ export default function MetricsView() {
         </div>
       )}
 
-      {/* Метрики Garmin (VO2max и т.д.) — если подключён */}
+      {/* Garmin metrics (VO2max and so on) — only if it's connected */}
       {garminMetrics.length > 0 && (
         <div className="metrics-section">
           <div className="card-title">{t.garmin}</div>
@@ -378,7 +378,7 @@ export default function MetricsView() {
         </div>
       )}
 
-      {/* Анализы крови — всегда (работают офлайн) */}
+      {/* Blood tests — always shown (they work offline) */}
       <LabResults />
 
       <style>{`

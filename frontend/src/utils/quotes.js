@@ -1,6 +1,6 @@
-// Набор мотивационно-философских цитат. Ротация — новая каждый день.
-// Каждая цитата двуязычна: text/author (ru) + textEn/authorEn — getQuoteOfDay(lang)
-// отдаёт нужную половину, чтобы на английском UI не проскакивал русский текст.
+// A set of motivational, philosophical quotes, rotated to a new one every day.
+// Every quote is bilingual: text/author (ru) plus textEn/authorEn — getQuoteOfDay(lang)
+// returns the half it needs, so Russian text never slips through on the English UI.
 export const QUOTES = [
   { text: 'Я знаю только то, что ничего не знаю.', author: 'Сократ', textEn: 'I know that I know nothing.', authorEn: 'Socrates' },
   { text: 'Жизнь — это то, что с тобой происходит, пока ты строишь планы.', author: 'Джон Леннон', textEn: 'Life is what happens to you while you’re busy making other plans.', authorEn: 'John Lennon' },
@@ -54,7 +54,7 @@ export const QUOTES = [
 
 import { mskNow } from './time.js'
 
-// lang: 'en' | 'ru' — по умолчанию русский (обратная совместимость со старыми вызовами)
+// lang: 'en' | 'ru' — Russian by default (backwards compatible with older call sites)
 export function getQuoteOfDay(lang = 'ru') {
   const now = mskNow()
   const start = new Date(now.getFullYear(), 0, 0)

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-// storeUsername, а не setUsername: ниже есть состояние поля ввода с таким же именем,
-// и оно затеняло бы импорт — логин молча не сохранялся бы в браузере.
+// storeUsername, not setUsername: there's an input-field state below with the very same
+// name, and it would shadow the import — the login would silently never reach the browser.
 import { getToken, setToken, clearToken, setRole, setUserId, setUsername as storeUsername } from '../api/authFetch.js'
 import { claimLocalData } from '../utils/accountData.js'
 import { seedGuestDemo } from '../utils/demo.js'
@@ -8,9 +8,9 @@ import { useT, useLang } from '../context/LanguageContext.jsx'
 import BrandLogo from './BrandLogo.jsx'
 
 /*
-  Ворота входа. Пока не введён правильный пароль — показываем экран входа,
-  само приложение и его данные не монтируются. Токен хранится на устройстве,
-  поэтому повторно вводить пароль не нужно.
+  The sign-in gate. Until the correct password is entered we show the sign-in screen,
+  and the app itself along with its data is never mounted. The token is kept on the
+  device, so there's no need to type the password again.
 */
 export default function AuthGate({ children }) {
   const { lang } = useLang()
@@ -91,14 +91,14 @@ export default function AuthGate({ children }) {
     },
   })
 
-  // Если токен протух во время работы — вернуть на экран входа
+  // If the token expires mid-session, send the user back to the sign-in screen
   useEffect(() => {
     const onUnauth = () => setAuthed(false)
     window.addEventListener('albert-unauthorized', onUnauth)
     return () => window.removeEventListener('albert-unauthorized', onUnauth)
   }, [])
 
-  // Тихий вход при открытии, если токен уже есть и он валиден
+  // Sign in silently on load, provided a token is already there and still valid
   useEffect(() => {
     const t = getToken()
     if (!t) { setChecking(false); return }
@@ -106,24 +106,24 @@ export default function AuthGate({ children }) {
       .then(async r => {
         if (r.ok) {
           const d = await r.json()
-          // До монтирования приложения: если в браузере лежат данные другого аккаунта —
-          // стереть, ПРЕЖДЕ чем записывать новые role/userId/name — иначе сама эта запись
-          // попадёт под стирание (она тоже 'albert-*', а wipe должен снести только старое).
+          // Before the app mounts: if another account's data is sitting in this browser, erase
+          // it BEFORE writing the new role/userId/name — otherwise that write would be caught
+          // by the erase itself (it is 'albert-*' too, and the wipe must only take out the old).
           claimLocalData(d.userId || d.role || null)
-          if (d.token) setToken(d.token)  // сервер продлил сессию — сохраняем свежий токен
+          if (d.token) setToken(d.token)  // the server extended the session — keep the fresh token
           setRole(d.role)
           setUserId(d.userId || null)
           storeUsername(d.user?.username || null)
           if (d.role === 'guest') seedGuestDemo({ lang })
           setAuthed(true)
         }
-        else clearToken()  // токен недействителен — остаёмся на экране входа
+        else clearToken()  // the token is invalid — stay on the sign-in screen
       })
-      .catch(() => setAuthed(true)) // нет связи — доверяем токену, не блокируем
+      .catch(() => setAuthed(true)) // no connection — trust the token rather than lock the user out
       .finally(() => setChecking(false))
   }, [])
 
-  // Нужен ли код приглашения при регистрации — знает только сервер (REGISTRATION_CODE)
+  // Only the server knows whether sign-up needs an invite code (REGISTRATION_CODE)
   useEffect(() => {
     fetch('/api/auth/config')
       .then(r => r.ok ? r.json() : null)
@@ -149,16 +149,16 @@ export default function AuthGate({ children }) {
       })
       if (r.ok) {
         const d = await r.json()
-        claimLocalData(d.user?.id || d.role || null)   // чужие данные в этом браузере — стереть до старта
+        claimLocalData(d.user?.id || d.role || null)   // someone else's data in this browser — erase it before startup
         setToken(d.token)
         setRole(d.role)
         setUserId(d.user?.id || null)
         storeUsername(d.user?.username || null)
-        if (d.role === 'guest') seedGuestDemo({ force: true, lang })  // свежий демо при входе
+        if (d.role === 'guest') seedGuestDemo({ force: true, lang })  // a fresh demo on each sign-in
         setAuthed(true)
       } else {
-        // Сервер отдаёт КОД ошибки, а не текст: перевод берём из своего словаря, иначе
-        // в английском интерфейсе показывалась бы русская строка с бэкенда.
+        // The server returns an error CODE, not a message: we translate it from our own
+        // dictionary, or an English interface would show a Russian string from the backend.
         const d = await r.json().catch(() => null)
         const translate = t.srvErr[d?.error]
         if (r.status === 429) setError(t.errTooMany(d?.retryInMinutes))
@@ -178,9 +178,9 @@ export default function AuthGate({ children }) {
     setError(''); setCode('')
   }
 
-  // Пока проверяется сохранённый токен. Стили держим ЗДЕСЬ: <style> экрана входа
-  // ниже в этот момент ещё не смонтирован, поэтому раньше показывался просто
-  // неоформленный пустой div — секунда белизны вместо первого кадра приложения.
+  // Shown while the stored token is being checked. The styles live HERE: the sign-in
+  // screen's <style> below isn't mounted yet at this point, which used to leave an
+  // unstyled empty div — a second of white instead of the app's first frame.
   if (checking) return (
     <div className="auth-splash">
       <BrandLogo size={64} />
@@ -204,8 +204,8 @@ export default function AuthGate({ children }) {
   return (
     <div className="auth-screen">
       <form className="auth-card" onSubmit={submit}>
-        {/* Настоящая марка команды, а не самодельная «R» в цвете темы:
-            первый экран — единственное место, где человек видит, куда он попал. */}
+        {/* The team's real logo, not a home-made "R" in the theme's color:
+            the first screen is the one place where a person sees where they've landed. */}
         <BrandLogo size={56} />
         <h1 className="auth-title">{t.title}</h1>
         <p className="auth-sub">{mode === 'register' ? t.subReg : t.sub}</p>

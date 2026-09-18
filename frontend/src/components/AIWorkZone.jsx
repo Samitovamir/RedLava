@@ -10,14 +10,14 @@ import { useLang, useT } from '../context/LanguageContext.jsx'
 import VoiceInput from './VoiceInput.jsx'
 
 /*
-  Рабочая зона ИИ на главной. Только текстовая задача (узнать что-то, написать
-  email/сообщение, создать событие). Файловый режим убран — он был заглушкой
-  («в разработке» + фейковый разбор), реальный разбор файлов появится отдельно
-  на /api/ai/analyze-file.
-  Состояния:
-   - idle      → ввод
-   - processing→ "Выполняется..."
-   - result    → превью сообщения с кнопками Одобрить/Править
+  The AI work zone on the Home screen. Text tasks only (look something up, write an
+  email/message, create an event). The file mode was removed — it was a stub
+  ("in development" plus a fake analysis); real file analysis will come separately
+  at /api/ai/analyze-file.
+  States:
+   - idle      → input
+   - processing→ "Working..."
+   - result    → a message preview with Approve/Edit buttons
 */
 
 export default function AIWorkZone() {
@@ -27,8 +27,8 @@ export default function AIWorkZone() {
   const [doneInfo, setDoneInfo] = useState(null) // { title, detail }
   const [reading, setReading] = useState(null) // { open, entries:[{q,text,images,loadingImages}], loading }
 
-  // Снимок данных (расписание/спорт/здоровье/анализы) и инструменты — чтобы ИИ в рабочей зоне
-  // ВИДЕЛ календарь и реально выполнял задачи, как командная строка.
+  // A data snapshot (schedule/sport/health/blood tests) plus tools — so that the AI in the work
+  // zone SEES the calendar and really carries tasks out, like a command line.
   const { lang } = useLang()
   const t = useT({
     ru: {
@@ -45,7 +45,7 @@ export default function AIWorkZone() {
       to: 'Кому', subject: 'Тема',
       approveSend: 'Одобрить и отправить', edit: 'Править', cancelMsg: 'Отменить',
       done: 'Готово', newTask: 'Новая задача',
-      // фолбэки/уведомления
+      // fallbacks/notifications
       recipient: 'Получатель', noSubject: 'Без темы',
       msgFail: 'Не удалось подготовить текст. Проверьте, что backend запущен с ключом ИИ.',
       noServerMsg: 'Нет связи с сервером. Запустите backend с ключом ИИ.',
@@ -100,16 +100,16 @@ export default function AIWorkZone() {
   const { logAction } = useHistory()
 
 
-  // Отправить запрос к ИИ. Письма → превью с одобрением; вопросы/«расскажи» → большое подробное окно.
+  // Send the request to the AI. Emails → a preview to approve; questions/"tell me about" → a big detailed window.
   async function processTask() {
     const q = task.trim()
     if (!q) return
     setStatus('processing')
-    // Команда на расписание/память — создать/перенести/удалить событие, запомнить факт
+    // A command for the schedule/memory — create/move/delete an event, remember a fact
     const isCommand = /поставь|запиш|закин|добавь|напомн|назнач|перенес|сдвин|передвин|убер|удал|отмен|запомни|созда/i.test(q)
 
     if (isCommand) {
-      // Команда — идём в /agent (видит снимок, умеет инструменты), затем применяем действия
+      // A command — go through /agent (it sees the snapshot and can use tools), then apply the actions
       try {
         const res = await fetch('/api/ai/agent', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -135,12 +135,12 @@ export default function AIWorkZone() {
       return
     }
 
-    // Любознательный/информационный запрос (в т.ч. про его данные) — «режим чтения» со снимком
-    reset() // рабочая зона за блюром снова чистая
+    // A curious/informational question (including about his own data) — "reading mode" with the snapshot
+    reset() // the work zone behind the blur is clean again
     askRead(q, [])
   }
 
-  // Запрос/уточнение в режиме чтения. existingEntries — уже показанные ответы (для памяти диалога).
+  // A question or follow-up in reading mode. existingEntries — answers already shown (the dialogue's memory).
   async function askRead(q, existingEntries) {
     const base = existingEntries || []
     const history = base.flatMap(e => [{ role: 'user', text: e.q }, { role: 'assistant', text: e.text }])
@@ -175,7 +175,7 @@ export default function AIWorkZone() {
     setDoneInfo(null)
   }
 
-  // Завершить задачу — показать зелёный экран успеха
+  // Finish the task — show the green success screen
   function complete(title, detail) {
     setDoneInfo({ title, detail })
     setStatus('done')
@@ -183,7 +183,7 @@ export default function AIWorkZone() {
 
   return (
     <div className={`ai-work-zone card ${status === 'done' ? 'is-done' : ''}`}>
-      {/* Шапка с переключателем режимов */}
+      {/* The header with the mode switcher */}
       <div className="awz-head">
         <div className="awz-title">
           <span className="awz-badge">{t.badge}</span>
@@ -195,7 +195,7 @@ export default function AIWorkZone() {
       </div>
 
       <AnimatePresence mode="wait">
-        {/* IDLE: текстовая задача */}
+        {/* IDLE: a text task */}
         {status === 'idle' && (
           <motion.div
             key="text"
@@ -220,7 +220,7 @@ export default function AIWorkZone() {
           </motion.div>
         )}
 
-        {/* DONE: зелёный экран успеха */}
+        {/* DONE: the green success screen */}
         {status === 'done' && doneInfo && (
           <motion.div
             key="done"

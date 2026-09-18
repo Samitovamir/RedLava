@@ -9,17 +9,17 @@ import { useLang } from '../context/LanguageContext.jsx'
 import { MAIL_ENABLED, HISTORY_ENABLED } from '../config/features.js'
 
 /*
-  Навигация (CarPlay-рельс):
-  - Десктоп: компактный рельс 72px; при наведении плавно раскрывается до 240px
-    ПОВЕРХ контента (оверлей, контент не дёргается); клик по логотипу закрепляет
-    раскрытое состояние (localStorage), тогда контент уезжает вправо
-    (html[data-nav-pinned] → margin-left в index.css).
-  - Мобайл (≤640px): рельс скрыт, вместо него нижняя таб-панель: 4 главных
-    раздела + «Ещё» (лист с остальными и Настройками).
+  Navigation (a CarPlay-style rail):
+  - Desktop: a compact 72px rail; on hover it smoothly expands to 240px
+    OVER the content (an overlay, so the content doesn't shift); clicking the logo pins
+    the expanded state (localStorage), and then the content is pushed to the right
+    (html[data-nav-pinned] → margin-left in index.css).
+  - Mobile (≤640px): the rail is hidden and a bottom tab bar takes its place: 4 main
+    sections + "More" (a sheet holding the rest plus Settings).
 */
 
-// Письма/История архивированы флагами (config/features.js) — код разделов на месте,
-// возврат переключением флага. «Настройки» на мобиле — в шапке Главной (не в «Ещё»).
+// Mail/History are archived behind flags (config/features.js) — the section code stays put,
+// flip a flag to bring it back. Settings on mobile is in the Home header (not under "More").
 const ITEMS = [
   { path: '/', ru: 'Главная', en: 'Home', Ico: Home },
   { path: '/schedule', ru: 'Расписание', en: 'Schedule', Ico: CalendarDays },
@@ -30,9 +30,9 @@ const ITEMS = [
   ...(HISTORY_ENABLED ? [{ path: '/history', ru: 'История', en: 'History', Ico: HistoryIcon }] : []),
 ]
 const SETTINGS_ITEM = { path: '/settings', ru: 'Настройки', en: 'Settings', Ico: Settings }
-// Нижняя панель: 5 главных вкладок (Главная, Расписание, Спорт, Здоровье, Питание).
+// The bottom bar: the 5 main tabs (Home, Schedule, Sport, Health, Nutrition).
 const TAB_ITEMS = ITEMS.slice(0, 5)
-// Лист «Ещё» — только для неосновных разделов (если включены). Пусто → «Ещё» не рендерится.
+// The "More" sheet — only for the non-core sections (when enabled). Empty → "More" isn't rendered.
 const MORE_ITEMS = ITEMS.slice(5)
 
 const PIN_KEY = 'albert-nav-pinned'
@@ -53,15 +53,15 @@ export default function FluidMenu() {
 
   useEffect(() => {
     try { localStorage.setItem(PIN_KEY, pinned ? '1' : '0') } catch { /* ignore */ }
-    // контент уезжает вправо только при закреплённом рельсе
+    // the content is pushed right only while the rail is pinned
     if (pinned) document.documentElement.setAttribute('data-nav-pinned', '')
     else document.documentElement.removeAttribute('data-nav-pinned')
   }, [pinned])
 
-  // Рельс живёт только в «Классике»: при смене оболочки снимаем сдвиг контента
+  // The rail exists only in "Classic": when the shell changes, we drop the content offset
   useEffect(() => () => document.documentElement.removeAttribute('data-nav-pinned'), [])
 
-  // задержки раскрытия/закрытия — чтобы рельс не мерцал при проносе курсора
+  // open/close delays — so the rail doesn't flicker when the cursor merely sweeps past
   const enter = () => { clearTimeout(tOut.current); tIn.current = setTimeout(() => setHovered(true), 50) }
   const leave = () => { clearTimeout(tIn.current); tOut.current = setTimeout(() => setHovered(false), 120) }
   useEffect(() => () => { clearTimeout(tIn.current); clearTimeout(tOut.current) }, [])
@@ -121,7 +121,7 @@ export default function FluidMenu() {
 
   return (
     <>
-      {/* ── Десктоп: рельс ───────────────────────────────────────────── */}
+      {/* ── Desktop: the rail ────────────────────────────────────────── */}
       <nav
         className={`fluid-menu ${expanded ? 'expanded' : ''} ${pinned ? 'pinned' : ''}`}
         onMouseEnter={enter}
@@ -161,7 +161,7 @@ export default function FluidMenu() {
         </div>
       </nav>
 
-      {/* ── Мобайл: плавающая «жидкое стекло» таб-панель (iOS-26) ──────── */}
+      {/* ── Mobile: a floating "liquid glass" tab bar (iOS-26) ─────────── */}
       <nav className="mobile-tabbar">
         {TAB_ITEMS.map(tabItem)}
         {MORE_ITEMS.length > 0 && (

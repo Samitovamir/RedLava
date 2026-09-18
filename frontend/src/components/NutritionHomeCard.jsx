@@ -11,18 +11,19 @@ import { useCurrentMeal } from '../hooks/useCurrentMeal.js'
 import AiAdvice from './AiAdvice.jsx'
 
 /*
-  Окно «Питание» на Главной: обзор диеты + ОДНО блюдо под ТЕКУЩИЙ приём пищи (с учётом всех
-  данных через nutritionHealthBrief). Тап по блюду / «другие блюда» → раздел «Питание» с
-  автоподбором (там полное окно с несколькими блюдами и детали с рецептом/«в меню»).
-  Подобранное блюдо кэшируется в localStorage в пределах текущего приёма дня (без лишних запросов).
+  The "Nutrition" panel on the home page: a diet overview + ONE dish for the CURRENT meal (taking
+  all the data into account through nutritionHealthBrief). Tapping the dish or "other dishes" opens
+  the "Nutrition" section with auto-suggestions (the full panel there has several dishes plus the
+  details with the recipe and "add to menu"). The suggested dish is cached in localStorage for the
+  current meal of the day, so we don't fire needless requests.
 */
 
 const HOME_DISH_KEY = 'albert-home-dish'
-const HOME_RECENT_KEY = 'albert-home-recent'   // недавние блюда — чтобы не повторять (не «всегда курица»)
+const HOME_RECENT_KEY = 'albert-home-recent'   // recent dishes — so we don't repeat ourselves ("chicken every time")
 const MEAL_EN = { 'Завтрак': 'Breakfast', 'Обед': 'Lunch', 'Перекус': 'Snack', 'Ужин': 'Dinner' }
 
 const NUT_CONTEXT =
-  'Ты помощник пользователя по питанию. По его данным (цель КБЖУ, тренировки, восстановление, анализы) ' +
+  'Ты помощник по питанию. По данным человека (цель КБЖУ, тренировки, восстановление, анализы) ' +
   'дай РОВНО две короткие фразы, каждая с новой строки: (1) общий обзор его диеты сейчас; (2) с учётом ' +
   'сегодняшнего дня (тренировки/восстановление/анализы) — какой акцент в еде сегодня уместен. ' +
   'Без эмодзи, кратко. Ключевое — число или главный акцент — выдели **жирным** (умеренно).'
@@ -52,8 +53,9 @@ export default function NutritionHomeCard() {
 
   useEffect(() => {
     let cancelled = false
-    // Учитываем уже съеденное: остаток дня входит в ключ кэша (грубо, по 250 ккал), чтобы
-    // после логирования еды блюдо переподобралось под остаток, а не висело прежним.
+    // Account for what has already been eaten: the day's remainder is part of the cache key (roughly,
+    // in 250 kcal buckets), so once a meal is logged the dish is re-picked to fit what is left
+    // instead of staying as it was.
     const today = nutritionToday()
     const remBucket = today.hasData ? Math.round(today.remaining / 250) : 'x'
     const cacheKey = `${mskDateKey()}:${mealType}:${remBucket}`
@@ -69,8 +71,8 @@ export default function NutritionHomeCard() {
         const tgt = today.hasData ? today.target : computeTarget(loadProfile())
         const share = (MEALS.find(m => m.key === mealType)?.share) ?? 0.3
         const baseMeal = mealTarget(tgt, share)
-        // «Держим в голове» съеденное: если на день уже что-то залогировано — размер блюда
-        // вписываем в ОСТАТОК (не фиксированная доля), чтобы не предлагать сверх нормы.
+        // Keep what has been eaten in mind: if anything is already logged for the day, the dish is
+        // sized to fit the REMAINDER (not a fixed share), so we never suggest going over the target.
         let pm = baseMeal
         let eatenNote = ''
         if (today.hasData && today.eaten > 30) {
@@ -94,7 +96,7 @@ export default function NutritionHomeCard() {
         const d = (data.meals && data.meals[0]) || null
         if (cancelled) return
         setDish(d); setLoading(false)
-        // Запоминаем показанное блюдо, чтобы в следующие дни не повторять (скользящее окно из 8)
+        // Remember the dish we showed so we don't repeat it over the next few days (a sliding window of 8)
         if (d?.name) {
           try { localStorage.setItem(HOME_RECENT_KEY, JSON.stringify([d.name, ...recent.filter(n => n !== d.name)].slice(0, 8))) } catch { /* ignore */ }
         }
@@ -116,8 +118,8 @@ export default function NutritionHomeCard() {
     return () => { cancelled = true }
   }, [mealType])
 
-  // «Другие блюда» → раздел с окном подбора (несколько блюд). Тап по блюду →
-  // именно ЭТО блюдо: открываем его детали (рецепт/«в меню») в разделе питания.
+  // "Other dishes" → the section with the suggestion panel (several dishes). Tapping the dish →
+  // THAT dish in particular: we open its details (recipe, "add to menu") in the nutrition section.
   const open = () => navigate('/nutrition', { state: { autoSuggest: mealType } })
   const openDish = () => dish && navigate('/nutrition', { state: { openDish: dish, openImage: image, mealType } })
 

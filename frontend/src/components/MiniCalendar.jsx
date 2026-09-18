@@ -4,8 +4,8 @@ import { mskNow } from '../utils/time.js'
 import { useLang } from '../context/LanguageContext.jsx'
 
 /*
-  Мини-календарь для быстрого перехода к любой дате.
-  value — выбранная дата (Date), onSelect(date), onToday().
+  A mini calendar for jumping quickly to any date.
+  value — the selected date (a Date), onSelect(date), onToday().
 */
 
 const MONTHS = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь']
@@ -28,7 +28,7 @@ export default function MiniCalendar({ value, onSelect, onToday }) {
   const year = view.getFullYear()
   const month = view.getMonth()
 
-  // первый день месяца → смещение (понедельник = 0)
+  // the first day of the month → its offset (Monday = 0)
   const firstDay = new Date(year, month, 1)
   let startOffset = firstDay.getDay() - 1
   if (startOffset < 0) startOffset = 6

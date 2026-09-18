@@ -1,18 +1,18 @@
-// Демо-данные для гостевого входа. Гость НЕ видит реальные данные владельца
-// (бэкенд их не отдаёт под гостевым токеном) — вместо них показываем эти примеры,
-// чтобы можно было посмотреть, как работает дашборд.
+// Demo data for the guest sign-in. A guest does NOT see the owner's real data
+// (the backend won't hand it out under a guest token) — we show these examples instead,
+// so anyone can get a feel for how the dashboard works.
 //
-// Демо сеется НА ЯЗЫКЕ ИНТЕРФЕЙСА: настоящие события/приёмы приходят из Google Calendar
-// и дневника одной строкой (без пары title/titleEn), поэтому и в localStorage кладём
-// уже выбранную половину — иначе рендер, который читает только `title`, показал бы
-// русские названия в английском UI.
+// The demo is seeded IN THE UI LANGUAGE: real events and meals arrive from Google Calendar
+// and the diary as a single string (with no title/titleEn pair), so localStorage gets only
+// the half that was already chosen — otherwise rendering code that reads just `title` would
+// show Russian names in the English UI.
 import { WHOOP, WHOOP_DAYS } from './whoop.js'
 import { mskNow } from './time.js'
 
 const dk = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x }
 
-// Схлопывает пары `foo`/`fooEn` в одно поле `foo` по языку и убирает `fooEn`.
+// Collapses `foo`/`fooEn` pairs into a single `foo` field for the language and drops `fooEn`.
 const loc = (lang, obj) => {
   const out = {}
   for (const [k, v] of Object.entries(obj)) {
@@ -30,11 +30,11 @@ const demoWhoop = () => ({
   week: WHOOP_DAYS
 })
 
-// Недавние тренировки (как из Garmin Connect): даты за последние ~10 дней.
-// Поля совпадают с тем, что рендерит GarminLive/WorkoutModal.
+// Recent workouts (as if from Garmin Connect): dates within the last ~10 days.
+// The fields match what GarminLive/WorkoutModal renders.
 const demoWorkouts = (lang) => {
   const t = mskNow()
-  const k = (o) => dk(addDays(t, o))   // o<0 — дни назад
+  const k = (o) => dk(addDays(t, o))   // o<0 — days in the past
   return [
     {
       id: 'demo-w0', type: 'running', label: 'Бег', labelEn: 'Run', title: 'Темповый бег', titleEn: 'Tempo run', date: k(0),
@@ -85,7 +85,7 @@ const demoGarmin = (lang) => {
       feedback: en ? 'Recovery is the priority, but an easy session is fine' : 'Восстановление в приоритете, но лёгкая нагрузка по силам',
       sleepScore: 78, recoveryTime: 540, hrvFactor: 55, acuteLoad: 320
     },
-    // Продвинутые метрики Garmin (Training Status/Load, HRV, прогнозы забегов и т.д.)
+    // Advanced Garmin metrics (Training Status/Load, HRV, race predictions and so on)
     trainingStatus: {
       status: 'PRODUCTIVE', statusRu: en ? null : 'Продуктивно',
       feedback: en ? 'Load is building fitness — keep it up' : 'Нагрузка растит форму — так держать',
@@ -103,8 +103,8 @@ const demoGarmin = (lang) => {
   }
 }
 
-// Плановые тренировки (как из TrainingPeaks/Garmin): ближайшие дни.
-// Поля совпадают с секцией «Приближающиеся тренировки» в GarminLive.
+// Planned workouts (as if from TrainingPeaks/Garmin): the next few days.
+// The fields match the "Upcoming workouts" section in GarminLive.
 export function demoPlanned(lang = 'ru') {
   const t = mskNow()
   const k = (o) => dk(addDays(t, o))
@@ -116,7 +116,7 @@ export function demoPlanned(lang = 'ru') {
   ].map(w => loc(lang, w))
 }
 
-// Дневник питания на сегодня (как из фото-дневника): пара приёмов с FODMAP-метками.
+// Today's food diary (as if from the photo diary): a couple of meals with FODMAP labels.
 const demoIntake = (lang) => {
   const today = dk(mskNow())
   const items = [
@@ -150,12 +150,12 @@ const demoEvents = (lang) => {
 const set = (key, val) => { try { localStorage.setItem(key, JSON.stringify(val)) } catch { /* ignore */ } }
 const has = (key) => { try { return !!localStorage.getItem(key) } catch { return false } }
 
-// Версия демо-данных. Меняй при изменении содержимого, чтобы вернувшиеся гости
-// получили обновлённый набор. Язык входит в ключ: сменил язык — демо пересеется.
+// Demo data version. Bump it whenever the content changes, so returning guests get the
+// updated set. The language is part of the key: change the language and the demo is reseeded.
 const DEMO_VERSION = '5'
 
-// Заполнить localStorage демо-данными. force=true — перезаписать (свежий демо при входе).
-// Несовпадение версии/языка (albert-demo-ver !== стамп) тоже считается force.
+// Fill localStorage with demo data. force=true overwrites it (a fresh demo on sign-in).
+// A version/language mismatch (albert-demo-ver !== the stamp) counts as force as well.
 export function seedGuestDemo({ force = false, lang = 'ru' } = {}) {
   const stamp = `${DEMO_VERSION}:${lang}`
   let ver = null

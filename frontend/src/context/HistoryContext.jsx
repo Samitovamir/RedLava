@@ -3,9 +3,9 @@ import { INITIAL_HISTORY, nowStamp, buildGuestHistory } from '../utils/history.j
 import { isGuest } from '../api/authFetch.js'
 
 const STORAGE_KEY = 'albert-history'
-// Версия демо-журнала гостя. Подними при изменении buildGuestHistory(),
-// чтобы у вернувшихся гостей устаревший демо-журнал заменился свежим
-// (например, чтобы появились английские поля titleEn/detailEn).
+// Version of the guest's demo log. Bump it whenever buildGuestHistory() changes, so that a
+// returning guest's stale demo log is replaced with a fresh one (for example, so the English
+// titleEn/detailEn fields show up).
 const GUEST_HIST_VER = '2'
 const GUEST_HIST_VER_KEY = 'albert-hist-demo-ver'
 const HistoryContext = createContext(null)
@@ -13,8 +13,8 @@ const HistoryContext = createContext(null)
 export function HistoryProvider({ children }) {
   const [entries, setEntries] = useState(() => {
     try {
-      // Гость: если версия демо-журнала устарела — пересеять свежим демо.
-      // Только для гостей — журнал реального пользователя не трогаем.
+      // Guest: if the demo log's version is stale, re-seed it with a fresh demo.
+      // Guests only — a real user's log is left alone.
       if (isGuest()) {
         const storedVer = localStorage.getItem(GUEST_HIST_VER_KEY)
         if (storedVer !== GUEST_HIST_VER) {
@@ -28,7 +28,7 @@ export function HistoryProvider({ children }) {
       }
       const saved = localStorage.getItem(STORAGE_KEY)
       const parsed = saved ? JSON.parse(saved) : null
-      // Гость без записей — наполняем демо-журналом, чтобы раздел не был пустым.
+      // A guest with no entries — fill in the demo log so the section is not empty.
       if (Array.isArray(parsed) && parsed.length) return parsed
       return isGuest() ? buildGuestHistory() : INITIAL_HISTORY
     } catch {
@@ -40,7 +40,7 @@ export function HistoryProvider({ children }) {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(entries)) } catch { /* ignore */ }
   }, [entries])
 
-  // Записать действие. actor: 'ai' | 'user' (по умолчанию 'user')
+  // Record an action. actor: 'ai' | 'user' (defaults to 'user')
   const logAction = useCallback((action) => {
     setEntries(prev => [
       {

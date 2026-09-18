@@ -1,5 +1,5 @@
-// Авторизация на уровне всего приложения: токен добавляется ко всем /api запросам,
-// чтобы не переписывать каждый fetch в коде. При 401 — сбрасываем и просим войти снова.
+// App-wide authorization: the token is attached to every /api request, so we don't have to
+// rewrite each fetch in the code. On a 401 we clear it and ask for a fresh sign-in.
 
 const TOKEN_KEY = 'albert-auth'
 const ROLE_KEY = 'albert-role'
@@ -17,14 +17,14 @@ export const clearToken = () => {
   } catch { /* ignore */ }
 }
 
-// Роль входа: 'user' (обычный аккаунт, свои данные) | 'guest' (публичное демо)
+// Sign-in role: 'user' (a regular account with its own data) | 'guest' (the public demo)
 export const getRole = () => {
   try { return localStorage.getItem(ROLE_KEY) } catch { return null }
 }
 export const setRole = (r) => {
   try { r ? localStorage.setItem(ROLE_KEY, r) : localStorage.removeItem(ROLE_KEY) } catch { /* ignore */ }
 }
-// id аккаунта. У гостя его нет: у демо нет своих данных, опознавать нечего.
+// The account id. A guest has none: the demo has no data of its own, nothing to identify.
 const USER_ID_KEY = 'albert-user-id'
 export const getUserId = () => {
   try { return localStorage.getItem(USER_ID_KEY) } catch { return null }
@@ -32,7 +32,7 @@ export const getUserId = () => {
 export const setUserId = (id) => {
   try { id ? localStorage.setItem(USER_ID_KEY, id) : localStorage.removeItem(USER_ID_KEY) } catch { /* ignore */ }
 }
-// Username аккаунта — для отображения («Вы вошли как …» в Настройках).
+// The account's username — for display ("Signed in as …" in Settings).
 const USERNAME_KEY = 'albert-username'
 export const getUsername = () => {
   try { return localStorage.getItem(USERNAME_KEY) } catch { return null }
@@ -44,8 +44,8 @@ export const setUsername = (username) => {
 
 export const isGuest = () => getRole() === 'guest'
 
-// Постоянный идентификатор устройства — чтобы дневной лимит ИИ для гостей считался
-// ПО УСТРОЙСТВУ, а не общим на всех гостей. Создаётся один раз и хранится в браузере.
+// A permanent device identifier — so the daily AI limit for guests is counted PER DEVICE
+// instead of being shared by all guests. Created once and kept in the browser.
 const DEVICE_KEY = 'albert-device'
 export const getDeviceId = () => {
   try {
@@ -69,12 +69,12 @@ export function installAuthFetch() {
 
     const headers = new Headers(init.headers || (typeof input !== 'string' && input.headers) || {})
     const token = getToken()
-    // НЕ перетираем Authorization, если вызывающий уже задал свой
+    // Do NOT overwrite Authorization if the caller has already set its own
     if (token && !headers.has('Authorization')) headers.set('Authorization', 'Bearer ' + token)
     headers.set('X-Device-Id', getDeviceId())
 
     const res = await orig(input, { ...init, headers })
-    // Токен протух / неверный — кроме самих эндпоинтов входа
+    // The token is expired or invalid — except on the sign-in endpoints themselves
     if (res.status === 401 && !url.includes('/api/auth/')) {
       clearToken()
       window.dispatchEvent(new Event('albert-unauthorized'))

@@ -4,19 +4,19 @@ import { kvGet, kvSet } from '../store.js'
 
 const router = Router()
 
-// --- Дневной лимит ИИ для гостей (демо-режим) ---
-// Гость может попробовать ассистента, но не «писать сочинения». пользователь — без этого лимита.
+// --- Daily AI limit for guests (demo mode) ---
+// A guest can try the assistant out, but not "write essays".
 const GUEST_DAILY_LIMIT = Number(process.env.AI_GUEST_DAILY_LIMIT) || 15
 
-// Текущая дата по Москве (YYYY-MM-DD) — счётчик сбрасывается каждый день в полночь МСК.
+// Today's date in Moscow (YYYY-MM-DD) — the counter resets every day at midnight MSK.
 function mskDateKey() {
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Europe/Moscow', year: 'numeric', month: '2-digit', day: '2-digit'
   }).format(new Date())
 }
 
-// Идентификатор устройства гостя: чтобы лимит был ПО УСТРОЙСТВУ, а не общий на всех.
-// Берём заголовок X-Device-Id (его шлёт фронт), фолбэк — IP.
+// Guest device identifier: so the limit is PER DEVICE rather than shared by everyone.
+// We take the X-Device-Id header (the frontend sends it) and fall back to the IP.
 function guestDeviceId(req) {
   const raw = String(req.headers['x-device-id'] || '').trim().replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64)
   if (raw) return raw
@@ -24,14 +24,16 @@ function guestDeviceId(req) {
   return 'ip-' + ip.replace(/[^a-zA-Z0-9_.:-]/g, '').slice(0, 45)
 }
 
-// Проверяет и инкрементирует дневной счётчик ДЛЯ УСТРОЙСТВА.
-// Возвращает true, если лимит на сегодня уже исчерпан (запрос НЕ нужно выполнять).
-// Считаем не только гостя, но и новые аккаунты (role 'user'): у них пока нет своих данных,
-// но ИИ им доступен — без лимита это открытый кран к оплачиваемому API. Для владельца — нет.
+// Checks and increments the daily counter FOR THE DEVICE.
+// Returns true if today's limit is already used up (the request must NOT be made).
+// Both roles are counted — guest and ordinary account — because those are the only two
+// there are, and the AI is open to both. Without a cap this is a tap left running on a paid
+// API. Note the counter is keyed by DEVICE, not by account, so clearing site data resets it;
+// a real per-account budget is still owed.
 async function guestOverDailyLimit(req) {
   if (req.role !== 'guest' && req.role !== 'user') return false
-  // Локально (npm-дев через server.js) демо-лимит снят — чтобы свободно тестировать ИИ.
-  // На проде (Vercel, api/index.js) флаг LOCAL_DEV не выставлен → лимит работает как прежде.
+  // Locally (npm dev via server.js) the demo limit is lifted, so the AI can be tested freely.
+  // In production (Vercel, api/index.js) LOCAL_DEV is not set → the limit works as before.
   if (process.env.LOCAL_DEV === '1') return false
   const key = `ai:guest:limit:${guestDeviceId(req)}:${mskDateKey()}`
   const used = Number(await kvGet(key)) || 0
@@ -46,7 +48,7 @@ function getClient() {
   return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 }
 
-// --- Яндекс.Карты: адрес → координаты, и время в пути (для вопросов «во сколько выезжать») ---
+// --- Yandex Maps: address → coordinates, and travel time (for "when should I leave" questions) ---
 const YA_GEO_KEY = () => process.env.YANDEX_GEOCODER_KEY || process.env.YANDEX_MAPS_API_KEY || ''
 const YA_ROUTER_KEY = () => process.env.YANDEX_ROUTER_KEY || process.env.YANDEX_MAPS_API_KEY || ''
 
@@ -85,28 +87,28 @@ async function yaRouteEta(fromAddr, toAddr) {
         const dist = cell?.distance?.value
         if (sec) return { ok: true, etaMin: Math.round(sec / 60), distanceKm: dist ? Math.round(dist / 1000) : Math.round(haversineKm(from, to)), traffic: true, from: from.name, to: to.name }
       }
-    } catch { /* ignore — упадём в оценку */ }
+    } catch { /* ignore — fall through to the estimate */ }
   }
-  // Фолбэк без ключа маршрутизатора: оценка по прямой
+  // Fallback when there is no router key: estimate from the straight-line distance
   const km = haversineKm(from, to) * 1.35
   return { ok: true, etaMin: Math.round(km / 42 * 60), distanceKm: Math.round(km), traffic: false, approx: true, from: from.name, to: to.name }
 }
 
-// --- Предохранитель: лимиты, чтобы случайно не потратить все токены ---
-// ВАЖНО: дашборд на ОДНОЙ загрузке штатно шлёт ~10–15 ИИ-карточек (сводка дня, питание,
-// спорт, здоровье, советник…). Прежние 15/мин срабатывали уже на первой загрузке и отдавали
-// заглушку «слишком много запросов» вместо реального ответа (а фронт её ещё и кэшировал).
-// Поднимаем до значений, при которых обычная навигация не режется, но настоящий разгон
-// (зацикленный вызов) по-прежнему ловится.
+// --- Circuit breaker: limits so we don't accidentally burn through every token ---
+// IMPORTANT: on a SINGLE load the dashboard normally fires ~10–15 AI cards (day summary,
+// nutrition, sport, health, advisor…). The old 15/min tripped on the very first load and
+// returned the "too many requests" stub instead of a real answer (and the frontend cached
+// that stub on top of it). We raise the ceilings to values that don't cut off normal
+// navigation while still catching a genuine runaway (a call stuck in a loop).
 const LIMITS = {
   perMin: Number(process.env.AI_LIMIT_PER_MIN) || 60,
   perHour: Number(process.env.AI_LIMIT_PER_HOUR) || 300,
   perDay: Number(process.env.AI_LIMIT_PER_DAY) || 1000,
   maxMessageChars: Number(process.env.AI_MAX_MESSAGE_CHARS) || 4000
 }
-let aiHits = [] // метки времени запросов (мс)
+let aiHits = [] // request timestamps (ms)
 
-// Ответ-заглушка во всех форматах, которые ждут разные окна интерфейса
+// A stub response in every shape the various UI panels expect
 function softBlock(message) {
   return { reply: message, text: message, summary: message, result: message, actions: [], images: [], limited: true }
 }
@@ -118,7 +120,7 @@ function aiRateLimit(req, res, next) {
   const inHour = aiHits.filter(t => now - t < 60 * 60 * 1000).length
   const inDay = aiHits.length
 
-  // Слишком длинный запрос — частая причина случайного перерасхода
+  // An over-long request is a common cause of accidental overspending
   const msg = req.body?.message
   if (typeof msg === 'string' && msg.length > LIMITS.maxMessageChars) {
     return res.status(200).json(softBlock('Запрос слишком длинный. Сократите его, пожалуйста, и попробуйте снова.'))
@@ -138,7 +140,7 @@ function aiRateLimit(req, res, next) {
 
 router.use(aiRateLimit)
 
-// Единый стиль ответа для всех окон ассистента (добавляется к любому system-промпту).
+// One answer style for every assistant panel (appended to any system prompt).
 const STYLE_RULE =
   '\n\nСТИЛЬ ОТВЕТА (обязательно):\n' +
   '• Пиши на русском чисто, тепло и уважительно, как личное сообщение человеку.\n' +
@@ -152,8 +154,8 @@ const STYLE_RULE =
 router.post('/chat', async (req, res) => {
   const { message, context, history, snapshot, maxTokens } = req.body
   if (!message) return res.status(400).json({ error: 'message required' })
-  // Обычный чат — короткие ответы (1024). Длинные форматы (расшифровка анализов и т.п.)
-  // могут запросить больший лимит, но не выше потолка, чтобы ответ не обрывался на полуслове.
+  // Ordinary chat means short answers (1024). Long formats (walking through blood tests and
+  // the like) may ask for more, but never above the ceiling, so an answer never cuts off mid-word.
   const outTokens = Math.min(Math.max(Number(maxTokens) || 1024, 256), 8192)
   if (await guestOverDailyLimit(req)) return res.status(200).json(softBlock(GUEST_LIMIT_MSG))
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -164,9 +166,9 @@ router.post('/chat', async (req, res) => {
     const prior = Array.isArray(history)
       ? history.filter(m => m && m.text).map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text }))
       : []
-    // Весь системный промпт (контекст + снимок данных + стиль) — одним КЭШИРУЕМЫМ блоком.
-    // В рамках одного диалога он не меняется, поэтому каждое следующее сообщение
-    // переиспользует кэш и стоит на ~90% дешевле по входным токенам.
+    // The whole system prompt (context + data snapshot + style) goes in one CACHEABLE block.
+    // Within a single conversation it never changes, so every following message
+    // reuses the cache and costs about 90% less in input tokens.
     const base = (context || 'Ты помощник пользователя. Краткие дельные ответы на русском.')
     const full = base + (snapshot ? `\n\nДАННЫЕ ВЛАДЕЛЬЦА (общий снимок дашборда):\n${snapshot}` : '') + STYLE_RULE
     const system = [{ type: 'text', text: full, cache_control: { type: 'ephemeral' } }]
@@ -183,7 +185,7 @@ router.post('/chat', async (req, res) => {
   }
 })
 
-// --- Инструменты ассистента (tool use) ---
+// --- Assistant tools (tool use) ---
 const EVENT_TOOLS = [
   {
     name: 'create_event',
@@ -236,7 +238,7 @@ const EVENT_TOOLS = [
   }
 ]
 
-// Подготовка письма (клиентское действие): письмо НЕ отправляется сразу — пользователь подтверждает в предпросмотре.
+// Drafting an email (a client-side action): the email is NOT sent right away — the user confirms it in the preview.
 const SEND_EMAIL_TOOL = {
   name: 'send_email',
   description: 'Подготовить письмо (email) от имени пользователя. ВАЖНО: письмо НЕ отправляется сразу — пользователь увидит предпросмотр и сам нажмёт «Отправить». Используй, когда он просит написать/отправить кому-то письмо. Если email получателя неизвестен — НЕ выдумывай: попроси сказать адрес один раз и запомни его через remember_fact (например «email Ивана: ivan@example.com»), затем подготовь письмо. Если адрес уже есть в ПАМЯТИ — подставь его сам.',
@@ -251,7 +253,7 @@ const SEND_EMAIL_TOOL = {
   }
 }
 
-// Обновление/забывание устаревшего факта в памяти (клиентское действие).
+// Updating or forgetting an outdated fact in memory (a client-side action).
 const UPDATE_FACT_TOOL = {
   name: 'update_fact',
   description: 'Обновить или убрать УСТАРЕВШИЙ факт в памяти, когда устойчивая реальность изменилась и старая запись больше не верна (например раньше «тренируется 1 раз в день», а теперь стабильно 3 раза и тело справляется). Передай old — текст устаревшего факта как он записан в разделе ПАМЯТЬ снимка, и new — обновлённую формулировку (или пусто, чтобы просто забыть). Если факт просто новый и ничего не заменяет — используй remember_fact, а не это.',
@@ -265,7 +267,7 @@ const UPDATE_FACT_TOOL = {
   }
 }
 
-// Серверный инструмент: время в пути (выполняется на бэкенде, результат уходит обратно модели)
+// A server-side tool: travel time (it runs on the backend and the result goes back to the model)
 const ROUTE_TOOL = {
   name: 'route_eta',
   description: 'Узнать время в пути на автомобиле между двумя адресами/местами в России с учётом пробок. Используй для вопросов «во сколько выезжать», «сколько ехать», «успею ли». Адреса можно словами («Внуково», «Шереметьево», домашний адрес пользователя из памяти).',
@@ -279,8 +281,8 @@ const ROUTE_TOOL = {
   }
 }
 
-// Ассистент с инструментами: умеет реально создавать/переносить/удалять события.
-// События живут на клиенте, поэтому backend собирает список действий и возвращает их фронту.
+// The assistant with tools: it really can create, reschedule and delete events.
+// Events live on the client, so the backend collects a list of actions and returns it to the frontend.
 router.post('/agent', async (req, res) => {
   const { message, snapshot, history, context } = req.body
   if (!message) return res.status(400).json({ error: 'message required' })
@@ -289,9 +291,10 @@ router.post('/agent', async (req, res) => {
     return res.json({ reply: 'Добавьте ANTHROPIC_API_KEY в .env — и я смогу реально выполнять задачи (создавать события и т.д.).', actions: [] })
   }
 
-  // Большой статичный блок (правила + снимок данных) — КЭШИРУЕМЫЙ и одинаковый для всех окон,
-  // которые ходят в /agent (командная строка, сводка дня). Контекст страницы — отдельным блоком,
-  // чтобы не ломать общий кэш. Так повторные запросы стоят на ~90% дешевле по входным токенам.
+  // The big static block (rules + data snapshot) is CACHEABLE and identical for every panel
+  // that calls /agent (the command line, the day summary). The page context goes in a separate
+  // block so it doesn't invalidate the shared cache. Repeat requests then cost about 90% less
+  // in input tokens.
   const cachedBody =
     `Ты — личный ассистент русскоязычного пользователя. Ты РЕАЛЬНО выполняешь задачи, а не только советуешь.\n` +
     `Ты видишь ВСЮ картину по нему — расписание, спорт, здоровье, анализы, память о нём — и отвечаешь связно по любым данным.\n\n` +
@@ -364,7 +367,7 @@ router.post('/agent', async (req, res) => {
         for (const block of resp.content) {
           if (block.type === 'tool_use') {
             if (block.name === 'route_eta') {
-              // Серверный инструмент: считаем здесь и возвращаем результат модели
+              // A server-side tool: we compute it here and hand the result back to the model
               const eta = await yaRouteEta(block.input?.from, block.input?.to)
               let content
               if (!eta.ok && eta.reason === 'no_key') content = 'Маршруты пока недоступны: на сервере не задан ключ Яндекс.Карт.'
@@ -374,7 +377,7 @@ router.post('/agent', async (req, res) => {
                 `. Откуда: ${eta.from}. Куда: ${eta.to}.`
               toolResults.push({ type: 'tool_result', tool_use_id: block.id, content })
             } else if (block.name === 'send_email') {
-              // Клиентское действие с подтверждением: письмо лишь подготовлено, не отправлено
+              // A client-side action that needs confirmation: the email is only drafted, not sent
               actions.push({ name: block.name, input: block.input })
               toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: 'Письмо подготовлено и показано пользователю для подтверждения — он сам нажмёт «Отправить». НЕ утверждай, что письмо уже отправлено; скажи, что подготовил черновик и нужно проверить и отправить.' })
             } else {
@@ -397,7 +400,7 @@ router.post('/agent', async (req, res) => {
   }
 })
 
-// --- Режим чтения: развёрнутый увлекательный ответ + запросы для картинок ---
+// --- Reading mode: a long, engaging answer + search queries for the illustrations ---
 const ARTICLE_TOOL = [{
   name: 'present_article',
   description: 'Показать пользователю развёрнутый, увлекательный ответ-статью с иллюстрациями.',

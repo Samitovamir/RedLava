@@ -2,15 +2,15 @@ import { Router } from 'express'
 import { kvGetScoped, scopeOf } from '../userScope.js'
 import { getAccessToken } from './calendar.js'
 
-// Отправка писем через Gmail API (один общий вход Google, server-side — ключи пользователю не нужны).
-// Монтируется с requireAuth на уровне app.js.
+// Sending mail through the Gmail API (one shared Google sign-in, server-side — the user needs no keys).
+// Mounted behind requireAuth in app.js.
 const router = Router()
 const TOKENS_KEY = 'google:tokens'
 
 const b64url = (buf) =>
   Buffer.from(buf).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 
-// Кодируем не-ASCII заголовок (тема) по RFC 2047
+// Encode a non-ASCII header (the subject) per RFC 2047
 function encodeHeader(str) {
   if (/^[\x00-\x7F]*$/.test(str)) return str
   return `=?UTF-8?B?${Buffer.from(str, 'utf8').toString('base64')}?=`
@@ -30,13 +30,13 @@ function buildMime({ to, subject, body }) {
 
 const validEmail = (s) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(s || '').trim())
 
-// Доступна ли отправка (Google подключён)
+// Is sending available (is Google connected)
 router.get('/status', async (req, res) => {
   const t = await kvGetScoped(TOKENS_KEY, scopeOf(req))
   res.json({ connected: !!t?.refresh_token })
 })
 
-// Отправить письмо
+// Send an email
 router.post('/send', async (req, res) => {
   const { to, subject, body } = req.body || {}
   if (!validEmail(to)) return res.json({ ok: false, message: 'Укажите корректный email получателя.' })

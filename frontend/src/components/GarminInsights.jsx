@@ -1,9 +1,9 @@
 /*
-  Показатели Garmin — расширенные тренировочные метрики (Training Status/Load, HRV,
-  прогнозы забегов, Endurance/Hill Score, лактатный порог, интенсивные минуты).
-  Показывается во вкладке «Спорт» (данные Garmin). Каждая плитка рендерится, только
-  если данные есть. Только CSS-переменные, тёмная тема.
-  props: garmin (объект albert-garmin-live). Иначе читает из localStorage.
+  Garmin metrics — the advanced training metrics (Training Status/Load, HRV,
+  race predictions, Endurance/Hill Score, lactate threshold, intensity minutes).
+  Shown on the "Sport" tab (Garmin data). Each tile only renders when there is
+  data behind it. CSS variables only, dark theme.
+  props: garmin (the albert-garmin-live object). Otherwise it reads from localStorage.
 */
 import { useState, useEffect } from 'react'
 import { isGuest } from '../api/authFetch.js'
@@ -60,15 +60,15 @@ function readGarmin() {
   try { const s = localStorage.getItem('albert-garmin-live'); return s ? JSON.parse(s) : null } catch { return null }
 }
 
-// Garmin иногда отдаёт код-энум (LOW_RT_MOD_OR_HIGH и т.п.) вместо человеческого текста —
-// такое не показываем.
+// Garmin sometimes returns an enum code (LOW_RT_MOD_OR_HIGH and the like) instead of
+// human-readable text — we don't show those.
 const clean = s => (s != null && !/^[A-Z0-9][A-Z0-9_]{3,}$/.test(String(s).trim())) ? s : null
 const statusColor = k => ({ PRODUCTIVE: 'var(--status-ok)', PEAKING: 'var(--status-ok)', MAINTAINING: 'var(--accent)', RECOVERY: 'var(--status-warn)', UNPRODUCTIVE: 'var(--status-warn)', OVERREACHING: 'var(--status-crit)', DETRAINING: 'var(--status-crit)' }[k] || 'var(--accent)')
-// Запасная фраза по статусу (если backend не прислал текст — приходит кодом)
+// A fallback phrase per status (for when the backend sends no text and only a code arrives)
 const statusFeedback = (k, s) => ({ PRODUCTIVE: s.fbProductive, PEAKING: s.fbPeaking, MAINTAINING: s.fbMaintaining, RECOVERY: s.fbRecovery, UNPRODUCTIVE: s.fbUnproductive, OVERREACHING: s.fbOverreaching, DETRAINING: s.fbDetraining, STRAINED: s.fbStrained }[k] || null)
 const balanceColor = k => ({ OPTIMAL: 'var(--status-ok)', LOW: 'var(--status-warn)', HIGH: 'var(--status-crit)' }[k] || 'var(--accent)')
-// Подпись статуса по КОДУ Garmin, на языке интерфейса. Бэкенд присылает только русский
-// statusRu — на английском из-за этого показывался прочерк, а статус HRV не показывался вовсе.
+// The status label built from the Garmin CODE, in the interface language. The backend only sends
+// the Russian statusRu — which is why English showed a dash, and the HRV status showed nothing at all.
 const TS_LABEL = {
   ru: { PRODUCTIVE: 'Продуктивно', MAINTAINING: 'Поддержание', PEAKING: 'Пик формы', RECOVERY: 'Восстановление', UNPRODUCTIVE: 'Непродуктивно', OVERREACHING: 'Перегрузка', DETRAINING: 'Детренинг', STRAINED: 'Перенапряжение', NO_STATUS: 'Нет данных' },
   en: { PRODUCTIVE: 'Productive', MAINTAINING: 'Maintaining', PEAKING: 'Peaking', RECOVERY: 'Recovery', UNPRODUCTIVE: 'Unproductive', OVERREACHING: 'Overreaching', DETRAINING: 'Detraining', STRAINED: 'Strained', NO_STATUS: 'No data' },
@@ -78,20 +78,20 @@ const HRV_LABEL = {
   en: { BALANCED: 'Balanced', UNBALANCED: 'Unbalanced', LOW: 'Low', POOR: 'Poor', NONE: 'No data' },
 }
 const hrvColor = k => ({ BALANCED: 'var(--status-ok)', UNBALANCED: 'var(--status-warn)', LOW: 'var(--status-crit)', POOR: 'var(--status-crit)' }[k] || 'var(--accent)')
-// Уровень словом из числового значения (Garmin не всегда присылает готовый текст)
+// The level as a word, derived from the numeric value (Garmin doesn't always send ready-made text)
 const enduranceLevel = (v, s) => v == null ? null : v >= 9000 ? s.elite : v >= 6000 ? s.high : v >= 3000 ? s.medium : s.base
 const hillLevel = (v, s) => v == null ? null : v >= 75 ? s.strong : v >= 50 ? s.good : v >= 25 ? s.medium : s.beginner
 
 export default function GarminInsights({ garmin }) {
   const s = useT(STR)
   const { lang } = useLang()
-  // Готовые русские подписи с бэкенда (levelRu и т.п.) показываем только в русском UI
+  // Ready-made Russian labels from the backend (levelRu and the like) are shown in the Russian UI only
   const ruOnly = v => (lang === 'ru' ? clean(v) : null)
-  // Статусы переводим сами по коду — на любом языке
+  // The statuses we translate ourselves from the code — for either language
   const tsLabel = k => (TS_LABEL[lang] || TS_LABEL.ru)[k] || null
   const hrvLabel = k => (HRV_LABEL[lang] || HRV_LABEL.ru)[k] || null
-  // Гость — расширенные метрики в демо (albert-garmin-live). Реальный — ленивый /insights,
-  // чтобы не блокировать основную загрузку заряда тела / стресса.
+  // For a guest the advanced metrics come from the demo data (albert-garmin-live). For a real
+  // account /insights is loaded lazily, so it doesn't block the main body battery / stress load.
   const [fetched, setFetched] = useState(null)
   useEffect(() => {
     if (isGuest()) return
@@ -106,11 +106,11 @@ export default function GarminInsights({ garmin }) {
   const lt = g.lactateThreshold, im = g.intensityMinutes
   if (!ts && !tl && !hrv && !race && !endur && !hill && !lt && !im) return null
 
-  // HRV: положение последней ночи в диапазоне базовой линии (low..high)
+  // HRV: where last night falls inside the baseline range (low..high)
   const hrvPos = hrv && hrv.low != null && hrv.high != null && hrv.high > hrv.low
     ? Math.max(0, Math.min(1, (hrv.lastNight - hrv.low) / (hrv.high - hrv.low))) * 100 : null
   const imPct = im && im.goal ? Math.min(100, Math.round(im.weekly / im.goal * 100)) : null
-  // Баланс нагрузки по ACWR (острая/хроническая): 0.8–1.3 — оптимальное окно
+  // Load balance from the ACWR (acute/chronic): 0.8–1.3 is the optimal window
   const acwr = tl?.ratio
   const loadBal = acwr == null ? null
     : acwr < 0.8 ? { w: s.lowVolume, c: 'var(--status-warn)' }
@@ -126,7 +126,7 @@ export default function GarminInsights({ garmin }) {
       </div>
 
       <div className="gi-grid">
-        {/* Training Status — герой */}
+        {/* Training Status — the hero tile */}
         {ts && (
           <div className="gi-tile gi-span2">
             <div className="gi-cap">{s.trainingStatus}</div>
@@ -174,7 +174,7 @@ export default function GarminInsights({ garmin }) {
           </div>
         )}
 
-        {/* Прогноз забегов */}
+        {/* Race predictions */}
         {race && (
           <div className="gi-tile gi-span2">
             <div className="gi-cap">{s.racePredictions}</div>
@@ -207,7 +207,7 @@ export default function GarminInsights({ garmin }) {
           </div>
         )}
 
-        {/* Лактатный порог */}
+        {/* Lactate threshold */}
         {lt && (
           <div className="gi-tile">
             <div className="gi-cap">{s.lactateThreshold}</div>
@@ -218,7 +218,7 @@ export default function GarminInsights({ garmin }) {
           </div>
         )}
 
-        {/* Интенсивные минуты */}
+        {/* Intensity minutes */}
         {im && (
           <div className="gi-tile">
             <div className="gi-cap">{s.intensityMinutes}</div>

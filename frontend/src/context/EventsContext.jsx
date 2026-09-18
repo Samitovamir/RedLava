@@ -4,14 +4,14 @@ import { dayLabel } from '../utils/history.js'
 import { mskNow } from '../utils/time.js'
 import { isGuest } from '../api/authFetch.js'
 
-// Локальный ключ даты YYYY-MM-DD (без сдвига часового пояса)
+// Local YYYY-MM-DD date key (with no timezone shift)
 export function dateKey(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 const TODAY_KEY = dateKey(mskNow())
 
-// Расписание начинается пустым — события приходят из Google Календаря (демо убрано)
+// The schedule starts out empty — events come from Google Calendar (the demo set is gone)
 export const INITIAL_EVENTS = []
 const _DEMO_EVENTS = [
   { type: 'call', title: 'Утренняя планёрка', date: TODAY_KEY, start: '09:00', end: '09:30', who: 'Команда', priority: 2 },
@@ -39,18 +39,19 @@ export function EventsProvider({ children }) {
     }
   })
 
-  // Сигнал «перейти к дате» — выставляется при действиях ИИ, чтобы расписание показало нужный день
+  // A "jump to this date" signal — set by AI actions so the schedule shows the right day
   const [focusSignal, setFocusSignal] = useState(null)
 
-  // Сохраняем при каждом изменении — общий источник для всех страниц
+  // Persist on every change — a single source shared by every page
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(events)) } catch { /* ignore */ }
   }, [events])
 
-  // Если подключён Google Календарь — подтягиваем реальные события (он источник истины)
+  // When Google Calendar is connected we pull the real events (it is the source of truth)
   const [googleConnected, setGoogleConnected] = useState(false)
-  // Токен Google протух/отозван (refresh упал с invalid_grant) — нужен реконнект.
-  // Отличаем от «никогда не подключали»: только в этом случае показываем плашку-предупреждение.
+  // The Google token expired or was revoked (the refresh failed with invalid_grant) — a
+  // reconnect is needed. We tell this apart from "never connected at all": only in this case
+  // do we show the warning banner.
   const [googleNeedsReconnect, setGoogleNeedsReconnect] = useState(false)
   function syncFromGoogle() {
     return fetch('/api/calendar/status')
@@ -58,25 +59,25 @@ export function EventsProvider({ children }) {
       .then(d => {
         setGoogleConnected(!!d.connected)
         setGoogleNeedsReconnect(!!d.needsReconnect)
-        // Google не подключён — НЕ трогаем расписание: у аккаунта без Google события
-        // заводятся вручную (и синхронизируются между его устройствами). Раньше здесь
-        // стояла очистка, и такие события стирались при каждой загрузке страницы.
+        // Google is not connected — do NOT touch the schedule: an account without Google
+        // creates its events by hand (and syncs them across its own devices). This used to
+        // clear them, so those events were wiped on every page load.
         if (!d.connected) return null
         return fetch('/api/calendar/events').then(r => r.json())
       })
       .then(data => {
         if (!data) return
-        // первый заход после смерти токена: статус ещё «зелёный», но /events уже знает правду
+        // first visit after the token died: status still reads green, but /events knows the truth
         if (data.needsReconnect) { setGoogleNeedsReconnect(true); setGoogleConnected(false) }
         if (Array.isArray(data.events)) setEventsRaw(data.events)
       })
       .catch(() => {})
   }
-  // Гость работает на демо-событиях (из localStorage) — Google не синхронизируем,
-  // иначе пустой ответ для гостя затёр бы демо.
+  // A guest runs on the demo events (out of localStorage) — we do not sync Google for them,
+  // otherwise the empty response a guest gets would overwrite the demo.
   useEffect(() => { if (!isGuest()) syncFromGoogle() }, [])
 
-  // Сравнить старое и новое расписание и записать действие пользователя в историю
+  // Compare the old and new schedules and record the user's action in the history
   function diffAndLog(prev, next) {
     const prevByTitle = new Map(prev.map(e => [e.title, e]))
     const nextByTitle = new Map(next.map(e => [e.title, e]))
@@ -97,22 +98,22 @@ export function EventsProvider({ children }) {
     }
   }
 
-  // Обёртка над setState: логирует изменения пользователя в историю
+  // A wrapper around setState: logs the user's changes to the history
   function setEvents(next) {
     setEventsRaw(prev => {
       const resolved = typeof next === 'function' ? next(prev) : next
-      // логируем вне фазы рендера
+      // log outside the render phase
       queueMicrotask(() => { try { diffAndLog(prev, resolved) } catch { /* ignore */ } })
       return resolved
     })
   }
 
-  // Сброс без записи в историю
+  // Reset without writing to the history
   const resetEvents = () => setEventsRaw(INITIAL_EVENTS)
 
-  // ── Ручные операции расписания с учётом Google (он источник истины) ──
-  // Если Google подключён, изменения уходят В КАЛЕНДАРЬ и затем пересинхронизируются,
-  // иначе они стирались бы при следующей загрузке (баг: удалённое событие возвращалось).
+  // ── Manual schedule operations that respect Google (the source of truth) ──
+  // When Google is connected, changes go TO THE CALENDAR and are then re-synced; otherwise
+  // they would be wiped on the next load (the bug where a deleted event came back).
   async function removeEvent(ev) {
     if (googleConnected) {
       try { await fetch('/api/calendar/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ googleId: ev.googleId }) }) } catch { /* ignore */ }
@@ -138,7 +139,7 @@ export function EventsProvider({ children }) {
       else setEvents(list => [...list, ev])
     }
   }
-  // Массовое применение (перенос нескольких / удаление набора) — для «Найди время»
+  // Bulk apply (moving several / deleting a set) — for "Найди время"
   async function applyBulk({ changes = null, removals = [] }) {
     if (googleConnected) {
       if (changes) {
@@ -160,7 +161,7 @@ export function EventsProvider({ children }) {
     }
   }
 
-  // Найти событие по неточному названию (для переноса/удаления голосом)
+  // Find an event by an inexact title (for moving or deleting it by voice)
   const findByTitle = (list, title) => {
     if (!title) return -1
     const q = title.trim().toLowerCase()
@@ -169,11 +170,12 @@ export function EventsProvider({ children }) {
     return i
   }
 
-  // Действия ИИ, ожидающие подтверждения (перенос/удаление) — см. ConfirmAiActionModal.
-  // Зачем: ассистент видит не только слова владельца, но и текст ИЗ ДАННЫХ (названия чужих
-  // событий, письма). Если туда попадёт подставная инструкция («удали всё» в описании
-  // чужой встречи), она не должна выполниться сама — нужно явное нажатие человека.
-  // create_event безопаснее (не стирает данные, легко отменить) — применяется сразу.
+  // AI actions awaiting confirmation (move/delete) — see ConfirmAiActionModal.
+  // Why: the assistant sees not only the owner's words but also text FROM THE DATA (other
+  // people's event titles, emails). If a planted instruction slips in that way ("delete
+  // everything" in the description of someone else's meeting), it must not run on its own —
+  // a person has to press the button. create_event is safer (it erases nothing and is easy
+  // to undo), so it is applied straight away.
   const [pendingAiActions, setPendingAiActions] = useState([])
 
   async function applyCreates(actions) {
@@ -187,7 +189,7 @@ export function EventsProvider({ children }) {
           await fetch('/api/calendar/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(ev) })
           gFocus = ev.date
           logAction({ actor: 'ai', type: 'event', title: `Создал событие «${ev.title}»`, detail: detailOf(ev) })
-        } catch { /* пропускаем неудачное действие */ }
+        } catch { /* skip the action that failed */ }
       }
       await syncFromGoogle()
       if (gFocus) setFocusSignal({ date: gFocus, n: Date.now() })
@@ -215,8 +217,8 @@ export function EventsProvider({ children }) {
     })
   }
 
-  // Реально выполнить одно подтверждённое действие (move/delete) — та же логика,
-  // что раньше выполнялась сразу, просто по нажатию кнопки, а не автоматически.
+  // Actually carry out one confirmed action (move/delete) — the same logic that used to run
+  // immediately, only now on a button press rather than automatically.
   async function runConfirmedAction(a) {
     const inp = a.input || {}
     if (googleConnected) {
@@ -239,7 +241,7 @@ export function EventsProvider({ children }) {
           }
         }
         await syncFromGoogle()
-      } catch { /* пропускаем неудачное действие */ }
+      } catch { /* skip the action that failed */ }
       return
     }
     setEventsRaw(prev => {
@@ -269,8 +271,8 @@ export function EventsProvider({ children }) {
     })
   }
 
-  // Применить действия, которые предложил ИИ. create — сразу; move/delete — в очередь
-  // на подтверждение (находим целевое событие СЕЙЧАС, чтобы окно показало точный снимок).
+  // Apply the actions the AI proposed. create goes through at once; move/delete are queued
+  // for confirmation (we resolve the target event NOW so the dialog shows an exact snapshot).
   async function applyAiActions(actions) {
     if (!actions?.length) return
     const creates = actions.filter(a => a.name === 'create_event')
@@ -279,7 +281,7 @@ export function EventsProvider({ children }) {
     if (destructive.length) {
       const withTarget = destructive
         .map(a => ({ id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, name: a.name, input: a.input, target: events[findByTitle(events, a.input?.title)] || null }))
-        .filter(p => p.target)  // событие не нашлось — подтверждать нечего, как и раньше молча пропускаем
+        .filter(p => p.target)  // no event found — nothing to confirm, so we skip it silently as before
       if (withTarget.length) setPendingAiActions(prev => [...prev, ...withTarget])
     }
   }

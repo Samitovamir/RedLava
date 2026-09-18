@@ -5,11 +5,11 @@ import MailForm from '../components/MailForm.jsx'
 import { Button, SectionHeader } from '../ui'
 import { useT } from '../context/LanguageContext.jsx'
 
-// Страница «Письма»: ручное написание и отправка email через Google.
-// (ИИ тоже умеет готовить письма — они открываются в окне предпросмотра.)
+// The "Mail" page: writing and sending an email by hand through Google.
+// (The AI can draft emails too — those open in the preview window.)
 export default function Mail() {
   const [sentTo, setSentTo] = useState(null)
-  const [formKey, setFormKey] = useState(0)   // сброс полей формы для нового письма
+  const [formKey, setFormKey] = useState(0)   // clears the form fields for a new email
   const t = useT({
     ru: {
       title: 'Письма',

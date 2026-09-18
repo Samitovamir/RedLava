@@ -2,11 +2,11 @@ import { Router } from 'express'
 import { kvGetScoped, kvSetScoped, kvDelScoped, scopeOf } from '../userScope.js'
 
 /*
-  Синхронизация данных между устройствами ОДНОГО человека: расписание, память
-  ассистента, анализы, профиль питания, дневник и список покупок.
-  У каждого аккаунта свой блоб (ключ с его id) — раньше он был один на всё
-  приложение, и два человека затирали бы данные друг друга.
-  Last-write-wins по updatedAt (без сложного мёржа). Гость не синхронизируется.
+  Syncs data across the devices of ONE person: the schedule, the assistant's memory,
+  blood tests, the nutrition profile, the diary and the shopping list.
+  Every account has a blob of its own (the key carries its id) — there used to be a single
+  blob for the whole app, which would have let two people overwrite each other's data.
+  Last-write-wins on updatedAt (no elaborate merge). A guest is not synced.
 */
 
 const router = Router()
@@ -14,7 +14,7 @@ const KEY = 'sync:state'
 
 router.get('/state', async (req, res) => {
   const userId = scopeOf(req)
-  if (!userId) return res.json({ ok: true, state: null, updatedAt: 0 })   // гость
+  if (!userId) return res.json({ ok: true, state: null, updatedAt: 0 })   // guest
   try {
     const blob = await kvGetScoped(KEY, userId)
     res.json({ ok: true, state: blob?.state || null, updatedAt: blob?.updatedAt || 0 })
@@ -36,11 +36,11 @@ router.put('/state', async (req, res) => {
   }
 })
 
-// Стереть общий блок (кнопка «Сбросить все данные» в Settings). Раньше сброс чистил только
-// localStorage браузера — сам блоб на сервере переживал, и pullSync() при следующей загрузке
-// тихо восстанавливал «стёртые» данные обратно. Примечание: если в этот момент другое открытое
-// устройство сделает фоновый push со старым состоянием, блоб может воскреснуть — редкий случай
-// при однопользовательском сценарии, не решаем здесь отдельным механизмом блокировки.
+// Wipe the whole blob (the "Reset all data" button in Settings). The reset used to clear the
+// browser's localStorage only — the blob on the server survived, and on the next load
+// pullSync() quietly restored the "erased" data. Note: if another open device happens to push
+// its stale state in that moment, the blob can come back to life — rare enough in a
+// single-user scenario that we do not add a locking mechanism for it here.
 router.delete('/state', async (req, res) => {
   const userId = scopeOf(req)
   if (!userId) return res.json({ ok: true, skipped: 'guest' })

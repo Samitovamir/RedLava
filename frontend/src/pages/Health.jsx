@@ -6,12 +6,12 @@ import { Button, SectionHeader } from '../ui'
 import { useT } from '../context/LanguageContext.jsx'
 
 /*
-  Спорт и Здоровье — ДВЕ отдельные вкладки нижней навигации, но один компонент с
-  переключателем view:
-   • view="activity" (Спорт)     → тренировки/шаги/объём из Garmin (GarminLive)
-   • view="metrics"  (Здоровье)  → восстановление/сон/VO2max/анализы (MetricsView)
-  Роуты: /sport → activity, /health → metrics. Встроенного переключателя-вкладок нет —
-  разделение даёт сама навигация. Плавающая ИИ-кнопка (HealthAssistant) знает вкладку.
+  Sport and Health are TWO separate tabs in the bottom navigation but one component with a
+  view switch:
+   • view="activity" (Sport)   → workouts, steps and volume from Garmin (GarminLive)
+   • view="metrics"  (Health)  → recovery, sleep, VO2max and blood tests (MetricsView)
+  Routes: /sport → activity, /health → metrics. There is no built-in tab switcher — the
+  navigation does the splitting. The floating AI button (HealthAssistant) knows which tab it is on.
 */
 export default function Health({ view = 'metrics', showAssistant = true }) {
   const navigate = useNavigate()

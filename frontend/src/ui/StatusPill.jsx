@@ -1,4 +1,4 @@
-// Пилюля статуса. status: ok | warn | crit | unknown. dot — точка-индикатор.
+// A status pill. status: ok | warn | crit | unknown. dot — the indicator dot.
 export default function StatusPill({ status = 'unknown', dot = true, className = '', children, ...rest }) {
   const cls = ['ds-pill', status !== 'unknown' && `ds-pill--${status}`, className].filter(Boolean).join(' ')
   return (
