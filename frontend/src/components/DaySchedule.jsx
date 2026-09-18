@@ -1476,7 +1476,9 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
         }
         .ds-add-btn:hover { filter: brightness(1.06); }
         .ds-add-btn:active { transform: translateY(1px); }
-        @media (max-width: 640px) { .ds-add-btn .ds-add-txt { display: none; } .ds-add-btn { padding: 10px; } }
+        /* На узком экране кнопка теряет подпись и превращается во второй такой же «+»
+           рядом с плавающей — оставляем только плавающую (она под большим пальцем). */
+        @media (max-width: 640px) { .ds-add-btn { display: none; } }
 
         /* Плашки «весь день» над шкалой */
         .ds-allday { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 18px 0; flex-shrink: 0; }
@@ -1660,6 +1662,13 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
         }
         .ds-fab:hover { transform: scale(1.08); }
         .ds-fab:active { transform: scale(0.95); }
+        /* На большом экране «+» уже есть в шапке с подписью — плавающая кнопка там
+           только накрывала последнюю строку недели/месяца. */
+        @media (min-width: 641px) { .ds-fab { display: none; } }
+        /* А на узком — оставляем под неё место, чтобы не лежала на событиях. */
+        @media (max-width: 640px) {
+          .ds-scroll, .ds-week, .ds-month, .ds-agenda { padding-bottom: 76px; }
+        }
 
         .ds-event-title { display: inline-flex; align-items: center; }
 

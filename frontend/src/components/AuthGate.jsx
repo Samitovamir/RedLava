@@ -3,6 +3,7 @@ import { getToken, setToken, clearToken, setRole, setUserId, setUserName } from 
 import { claimLocalData } from '../utils/accountData.js'
 import { seedGuestDemo } from '../utils/demo.js'
 import { useT, useLang } from '../context/LanguageContext.jsx'
+import BrandLogo from './BrandLogo.jsx'
 
 /*
   Ворота входа. Пока не введён правильный пароль — показываем экран входа,
@@ -175,13 +176,35 @@ export default function AuthGate({ children }) {
     setError(''); setCode('')
   }
 
-  if (checking) return <div className="auth-splash" />
+  // Пока проверяется сохранённый токен. Стили держим ЗДЕСЬ: <style> экрана входа
+  // ниже в этот момент ещё не смонтирован, поэтому раньше показывался просто
+  // неоформленный пустой div — секунда белизны вместо первого кадра приложения.
+  if (checking) return (
+    <div className="auth-splash">
+      <BrandLogo size={64} />
+      <style>{`
+        .auth-splash {
+          position: fixed; inset: 0;
+          display: flex; align-items: center; justify-content: center;
+          background: var(--bg-primary);
+        }
+        /* align-self у марки — flex-start (она живёт в шапке Главной), здесь нужен центр */
+        .auth-splash .brand-logo { align-self: center; animation: auth-splash-in 0.5s ease-out both; }
+        @keyframes auth-splash-in {
+          from { opacity: 0; transform: scale(0.96); }
+          to { opacity: 1; transform: none; }
+        }
+      `}</style>
+    </div>
+  )
   if (authed) return children
 
   return (
     <div className="auth-screen">
       <form className="auth-card" onSubmit={submit}>
-        <div className="auth-logo">R</div>
+        {/* Настоящая марка команды, а не самодельная «R» в цвете темы:
+            первый экран — единственное место, где человек видит, куда он попал. */}
+        <BrandLogo size={56} />
         <h1 className="auth-title">{t.title}</h1>
         <p className="auth-sub">{mode === 'register' ? t.subReg : t.sub}</p>
         <input
@@ -226,7 +249,6 @@ export default function AuthGate({ children }) {
       </form>
 
       <style>{`
-        .auth-splash { position: fixed; inset: 0; background: var(--bg-primary); }
         /* overflow-y + margin:auto вместо align-items:center — карточка центрируется, когда
            место есть, и ЛИСТАЕТСЯ, когда его нет: горизонтальная ориентация, открытая
            клавиатура на Android, Split View. Раньше при высоте < ~570px логотип уезжал
@@ -249,12 +271,8 @@ export default function AuthGate({ children }) {
           padding: 36px 28px;
           box-shadow: 0 24px 60px var(--scrim);
         }
-        .auth-logo {
-          width: 52px; height: 52px; border-radius: 14px;
-          background: var(--accent); color: var(--on-accent);
-          display: flex; align-items: center; justify-content: center;
-          font-size: 26px; font-weight: 800;
-        }
+        /* марка приходит с align-self: flex-start (её место — шапка Главной) */
+        .auth-card .brand-logo { align-self: center; }
         .auth-title { font-size: 22px; font-weight: 700; color: var(--foreground); margin: 6px 0 0; }
         .auth-sub { font-size: 14px; color: var(--text-secondary); text-align: center; margin: 0 0 6px; line-height: 1.5; }
         .auth-input {
