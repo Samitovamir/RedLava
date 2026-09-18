@@ -2,7 +2,7 @@ import { Router } from 'express'
 import crypto from 'crypto'
 import { signToken, roleForLogin, requireAuth, bumpAuthEpoch } from '../authGuard.js'
 import { kvGet, kvSet } from '../store.js'
-import { createUser, verifyUserPassword, validateCredentials, publicUser, MIN_PASSWORD_LENGTH } from '../users.js'
+import { createUser, verifyUserPassword, validateCredentials, publicUser, getUserById, MIN_PASSWORD_LENGTH } from '../users.js'
 
 const router = Router()
 
@@ -108,8 +108,12 @@ router.post('/login', async (req, res) => {
 // Проверка действующего токена (для тихого входа при открытии сайта) — возвращаем роль
 // и СВЕЖИЙ токен: активный пользователь так продлевает себе сессию на ещё TOKEN_TTL и никогда
 // не разлогинивается сам по себе, а истинно заброшенный/украденный токен через TOKEN_TTL истечёт.
-router.get('/verify', requireAuth, async (req, res) =>
-  res.json({ ok: true, role: req.role, userId: req.userId || null, token: await signToken(req.role, req.userId) }))
+router.get('/verify', requireAuth, async (req, res) => {
+  // Имя — только чтобы Settings мог показать «Вы вошли как …» вместо общей надписи
+  // «Основной аккаунт» (та надпись верна только для роли owner).
+  const user = req.role === 'user' ? publicUser(await getUserById(req.userId)) : null
+  res.json({ ok: true, role: req.role, userId: req.userId || null, user, token: await signToken(req.role, req.userId) })
+})
 
 // «Выйти со всех устройств»: поднимает эпоху сессий — все ранее выданные токены (свои и чужие,
 // owner и guest) сразу перестают действовать, без смены пароля. Доступно только владельцу.

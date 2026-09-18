@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { clearToken, isGuest, isOwner } from '../api/authFetch'
+import { clearToken, isGuest, isOwner, getUserName } from '../api/authFetch'
 import { useT, useLang } from '../context/LanguageContext.jsx'
 import { pushSync } from '../utils/sync.js'
 import { Button, Field, SectionHeader, StatusPill } from '../ui'
@@ -101,6 +101,8 @@ export default function Connections() {
       guestName: 'Гостевой вход', mainName: 'Основной аккаунт', mainBadge: 'Основной',
       guestDesc: 'Сейчас вы в гостевом режиме — показаны демо-данные. Войдите в основной аккаунт, чтобы видеть настоящие данные.',
       mainDesc: 'Вы вошли в основной аккаунт с реальными данными. Можно выйти и войти под другим аккаунтом.',
+      memberBadge: 'Ваш аккаунт',
+      memberDesc: 'Здесь видны только ваши подключения и данные — они не пересекаются с другими аккаунтами.',
       btnLoginMain: 'Войти в основной аккаунт', btnSwitch: 'Сменить аккаунт',
       resetBtn: 'Сбросить все данные', resetPwLabel: 'PIN для сброса:', resetPwPh: 'PIN',
       resetGo: 'Сбросить всё', resetBusy: 'Сбрасываю…', resetCancel: 'Отмена', resetWrong: 'Неверный PIN',
@@ -139,6 +141,8 @@ export default function Connections() {
       guestName: 'Guest access', mainName: 'Primary account', mainBadge: 'Primary',
       guestDesc: 'You are currently in guest mode — demo data is shown. Sign in to the primary account to see real data.',
       mainDesc: 'You are signed in to the primary account with real data. You can sign out and sign in with another account.',
+      memberBadge: 'Your account',
+      memberDesc: 'Only your own connections and data show up here — nothing crosses over with other accounts.',
       btnLoginMain: 'Sign in to primary account', btnSwitch: 'Switch account',
       resetBtn: 'Reset all data', resetPwLabel: 'Reset PIN:', resetPwPh: 'PIN',
       resetGo: 'Reset everything', resetBusy: 'Resetting…', resetCancel: 'Cancel', resetWrong: 'Wrong PIN',
@@ -229,6 +233,7 @@ export default function Connections() {
 
   const guest = isGuest()
   const owner = isOwner()   // действия уровня сервера — только ему
+  const userName = getUserName()   // для настоящих аккаунтов — показываем имя, а не «Основной аккаунт»
 
   // Сменить аккаунт: чистим токен и роль, перезагружаем — AuthGate покажет экран входа
   // Перед сменой аккаунта дослать несохранённое НА СЕРВЕР, пока мы ещё под своим токеном:
@@ -470,13 +475,13 @@ export default function Connections() {
           </span>
           <div className="conn-info">
             <div className="conn-name">
-              {guest ? t.guestName : t.mainName}
+              {guest ? t.guestName : owner ? t.mainName : (userName || t.memberBadge)}
               {guest
                 ? <span className="conn-soon">{t.demo}</span>
-                : <StatusPill status="ok">{t.mainBadge}</StatusPill>}
+                : <StatusPill status="ok">{owner ? t.mainBadge : t.memberBadge}</StatusPill>}
             </div>
             <div className="conn-desc muted">
-              {guest ? t.guestDesc : t.mainDesc}
+              {guest ? t.guestDesc : owner ? t.mainDesc : t.memberDesc}
             </div>
           </div>
           <div className="conn-account-action">

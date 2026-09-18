@@ -11,7 +11,10 @@ export const setToken = (t) => {
   try { localStorage.setItem(TOKEN_KEY, t) } catch { /* ignore */ }
 }
 export const clearToken = () => {
-  try { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(ROLE_KEY); localStorage.removeItem('albert-user-id') } catch { /* ignore */ }
+  try {
+    localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(ROLE_KEY)
+    localStorage.removeItem('albert-user-id'); localStorage.removeItem('albert-user-name')
+  } catch { /* ignore */ }
 }
 
 // Роль входа: 'owner' (реальные данные) | 'guest' (демо)| 'guest' (демо)
@@ -29,8 +32,14 @@ export const getUserId = () => {
 export const setUserId = (id) => {
   try { id ? localStorage.setItem(USER_ID_KEY, id) : localStorage.removeItem(USER_ID_KEY) } catch { /* ignore */ }
 }
-// Устойчивый ключ аккаунта — по нему понимаем, чьи данные лежат в браузере.
-export const accountKey = () => getUserId() || getRole() || null
+// Имя настоящего аккаунта — только для отображения («Вы вошли как …» в Settings).
+const USER_NAME_KEY = 'albert-user-name'
+export const getUserName = () => {
+  try { return localStorage.getItem(USER_NAME_KEY) } catch { return null }
+}
+export const setUserName = (name) => {
+  try { name ? localStorage.setItem(USER_NAME_KEY, name) : localStorage.removeItem(USER_NAME_KEY) } catch { /* ignore */ }
+}
 
 export const isGuest = () => getRole() === 'guest'
 // Владелец старой однопользовательской версии (вход по общему паролю). У него есть

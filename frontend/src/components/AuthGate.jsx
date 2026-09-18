@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getToken, setToken, clearToken, setRole, setUserId, accountKey } from '../api/authFetch.js'
+import { getToken, setToken, clearToken, setRole, setUserId, setUserName } from '../api/authFetch.js'
 import { claimLocalData } from '../utils/accountData.js'
 import { seedGuestDemo } from '../utils/demo.js'
 import { useT, useLang } from '../context/LanguageContext.jsx'
@@ -80,12 +80,14 @@ export default function AuthGate({ children }) {
       .then(async r => {
         if (r.ok) {
           const d = await r.json()
+          // До монтирования приложения: если в браузере лежат данные другого аккаунта —
+          // стереть, ПРЕЖДЕ чем записывать новые role/userId/name — иначе сама эта запись
+          // попадёт под стирание (она тоже 'albert-*', а wipe должен снести только старое).
+          claimLocalData(d.userId || d.role || null)
           if (d.token) setToken(d.token)  // сервер продлил сессию — сохраняем свежий токен
           setRole(d.role)
           setUserId(d.userId || null)
-          // До монтирования приложения: если в браузере лежат данные другого аккаунта —
-          // стереть, иначе человек увидит чужое, а фоновый push отправит это в его ячейку.
-          claimLocalData(accountKey())
+          setUserName(d.user?.name || null)
           if (d.role === 'guest') seedGuestDemo({ lang })
           setAuthed(true)
         }
@@ -117,10 +119,11 @@ export default function AuthGate({ children }) {
       })
       if (r.ok) {
         const d = await r.json()
+        claimLocalData(d.user?.id || d.role || null)   // чужие данные в этом браузере — стереть до старта
         setToken(d.token)
         setRole(d.role)
         setUserId(d.user?.id || null)
-        claimLocalData(accountKey())   // чужие данные в этом браузере — стереть до старта
+        setUserName(d.user?.name || null)
         if (d.role === 'guest') seedGuestDemo({ force: true, lang })  // свежий демо при входе
         setAuthed(true)
       } else if (r.status === 429) {
