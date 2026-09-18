@@ -182,7 +182,11 @@ export const DEFAULT_PREFS = {
   pork: true, beef: true, chicken: true, fish: true, seafood: true, dairy: true, eggs: true, mushrooms: true,
   cuisines: [], cookTime: 'any',  // 'fast' | 'any'
   allergies: '', avoid: '',
-  fodmap: true,                    // диета Low-FODMAP — по умолчанию включена (назначено врачом)
+  // Low-FODMAP — ЛЕЧЕБНАЯ диета по назначению врача, а не общая настройка: по умолчанию
+  // выключена. Раньше стояло true (у владельца она действительно назначена), и каждый
+  // новый участник получал элиминационную диету на главном экране и в советах ИИ.
+  // Владельцу она возвращается разово через legacyOwnerSeed.js — как профиль и привычки.
+  fodmap: false,
   // регулярные «довески», которые тоже идут в КБЖУ
   coffee: 'no',        // 'no' | 'black' | 'milk' | 'milk_sugar'
   coffeeCups: 1,

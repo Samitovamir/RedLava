@@ -167,6 +167,9 @@ export default function GarminLive({ embedded = false, listsOnly = false }) {
     }
   })
   const { lang } = useLang()
+  // Разделители тысяч по языку интерфейса: раньше было жёстко 'ru-RU', и в английском
+  // рядом стояли «8 420» (узкий пробел) и подпись «goal 10,000» — два формата в одном гейдже.
+  const numLocale = lang === 'en' ? 'en-US' : 'ru-RU'
   // Выбрать английский вариант поля (field+'En') при lang==='en', иначе оригинал.
   // Реальные данные Garmin не содержат *En — всегда есть RU-фолбэк.
   const pickL = (o, f) => (lang === 'en' && o && o[f + 'En']) ? o[f + 'En'] : (o ? o[f] : '')
@@ -289,7 +292,7 @@ export default function GarminLive({ embedded = false, listsOnly = false }) {
   const gauges = [
     g?.steps != null && (
       <ArcGauge key="steps" value={g.steps} max={10000} color="var(--accent)"
-        centerText={g.steps.toLocaleString('ru-RU')} sublabel={t.stepsGoal} label={t.steps} />
+        centerText={g.steps.toLocaleString(numLocale)} sublabel={t.stepsGoal} label={t.steps} />
     ),
     vo2 != null && (
       <ArcGauge key="vo2" value={vo2} min={20} max={58} zones={VO2_ZONES} marker
@@ -333,11 +336,11 @@ export default function GarminLive({ embedded = false, listsOnly = false }) {
               <div className="gl-sum-title">{t.calTitle}</div>
               <div className="gl-sum-cols">
                 <div className="gl-sum-col">
-                  <span className="gl-sum-val">{kcalToday.toLocaleString('ru-RU')}<span className="gl-sum-u"> {t.kcalShort}</span></span>
+                  <span className="gl-sum-val">{kcalToday.toLocaleString(numLocale)}<span className="gl-sum-u"> {t.kcalShort}</span></span>
                   <span className="gl-sum-cap muted">{t.calToday}</span>
                 </div>
                 <div className="gl-sum-col">
-                  <span className="gl-sum-val">{kcalWeek.toLocaleString('ru-RU')}<span className="gl-sum-u"> {t.kcalShort}</span></span>
+                  <span className="gl-sum-val">{kcalWeek.toLocaleString(numLocale)}<span className="gl-sum-u"> {t.kcalShort}</span></span>
                   <span className="gl-sum-cap muted">{t.calWeek}</span>
                 </div>
               </div>

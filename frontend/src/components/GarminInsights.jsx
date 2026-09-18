@@ -67,6 +67,16 @@ const statusColor = k => ({ PRODUCTIVE: 'var(--status-ok)', PEAKING: 'var(--stat
 // Запасная фраза по статусу (если backend не прислал текст — приходит кодом)
 const statusFeedback = (k, s) => ({ PRODUCTIVE: s.fbProductive, PEAKING: s.fbPeaking, MAINTAINING: s.fbMaintaining, RECOVERY: s.fbRecovery, UNPRODUCTIVE: s.fbUnproductive, OVERREACHING: s.fbOverreaching, DETRAINING: s.fbDetraining, STRAINED: s.fbStrained }[k] || null)
 const balanceColor = k => ({ OPTIMAL: 'var(--status-ok)', LOW: 'var(--status-warn)', HIGH: 'var(--status-crit)' }[k] || 'var(--accent)')
+// Подпись статуса по КОДУ Garmin, на языке интерфейса. Бэкенд присылает только русский
+// statusRu — на английском из-за этого показывался прочерк, а статус HRV не показывался вовсе.
+const TS_LABEL = {
+  ru: { PRODUCTIVE: 'Продуктивно', MAINTAINING: 'Поддержание', PEAKING: 'Пик формы', RECOVERY: 'Восстановление', UNPRODUCTIVE: 'Непродуктивно', OVERREACHING: 'Перегрузка', DETRAINING: 'Детренинг', STRAINED: 'Перенапряжение', NO_STATUS: 'Нет данных' },
+  en: { PRODUCTIVE: 'Productive', MAINTAINING: 'Maintaining', PEAKING: 'Peaking', RECOVERY: 'Recovery', UNPRODUCTIVE: 'Unproductive', OVERREACHING: 'Overreaching', DETRAINING: 'Detraining', STRAINED: 'Strained', NO_STATUS: 'No data' },
+}
+const HRV_LABEL = {
+  ru: { BALANCED: 'Сбалансировано', UNBALANCED: 'Разбалансировано', LOW: 'Низкое', POOR: 'Плохое', NONE: 'Нет данных' },
+  en: { BALANCED: 'Balanced', UNBALANCED: 'Unbalanced', LOW: 'Low', POOR: 'Poor', NONE: 'No data' },
+}
 const hrvColor = k => ({ BALANCED: 'var(--status-ok)', UNBALANCED: 'var(--status-warn)', LOW: 'var(--status-crit)', POOR: 'var(--status-crit)' }[k] || 'var(--accent)')
 // Уровень словом из числового значения (Garmin не всегда присылает готовый текст)
 const enduranceLevel = (v, s) => v == null ? null : v >= 9000 ? s.elite : v >= 6000 ? s.high : v >= 3000 ? s.medium : s.base
@@ -75,8 +85,11 @@ const hillLevel = (v, s) => v == null ? null : v >= 75 ? s.strong : v >= 50 ? s.
 export default function GarminInsights({ garmin }) {
   const s = useT(STR)
   const { lang } = useLang()
-  // Готовые русские подписи с бэкенда (statusRu/levelRu) показываем только в русском UI
+  // Готовые русские подписи с бэкенда (levelRu и т.п.) показываем только в русском UI
   const ruOnly = v => (lang === 'ru' ? clean(v) : null)
+  // Статусы переводим сами по коду — на любом языке
+  const tsLabel = k => (TS_LABEL[lang] || TS_LABEL.ru)[k] || null
+  const hrvLabel = k => (HRV_LABEL[lang] || HRV_LABEL.ru)[k] || null
   // Гость — расширенные метрики в демо (albert-garmin-live). Реальный — ленивый /insights,
   // чтобы не блокировать основную загрузку заряда тела / стресса.
   const [fetched, setFetched] = useState(null)
@@ -117,7 +130,7 @@ export default function GarminInsights({ garmin }) {
         {ts && (
           <div className="gi-tile gi-span2">
             <div className="gi-cap">{s.trainingStatus}</div>
-            <div className="gi-status" style={{ color: statusColor(ts.status) }}>{ruOnly(ts.statusRu) || clean(ts.status) || '—'}</div>
+            <div className="gi-status" style={{ color: statusColor(ts.status) }}>{tsLabel(ts.status) || ruOnly(ts.statusRu) || clean(ts.status) || '—'}</div>
             {(clean(ts.feedback) || statusFeedback(ts.status, s)) && <div className="gi-status-fb">{clean(ts.feedback) || statusFeedback(ts.status, s)}</div>}
             {ts.vo2Max != null && <div className="gi-chip">VO₂max <b>{ts.vo2Max}</b></div>}
           </div>
@@ -151,7 +164,7 @@ export default function GarminInsights({ garmin }) {
           <div className="gi-tile">
             <div className="gi-cap">{s.hrv}</div>
             <div className="gi-hrv-num"><span className="gi-big">{hrv.lastNight}</span><span className="gi-mut">{s.msPerNight}</span></div>
-            {ruOnly(hrv.statusRu) && <div className="gi-status-sm" style={{ color: hrvColor(hrv.statusKey) }}>{ruOnly(hrv.statusRu)}</div>}
+            {(hrvLabel(hrv.statusKey) || ruOnly(hrv.statusRu)) && <div className="gi-status-sm" style={{ color: hrvColor(hrv.statusKey) }}>{hrvLabel(hrv.statusKey) || ruOnly(hrv.statusRu)}</div>}
             {hrvPos != null && (
               <div className="gi-hrv-range">
                 <div className="gi-bar"><span className="gi-hrv-marker" style={{ left: `${hrvPos}%` }} /></div>
@@ -180,7 +193,7 @@ export default function GarminInsights({ garmin }) {
         {endur && (
           <div className="gi-tile">
             <div className="gi-cap">{s.endurance}</div>
-            <div className="gi-big">{endur.score.toLocaleString('ru-RU')}</div>
+            <div className="gi-big">{endur.score.toLocaleString(lang === 'en' ? 'en-US' : 'ru-RU')}</div>
             {(ruOnly(endur.levelRu) || enduranceLevel(endur.score, s)) && <div className="gi-status-sm">{ruOnly(endur.levelRu) || enduranceLevel(endur.score, s)}</div>}
           </div>
         )}

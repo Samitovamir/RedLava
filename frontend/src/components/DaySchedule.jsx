@@ -269,7 +269,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
     ru: {
       day: 'День', week: 'Неделя', month: 'Месяц',
       list: 'Список', columns: 'Колонки',
-      prevDay: 'Предыдущий день', nextDay: 'Следующий день', pickDate: 'Выбрать дату',
+      prevDay: 'Предыдущий день', nextDay: 'Следующий день', prevWeek: 'Предыдущая неделя', nextWeek: 'Следующая неделя', prevMonth: 'Предыдущий месяц', nextMonth: 'Следующий месяц', pickDate: 'Выбрать дату',
       findTime: 'Найди время', findTimeTitle: 'Найти время',
       need: 'Нужно', hoursShort: 'ч',
       contig: 'Подряд', parts: 'Частями',
@@ -308,7 +308,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
     en: {
       day: 'Day', week: 'Week', month: 'Month',
       list: 'List', columns: 'Columns',
-      prevDay: 'Previous day', nextDay: 'Next day', pickDate: 'Pick a date',
+      prevDay: 'Previous day', nextDay: 'Next day', prevWeek: 'Previous week', nextWeek: 'Next week', prevMonth: 'Previous month', nextMonth: 'Next month', pickDate: 'Pick a date',
       findTime: 'Find time', findTimeTitle: 'Find time',
       need: 'Need', hoursShort: 'h',
       contig: 'In a row', parts: 'In parts',
@@ -465,8 +465,14 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
   }, [])
 
   // --- Обработчики кнопок ---
-  const prevDay = () => { setDayOffset(o => o - 1); setOpenMenu(null) }   // ‹ — предыдущий день
-  const nextDay = () => { setDayOffset(o => o + 1); setOpenMenu(null) }   // › — следующий день
+  // Шаг стрелок зависит от вида: в «Неделе» и «Месяце» сдвиг на один день не двигал
+  // сетку вообще — до следующего месяца надо было щёлкнуть ~30 раз.
+  const stepDays = viewMode === 'month' ? 30 : viewMode === 'week' ? 7 : 1
+  const prevDay = () => { setDayOffset(o => o - stepDays); setOpenMenu(null) }   // ‹ — назад на шаг вида
+  const nextDay = () => { setDayOffset(o => o + stepDays); setOpenMenu(null) }   // › — вперёд на шаг вида
+  // Подпись стрелки должна называть тот шаг, который она реально делает
+  const prevTitle = viewMode === 'month' ? t.prevMonth : viewMode === 'week' ? t.prevWeek : t.prevDay
+  const nextTitle = viewMode === 'month' ? t.nextMonth : viewMode === 'week' ? t.nextWeek : t.nextDay
   const goToday = () => { setDayOffset(0); setOpenMenu(null) }            // "На сегодня"
 
   // Переход к произвольной дате из календаря
@@ -660,7 +666,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
 
         {/* Навигация по дням: ‹ дата › (клик по дате — открыть календарь) */}
         <div className="ds-nav">
-          <button className="ds-arrow" onClick={prevDay} title={t.prevDay}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+          <button className="ds-arrow" onClick={prevDay} title={prevTitle} aria-label={prevTitle}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
           <div className="ds-menu-wrap">
             <button className={`ds-date ${openMenu === 'cal' ? 'active' : ''}`} onClick={() => toggleMenu('cal')} title={t.pickDate}>
               {formatRu(dayOffset, lang)}
@@ -674,7 +680,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
               )}
             </AnimatePresence>
           </div>
-          <button className="ds-arrow" onClick={nextDay} title={t.nextDay}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+          <button className="ds-arrow" onClick={nextDay} title={nextTitle} aria-label={nextTitle}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></button>
         </div>
 
         {/* Колокольчик и меню */}

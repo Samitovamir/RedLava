@@ -10,13 +10,16 @@
 // Запускается один раз (флаг ниже), только для роли 'owner', и только дописывает
 // то, чего ещё нет — существующие значения не трогает.
 
-import { PROFILE_KEY } from './nutrition.js'
+import { PROFILE_KEY, TASTE_KEY, DEFAULT_PREFS } from './nutrition.js'
 
 const SEED_FLAG = 'albert-legacy-seed-v1'
 const MEMORY_KEY = 'albert-memory'
 
 // То, что раньше было зашито в код как «для всех», а на самом деле было личным.
 const LEGACY_PROFILE = { weight: 75, height: 175, age: 35, sex: 'male', goal: 'lose' }
+// Low-FODMAP у владельца назначена врачом. В общих дефолтах её быть не должно
+// (иначе лечебная диета достаётся каждому), поэтому включаем её здесь — ему лично.
+const LEGACY_PREFS = { fodmap: true }
 const LEGACY_FACTS = [
   'Тренируется по утрам, примерно в 06:30',
   'Не любит планировать дела после 21:00',
@@ -33,7 +36,12 @@ export function seedLegacyOwnerData(role) {
       localStorage.setItem(PROFILE_KEY, JSON.stringify(LEGACY_PROFILE))
     }
 
-    // 2) Память — дописываем недостающие факты, ничего не удаляя.
+    // 2) Вкусовые настройки — только если владелец их ни разу не сохранял сам.
+    if (!localStorage.getItem(TASTE_KEY)) {
+      localStorage.setItem(TASTE_KEY, JSON.stringify({ ...DEFAULT_PREFS, ...LEGACY_PREFS }))
+    }
+
+    // 3) Память — дописываем недостающие факты, ничего не удаляя.
     let facts = []
     try { facts = JSON.parse(localStorage.getItem(MEMORY_KEY) || '[]') } catch { facts = [] }
     if (!Array.isArray(facts)) facts = []

@@ -12,7 +12,6 @@ import { Button, Field, SectionHeader, StatusPill } from '../ui'
 */
 
 const STORE = 'albert-connections'
-const YANDEX_DEFAULT = 'https://disk.yandex.ru/d/EXAMPLE'
 
 const SERVICES = [
   {
@@ -293,8 +292,12 @@ export default function Connections() {
 
   function startUrlForm(svc) {
     setOpenForm(svc.id)
-    // подставим уже сохранённую ссылку, если есть
-    fetch(svc.endpoints.status).then(r => r.json()).then(d => setUrlForm(d.url || YANDEX_DEFAULT)).catch(() => setUrlForm(YANDEX_DEFAULT))
+    // Подставляем ТОЛЬКО свою сохранённую ссылку. Раньше в поле по умолчанию падала
+    // вшитая ссылка на папку владельца с его анализами: бэкенд честно отдавал чужому
+    // url: null, а фронт подменял это наследством владельца — и участнику оставалось
+    // тапнуть «Подключить папку», чтобы разобрать ИИ чужие анализы у себя.
+    setUrlForm('')
+    fetch(svc.endpoints.status).then(r => r.json()).then(d => setUrlForm(d.url || '')).catch(() => setUrlForm(''))
   }
 
   async function submitUrl(svc) {
