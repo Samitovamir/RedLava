@@ -2,9 +2,11 @@ import { Router } from 'express'
 import crypto from 'crypto'
 import { requireAuth } from '../authGuard.js'
 import { kvGet, kvSet, kvDel } from '../store.js'
+import { kvGetScoped, kvSetScoped, kvDelScoped, scopeOf } from '../userScope.js'
 
 const router = Router()
 
+// База ключа; реальный ключ — с id владельца данных (см. userScope.js)
 const TOKENS_KEY = 'google:tokens'
 // Один общий вход Google для всех сервисов: календарь + отправка писем (Gmail)
 const SCOPE = 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/gmail.send'
@@ -22,8 +24,9 @@ function appUrl(req) {
 }
 
 // Обновить access_token по refresh_token (экспортируется — общий для Gmail и др. Google-сервисов)
-export async function getAccessToken() {
-  const t = await kvGet(TOKENS_KEY)
+export async function getAccessToken(userId) {
+  if (!userId) return null
+  const t = await kvGetScoped(TOKENS_KEY, userId)
   if (!t?.refresh_token || t.dead) return null   // мёртвый токен не дёргаем — нужен реконнект
   const body = new URLSearchParams({
     client_id: process.env.GOOGLE_CLIENT_ID,
@@ -38,7 +41,7 @@ export async function getAccessToken() {
     // invalid_grant = refresh_token протух/отозван. У Google-приложений в статусе «Testing»
     // токен живёт всего 7 дней. Помечаем мёртвым, чтобы /status честно сказал «переподключите»,
     // а не показывал зелёную галочку при молча пустом календаре. (Сеть/5xx — НЕ хороним.)
-    try { const e = await r.json(); if (e?.error === 'invalid_grant') await kvSet(TOKENS_KEY, { ...t, dead: true, dead_at: Date.now() }) } catch { /* временная ошибка — токен не трогаем */ }
+    try { const e = await r.json(); if (e?.error === 'invalid_grant') await kvSetScoped(TOKENS_KEY, userId, { ...t, dead: true, dead_at: Date.now() }) } catch { /* временная ошибка — токен не трогаем */ }
     return null
   }
   const d = await r.json()
@@ -77,7 +80,7 @@ function mapEvent(ev) {
 router.get('/connect-url', requireAuth, async (req, res) => {
   if (!configured()) return res.status(503).json({ error: 'not_configured' })
   const state = crypto.randomBytes(16).toString('hex')
-  await kvSet('google:state:' + state, { at: Date.now() })
+  await kvSet('google:state:' + state, { at: Date.now(), userId: scopeOf(req) })
   const params = new URLSearchParams({
     client_id: process.env.GOOGLE_CLIENT_ID,
     redirect_uri: process.env.GOOGLE_REDIRECT_URI,
@@ -110,15 +113,16 @@ router.get('/callback', async (req, res) => {
     if (!r.ok) return back(false)
     const d = await r.json()
     if (!d.refresh_token) return back(false)  // нужен offline-доступ
-    await kvSet(TOKENS_KEY, { refresh_token: d.refresh_token, connected_at: Date.now() })
+    if (!pending.userId) return back(false)   // старое состояние без владельца — не угадываем, чьё это
+    await kvSetScoped(TOKENS_KEY, pending.userId, { refresh_token: d.refresh_token, connected_at: Date.now() })
     return back(true)
   } catch { return back(false) }
 })
 
 // 3) Статус подключения. Честно: помеченный dead токен (refresh упал с invalid_grant) =
 // «не подключён» + needsReconnect, чтобы UI предложил переподключение (как у Whoop).
-router.get('/status', requireAuth, async (_req, res) => {
-  const t = await kvGet(TOKENS_KEY)
+router.get('/status', requireAuth, async (req, res) => {
+  const t = await kvGetScoped(TOKENS_KEY, scopeOf(req))
   const hasToken = !!t?.refresh_token
   res.json({
     configured: configured(),
@@ -127,20 +131,20 @@ router.get('/status', requireAuth, async (_req, res) => {
   })
 })
 
-// 4) Отключить (только владелец — иначе гость по общеизвестному демо-паролю
-// мог бы отключить настоящую интеграцию владельца; см. GUEST_BLOCK в app.js — вторая линия защиты)
+// Отключает СВОЮ интеграцию: ключ несёт id владельца данных, поэтому чужую задеть нельзя.
+// Гостю здесь делать нечего (у него нет своей ячейки) — его заодно отсекает app.js.
 router.post('/disconnect', requireAuth, async (req, res) => {
-  if (req.role !== 'owner') return res.status(403).json({ error: 'forbidden' })
-  await kvDel(TOKENS_KEY)
+  if (!scopeOf(req)) return res.status(403).json({ error: 'forbidden' })
+  await kvDelScoped(TOKENS_KEY, scopeOf(req))
   res.json({ ok: true })
 })
 
 // 5) Загрузить ближайшие события
-router.get('/events', requireAuth, async (_req, res) => {
+router.get('/events', requireAuth, async (req, res) => {
   if (!configured()) return res.json({ events: [], connected: false })
-  const access = await getAccessToken()   // при invalid_grant пометит токен dead
+  const access = await getAccessToken(scopeOf(req))   // при invalid_grant пометит токен dead
   if (!access) {
-    const t = await kvGet(TOKENS_KEY)
+    const t = await kvGetScoped(TOKENS_KEY, scopeOf(req))
     return res.json({ events: [], connected: false, needsReconnect: !!(t?.refresh_token && t.dead) })
   }
   // timeMin — НАЧАЛО сегодняшнего дня по Москве (а не «сейчас»), иначе уже прошедшие
@@ -164,7 +168,7 @@ router.get('/events', requireAuth, async (_req, res) => {
 // 6) Создать событие в Google (для ИИ и ручного добавления)
 router.post('/create', requireAuth, async (req, res) => {
   if (!configured()) return res.json({ success: false, message: 'not_configured' })
-  const access = await getAccessToken()
+  const access = await getAccessToken(scopeOf(req))
   if (!access) return res.json({ success: false, message: 'not_connected' })
   const { title, date, start, end, who } = req.body || {}
   if (!title || !date || !start) return res.status(400).json({ success: false, message: 'bad_input' })
@@ -185,7 +189,7 @@ router.post('/create', requireAuth, async (req, res) => {
 
 // 7) Перенести/изменить событие (по googleId)
 router.post('/update', requireAuth, async (req, res) => {
-  const access = await getAccessToken()
+  const access = await getAccessToken(scopeOf(req))
   if (!access) return res.json({ success: false, message: 'not_connected' })
   const { googleId, title, date, start, end, who } = req.body || {}
   if (!googleId) return res.status(400).json({ success: false, message: 'no_id' })
@@ -203,7 +207,7 @@ router.post('/update', requireAuth, async (req, res) => {
 
 // 8) Удалить событие (по googleId)
 router.post('/delete', requireAuth, async (req, res) => {
-  const access = await getAccessToken()
+  const access = await getAccessToken(scopeOf(req))
   if (!access) return res.json({ success: false, message: 'not_connected' })
   const { googleId } = req.body || {}
   if (!googleId) return res.status(400).json({ success: false, message: 'no_id' })

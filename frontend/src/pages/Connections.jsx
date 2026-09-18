@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { clearToken, isGuest } from '../api/authFetch'
+import { clearToken, isGuest, isOwner } from '../api/authFetch'
 import { useT, useLang } from '../context/LanguageContext.jsx'
 import { Button, Field, SectionHeader, StatusPill } from '../ui'
 
@@ -227,6 +227,7 @@ export default function Connections() {
   }
 
   const guest = isGuest()
+  const owner = isOwner()   // действия уровня сервера — только ему
 
   // Сменить аккаунт: чистим токен и роль, перезагружаем — AuthGate покажет экран входа
   function switchAccount() {
@@ -481,7 +482,7 @@ export default function Connections() {
         </div>
       </motion.div>
 
-      {!guest && (
+      {owner && (
         <div className="conn-security">
           <Button variant="ghost" size="sm" onClick={logoutAll} disabled={logoutAllBusy}>
             {logoutAllBusy ? t.logoutAllBusy : t.logoutAllBtn}
@@ -490,7 +491,7 @@ export default function Connections() {
         </div>
       )}
 
-      <div className="conn-reset">
+      {owner && <div className="conn-reset">
         {!resetOpen ? (
           <Button variant="ghost" size="sm" onClick={() => { setResetOpen(true); setResetErr('') }}>
             {t.resetBtn}
@@ -512,7 +513,7 @@ export default function Connections() {
             {resetErr && <span className="conn-reset-err">{resetErr}</span>}
           </form>
         )}
-      </div>
+      </div>}
 
       <style>{`
         .conn-page { display: flex; flex-direction: column; gap: 18px; max-width: 760px; margin-inline: auto; width: 100%; padding-bottom: 24px; }

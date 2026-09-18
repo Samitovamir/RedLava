@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { kvGet } from '../store.js'
+import { kvGetScoped, scopeOf } from '../userScope.js'
 import { getAccessToken } from './calendar.js'
 
 // Отправка писем через Gmail API (один общий вход Google, server-side — ключи пользователю не нужны).
@@ -31,8 +31,8 @@ function buildMime({ to, subject, body }) {
 const validEmail = (s) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(s || '').trim())
 
 // Доступна ли отправка (Google подключён)
-router.get('/status', async (_req, res) => {
-  const t = await kvGet(TOKENS_KEY)
+router.get('/status', async (req, res) => {
+  const t = await kvGetScoped(TOKENS_KEY, scopeOf(req))
   res.json({ connected: !!t?.refresh_token })
 })
 
@@ -42,7 +42,7 @@ router.post('/send', async (req, res) => {
   if (!validEmail(to)) return res.json({ ok: false, message: 'Укажите корректный email получателя.' })
   if (!String(body || '').trim()) return res.json({ ok: false, message: 'Пустое письмо — добавьте текст.' })
 
-  const access = await getAccessToken()
+  const access = await getAccessToken(scopeOf(req))
   if (!access) return res.json({ ok: false, message: 'Google не подключён. Подключите Google в разделе «Подключения».' })
 
   try {

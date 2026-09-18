@@ -1,20 +1,25 @@
 import { Router } from 'express'
-import { kvGet, kvSet, kvDel } from '../store.js'
+import { kvGetScoped, kvSetScoped, kvDelScoped, scopeOf } from '../userScope.js'
 
 /*
-  Синхронизация пользовательских данных между устройствами пользователя.
-  Модель — ОДНОПОЛЬЗОВАТЕЛЬСКАЯ: один общий блоб в KV (`sync:albert:state`), чтобы все
-  устройства видели одно и то же. Last-write-wins по updatedAt (без сложного мёржа).
-  Гость на демо-данных не синхронизируется.
+  Синхронизация данных между устройствами ОДНОГО человека: расписание, память
+  ассистента, анализы, профиль питания, дневник и список покупок.
+  У каждого аккаунта свой блоб (ключ с его id) — раньше он был один на всё
+  приложение, и два человека затирали бы данные друг друга.
+  Last-write-wins по updatedAt (без сложного мёржа). Гость не синхронизируется.
 */
 
 const router = Router()
-const KEY = 'sync:albert:state'
+const KEY = 'sync:state'
+// Как ключ назывался в однопользовательской версии — нужен, чтобы данные владельца
+// нашлись и переехали в его персональный ключ при первом чтении.
+const LEGACY_KEY = 'sync:albert:state'
 
 router.get('/state', async (req, res) => {
-  if (req.role !== 'owner') return res.json({ ok: true, state: null, updatedAt: 0 })
+  const userId = scopeOf(req)
+  if (!userId) return res.json({ ok: true, state: null, updatedAt: 0 })   // гость
   try {
-    const blob = await kvGet(KEY)
+    const blob = await kvGetScoped(KEY, userId, LEGACY_KEY)
     res.json({ ok: true, state: blob?.state || null, updatedAt: blob?.updatedAt || 0 })
   } catch (e) {
     res.json({ ok: false, state: null, updatedAt: 0, message: String(e?.message || e).slice(0, 120) })
@@ -22,11 +27,12 @@ router.get('/state', async (req, res) => {
 })
 
 router.put('/state', async (req, res) => {
-  if (req.role !== 'owner') return res.json({ ok: true, skipped: 'guest' })
+  const userId = scopeOf(req)
+  if (!userId) return res.json({ ok: true, skipped: 'guest' })
   const { state, updatedAt } = req.body || {}
   if (!state || typeof state !== 'object') return res.status(400).json({ ok: false, message: 'state required' })
   try {
-    await kvSet(KEY, { state, updatedAt: updatedAt || 0 })
+    await kvSetScoped(KEY, userId, { state, updatedAt: updatedAt || 0 })
     res.json({ ok: true })
   } catch (e) {
     res.json({ ok: false, message: String(e?.message || e).slice(0, 120) })
@@ -39,8 +45,9 @@ router.put('/state', async (req, res) => {
 // устройство сделает фоновый push со старым состоянием, блоб может воскреснуть — редкий случай
 // при однопользовательском сценарии, не решаем здесь отдельным механизмом блокировки.
 router.delete('/state', async (req, res) => {
-  if (req.role !== 'owner') return res.json({ ok: true, skipped: 'guest' })
-  try { await kvDel(KEY); res.json({ ok: true }) } catch (e) { res.json({ ok: false, message: String(e?.message || e).slice(0, 120) }) }
+  const userId = scopeOf(req)
+  if (!userId) return res.json({ ok: true, skipped: 'guest' })
+  try { await kvDelScoped(KEY, userId, LEGACY_KEY); res.json({ ok: true }) } catch (e) { res.json({ ok: false, message: String(e?.message || e).slice(0, 120) }) }
 })
 
 export default router

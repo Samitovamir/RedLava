@@ -58,14 +58,12 @@ const GUEST_BLOCK = new Set([
   '/api/gmail/status', '/api/gmail/send',
   '/api/labs/status', '/api/labs/files', '/api/labs/reports', '/api/labs/parse', '/api/labs/upload', '/api/labs/disconnect'
 ])
-// Роли БЕЗ доступа к реальным данным владельца. 'guest' — публичное демо навсегда.
-// 'user' — настоящий аккаунт (этап «а»), у которого СВОИХ данных пока физически нет:
-// все интеграции ещё лежат под общими ключами владельца. До этапов «б»/«в»/«г» такой
-// аккаунт обязан видеть «ничего не подключено», а не чужой календарь. Как только ключи
-// станут per-user, 'user' отсюда уйдёт и будет ходить к своим данным нормально.
-const DEMO_ROLES = new Set(['guest', 'user'])
+// Гость — публичное демо: реальных данных не видит никогда, своих у него нет.
+// Настоящие аккаунты (роль 'user') сюда БОЛЬШЕ НЕ ПОПАДАЮТ: с этапа «б» каждый ключ
+// данных несёт id владельца (userScope.js), поэтому аккаунт физически ходит только
+// в свою ячейку — отдельный запрет ему не нужен.
 app.use(async (req, res, next) => {
-  if (!DEMO_ROLES.has(await roleFromReq(req))) return next()
+  if ((await roleFromReq(req)) !== 'guest') return next()
   const p = req.path
   if (p.startsWith('/api/garmin/activity')) return res.json({ connected: false, demo: true })
   if (!GUEST_BLOCK.has(p)) return next()

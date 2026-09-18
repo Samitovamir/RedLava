@@ -2,6 +2,7 @@ import { Router } from 'express'
 import Anthropic from '@anthropic-ai/sdk'
 import { requireAuth } from '../authGuard.js'
 import { kvGet, kvSet, kvDel } from '../store.js'
+import { kvGetScoped, kvSetScoped, kvDelScoped, scopeOf, OWNER_ID } from '../userScope.js'
 import crypto from 'crypto'
 
 /*
@@ -17,13 +18,22 @@ const router = Router()
 const URL_KEY = 'labs:yandex_url'
 const YA = 'https://cloud-api.yandex.net/v1/disk/public/resources'
 
-// Постоянная папка анализов пользователя на Яндекс.Диске. Вшита в код, чтобы раздел
-// работал всегда — без ручного «подключения» через интерфейс. Можно переопределить
-// переменной окружения LABS_YANDEX_URL, а через UI (/connect) — временно сменить
-// (значение ляжет в KV и будет иметь приоритет). /disconnect вернёт этот дефолт.
-const DEFAULT_URL = process.env.LABS_YANDEX_URL || 'https://disk.yandex.ru/d/EXAMPLE'
-// Действующая ссылка: ручное подключение из KV имеет приоритет, иначе — постоянный дефолт.
-async function getUrl() { return (await kvGet(URL_KEY)) || DEFAULT_URL }
+// Папка анализов — У КАЖДОГО СВОЯ, её указывают через интерфейс (/connect).
+// Раньше здесь была вшита конкретная ссылка владельца: пока пользователь был один,
+// это было удобно, но с аккаунтами каждый новый человек полез бы в чужую папку.
+// Ссылка ниже осталась ТОЛЬКО как разовое наследство владельца: если у него ещё нет
+// своей записи, она один раз переносится в его личный ключ (см. getUrl).
+const OWNER_LEGACY_URL = process.env.LABS_YANDEX_URL || 'https://disk.yandex.ru/d/EXAMPLE'
+
+// Действующая ссылка этого человека. Ни для кого, кроме владельца, наследства нет.
+async function getUrl(userId) {
+  if (!userId) return null
+  const own = await kvGetScoped(URL_KEY, userId)
+  if (own) return own
+  if (userId !== OWNER_ID || !OWNER_LEGACY_URL) return null
+  await kvSetScoped(URL_KEY, userId, OWNER_LEGACY_URL)   // переносим наследство один раз
+  return OWNER_LEGACY_URL
+}
 
 function getClient() { return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }) }
 
@@ -32,8 +42,8 @@ function getClient() { return new Anthropic({ apiKey: process.env.ANTHROPIC_API_
 // (из-за чего на бесплатном тарифе часть ответов терялась и файлы разбирались заново).
 // id для файлов Яндекс.Диска = путь файла; для ручной загрузки = 'upload:<md5 содержимого>'.
 const STORE_KEY = 'labs:store'
-async function loadStore() { return (await kvGet(STORE_KEY)) || {} }
-async function saveStore(s) { await kvSet(STORE_KEY, s) }
+async function loadStore(userId) { return (await kvGetScoped(STORE_KEY, userId)) || {} }
+async function saveStore(userId, s) { await kvSetScoped(STORE_KEY, userId, s) }
 // Старый формат — по одному ключу на файл. Используем для разовой миграции, чтобы
 // уже разобранные файлы не пришлось гонять через ИИ повторно.
 const oldKey = (path, modified) => 'labs:parsed:' + crypto.createHash('md5').update(path + '|' + (modified || '')).digest('hex')
@@ -149,31 +159,32 @@ router.use(requireAuth)
 router.post('/connect', async (req, res) => {
   const { url } = req.body || {}
   if (!url || !/disk\.yandex/i.test(url)) return res.status(400).json({ ok: false, message: 'Дайте ссылку на публичную папку Яндекс.Диска' })
-  await kvSet(URL_KEY, url)
+  await kvSetScoped(URL_KEY, scopeOf(req), url)
   res.json({ ok: true })
 })
 
-router.get('/status', async (_req, res) => {
-  const url = await getUrl()
+router.get('/status', async (req, res) => {
+  const url = await getUrl(scopeOf(req))
   res.json({ connected: !!url, url: url || null })
 })
 
-// Только владелец — иначе гость по общеизвестному демо-паролю мог бы отключить
-// настоящую папку с анализами; см. GUEST_BLOCK в app.js — вторая линия защиты.
+// Отключает СВОЮ интеграцию: ключ несёт id владельца данных, поэтому чужую задеть нельзя.
+// Гостю здесь делать нечего (у него нет своей ячейки) — его заодно отсекает app.js.
 router.post('/disconnect', async (req, res) => {
-  if (req.role !== 'owner') return res.status(403).json({ error: 'forbidden' })
-  await kvDel(URL_KEY)
+  if (!scopeOf(req)) return res.status(403).json({ error: 'forbidden' })
+  await kvDelScoped(URL_KEY, scopeOf(req))
   res.json({ ok: true })
 })
 
 // Список файлов + признак, разобран ли уже (для прогресса на фронте).
 // Одно чтение единого хранилища — никаких массовых параллельных запросов.
-router.get('/files', async (_req, res) => {
-  const url = await getUrl()
+router.get('/files', async (req, res) => {
+  const userId = scopeOf(req)
+  const url = await getUrl(userId)
   if (!url) return res.json({ connected: false, files: [] })
   try {
     const files = await listFiles(url)
-    const store = await loadStore()
+    const store = await loadStore(userId)
     const withCache = files.map(f => ({ ...f, parsed: store[f.path]?.modified === f.modified }))
     res.json({ connected: true, files: withCache })
   } catch (e) {
@@ -184,17 +195,19 @@ router.get('/files', async (_req, res) => {
 // Разобрать ОДИН файл (фронт вызывает по очереди — не упираемся в таймаут).
 // Результат сохраняется в единое хранилище и больше не теряется при перезапуске.
 router.post('/parse', async (req, res) => {
-  const url = await getUrl()
+  const userId = scopeOf(req)
+  const url = await getUrl(userId)
   if (!url) return res.json({ ok: false, connected: false })
   const { path, modified } = req.body || {}
   if (!path) return res.status(400).json({ ok: false, message: 'path required' })
-  const store = await loadStore()
+  const store = await loadStore(userId)
   if (store[path]?.modified === modified) return res.json({ ok: true, report: store[path].report, cached: true })
-  // Разовая миграция из старого формата (отдельный ключ на файл) — без повторного ИИ
-  const migrated = await kvGet(oldKey(path, modified))
+  // Разовая миграция из старого формата (отдельный ключ на файл) — без повторного ИИ.
+  // Только для владельца: у остальных тот старый кэш — не их данные.
+  const migrated = userId === OWNER_ID ? await kvGet(oldKey(path, modified)) : null
   if (migrated) {
     store[path] = { modified, report: migrated }
-    await saveStore(store)
+    await saveStore(userId, store)
     return res.json({ ok: true, report: migrated, cached: true })
   }
   try {
@@ -206,7 +219,7 @@ router.post('/parse', async (req, res) => {
     const report = { id: path, date: parsed.date, lab: parsed.lab || '', kind: parsed.kind || '', fileName: file.name, folder: file.folder, values: parsed.values || {} }
     // Сохраняем даже с пустыми показателями (файл не анализ / нет цифр) — чтобы не гонять ИИ повторно
     store[path] = { modified, report }
-    await saveStore(store)
+    await saveStore(userId, store)
     res.json({ ok: true, report })
   } catch (e) {
     res.json({ ok: false, message: String(e?.message || e).slice(0, 150) })
@@ -218,10 +231,11 @@ router.post('/parse', async (req, res) => {
 router.post('/upload', async (req, res) => {
   const { name, mime, data } = req.body || {}
   if (!data) return res.status(400).json({ ok: false, message: 'нет файла' })
+  const userId = scopeOf(req)
   try {
     const buf = Buffer.from(data, 'base64')
     const id = 'upload:' + crypto.createHash('md5').update(buf).digest('hex')
-    const store = await loadStore()
+    const store = await loadStore(userId)
     if (store[id]) return res.json({ ok: true, report: store[id].report, cached: true })
     const parsed = await parseBuffer(buf, { name: name || 'файл', mime: mime || '' })
     if (!parsed || !Object.keys(parsed.values || {}).length) {
@@ -229,7 +243,7 @@ router.post('/upload', async (req, res) => {
     }
     const report = { id, date: parsed.date, lab: parsed.lab || '', kind: parsed.kind || '', fileName: name || 'Загруженный файл', values: parsed.values }
     store[id] = { modified: id, report }
-    await saveStore(store)
+    await saveStore(userId, store)
     res.json({ ok: true, report })
   } catch (e) {
     res.json({ ok: false, message: String(e?.message || e).slice(0, 150) })
@@ -238,10 +252,11 @@ router.post('/upload', async (req, res) => {
 
 // Все разобранные отчёты, объединённые по дате (формат фронта: {date, values}).
 // Берём из единого хранилища — и Яндекс.Диск, и ручные загрузки.
-router.get('/reports', async (_req, res) => {
-  const url = await getUrl()
+router.get('/reports', async (req, res) => {
+  const userId = scopeOf(req)
+  const url = await getUrl(userId)
   try {
-    const store = await loadStore()
+    const store = await loadStore(userId)
     const entries = Object.values(store).map(e => e.report).filter(r => r && r.date && Object.keys(r.values || {}).length)
     // Объединяем по дате: значения из всех файлов одной даты в один отчёт
     const byDate = {}

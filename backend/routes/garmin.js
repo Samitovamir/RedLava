@@ -2,8 +2,10 @@ import { Router } from 'express'
 import { GarminConnect } from 'garmin-connect'
 import { requireAuth } from '../authGuard.js'
 import { kvGet, kvSet, kvDel } from '../store.js'
+import { kvGetScoped, kvSetScoped, kvDelScoped, scopeOf } from '../userScope.js'
 
 const router = Router()
+// База ключа; реальный ключ — с id владельца данных (см. userScope.js)
 const TOKEN_KEY = 'garmin:token'
 
 // Названия типов тренировок Garmin → по-русски
@@ -323,7 +325,7 @@ router.post('/connect', requireAuth, async (req, res) => {
     const c = new GarminConnect({ username: email, password })
     await c.login(email, password)
     const token = c.exportToken()
-    await kvSet(TOKEN_KEY, token)
+    await kvSetScoped(TOKEN_KEY, scopeOf(req), token)
     res.json({ success: true })
   } catch (err) {
     const msg = String(err?.message || '')
@@ -334,22 +336,22 @@ router.post('/connect', requireAuth, async (req, res) => {
   }
 })
 
-router.get('/status', requireAuth, async (_req, res) => {
-  const t = await kvGet(TOKEN_KEY)
+router.get('/status', requireAuth, async (req, res) => {
+  const t = await kvGetScoped(TOKEN_KEY, scopeOf(req))
   res.json({ connected: !!t?.oauth2 })
 })
 
-// Только владелец — иначе гость по общеизвестному демо-паролю мог бы отключить
-// настоящую интеграцию владельца; см. GUEST_BLOCK в app.js — вторая линия защиты.
+// Отключает СВОЮ интеграцию: ключ несёт id владельца данных, поэтому чужую задеть нельзя.
+// Гостю здесь делать нечего (у него нет своей ячейки) — его заодно отсекает app.js.
 router.post('/disconnect', requireAuth, async (req, res) => {
-  if (req.role !== 'owner') return res.status(403).json({ error: 'forbidden' })
-  await kvDel(TOKEN_KEY)
+  if (!scopeOf(req)) return res.status(403).json({ error: 'forbidden' })
+  await kvDelScoped(TOKEN_KEY, scopeOf(req))
   res.json({ ok: true })
 })
 
 // Данные для страницы «Спорт»
-router.get('/data', requireAuth, async (_req, res) => {
-  const t = await kvGet(TOKEN_KEY)
+router.get('/data', requireAuth, async (req, res) => {
+  const t = await kvGetScoped(TOKEN_KEY, scopeOf(req))
   if (!t?.oauth2) return res.json({ connected: false })
   try {
     const c = clientFromToken(t)
@@ -396,8 +398,8 @@ router.get('/data', requireAuth, async (_req, res) => {
 // Расширенные метрики Garmin (Training Status/Load, HRV, прогнозы забегов, Endurance/Hill,
 // лактатный порог, интенсивные минуты) — ОТДЕЛЬНО и лениво: это ~7 тяжёлых запросов к
 // Garmin, они не должны тормозить основной /data (заряд тела / стресс / готовность).
-router.get('/insights', requireAuth, async (_req, res) => {
-  const t = await kvGet(TOKEN_KEY)
+router.get('/insights', requireAuth, async (req, res) => {
+  const t = await kvGetScoped(TOKEN_KEY, scopeOf(req))
   if (!t?.oauth2) return res.json({ connected: false })
   try {
     const c = clientFromToken(t)
@@ -409,8 +411,8 @@ router.get('/insights', requireAuth, async (_req, res) => {
 })
 
 // Приближающиеся плановые тренировки (в т.ч. из TrainingPeaks через Garmin)
-router.get('/planned', requireAuth, async (_req, res) => {
-  const t = await kvGet(TOKEN_KEY)
+router.get('/planned', requireAuth, async (req, res) => {
+  const t = await kvGetScoped(TOKEN_KEY, scopeOf(req))
   if (!t?.oauth2) return res.json({ connected: false, planned: [] })
   try {
     const c = clientFromToken(t)
@@ -425,7 +427,7 @@ router.get('/planned', requireAuth, async (_req, res) => {
 const ACT_BASE = 'https://connectapi.garmin.com/activity-service/activity/'
 
 router.get('/activity/:id', requireAuth, async (req, res) => {
-  const t = await kvGet(TOKEN_KEY)
+  const t = await kvGetScoped(TOKEN_KEY, scopeOf(req))
   if (!t?.oauth2) return res.json({ connected: false })
   const id = req.params.id
   try {
