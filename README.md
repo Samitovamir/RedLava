@@ -8,7 +8,7 @@ A training and health dashboard for a triathlon club. Garmin, WHOOP, Google Cale
 blood tests in one place, with an AI assistant that works from the athlete's own data and can
 act on it: create calendar events, draft emails, remember facts.
 
-**Live demo:** https://saa-website-omega.vercel.app — sign in as `guest` / `123` to browse
+**Live demo:** https://redlava-demo-website.vercel.app — sign in as `guest` / `123` to browse
 sample data.
 
 > Built for a real user, an amateur triathlete who was checking four different apps every
