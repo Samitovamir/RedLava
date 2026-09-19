@@ -5,9 +5,12 @@ import { msg as uiMsg } from '../messages.js'
 
 const router = Router()
 
-// --- Daily AI limit for guests (demo mode) ---
-// A guest can try the assistant out, but not "write essays".
+// --- Daily AI allowance ---
+// A guest can try the assistant out, but not "write essays": a small allowance per device.
+// An account gets its own, larger allowance per account — Home alone fans out to 10–15 AI
+// cards on a fresh load, so the guest's 15 would run out before lunch.
 const GUEST_DAILY_LIMIT = Number(process.env.AI_GUEST_DAILY_LIMIT) || 15
+const USER_DAILY_LIMIT = Number(process.env.AI_USER_DAILY_LIMIT) || 150
 
 // Today's date in Moscow (YYYY-MM-DD) — the counter resets every day at midnight MSK.
 function mskDateKey() {
@@ -25,22 +28,25 @@ function guestDeviceId(req) {
   return 'ip-' + ip.replace(/[^a-zA-Z0-9_.:-]/g, '').slice(0, 45)
 }
 
-// Checks and increments the daily counter FOR THE DEVICE.
-// Returns true if today's limit is already used up (the request must NOT be made).
-// Both roles are counted — guest and ordinary account — because those are the only two
-// there are, and the AI is open to both. Without a cap this is a tap left running on a paid
-// API. Note the counter is keyed by DEVICE, not by account, so clearing site data resets it;
-// a real per-account budget is still owed.
-async function guestOverDailyLimit(req) {
-  if (req.role !== 'guest' && req.role !== 'user') return false
-  // Locally (npm dev via server.js) the demo limit is lifted, so the AI can be tested freely.
-  // In production (Vercel, api/index.js) LOCAL_DEV is not set → the limit works as before.
-  if (process.env.LOCAL_DEV === '1') return false
-  const key = `ai:guest:limit:${guestDeviceId(req)}:${mskDateKey()}`
+// Checks and increments today's counter. Returns the message key to answer with when the
+// allowance is used up, or null when the request may go ahead.
+// Both roles are counted: the AI is open to both, and without a cap it is a tap left running
+// on a paid API. Accounts used to share the guest's per-device counter — a stopgap from the
+// first stage of the multi-user migration that was meant to come off once data became
+// per-account, and never did.
+async function aiDailyLimit(req) {
+  if (req.role !== 'guest' && req.role !== 'user') return null
+  // Locally (npm dev via server.js) the limit is lifted, so the AI can be tested freely.
+  // In production (Vercel, api/index.js) LOCAL_DEV is not set, so it applies.
+  if (process.env.LOCAL_DEV === '1') return null
+  const isGuest = req.role === 'guest'
+  const who = isGuest ? guestDeviceId(req) : req.userId
+  if (!who) return null
+  const key = `ai:${isGuest ? 'guest' : 'user'}:limit:${who}:${mskDateKey()}`
   const used = Number(await kvGet(key)) || 0
-  if (used >= GUEST_DAILY_LIMIT) return true
+  if (used >= (isGuest ? GUEST_DAILY_LIMIT : USER_DAILY_LIMIT)) return isGuest ? 'guestLimit' : 'userLimit'
   await kvSet(key, used + 1)
-  return false
+  return null
 }
 
 
@@ -185,7 +191,8 @@ router.post('/chat', async (req, res) => {
   // Ordinary chat means short answers (1024). Long formats (walking through blood tests and
   // the like) may ask for more, but never above the ceiling, so an answer never cuts off mid-word.
   const outTokens = Math.min(Math.max(Number(maxTokens) || 1024, 256), 8192)
-  if (await guestOverDailyLimit(req)) return res.status(200).json(softBlock(uiMsg(req, 'guestLimit')))
+  const spent = await aiDailyLimit(req)
+  if (spent) return res.status(200).json(softBlock(uiMsg(req, spent)))
   if (!process.env.ANTHROPIC_API_KEY) {
     // Marked as a stub, not an answer: the summary panels cached this line as if the AI had
     // said it, then showed it as the day's headline and kept it after the key was added.
@@ -314,7 +321,8 @@ const ROUTE_TOOL = {
 router.post('/agent', async (req, res) => {
   const { message, snapshot, history, context } = req.body
   if (!message) return res.status(400).json({ error: 'message required' })
-  if (await guestOverDailyLimit(req)) return res.status(200).json(softBlock(uiMsg(req, 'guestLimit')))
+  const spent = await aiDailyLimit(req)
+  if (spent) return res.status(200).json(softBlock(uiMsg(req, spent)))
   if (!process.env.ANTHROPIC_API_KEY) {
     return res.json({ reply: uiMsg(req, 'noAiKeyActions'), actions: [] })
   }
@@ -459,7 +467,8 @@ const ARTICLE_TOOL = [{
 router.post('/read', async (req, res) => {
   const { message, context, history, snapshot } = req.body
   if (!message) return res.status(400).json({ error: 'message required' })
-  if (await guestOverDailyLimit(req)) return res.status(200).json(softBlock(uiMsg(req, 'guestLimit')))
+  const spent = await aiDailyLimit(req)
+  if (spent) return res.status(200).json(softBlock(uiMsg(req, spent)))
   if (!process.env.ANTHROPIC_API_KEY) {
     return res.json({ text: uiMsg(req, 'noAiKeyArticle'), images: [] })
   }

@@ -40,6 +40,10 @@ const M = {
     ru: 'Дневной лимит ИИ в демо-режиме исчерпан. Зайдите завтра или войдите в основной аккаунт.',
     en: 'The demo has used up its AI requests for today. Come back tomorrow, or sign in to your own account.',
   },
+  userLimit: {
+    ru: 'На сегодня запросы к ИИ закончились. Лимит обновится в полночь по Москве.',
+    en: 'You have used today\'s AI requests. They reset at midnight Moscow time.',
+  },
   tooLong: {
     ru: 'Запрос слишком длинный. Сократите его, пожалуйста, и попробуйте снова.',
     en: 'That request is too long. Please shorten it and try again.',

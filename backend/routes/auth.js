@@ -68,8 +68,8 @@ router.post('/register', async (req, res) => {
 // Sign-in — username + password. Two paths tried in order, not a branch on the input:
 //   1) an ordinary account (the username is in users:by-login, the password matches the hash);
 //   2) if that didn't match — the guest demo via GUEST_PASSWORD (which has no account record).
-// There is no separate sign-in for the owner any more: he is an account like everyone else,
-// and his server-side rights come from the isAdmin flag on his record (see requireAdmin in authGuard.js).
+// There is no separate owner sign-in: every person is an ordinary account. The isAdmin flag on
+// the record is reserved for admin actions that don't exist yet (see the note in authGuard.js).
 router.post('/login', async (req, res) => {
   const key = attemptKey('fails', req)
   if (await tooManyFails(key, LOGIN_MAX_FAILS)) {
