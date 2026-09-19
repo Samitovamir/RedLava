@@ -40,7 +40,7 @@ const TOKEN_TTL = '30d'
 // void instantly. Why per account rather than global: a global one would mean that "sign out
 // everywhere" signs out the whole club, including people who had nothing to do with the
 // incident. The scenario that has to work: phone stolen → sign in from the laptop → change
-// the password → throw away your own sessions, and nothing happens to anyone else.
+// the password, which throws away your own sessions, and nothing happens to anyone else.
 const epochKey = (userId) => `auth:epoch:${userId}`
 
 async function currentEpoch(userId) {
@@ -48,9 +48,9 @@ async function currentEpoch(userId) {
   return Number(await kvGet(epochKey(userId))) || 0
 }
 
-// Revoke every token of a single account. Called by the "sign out everywhere" button, and
-// must also be called when the password changes: otherwise a stolen device keeps working off
-// its old token, which knows nothing about the new password.
+// Revoke every token of a single account. Called by the "sign out everywhere" button and by a
+// password change (routes/auth.js): without the latter a stolen device keeps working off its
+// old token, which knows nothing about the new password.
 export async function bumpUserEpoch(userId) {
   if (!userId) return
   await kvSet(epochKey(userId), (await currentEpoch(userId)) + 1)

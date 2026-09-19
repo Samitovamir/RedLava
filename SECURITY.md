@@ -23,13 +23,17 @@ what, what protects each boundary, and what is knowingly left open.
 - Usernames are unique regardless of case and surrounding spaces; creation runs under a KV
   lock so two simultaneous sign-ups cannot claim the same name.
 - Registration requires `REGISTRATION_CODE`, compared in constant time.
+- Changing the password (Settings) needs the current one, even inside a valid session, so a
+  token taken from an unlocked phone or a browser is not enough to lock the owner out. A
+  change also signs out every other device (see Sessions).
 
 **Sessions** (`backend/authGuard.js`)
 - HS256 JWTs with the algorithm pinned on verification, a 30-day lifetime, renewed each time
   the app opens.
 - Every account has its own session epoch, carried in its tokens. "Sign out other devices"
-  bumps that account's epoch: its older tokens stop working, the device that pressed the button
-  gets a fresh token, and nobody else is affected. The cost is one key read per request.
+  and a password change both bump that account's epoch: its older tokens stop working, the
+  device that asked gets a fresh token, and nobody else is affected. The cost is one key read
+  per request.
 - A token's role must match its shape: a `user` token must carry an account id, a `guest`
   token must not.
 
@@ -39,13 +43,16 @@ what, what protects each boundary, and what is knowingly left open.
 - Requests from the guest to integration endpoints are answered with demo data in
   `backend/app.js`, before they reach a real handler.
 
-**Brute force** (`backend/rateLimit.js`) — fixed-window counters per IP in the shared KV store,
-because in-memory counters reset on every serverless cold start:
+**Brute force** (`backend/rateLimit.js`) — fixed-window counters in the shared KV store,
+because in-memory counters reset on every serverless cold start. Per IP, except where noted:
 - sign-in: 8 failed attempts per 15 minutes;
 - registration: 30 per 15 minutes (the invite code is the real gate);
 - Garmin connect: 6 failed attempts per 15 minutes. It forwards a username and password to
   Garmin, so without a cap the server could be used to try passwords against other people's
-  Garmin accounts.
+  Garmin accounts;
+- password change: 8 wrong current passwords per 15 minutes, counted per account. Whoever is
+  guessing there already holds a session and can change networks, so an IP count would not
+  stop them.
 
 **OAuth** — a random state per flow, bound to the account that started it and deleted on use.
 
@@ -73,13 +80,12 @@ format and URL-encoded before they become part of a Google API path.
 
 **Pipeline** — every push runs CodeQL, a gitleaks secret scan over the full history and
 ESLint. Dependabot watches dependencies (major bumps are reviewed by hand). `npm test` runs
-11 browser tests, including cross-account isolation and session revocation.
+13 browser tests, including cross-account isolation, session revocation and password change.
 
 ## Known limitations
 
-- **No password change or reset yet.** "Sign out other devices" ends existing sessions, but
-  it cannot lock out someone who knows the password. A change-password endpoint that also
-  bumps the session epoch is the next thing to add.
+- **No self-service password reset.** Accounts have no email address, so a forgotten password
+  can only be reset by hand in the store. A known password can be changed in Settings.
 - **No second factor.**
 - **The session token is in `localStorage`**, readable by any script on the page. There is no
   `dangerouslySetInnerHTML` in the app and the CSP blocks injected inline scripts, but an

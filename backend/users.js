@@ -47,6 +47,11 @@ export function validateCredentials(username, password) {
   const norm = normalizeLogin(n)
   if (!norm || norm.length < MIN_NAME_LENGTH || norm.length > MAX_NAME_LENGTH || !NAME_RE.test(n)) return 'bad_name'
   if (RESERVED_NAMES.has(norm)) return 'name_reserved'
+  return validatePassword(password)
+}
+
+// The password half of it, shared by sign-up and a password change.
+export function validatePassword(password) {
   if (typeof password !== 'string' || password.length < MIN_PASSWORD_LENGTH) return 'weak_password'
   // bcrypt only takes the first 72 bytes of a password into account — accepting more is pointless
   if (Buffer.byteLength(password, 'utf8') > 72) return 'password_too_long'
@@ -103,6 +108,23 @@ export async function verifyUserPassword(username, password) {
   if (!user?.passwordHash) return null
   const ok = await bcrypt.compare(String(password || ''), user.passwordHash)
   return ok ? user : null
+}
+
+// Changing a password. The current one has to match even though the caller is signed in:
+// a session is not proof of knowing the password (a phone left unlocked, a token lifted from
+// a browser), and without this check it would be enough to lock the owner out for good.
+// Returns {} or { error: 'weak_password' | 'password_too_long' | 'wrong_password' |
+// 'same_password' | 'store_failed' }. Signing out the other devices is the caller's job.
+export async function changePassword(userId, currentPassword, newPassword) {
+  const invalid = validatePassword(newPassword)
+  if (invalid) return { error: invalid }
+  const user = await getUserById(userId)
+  if (!user?.passwordHash) return { error: 'store_failed' }
+  if (!(await bcrypt.compare(String(currentPassword || ''), user.passwordHash))) return { error: 'wrong_password' }
+  if (newPassword === currentPassword) return { error: 'same_password' }
+  const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS)
+  if (!(await kvSet(userKey(userId), { ...user, passwordHash }))) return { error: 'store_failed' }
+  return {}
 }
 
 // The public projection of a record, safe to send to the frontend — no password hash.

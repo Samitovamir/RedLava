@@ -4,7 +4,7 @@ import { clearToken, setToken, isGuest, getUsername } from '../api/authFetch'
 import { wipePersonalData } from '../utils/accountData.js'
 import { useT, useLang } from '../context/LanguageContext.jsx'
 import { pushSync } from '../utils/sync.js'
-import { Button, Field, SectionHeader, StatusPill } from '../ui'
+import { Button, Field, Icon, SectionHeader, StatusPill } from '../ui'
 
 /*
   The "Connections" page.
@@ -108,7 +108,22 @@ export default function Connections() {
       resetGo: 'Да, сбросить', resetBusy: 'Сбрасываю…', resetCancel: 'Отмена',
       resetNoServer: 'Нет связи с сервером.',
       logoutAllBtn: 'Выйти на других устройствах', logoutAllBusy: 'Отзываю…',
-      logoutAllHint: 'Отзывает вход в ваш аккаунт на всех остальных телефонах и браузерах. Это устройство остаётся внутри, других участников не касается. Нужно, если телефон потерялся или пароль мог кому-то попасться на глаза.',
+      logoutAllHint: 'Отзывает вход в ваш аккаунт на всех остальных телефонах и браузерах. Это устройство остаётся внутри, других участников не касается. Нужно, если потерялся телефон. Если пароль мог кому-то попасться на глаза, лучше смените его: это тоже выведет остальные устройства.',
+      pwBtn: 'Сменить пароль',
+      pwHint: 'Понадобится текущий пароль. После смены все остальные устройства выйдут из аккаунта.',
+      pwCurrent: 'Текущий пароль', pwNew: 'Новый пароль', pwRepeat: 'Новый пароль ещё раз',
+      pwNewHint: (n) => `Не короче ${n} символов`,
+      pwSave: 'Сохранить пароль', pwSaving: 'Сохраняю…',
+      pwDone: 'Пароль изменён. Остальные устройства вышли из аккаунта.',
+      pwErr: {
+        wrong_password: () => 'Текущий пароль не подходит.',
+        weak_password: (n) => `Пароль должен быть не короче ${n} символов.`,
+        password_too_long: () => 'Пароль слишком длинный.',
+        same_password: () => 'Новый пароль совпадает с текущим.',
+        mismatch: () => 'Пароли не совпадают.',
+        too_many_attempts: (min) => `Слишком много попыток. Попробуйте через ${min || 15} мин.`,
+        failed: () => 'Не удалось сменить пароль. Попробуйте ещё раз.',
+      },
       noticeConnectedSuffix: 'подключён ✓',
       noticeErrPrefix: 'Не удалось подключить', noticeErrSuffix: 'Попробуйте ещё раз.',
       noticeNotConfigured: 'ещё не настроен на сервере (нужны ключи доступа).',
@@ -145,7 +160,22 @@ export default function Connections() {
       resetGo: 'Yes, reset', resetBusy: 'Resetting…', resetCancel: 'Cancel',
       resetNoServer: 'No connection to the server.',
       logoutAllBtn: 'Sign out other devices', logoutAllBusy: 'Revoking…',
-      logoutAllHint: 'Revokes sign-in to your account on every other phone and browser. This device stays signed in, and other members are unaffected. Useful if a phone was lost or the password may have been seen.',
+      logoutAllHint: 'Revokes sign-in to your account on every other phone and browser. This device stays signed in, and other members are unaffected. Useful if a phone was lost. If the password may have been seen, change it instead: that signs out other devices too.',
+      pwBtn: 'Change password',
+      pwHint: 'You’ll need the current one. Once it’s changed, every other device is signed out.',
+      pwCurrent: 'Current password', pwNew: 'New password', pwRepeat: 'New password again',
+      pwNewHint: (n) => `At least ${n} characters`,
+      pwSave: 'Save password', pwSaving: 'Saving…',
+      pwDone: 'Password changed. Your other devices have been signed out.',
+      pwErr: {
+        wrong_password: () => 'The current password is wrong.',
+        weak_password: (n) => `Password must be at least ${n} characters.`,
+        password_too_long: () => 'That password is too long.',
+        same_password: () => 'That’s the password you already have.',
+        mismatch: () => 'The passwords don’t match.',
+        too_many_attempts: (min) => `Too many attempts. Try again in ${min || 15} min.`,
+        failed: () => 'Couldn’t change the password. Please try again.',
+      },
       noticeConnectedSuffix: 'connected ✓',
       noticeErrPrefix: 'Couldn’t connect', noticeErrSuffix: 'Please try again.',
       noticeNotConfigured: 'isn’t set up on the server yet (access keys required).',
@@ -175,6 +205,12 @@ export default function Connections() {
   const [resetErr, setResetErr] = useState('')
   const [resetBusy, setResetBusy] = useState(false)
   const [logoutAllBusy, setLogoutAllBusy] = useState(false)
+  const [pwOpen, setPwOpen] = useState(false)
+  const [pw, setPw] = useState({ current: '', next: '', repeat: '' })
+  const [pwErr, setPwErr] = useState(null)   // { field: 'current' | 'next' | 'repeat' | null, text }
+  const [pwBusy, setPwBusy] = useState(false)
+  const [pwDone, setPwDone] = useState(false)
+  const [pwMin, setPwMin] = useState(8)       // the server's minimum arrives with its first refusal
 
   // Revokes this account's sessions on OTHER devices. The current one stays signed in: along
   // with the confirmation the server sends a fresh token carrying the new session epoch, and
@@ -189,6 +225,45 @@ export default function Connections() {
       if (d?.token) setToken(d.token)
     } catch { /* ignore */ }
     window.location.reload()
+  }
+
+  function togglePassword() {
+    setPwOpen(o => !o)
+    setPw({ current: '', next: '', repeat: '' })
+    setPwErr(null)
+    setPwDone(false)
+  }
+
+  // Changing the password. The server also signs out every other device and sends this one a
+  // fresh token, which we keep, so the person stays in without a reload. Errors land on the
+  // field they are about; the server answers with codes, and the text is in the UI language.
+  async function submitPassword(e) {
+    e.preventDefault()
+    if (pwBusy) return
+    if (pw.next !== pw.repeat) { setPwErr({ field: 'repeat', text: t.pwErr.mismatch() }); return }
+    setPwBusy(true)
+    setPwErr(null)
+    try {
+      const r = await fetch('/api/auth/password', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword: pw.current, newPassword: pw.next })
+      })
+      const d = await r.json().catch(() => null)
+      if (r.ok && d?.token) {
+        setToken(d.token)
+        setPw({ current: '', next: '', repeat: '' })
+        setPwOpen(false)
+        setPwDone(true)
+      } else {
+        const code = d?.error
+        if (d?.minPasswordLength) setPwMin(d.minPasswordLength)
+        const field = code === 'wrong_password' ? 'current'
+          : ['weak_password', 'password_too_long', 'same_password'].includes(code) ? 'next' : null
+        const say = t.pwErr[code] || t.pwErr.failed
+        setPwErr({ field, text: say(code === 'too_many_attempts' ? d?.retryInMinutes : d?.minPasswordLength || pwMin) })
+      }
+    } catch { setPwErr({ field: null, text: t.resetNoServer }) }
+    setPwBusy(false)
   }
 
   // Resetting YOUR OWN data: disconnect all of your integrations and erase your sync blob.
@@ -482,10 +557,54 @@ export default function Connections() {
 
       {!guest && (
         <div className="conn-security">
-          <Button variant="ghost" size="sm" onClick={logoutAll} disabled={logoutAllBusy}>
-            {logoutAllBusy ? t.logoutAllBusy : t.logoutAllBtn}
-          </Button>
-          <span className="conn-security-hint muted">{t.logoutAllHint}</span>
+          <div className="conn-security-item">
+            <Button variant="ghost" size="sm" className="conn-pw-toggle" onClick={togglePassword} aria-expanded={pwOpen}>
+              {t.pwBtn}
+            </Button>
+            <span className="conn-security-hint muted">{t.pwHint}</span>
+            {pwDone && (
+              <span className="conn-pw-done" role="status">
+                <Icon name="check" size={16} color="var(--status-ok)" />{t.pwDone}
+              </span>
+            )}
+            {pwOpen && (
+              <motion.form
+                className="conn-pw-form" onSubmit={submitPassword}
+                initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}
+              >
+                {/* Lets a password manager tell which account the new password belongs to */}
+                <input type="text" name="username" autoComplete="username" value={userName || ''} readOnly hidden />
+                <Field
+                  label={t.pwCurrent} type="password" name="current-password" autoComplete="current-password" autoFocus
+                  value={pw.current} onChange={e => setPw(p => ({ ...p, current: e.target.value }))}
+                  error={pwErr?.field === 'current' ? pwErr.text : null}
+                />
+                <Field
+                  label={t.pwNew} type="password" name="new-password" autoComplete="new-password"
+                  value={pw.next} onChange={e => setPw(p => ({ ...p, next: e.target.value }))}
+                  hint={t.pwNewHint(pwMin)} error={pwErr?.field === 'next' ? pwErr.text : null}
+                />
+                <Field
+                  label={t.pwRepeat} type="password" name="repeat-password" autoComplete="new-password"
+                  value={pw.repeat} onChange={e => setPw(p => ({ ...p, repeat: e.target.value }))}
+                  error={pwErr?.field === 'repeat' ? pwErr.text : null}
+                />
+                {pwErr && !pwErr.field && <span className="conn-pw-err" role="alert">{pwErr.text}</span>}
+                <div className="conn-pw-actions">
+                  <Button type="submit" variant="primary" size="sm" disabled={pwBusy || !pw.current || !pw.next || !pw.repeat}>
+                    {pwBusy ? t.pwSaving : t.pwSave}
+                  </Button>
+                  <Button type="button" variant="ghost" size="sm" onClick={togglePassword}>{t.resetCancel}</Button>
+                </div>
+              </motion.form>
+            )}
+          </div>
+          <div className="conn-security-item">
+            <Button variant="ghost" size="sm" onClick={logoutAll} disabled={logoutAllBusy}>
+              {logoutAllBusy ? t.logoutAllBusy : t.logoutAllBtn}
+            </Button>
+            <span className="conn-security-hint muted">{t.logoutAllHint}</span>
+          </div>
         </div>
       )}
 
@@ -535,8 +654,15 @@ export default function Connections() {
         .conn-row { display: flex; align-items: center; gap: 16px; }
         .conn-info { flex: 1; min-width: 0; }
         .conn-account-action { flex-shrink: 0; }
-        .conn-security { margin-top: 8px; padding-top: 18px; border-top: 1px solid var(--border-soft); display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
-        .conn-security-hint { font-size: 12.5px; line-height: 1.5; max-width: 480px; }
+        .conn-security { margin-top: 8px; padding-top: 18px; border-top: 1px solid var(--border-soft); display: flex; flex-direction: column; gap: 20px; }
+        .conn-security-item { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+        .conn-security-hint { font-size: 12.5px; line-height: 1.5; max-width: 480px; color: var(--text-muted); }
+        /* A ghost button's label sits flush with the hint under it; the padding shows on hover */
+        .conn-security-item > .ds-btn--ghost, .conn-reset > .ds-btn--ghost { margin-left: -14px; }
+        .conn-pw-done { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--text-body); }
+        .conn-pw-form { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 400px; margin-top: 8px; }
+        .conn-pw-err { font-size: 13px; color: var(--status-crit); }
+        .conn-pw-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 2px; }
         .conn-reset { margin-top: 8px; padding-top: 18px; border-top: 1px solid var(--border-soft); }
         .conn-reset-form { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
         .conn-reset-err { font-size: 13px; color: var(--status-crit); }

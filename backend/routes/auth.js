@@ -1,8 +1,8 @@
 import { Router } from 'express'
 import crypto from 'crypto'
 import { signToken, guestRoleForLogin, requireAuth, bumpUserEpoch } from '../authGuard.js'
-import { attemptKey, tooManyFails, recordFail, minutesLeft } from '../rateLimit.js'
-import { createUser, verifyUserPassword, validateCredentials, publicUser, getUserById, MIN_PASSWORD_LENGTH } from '../users.js'
+import { attemptKey, accountAttemptKey, tooManyFails, recordFail, minutesLeft } from '../rateLimit.js'
+import { createUser, verifyUserPassword, validateCredentials, changePassword, publicUser, getUserById, MIN_PASSWORD_LENGTH } from '../users.js'
 
 const router = Router()
 
@@ -14,6 +14,8 @@ const LOGIN_MAX_FAILS = 8         // failed sign-ins per window — blocked beyo
 // sign up as a whole team one evening from a single Wi-Fi (or behind a carrier NAT), and
 // 5 attempts hit the wall there instantly, locking real people out for 15 minutes.
 const REGISTER_MAX = 30
+// Wrong current passwords on a password change, per account (see accountAttemptKey)
+const PASSWORD_MAX_FAILS = 8
 
 // A successful registration spends the limit too — otherwise "5 registrations from one IP"
 // would cap nothing. BUT typos in the form (a short password, a name already taken) do NOT
@@ -103,14 +105,41 @@ router.get('/verify', requireAuth, async (req, res) => {
 // every token issued to it earlier stops working at once, and nothing changes for anyone else.
 // The epoch used to be shared, so this button signed the whole club out — correct for the
 // single-user version, where "all sessions" and "my sessions" were the same thing, and wrong
-// once accounts arrived. Scenario: phone stolen → sign in from the laptop → (change the
-// password) → throw out your own sessions. A guest has nothing to revoke: the demo has no
-// account, and therefore no personal epoch either.
+// once accounts arrived. Scenario: phone stolen → sign in from the laptop → throw out your own
+// sessions. If the password may be known too, /password below does the same revocation along
+// with the change. A guest has nothing to revoke: the demo has no account, and therefore no
+// personal epoch either.
 router.post('/logout-all', requireAuth, async (req, res) => {
   if (req.role !== 'user' || !req.userId) return res.status(403).json({ error: 'forbidden' })
   await bumpUserEpoch(req.userId)
   // A fresh token with the new epoch, so the device the button was pressed on stays signed in.
   res.json({ ok: true, token: await signToken(req.role, req.userId) })
+})
+
+// Changing your own password. The current password is required (see changePassword in
+// users.js), and wrong guesses are capped per account. A successful change also bumps the
+// session epoch: whoever knew the old password may already be signed in somewhere, and a new
+// password that leaves their session alive fixes nothing. This device gets a fresh token.
+// A wrong current password answers 403, not 401: 401 means "your session is gone" and the
+// frontend signs the person out on it.
+router.post('/password', requireAuth, async (req, res) => {
+  if (req.role !== 'user' || !req.userId) return res.status(403).json({ error: 'forbidden' })
+  const key = accountAttemptKey('password', req.userId)
+  if (await tooManyFails(key, PASSWORD_MAX_FAILS)) {
+    return res.status(429).json({ error: 'too_many_attempts', retryInMinutes: minutesLeft() })
+  }
+
+  const { currentPassword, newPassword } = req.body || {}
+  const { error } = await changePassword(req.userId, currentPassword, newPassword)
+  if (error === 'wrong_password') {
+    await recordFail(key)
+    return res.status(403).json({ error })
+  }
+  if (error === 'store_failed') return res.status(503).json({ error })
+  if (error) return res.status(400).json({ error, minPasswordLength: MIN_PASSWORD_LENGTH })
+
+  await bumpUserEpoch(req.userId)
+  res.json({ ok: true, token: await signToken('user', req.userId) })
 })
 
 export default router

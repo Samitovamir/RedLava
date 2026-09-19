@@ -113,6 +113,42 @@ describe('session revocation', { timeout: 60000 }, () => {
     assert.equal((await get('/api/auth/verify', other.token)).status, 200, 'an unrelated account was signed out')
   })
 
+  test('a password change needs the current password and ends the other sessions', async () => {
+    const a = await makeAccount(uniqueName('pwchange'))
+    const second = await (await post('/api/auth/login', { username: a.username, password: a.password })).json()
+    const change = (body) => post('/api/auth/password', body, a.token)
+
+    // Holding a session is not enough: someone with this token but not the password gets nowhere.
+    const guessed = await change({ currentPassword: 'not-the-password', newPassword: 'brandnew12345' })
+    assert.equal(guessed.status, 403)
+    assert.equal((await guessed.json()).error, 'wrong_password')
+    assert.equal((await get('/api/auth/verify', a.token)).status, 200, 'a wrong guess ended the session')
+
+    const weak = await change({ currentPassword: a.password, newPassword: 'short' })
+    assert.equal(weak.status, 400)
+    assert.equal((await weak.json()).error, 'weak_password')
+
+    const same = await change({ currentPassword: a.password, newPassword: a.password })
+    assert.equal((await same.json()).error, 'same_password')
+
+    const ok = await change({ currentPassword: a.password, newPassword: 'brandnew12345' })
+    assert.equal(ok.status, 200)
+    const d = await ok.json()
+    assert.ok(d.token, 'no fresh token came back, so the device that changed it is locked out')
+
+    assert.equal((await get('/api/auth/verify', second.token)).status, 401, 'another device stayed signed in')
+    assert.equal((await get('/api/auth/verify', d.token)).status, 200)
+    assert.equal((await post('/api/auth/login', { username: a.username, password: a.password })).status, 401, 'the old password still works')
+    assert.equal((await post('/api/auth/login', { username: a.username, password: 'brandnew12345' })).status, 200, 'the new password does not work')
+  })
+
+  test('the demo account has no password to change', async () => {
+    const g = await (await post('/api/auth/login', { username: 'guest', password: '123' })).json()
+    const r = await post('/api/auth/password', { currentPassword: '123', newPassword: 'brandnew12345' }, g.token)
+    assert.equal(r.status, 403)
+    assert.equal((await post('/api/auth/login', { username: 'guest', password: '123' })).status, 200)
+  })
+
   test('two accounts on one device do not mix their data', async () => {
     const first = uniqueName('first')
     const second = uniqueName('second')

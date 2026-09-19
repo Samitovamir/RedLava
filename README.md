@@ -71,8 +71,8 @@ tests/     Puppeteer browser tests against a throwaway copy of the app
   serverless invocations racing to refresh would invalidate each other, so refreshes are
   serialised behind a KV lock and the new pair is written in one fenced operation.
 - **Revocable stateless sessions.** A JWT normally can't be taken back. Each token carries a
-  per-account session epoch, so "sign out my other devices" ends one person's sessions and
-  nobody else's, for the price of one key read per request.
+  per-account session epoch, so "sign out my other devices" or a password change ends one
+  person's sessions and nobody else's, for the price of one key read per request.
 - **The AI's system prompt is the server's alone.** Dashboard data, which includes text other
   people wrote (calendar invites, emails), reaches the model as labelled data in the user turn,
   and moving or deleting events needs a human tap.
@@ -88,9 +88,10 @@ tests/     Puppeteer browser tests against a throwaway copy of the app
 
 ## Security
 
-Passwords are bcrypt-hashed and registration is invite-only. Sessions are signed, pinned-algorithm
-JWTs with a per-account revocation epoch, and every stored key carries its owner's id, so one
-account cannot reach another's data. Sign-in, registration and Garmin connect are rate-limited
+Passwords are bcrypt-hashed and registration is invite-only. Changing a password needs the
+current one and signs out every other device. Sessions are signed, pinned-algorithm JWTs with a
+per-account revocation epoch, and every stored key carries its owner's id, so one account cannot
+reach another's data. Sign-in, registration, password change and Garmin connect are rate-limited
 through the KV store, which works across serverless instances. The page is served with a CSP
 that allows its two inline scripts by SHA-256 hash, with no `unsafe-inline`.
 
@@ -121,15 +122,16 @@ login works locally too (`guest` / `123` by default).
 ## Tests
 
 ```bash
-npm test        # 11 browser tests, ~1.5 minutes
+npm test        # 13 browser tests, ~1.5 minutes
 npm run lint
 ```
 
 `npm test` starts its own copy of the backend and frontend on separate ports, with an empty
 store and a random signing secret, so it never touches your data and needs no API keys. It
 checks that every screen renders without console errors in both languages, that one account
-cannot read another's data, that "sign out other devices" only affects its own account, and
-the sign-up edge cases (duplicate names in any case, out-of-range survey values).
+cannot read another's data, that "sign out other devices" only affects its own account, that a
+password change needs the current password and ends the other sessions, and the sign-up edge
+cases (duplicate names in any case, out-of-range survey values).
 
 ## Notes
 
