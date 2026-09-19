@@ -8,8 +8,10 @@ import { msg as uiMsg } from '../messages.js'
 const router = Router()
 const TOKENS_KEY = 'google:tokens'
 
+// "=" only ever appears as trailing padding in base64, so dropping every one is the same as
+// trimming the end — without an anchored /=+$/ that a static analyser reads as backtracking.
 const b64url = (buf) =>
-  Buffer.from(buf).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+  Buffer.from(buf).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
 
 // Encode a non-ASCII header (the subject) per RFC 2047
 function encodeHeader(str) {
@@ -33,7 +35,13 @@ function buildMime({ to, subject, body }) {
   return headers.join('\r\n') + '\r\n\r\n' + encodedBody
 }
 
-const validEmail = (s) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(s || '').trim())
+// Length first (254 is the RFC 5321 limit), then a pattern whose parts cannot overlap: the old
+// /^[^@\s]+@[^@\s]+\.[^@\s]+$/ let "[^@\s]+" and "\." fight over every dot in the domain, which
+// backtracks quadratically on a long crafted string — and the body limit here is 10 MB.
+const validEmail = (s) => {
+  const v = String(s || '').trim()
+  return v.length <= 254 && /^[^@\s]+@[^@\s.]+(\.[^@\s.]+)+$/.test(v)
+}
 
 // Is sending available (is Google connected)
 router.get('/status', async (req, res) => {

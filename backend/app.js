@@ -23,10 +23,11 @@ config({ path: join(dirname(fileURLToPath(import.meta.url)), '../.env') })
 
 const app = express()
 
-// Security headers on responses (CSP for the page itself is configured separately in
-// vercel.json — here the API only returns JSON, which CSP does not affect, so we turn it
-// off to keep it out of the way).
-app.use(helmet({ contentSecurityPolicy: false }))
+// Security headers on every API response, helmet's default CSP included. The page's own CSP
+// (with the inline-script hashes) is set in vercel.json; the API only returns JSON and
+// redirects, so the strict default costs nothing here and keeps the rule simple: no route
+// ships without a policy.
+app.use(helmet())
 
 // In production the frontend and the API share one domain, so the browser has nowhere to
 // make a cross-origin request from; by default (no ALLOWED_ORIGIN) CORS for other domains
