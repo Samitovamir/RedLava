@@ -1,4 +1,5 @@
 import { useState, useRef, useMemo, useEffect } from 'react'
+import { RangeBar } from '../ui'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   INITIAL_REPORTS, buildHistory, markerStatus, STATUS_INFO,
@@ -147,13 +148,15 @@ function MiniSpark({ points, color }) {
   if (points.length < 2) return null
   const vals = points.map(p => p.value)
   const min = Math.min(...vals), max = Math.max(...vals), range = max - min || 1
-  const w = 54, h = 18, pad = 2
-  const pts = vals.map((v, i) =>
-    `${(pad + (i / (vals.length - 1)) * (w - 2 * pad)).toFixed(1)},${(pad + (1 - (v - min) / range) * (h - 2 * pad)).toFixed(1)}`
-  ).join(' ')
+  const w = 54, h = 18, pad = 3
+  const xy = vals.map((v, i) => [pad + (i / (vals.length - 1)) * (w - 2 * pad), pad + (1 - (v - min) / range) * (h - 2 * pad)])
+  const pts = xy.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ')
+  const [lx, ly] = xy[xy.length - 1]
   return (
-    <svg width={w} height={h} className="lm-spark">
+    <svg width={w} height={h} className="lm-spark" aria-hidden="true">
       <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      {/* the end dot marks "now", so a two-point line doesn't read as a stray slash */}
+      <circle cx={lx} cy={ly} r="2.5" fill={color} />
     </svg>
   )
 }
@@ -263,12 +266,9 @@ export default function LabResults() {
       <div key={key} className="lab-marker">
         <div className="lm-top">
           <span className="lm-name">{dn(def)}</span>
-          <span className="lm-value" style={{ color: c }}>{last.value} <span className="lm-unit muted">{unitLabel(def.unit, lang)}</span></span>
+          <span className="lm-value">{last.value} <span className="lm-unit muted">{unitLabel(def.unit, lang)}</span></span>
         </div>
-        <div className="lm-bar">
-          {st !== 'unknown' && <div className="lm-band" style={{ left: `${g.bandLeft}%`, width: `${g.bandRight - g.bandLeft}%` }} />}
-          <div className="lm-marker-dot" style={{ left: `${st === 'unknown' ? 50 : g.valuePos}%`, background: c }} />
-        </div>
+        <RangeBar pos={st === 'unknown' ? 50 : g.valuePos} band={st === 'unknown' ? null : [g.bandLeft, g.bandRight]} color={c} />
         <div className="lm-bottom">
           <span className="lm-range muted">{st === 'unknown' ? t.noNorm : `${t.norm} ${rangeText(def.min, def.max, lang)}`}</span>
           <span className="lm-status" style={{ color: c }}>{t.status[st]}</span>
@@ -292,7 +292,7 @@ export default function LabResults() {
     return (
       <div key={key} className="lab-mini">
         <span className="lab-mini-name">{dn(def)}</span>
-        <span className="lab-mini-val" style={{ color: c }}>{last.value}<span className="muted"> {unitLabel(def.unit, lang)}</span></span>
+        <span className="lab-mini-val">{last.value}<span className="muted"> {unitLabel(def.unit, lang)}</span></span>
         <span className="lab-mini-norm muted">{st === 'unknown' ? t.noNormShort : rangeText(def.min, def.max, lang)}</span>
         <span className="lab-mini-dot" style={{ background: c }} title={t.status[st]} />
       </div>
@@ -611,7 +611,7 @@ export default function LabResults() {
         .lab-mini { display: grid; grid-template-columns: minmax(0, 1fr) auto auto 10px; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--bg-primary); font-size: 12.5px; min-width: 0; }
         .lab-mini:last-child { border-bottom: none; }
         .lab-mini-name { color: var(--foreground); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .lab-mini-val { font-weight: 700; white-space: nowrap; }
+        .lab-mini-val { font-weight: 700; white-space: nowrap; color: var(--text-primary); font-variant-numeric: tabular-nums; }
         .lab-mini-norm { font-size: 11px; white-space: nowrap; }
         .lab-mini-dot { width: 9px; height: 9px; border-radius: 50%; }
         .lab-panel { background: var(--bg-secondary); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
@@ -624,12 +624,9 @@ export default function LabResults() {
         .lab-marker.pending { opacity: 0.5; }
         .lm-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
         .lm-name { font-size: 13px; color: var(--foreground); }
-        .lm-value { font-size: 14px; font-weight: 700; }
+        .lm-value { font-size: 14px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
         .lm-unit { font-size: 11px; font-weight: 400; }
         .lm-await { font-size: 11px; font-style: italic; }
-        .lm-bar { position: relative; height: 8px; border-radius: 4px; background: var(--bg-primary); }
-        .lm-band { position: absolute; top: 0; height: 100%; background: color-mix(in srgb, var(--status-ok, var(--green)) 28%, transparent); border-radius: 4px; }
-        .lm-marker-dot { position: absolute; top: 50%; width: 12px; height: 12px; border-radius: 50%; transform: translate(-50%, -50%); border: 2px solid var(--card); }
         .lm-bottom { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
         .lm-range { font-size: 11px; }
         .lm-status { font-size: 11px; font-weight: 600; }

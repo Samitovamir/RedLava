@@ -8,6 +8,8 @@
 import { useState, useEffect } from 'react'
 import { isGuest } from '../api/authFetch.js'
 import { useT, useLang } from '../context/LanguageContext.jsx'
+import { Meters, RangeBar } from '../ui'
+import { barGeom } from '../utils/labs.js'
 
 const STR = {
   en: {
@@ -105,9 +107,11 @@ export default function GarminInsights({ garmin }) {
   const lt = g.lactateThreshold, im = g.intensityMinutes
   if (!ts && !tl && !hrv && !race && !endur && !hill && !lt && !im) return null
 
-  // HRV: where last night falls inside the baseline range (low..high)
-  const hrvPos = hrv && hrv.low != null && hrv.high != null && hrv.high > hrv.low
-    ? Math.max(0, Math.min(1, (hrv.lastNight - hrv.low) / (hrv.high - hrv.low))) * 100 : null
+  // HRV: last night against the personal baseline (low..high), laid out like a blood marker
+  // against its reference range, so the two read the same way
+  const hrvGeom = hrv && hrv.low != null && hrv.high != null && hrv.high > hrv.low && hrv.lastNight != null
+    ? barGeom(hrv.lastNight, hrv.low, hrv.high) : null
+  const hrvIn = hrvGeom && hrv.lastNight >= hrv.low && hrv.lastNight <= hrv.high
   const imPct = im && im.goal ? Math.min(100, Math.round(im.weekly / im.goal * 100)) : null
   // Load balance from the ACWR (acute/chronic): 0.8–1.3 is the optimal window
   const acwr = tl?.ratio
@@ -146,13 +150,12 @@ export default function GarminInsights({ garmin }) {
             </div>
             {tl.focus && (
               <div className="gi-focus">
-                {[[s.lowAerobic, tl.focus.low, 'var(--status-ok)'], [s.highAerobic, tl.focus.high, 'var(--accent)'], [s.anaerobic, tl.focus.anaerobic, 'var(--status-warn)']].map(([lbl, v, c]) => (
-                  <div className="gi-focus-row" key={lbl}>
-                    <span className="gi-focus-lbl">{lbl}</span>
-                    <div className="gi-bar"><div className="gi-bar-fill" style={{ width: `${v}%`, background: c }} /></div>
-                    <span className="gi-focus-val">{v}%</span>
-                  </div>
-                ))}
+                {/* Three kinds of load, not three grades — category colors, not status ones */}
+                <Meters rows={[
+                  { label: s.lowAerobic, pct: tl.focus.low, color: 'var(--cat-load-low)', text: `${tl.focus.low}%` },
+                  { label: s.highAerobic, pct: tl.focus.high, color: 'var(--cat-load-high)', text: `${tl.focus.high}%` },
+                  { label: s.anaerobic, pct: tl.focus.anaerobic, color: 'var(--cat-load-anaerobic)', text: `${tl.focus.anaerobic}%` },
+                ]} />
               </div>
             )}
           </div>
@@ -164,10 +167,11 @@ export default function GarminInsights({ garmin }) {
             <div className="gi-cap">{s.hrv}</div>
             <div className="gi-hrv-num"><span className="gi-big">{hrv.lastNight}</span><span className="gi-mut">{s.msPerNight}</span></div>
             {(hrvLabel(hrv.statusKey) || ruOnly(hrv.statusRu)) && <div className="gi-status-sm" style={{ color: hrvColor(hrv.statusKey) }}>{hrvLabel(hrv.statusKey) || ruOnly(hrv.statusRu)}</div>}
-            {hrvPos != null && (
+            {hrvGeom && (
               <div className="gi-hrv-range">
-                <div className="gi-bar"><span className="gi-hrv-marker" style={{ left: `${hrvPos}%` }} /></div>
-                <div className="gi-hrv-cap"><span>{hrv.low}</span><span className="gi-mut">{s.hrvBaseline}</span><span>{hrv.high}</span></div>
+                <RangeBar pos={hrvGeom.valuePos} band={[hrvGeom.bandLeft, hrvGeom.bandRight]}
+                  color={hrvIn ? 'var(--status-ok)' : 'var(--status-warn)'} />
+                <div className="gi-hrv-cap"><span className="gi-mut">{s.hrvBaseline} {hrv.low}–{hrv.high}</span></div>
               </div>
             )}
           </div>
@@ -219,10 +223,10 @@ export default function GarminInsights({ garmin }) {
 
         {/* Intensity minutes */}
         {im && (
-          <div className="gi-tile">
+          <div className="gi-tile gi-span2">
             <div className="gi-cap">{s.intensityMinutes}</div>
             <div className="gi-im"><span className="gi-big">{im.weekly}</span><span className="gi-mut">{s.outOf} {im.goal}</span></div>
-            {imPct != null && <div className="gi-bar gi-bar-lg"><div className="gi-bar-fill" style={{ width: `${imPct}%`, background: imPct >= 100 ? 'var(--status-ok)' : 'var(--accent)' }} /></div>}
+            {imPct != null && <Meters rows={[{ pct: imPct, color: imPct >= 100 ? 'var(--status-ok)' : 'var(--accent)' }]} />}
           </div>
         )}
       </div>
@@ -256,18 +260,10 @@ export default function GarminInsights({ garmin }) {
         .gi-load-num { display: flex; flex-direction: column; gap: 2px; }
         .gi-balance { margin-left: auto; font-size: 14px; font-weight: 700; }
         .gi-focus { display: flex; flex-direction: column; gap: 7px; margin-top: 4px; }
-        .gi-focus-row { display: grid; grid-template-columns: 110px 1fr 40px; align-items: center; gap: 10px; }
-        .gi-focus-lbl { font-size: 12px; color: var(--text-secondary); }
-        .gi-focus-val { font-size: 12px; color: var(--text-body); text-align: right; font-variant-numeric: tabular-nums; }
-        .gi-bar { position: relative; height: 8px; border-radius: 999px; background: color-mix(in srgb, var(--text-faint) 22%, transparent); overflow: hidden; }
-        .gi-bar-lg { height: 10px; overflow: visible; }
-        .gi-bar-fill { height: 100%; border-radius: 999px; }
         /* HRV */
         .gi-hrv-num { display: flex; align-items: baseline; gap: 8px; }
-        .gi-hrv-range { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
-        .gi-hrv-range .gi-bar { overflow: visible; background: linear-gradient(90deg, color-mix(in srgb, var(--status-warn) 40%, transparent), color-mix(in srgb, var(--status-ok) 55%, transparent), color-mix(in srgb, var(--status-warn) 40%, transparent)); }
-        .gi-hrv-marker { position: absolute; top: -3px; width: 2px; height: 14px; border-radius: 2px; background: var(--text-primary); transform: translateX(-50%); }
-        .gi-hrv-cap { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); }
+        .gi-hrv-range { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+        .gi-hrv-cap { display: flex; font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
         /* Race */
         .gi-race { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
         .gi-race-col { display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }

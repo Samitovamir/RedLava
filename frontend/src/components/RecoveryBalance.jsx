@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { useT } from '../context/LanguageContext.jsx'
+import { Meters } from '../ui'
 
 /*
   Виджет «Восстановление ↔ Нагрузка» — калька Whoop «Strain & Recovery».
@@ -37,32 +38,19 @@ export default function RecoveryBalance({ recovery, recoveryLabel, load, loadDis
   const diff = rec - ld
 
   let verdict, color
-  if (diff >= 15) { verdict = t.surplus; color = 'var(--green)' }
-  else if (diff <= -15) { verdict = t.overload; color = 'var(--red)' }
-  else { verdict = t.balanced; color = 'var(--yellow)' }
+  if (diff >= 15) { verdict = t.surplus; color = 'var(--status-ok)' }
+  else if (diff <= -15) { verdict = t.overload; color = 'var(--status-crit)' }
+  else { verdict = t.balanced; color = 'var(--status-warn)' }
 
   return (
     <motion.div className="card rb"
       initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
       <div className="rb-title">{t.title}</div>
 
-      <div className="rb-row">
-        <span className="rb-lbl">{recoveryLabel}</span>
-        <div className="rb-track">
-          <motion.div className="rb-fill" style={{ background: 'var(--green)' }}
-            initial={{ width: 0 }} animate={{ width: `${rec}%` }} transition={{ duration: 0.8, ease: 'easeOut' }} />
-        </div>
-        <span className="rb-val">{rec}%</span>
-      </div>
-
-      <div className="rb-row">
-        <span className="rb-lbl">{loadLabel}</span>
-        <div className="rb-track">
-          <motion.div className="rb-fill" style={{ background: 'var(--accent)' }}
-            initial={{ width: 0 }} animate={{ width: `${ld}%` }} transition={{ duration: 0.8, ease: 'easeOut', delay: 0.1 }} />
-        </div>
-        <span className="rb-val">{loadDisplay}</span>
-      </div>
+      <Meters rows={[
+        { label: recoveryLabel, pct: rec, color: 'var(--status-ok)', text: `${rec}%` },
+        { label: loadLabel, pct: ld, color: 'var(--accent)', text: loadDisplay },
+      ]} />
 
       <div className="rb-verdict" style={{ borderColor: color }}>
         <span className="rb-dot" style={{ background: color }} />
@@ -72,18 +60,9 @@ export default function RecoveryBalance({ recovery, recoveryLabel, load, loadDis
       <style>{`
         .rb { display: flex; flex-direction: column; gap: 14px; }
         .rb-title { font-size: 17px; font-weight: 700; color: var(--foreground); }
-        .rb-row { display: grid; grid-template-columns: 120px 1fr auto; align-items: center; gap: 12px; }
-        .rb-lbl { font-size: 13px; font-weight: 600; color: var(--muted-foreground); }
-        .rb-track { height: 12px; border-radius: 999px; background: var(--bg-secondary); box-shadow: var(--inset-tile); overflow: hidden; }
-        .rb-fill { height: 100%; border-radius: 999px; }
-        .rb-val { font-size: 15px; font-weight: 700; color: var(--foreground); font-variant-numeric: tabular-nums; min-width: 56px; text-align: right; }
         .rb-verdict { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 12px; background: var(--bg-tile, var(--bg-secondary)); border-left: 3px solid var(--border); }
         .rb-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
         .rb-verdict-text { font-size: 14px; line-height: 1.5; color: var(--foreground); }
-        @media (max-width: 520px) {
-          .rb-row { grid-template-columns: 92px 1fr auto; gap: 8px; }
-          .rb-lbl { font-size: 12px; }
-        }
       `}</style>
     </motion.div>
   )

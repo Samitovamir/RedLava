@@ -6,12 +6,10 @@
 */
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import StressArc from './StressArc.jsx'
-import ZoneArc from './ZoneArc.jsx'
 import DayProgress from './DayProgress.jsx'
-import PlanFactGauge from './PlanFactGauge.jsx'
-import HealthGauge from './HealthGauge.jsx'
-import MiniGauge from './MiniGauge.jsx'
+import { Gauge } from '../ui'
+import { STRESS_ZONES, READINESS_ZONES, LOW_GOOD_ZONES, stressColor, stressWord, batteryColor } from '../utils/scales.js'
+import { recoveryColor } from '../utils/whoop.js'
 import { useIsMobile } from '../layout.js'
 import { nutritionToday, loadPrefs, loadIntake, entryFodmap, fodmapMeta } from '../utils/nutrition.js'
 import { useEvents } from '../context/EventsContext.jsx'
@@ -36,6 +34,8 @@ const STR = {
     allEventsPassed: 'All events done', next: 'Next',
     readyHigh: 'high', readyMid: 'moderate', readyLow: 'low',
     km: 'km', min: 'min', workout: 'Workout',
+    planAheadWord: 'ahead', planOverWord: 'over', planDoneWord: 'done', goal: 'goal',
+    recShort: 'rec.', loadShort: 'load',
     stressNoData: 'No stress data yet.',
     stressLow: 'Stress is low — a good window for focused work or a quality session.',
     stressHigh: 'Stress is elevated — ease off and take a break before training.',
@@ -68,6 +68,8 @@ const STR = {
     allEventsPassed: 'События позади', next: 'Дальше',
     readyHigh: 'высокая', readyMid: 'средняя', readyLow: 'низкая',
     km: 'км', min: 'мин', workout: 'Тренировка',
+    planAheadWord: 'впереди', planOverWord: 'перевып.', planDoneWord: 'выполнено', goal: 'цель',
+    recShort: 'восст.', loadShort: 'нагр.',
     stressNoData: 'Данных о стрессе пока нет.',
     stressLow: 'Стресс низкий — удачное окно для дел на концентрацию или качественной тренировки.',
     stressHigh: 'Стресс повышен — сбавь темп и сделай паузу перед нагрузкой.',
@@ -155,6 +157,13 @@ function sportPlanFact(planned, garmin, todayKey, s) {
   return { pct, goalText }
 }
 
+// Plan vs actual, 0–100% of the planned volume: short of plan is red, nearly there amber, done green.
+const PLAN_ZONES = [
+  { from: 0, to: 40, color: 'var(--status-crit)' },
+  { from: 40, to: 70, color: 'var(--status-warn)' },
+  { from: 70, to: 100, color: 'var(--status-ok)' },
+]
+
 // Training readiness: Garmin Training Readiness (0–100), otherwise Whoop recovery.
 // Higher is better (unlike stress). The level and color come from thresholds.
 function readyMeta(v, s) {
@@ -166,7 +175,7 @@ function readyMeta(v, s) {
 
 export default function TodaySignalV2() {
   const isMobile = useIsMobile()
-  const gaugeSize = isMobile ? 132 : 156
+  const gaugeSize = isMobile ? 116 : 128
   const s = useT(STR)
   const { lang } = useLang()
   const { events } = useEvents()
@@ -195,6 +204,7 @@ export default function TodaySignalV2() {
     recovery = bb?.current ?? null; strain = bb?.drained ?? null; strainMax = 100; hSourceLabel = s.bodyBattery
   }
   const hasHealth = recovery != null || strain != null
+  const recColor = recovery == null ? 'var(--accent)' : hSource === 'garmin' ? batteryColor(recovery) : recoveryColor(recovery)
   const loadPct = strain != null ? strain / strainMax * 100 : null
   const balDiff = (recovery != null && loadPct != null) ? recovery - loadPct : null
 
@@ -263,8 +273,8 @@ export default function TodaySignalV2() {
         {/* ───────── Stress ───────── */}
         <div className="sv2-drow">
           <div className="sv2-dgauge">
-            <StressArc value={value} size={gaugeSize} />
-            <span className="sv2-note">{fresh}</span>
+            <Gauge value={value} zones={STRESS_ZONES} size={gaugeSize} label={fresh}
+              word={value != null ? stressWord(value, lang) : null} wordColor={value != null ? stressColor(value) : undefined} />
           </div>
           <div className="sv2-dtext">
             <span className="sv2-dtitle">{s.stress}</span>
@@ -275,12 +285,7 @@ export default function TodaySignalV2() {
         {/* ───────── Schedule ───────── */}
         <div className="sv2-sched">
           <div className="sv2-dgauge">
-            <ZoneArc value={sched.loadPct} max={100} center={sched.count} sub={sched.word} subColor={sched.color} size={gaugeSize}
-              zones={[
-                { from: 0, to: 33, color: 'var(--status-ok)' },
-                { from: 33, to: 66, color: 'var(--status-warn)' },
-                { from: 66, to: 100, color: 'var(--status-crit)' },
-              ]} />
+            <Gauge value={sched.loadPct} zones={LOW_GOOD_ZONES} center={sched.count} word={sched.word} wordColor={sched.color} size={gaugeSize} />
           </div>
           <div className="sv2-dtext">
             <span className="sv2-dtitle">{s.schedule}</span>
@@ -300,12 +305,7 @@ export default function TodaySignalV2() {
         {rm && (
           <div className="sv2-drow">
             <div className="sv2-dgauge">
-              <ZoneArc value={readyScore} max={100} center={readyScore} sub={rm.w} subColor={rm.c} size={gaugeSize}
-                zones={[
-                  { from: 0, to: 50, color: 'var(--status-crit)' },
-                  { from: 50, to: 75, color: 'var(--status-warn)' },
-                  { from: 75, to: 100, color: 'var(--status-ok)' },
-                ]} />
+              <Gauge value={readyScore} zones={READINESS_ZONES} word={rm.w} wordColor={rm.c} size={gaugeSize} />
             </div>
             <div className="sv2-dtext">
               <span className="sv2-dtitle">{s.sportReady}</span>
@@ -318,7 +318,10 @@ export default function TodaySignalV2() {
         {planFact && (
           <div className="sv2-drow">
             <div className="sv2-dgauge">
-              <PlanFactGauge pct={planFact.pct} goalText={planFact.goalText} size={gaugeSize} />
+              <Gauge value={Math.min(100, planFact.pct)} zones={PLAN_ZONES} center={planFact.pct} unit="%" size={gaugeSize}
+                word={planFact.pct <= 0 ? s.planAheadWord : planFact.pct > 100 ? s.planOverWord : s.planDoneWord}
+                wordColor={planFact.pct > 100 ? 'var(--status-extra)' : undefined}
+                label={`${s.goal} · ${planFact.goalText}`} />
             </div>
             <div className="sv2-dtext">
               <span className="sv2-dtitle">{s.sportPlan}</span>
@@ -331,8 +334,16 @@ export default function TodaySignalV2() {
         {hasHealth && (
           <div className="sv2-drow">
             <div className="sv2-dgauge">
-              <HealthGauge variant={1} recovery={recovery} strain={strain} strainMax={strainMax} size={gaugeSize} />
-              {hSourceLabel && <span className="sv2-note">{hSourceLabel}</span>}
+              {/* The inner arc leaves no room for a third line in the middle, so the strain
+                  reading and its color key sit under the dial with the source */}
+              <Gauge value={recovery} color={recColor} unit="%" size={gaugeSize}
+                word={recovery != null ? s.recShort : null} wordColor={recColor}
+                inner={strain != null ? { value: strain, max: strainMax, color: 'var(--accent)' } : null}
+                ariaLabel={[s.health, recovery != null && `${recovery}% ${s.recShort}`, strain != null && `${s.loadShort} ${strain}`].filter(Boolean).join(', ')}
+                label={<>
+                  {strain != null && <span className="sv2-load"><i className="sv2-key" />{s.loadShort} {strain}</span>}
+                  {hSourceLabel && <span className="sv2-src">{hSourceLabel}</span>}
+                </>} />
             </div>
             <div className="sv2-dtext">
               <span className="sv2-dtitle">{s.health}</span>
@@ -346,18 +357,11 @@ export default function TodaySignalV2() {
           <div className="sv2-drow">
             <div className="sv2-dgauge sv2-nut">
               <div className="sv2-nut-g">
-                <MiniGauge value={kcalPct} color={kcalColor} center={nut.eaten} size={gaugeSize} />
-                <span className="sv2-note">{s.calories}</span>
+                <Gauge value={kcalPct} color={kcalColor} center={kcalPct == null ? undefined : nut.eaten} label={s.calories} size={gaugeSize} />
               </div>
               {fod && (
                 <div className="sv2-nut-g">
-                  <ZoneArc value={fod.val} max={100} center={fod.label} centerColor={fod.color} size={gaugeSize}
-                    zones={[
-                      { from: 0, to: 33, color: 'var(--status-ok)' },
-                      { from: 33, to: 66, color: 'var(--status-warn)' },
-                      { from: 66, to: 100, color: 'var(--status-crit)' },
-                    ]} />
-                  <span className="sv2-note">FODMAP</span>
+                  <Gauge value={fod.val} zones={LOW_GOOD_ZONES} center={false} word={fod.label} wordColor={fod.color} label="FODMAP" size={gaugeSize} />
                 </div>
               )}
             </div>
@@ -384,18 +388,18 @@ export default function TodaySignalV2() {
         .sv2-dgauge { display: flex; flex-direction: column; align-items: center; gap: 6px; flex-shrink: 0; }
         .sv2-nut { flex-direction: row; align-items: flex-start; gap: 14px; }
         .sv2-nut-g { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-        .sv2-note { font-size: 11px; color: var(--text-muted); text-align: center; }
+        .sv2-key { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); margin-right: 5px; vertical-align: 1px; }
+        .sv2-load { display: block; font-variant-numeric: tabular-nums; }
+        .sv2-src { display: block; font-weight: 500; color: var(--text-muted); }
         .sv2-dtext { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
         .sv2-dtitle { font-size: 11.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 2px; }
-        .sv2-lead { font-size: 20px; font-weight: 700; line-height: 1.25; letter-spacing: -0.01em; color: var(--text-primary); overflow-wrap: anywhere; }
-        .sv2-sub { font-size: 14.5px; line-height: 1.5; color: var(--text-secondary); overflow-wrap: anywhere; }
         /* ИИ-совет по домену (что делать) — вместо пересказа графика */
         .sv2-advice { font-size: 15px; line-height: 1.5; color: var(--text-body); overflow-wrap: anywhere; }
         /* Расписание: сетка 2×2 — [гейдж | текст] сверху, [HP-бар | след. событие] снизу.
            HP-бар автоматически под гейджем (та же колонка = та же ось X). */
         .sv2-sched {
           display: grid; grid-template-columns: auto 1fr;
-          column-gap: 22px; row-gap: 12px; align-items: center; padding: 14px 0;
+          column-gap: 18px; row-gap: 12px; align-items: center; padding: 14px 0;
         }
         .sv2-sched-bar { min-width: 0; }
         .sv2-sched-next {
@@ -403,23 +407,10 @@ export default function TodaySignalV2() {
           white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         .sv2-next-t { font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
-        /* Витрина выбора визуала (временная, на период разработки) */
-        .sv2-pick { display: flex; flex-direction: column; gap: 12px; padding: 14px 0; }
-        .sv2-pick-h { font-size: 13px; font-weight: 700; color: var(--text-secondary); }
-        .sv2-vars { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-        .sv2-var {
-          display: flex; flex-direction: column; align-items: center; gap: 8px;
-          padding: 16px 10px; border: 1px solid var(--border-med); border-radius: 14px;
-          background: var(--bg-tile); box-shadow: var(--inset-tile, none);
-        }
-        .sv2-vtag { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; color: var(--accent); text-transform: uppercase; }
         @media (max-width: 720px) {
-          .sv2-vars { grid-template-columns: 1fr; }
           .status-v2 { padding: 20px 16px; }
           .sv2-drow { gap: 14px; padding: 12px 0; }
           .sv2-sched { column-gap: 14px; }
-          .sv2-lead { font-size: 17.5px; }
-          .sv2-sub { font-size: 14px; }
           /* На телефоне калории и FODMAP — в столбик (разные строки), текст получает больше ширины */
           .sv2-nut { flex-direction: column; gap: 10px; }
         }

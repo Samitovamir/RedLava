@@ -639,6 +639,10 @@ body::after {
   --cat-lab-inflammation: var(--status-warn); --cat-lab-coagulation: var(--c-rose); --cat-lab-infections: var(--status-crit); --cat-lab-other: var(--c-neutral);
   /* meals */
   --cat-meal-breakfast: var(--c-amber); --cat-meal-lunch: var(--c-sage); --cat-meal-snack: var(--c-rose); --cat-meal-dinner: var(--c-steel);
+  /* training-load focus (Garmin): three kinds of load, not three grades — so no status colors */
+  --cat-load-low: var(--c-steel); --cat-load-high: var(--c-amber); --cat-load-anaerobic: var(--c-rose);
+  /* macronutrients */
+  --cat-macro-protein: var(--c-steel); --cat-macro-fat: var(--c-amber); --cat-macro-carb: var(--c-sage);
   /* helpers (household tasks) — the color adapts to the theme through the shared palette */
 }
 

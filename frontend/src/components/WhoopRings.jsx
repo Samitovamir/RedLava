@@ -1,37 +1,20 @@
 import { motion } from 'framer-motion'
-import CircularChart from './CircularChart.jsx'
+import { Gauge } from '../ui'
 import { recoveryColor, fmtHm } from '../utils/whoop.js'
+import { STRESS_ZONES, stressColor, stressWord, batteryColor } from '../utils/scales.js'
 import { useT, useLang } from '../context/LanguageContext.jsx'
 
 /*
-  Readiness rings: Whoop (Sleep / Recovery / Strain) + Garmin (Body Battery / Stress).
+  Readiness dials: Whoop (Sleep / Recovery / Strain) + Garmin (Body Battery / Stress).
   WHAT THEY MEAN (so they don't get mixed up):
    - Recovery (Whoop) is a MORNING readiness score: "what you woke up with", fixed for the day.
    - Body Battery (Garmin) is your LIVE energy reserve: it drains over the course of the day
      (it charges during sleep and rest, and is spent by activity and stress).
    - Stress (Garmin) is the current tension level, 0–100 (lower is better).
+  Body Battery and Stress are drawn exactly as on Sport and Home — same dial, same bands.
   props: w — the Whoop object; garmin — { bodyBattery:{current,charged,drained}, stress:{current,avg,max} }
 */
 
-// Body Battery: higher is better
-function bbColor(v) {
-  if (v >= 50) return 'var(--green)'
-  if (v >= 25) return 'var(--yellow)'
-  return 'var(--red)'
-}
-// Stress: lower is better (Garmin's 0–100 scale)
-function stressColor(v) {
-  if (v <= 25) return 'var(--green)'
-  if (v <= 50) return 'var(--yellow)'
-  if (v <= 75) return 'var(--orange)'
-  return 'var(--red)'
-}
-function stressLevel(v) {
-  if (v <= 25) return 'calm'
-  if (v <= 50) return 'low'
-  if (v <= 75) return 'mid'
-  return 'high'
-}
 function recoveryLevel(r) {
   if (r >= 67) return 'high'
   if (r >= 34) return 'mid'
@@ -41,17 +24,15 @@ function recoveryLevel(r) {
 const STR = {
   ru: {
     sleep: 'Сон', recovery: 'Восстановление', strain: 'Нагрузка', bodyBattery: 'Заряд тела', stress: 'Стресс',
-    of: 'из', remaining: 'осталось',
-    recHigh: 'Высокое', recMid: 'Среднее', recLow: 'Низкое',
-    stCalm: 'Покой', stLow: 'Низкий', stMid: 'Средний', stHigh: 'Высокий',
+    of: 'из',
+    recHigh: 'высокое', recMid: 'среднее', recLow: 'низкое', charge: 'заряд',
     noteRecovery: 'Восстановление — утренний балл («с чем проснулся», на день фиксирован).',
     noteBB: ' Заряд тела — живой остаток энергии, тратится в течение дня.'
   },
   en: {
     sleep: 'Sleep', recovery: 'Recovery', strain: 'Strain', bodyBattery: 'Body Battery', stress: 'Stress',
-    of: 'of', remaining: 'left',
-    recHigh: 'High', recMid: 'Medium', recLow: 'Low',
-    stCalm: 'Calm', stLow: 'Low', stMid: 'Medium', stHigh: 'High',
+    of: 'of',
+    recHigh: 'high', recMid: 'medium', recLow: 'low', charge: 'charge',
     noteRecovery: 'Recovery is a morning readiness score (“what you woke up with”, fixed for the day).',
     noteBB: ' Body Battery is your live energy reserve, spent over the course of the day.'
   }
@@ -61,42 +42,30 @@ export default function WhoopRings({ w, garmin }) {
   const t = useT(STR)
   const { lang } = useLang()
   const recLabel = { high: t.recHigh, mid: t.recMid, low: t.recLow }
-  const stLabel = { calm: t.stCalm, low: t.stLow, mid: t.stMid, high: t.stHigh }
   const sleepPerf = w.sleep?.performance ?? 0
   const strainMax = w.strainMax || 21
   const bb = garmin?.bodyBattery
   const st = garmin?.stress
   const stressVal = st ? (st.current ?? st.avg) : null
+  const bbSub = (bb?.charged != null || bb?.drained != null)
+    ? `${bb.charged != null ? '+' + bb.charged : ''}${bb.drained != null ? ' −' + bb.drained : ''}`.trim()
+    : t.charge
 
   return (
     <motion.div className="wr"
       initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
       <div className="wr-rings">
-        <CircularChart
-          value={sleepPerf} label={t.sleep} color="var(--accent)" size={124}
-          sublabel={w.sleep?.hoursSlept != null ? fmtHm((w.sleep.hoursSlept || 0) * 60, lang) : null}
-        />
-        <CircularChart
-          value={w.recovery} label={t.recovery} color={recoveryColor(w.recovery)} size={124}
-          sublabel={recLabel[recoveryLevel(w.recovery)]}
-        />
-        <CircularChart
-          value={(w.strain / strainMax) * 100} label={t.strain} color="var(--accent)" size={124}
-          centerText={`${w.strain}`} sublabel={`${t.of} ${strainMax}`}
-        />
+        <Gauge value={sleepPerf} unit="%" label={t.sleep}
+          sub={w.sleep?.hoursSlept != null ? fmtHm((w.sleep.hoursSlept || 0) * 60, lang) : null} />
+        <Gauge value={w.recovery} unit="%" color={recoveryColor(w.recovery)} label={t.recovery}
+          word={recLabel[recoveryLevel(w.recovery)]} wordColor={recoveryColor(w.recovery)} />
+        <Gauge value={w.strain} max={strainMax} label={t.strain} sub={`${t.of} ${strainMax}`} />
         {bb?.current != null && (
-          <CircularChart
-            value={bb.current} label={`${t.bodyBattery} · Garmin`} color={bbColor(bb.current)} size={124}
-            sublabel={(bb.charged != null || bb.drained != null)
-              ? `${bb.charged != null ? '+' + bb.charged : ''}${bb.drained != null ? ' −' + bb.drained : ''}`.trim()
-              : t.remaining}
-          />
+          <Gauge value={bb.current} color={batteryColor(bb.current)} label={`${t.bodyBattery} · Garmin`} sub={bbSub} />
         )}
         {stressVal != null && (
-          <CircularChart
-            value={stressVal} label={`${t.stress} · Garmin`} color={stressColor(stressVal)} size={124}
-            centerText={`${stressVal}`} sublabel={stLabel[stressLevel(stressVal)]}
-          />
+          <Gauge value={stressVal} zones={STRESS_ZONES} label={`${t.stress} · Garmin`}
+            word={stressWord(stressVal, lang)} wordColor={stressColor(stressVal)} />
         )}
       </div>
       <div className="wr-note muted">

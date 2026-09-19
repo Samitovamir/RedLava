@@ -9,7 +9,8 @@ import { isGuest } from '../api/authFetch.js'
 import { demoPlanned } from '../utils/demo.js'
 import { useT, useLang } from '../context/LanguageContext.jsx'
 import { mskDateKey } from '../utils/time.js'
-import ArcGauge from './ArcGauge.jsx'
+import { Gauge } from '../ui'
+import { STRESS_ZONES, stressColor, stressWord, batteryColor } from '../utils/scales.js'
 
 // The date key (YYYY-MM-DD) for N days before today's Moscow date
 function daysAgoKey(n) {
@@ -268,29 +269,25 @@ export default function GarminLive({ embedded = false, listsOnly = false }) {
     { from: 46, to: 58, color: 'var(--accent)' }
   ]
   const bb = g?.bodyBattery?.current
-  const bbColor = bb == null ? 'var(--accent)' : bb >= 50 ? 'var(--status-ok)' : bb >= 25 ? 'var(--status-warn)' : 'var(--status-crit)'
   // Garmin stress (0–100, lower is better) — shown in the 4th tile when Body Battery isn't available
   const stressVal = g?.stress ? (g.stress.recent ?? g.stress.current ?? g.stress.avg ?? null) : null
-  const stressColor = v => v <= 25 ? 'var(--status-ok)' : v <= 50 ? 'var(--status-warn)' : v <= 75 ? 'var(--status-warn)' : 'var(--status-crit)'
   const gauges = [
     g?.steps != null && (
-      <ArcGauge key="steps" value={g.steps} max={10000} color="var(--accent)"
-        centerText={g.steps.toLocaleString(numLocale)} sublabel={t.stepsGoal} label={t.steps} />
+      <Gauge key="steps" value={g.steps} max={10000}
+        center={g.steps.toLocaleString(numLocale)} sub={t.stepsGoal} label={t.steps} />
     ),
     vo2 != null && (
-      <ArcGauge key="vo2" value={vo2} min={20} max={58} zones={VO2_ZONES} marker
-        centerText={`${vo2}`} sublabel={vo2Label} label={t.vo2max} />
+      <Gauge key="vo2" value={vo2} min={20} max={58} zones={VO2_ZONES}
+        word={vo2Label} label={t.vo2max} />
     ),
     g?.restingHr != null && (
-      <ArcGauge key="rhr" value={g.restingHr} min={40} max={90} color="var(--accent)"
-        centerText={`${g.restingHr}`} sublabel={t.bpm} label={t.restingHr} />
+      <Gauge key="rhr" value={g.restingHr} min={40} max={90} sub={t.bpm} label={t.restingHr} />
     ),
     bb != null ? (
-      <ArcGauge key="bb" value={bb} max={100} color={bbColor}
-        centerText={`${bb}`} sublabel={t.charge} label={t.bodyBattery} />
+      <Gauge key="bb" value={bb} color={batteryColor(bb)} sub={t.charge} label={t.bodyBattery} />
     ) : stressVal != null && (
-      <ArcGauge key="stress" value={stressVal} max={100} color={stressColor(stressVal)}
-        centerText={`${stressVal}`} sublabel={t.stressSub} label={t.stress} />
+      <Gauge key="stress" value={stressVal} zones={STRESS_ZONES} label={`${t.stress} · ${t.stressSub}`}
+        word={stressWord(stressVal, lang)} wordColor={stressColor(stressVal)} />
     )
   ].filter(Boolean)
 

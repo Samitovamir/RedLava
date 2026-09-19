@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button } from '../ui'
+import { Button, Gauge } from '../ui'
 import { motion, AnimatePresence } from 'framer-motion'
-import CircularChart from './CircularChart.jsx'
 import WhoopRings from './WhoopRings.jsx'
 import RecoveryBalance from './RecoveryBalance.jsx'
 import SleepHypnogram from './SleepHypnogram.jsx'
@@ -10,6 +9,7 @@ import LabResults from './LabResults.jsx'
 import Icon from '../ui/Icon.jsx'
 import { useLang, useT } from '../context/LanguageContext.jsx'
 import { WHOOP, WHOOP_DAYS, SLEEP_STAGES, recoveryColor, fmtHm } from '../utils/whoop.js'
+import { STRESS_ZONES, stressColor, stressWord, batteryColor } from '../utils/scales.js'
 import { loadSourcePref, saveSourcePref, resolveSource, hasWhoopData, hasGarminData } from '../utils/healthSource.js'
 
 /*
@@ -159,7 +159,6 @@ export default function MetricsView() {
   ]
 
   const stages = SLEEP_STAGES.map(s => ({ ...s, label: t.stages[s.key] || s.label, min: w.sleep.stages[s.key] }))
-  const totalSleepMin = stages.reduce((a, s) => a + s.min, 0)
 
   // Garmin metrics — only the ones actually present (VO2max and so on).
   // Body Battery and stress are drawn as rings (see below), so they are NOT duplicated in the card grid.
@@ -179,9 +178,6 @@ export default function MetricsView() {
     garmin?.trainingStatus && { val: (typeof garmin.trainingStatus === 'string' ? garmin.trainingStatus : (garmin.trainingStatus.statusRu || garmin.trainingStatus.status || '—')), lbl: G.status }
   ].filter(Boolean)
 
-  // Stress for the Garmin ring: lower is better
-  const stressColor = v => v <= 25 ? 'var(--green)' : v <= 50 ? 'var(--yellow)' : v <= 75 ? 'var(--orange)' : 'var(--red)'
-  const bbColor = v => v >= 50 ? 'var(--green)' : v >= 25 ? 'var(--yellow)' : 'var(--red)'
 
   // Data for the "Recovery ↔ Strain" widget, shaped for the current source
   const strainMaxW = w.strainMax || 21
@@ -251,11 +247,12 @@ export default function MetricsView() {
             </div>
           )}
           <div className="sleep-body">
-            <CircularChart value={w.sleep.performance} label={t.sleepQuality} color="var(--accent)" size={130} />
+            <Gauge value={w.sleep.performance} unit="%" label={t.sleepQuality} />
             <div className="sleep-stages">
               <div className="stage-bar">
                 {stages.map(s => s.min > 0 && (
-                  <div key={s.key} className="stage-seg" style={{ width: `${s.min / totalSleepMin * 100}%`, background: s.color }} title={`${s.label} — ${fmtHm(s.min, lang)}`} />
+                  // flex-grow rather than a width in %: the 2px gaps come out of the total, not past its end
+                  <div key={s.key} className="stage-seg" style={{ flex: `${s.min} 1 0`, background: s.color }} title={`${s.label} — ${fmtHm(s.min, lang)}`} />
                 ))}
               </div>
               <div className="stage-legend">
@@ -291,12 +288,13 @@ export default function MetricsView() {
             {(live?.week?.length ? live.week : WHOOP_DAYS).map((d, i) => {
               const active = selDay?.day === d.day
               return (
-                <button key={i} type="button" className={`trend-col ${active ? 'active' : ''}`} onClick={() => setSelDay(active ? null : d)}>
-                  <div className="trend-bar-wrap">
+                <button key={i} type="button" className={`trend-col ${active ? 'active' : ''}`} onClick={() => setSelDay(active ? null : d)}
+                  aria-pressed={active} aria-label={`${DAY_FULL[d.day] || d.day}: ${d.recovery}%`}>
+                  <div className="trend-area">
                     <motion.div className="trend-bar" style={{ background: recoveryColor(d.recovery) }}
                       initial={{ height: 0 }} animate={{ height: `${d.recovery}%` }} transition={{ duration: 0.5, delay: 0.05 * i }} />
+                    <span className="trend-val" style={{ bottom: `calc(${d.recovery}% + 6px)` }}>{d.recovery}</span>
                   </div>
-                  <span className="trend-val">{d.recovery}</span>
                   <span className="trend-day muted">{t.dayShort[d.day] || d.day}</span>
                 </button>
               )
@@ -334,14 +332,14 @@ export default function MetricsView() {
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
           <div className="garmin-rings">
             {bb?.current != null && (
-              <CircularChart value={bb.current} label={t.bbLabel} color={bbColor(bb.current)} size={124}
-                sublabel={(bb.charged != null || bb.drained != null)
+              <Gauge value={bb.current} label={t.bbLabel} color={batteryColor(bb.current)}
+                sub={(bb.charged != null || bb.drained != null)
                   ? `${bb.charged != null ? '+' + bb.charged : ''}${bb.drained != null ? ' −' + bb.drained : ''}`.trim()
                   : null} />
             )}
             {stressVal != null && (
-              <CircularChart value={stressVal} label={t.stressLabel} color={stressColor(stressVal)} size={124}
-                centerText={`${stressVal}`} sublabel={stressSub} />
+              <Gauge value={stressVal} zones={STRESS_ZONES} label={`${t.stressLabel} · ${stressSub}`}
+                word={stressWord(stressVal, lang)} wordColor={stressColor(stressVal)} />
             )}
           </div>
           <p className="rc-text muted">{t.garminMode}</p>
@@ -424,20 +422,26 @@ export default function MetricsView() {
            за карточку — на узком фазы переносятся под кольцо, колонки легенды сжимаемы. */
         .sleep-body { display: flex; align-items: center; gap: 28px; flex-wrap: wrap; }
         .sleep-stages { flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
-        .stage-bar { display: flex; height: 14px; border-radius: 7px; overflow: hidden; background: var(--bg-secondary); }
-        .stage-seg { height: 100%; transition: width 0.4s; }
+        /* A composition bar: phases touch, so a 2px gap in the card color separates them
+           (a gap, not an outline — outlines add ink that isn't data). */
+        .stage-bar { display: flex; gap: 2px; height: 12px; border-radius: 999px; overflow: hidden; }
+        .stage-seg { height: 100%; min-width: 3px; transition: width 0.4s; }
         .stage-legend { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 16px; }
         .stage-leg { display: flex; align-items: center; gap: 8px; font-size: 13px; min-width: 0; }
         .stage-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
-        .stage-leg-lbl { color: var(--muted-foreground); min-width: 0; overflow-wrap: anywhere; }
+        .stage-leg-lbl { color: var(--muted-foreground); min-width: 0; }
         .stage-leg-val { margin-left: auto; padding-left: 6px; color: var(--foreground); font-weight: 600; white-space: nowrap; }
         .sleep-chev { display: inline-block; transition: transform .2s; font-size: 11px; }
         .sleep-chev.open { transform: rotate(90deg); }
         .sleep-detail { overflow: hidden; }
 
         .trend-card { display: flex; flex-direction: column; gap: 16px; }
-        .trend-bars { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; height: 160px; }
-        .trend-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; background: transparent; border: none; font-family: inherit; cursor: pointer; padding: 6px 2px 0; border-radius: 10px; transition: background 0.15s; }
+        /* Columns per the chart spec: bars no wider than 24px, a 4px rounded top and a square
+           base on one hairline baseline, the value on the cap. No grey "empty glass" behind
+           each bar — the baseline and the numbers carry the scale. */
+        /* No gap and no side padding between columns, so their baselines join into one line */
+        .trend-bars { display: flex; align-items: stretch; justify-content: space-between; height: 176px; }
+        .trend-col { flex: 1; display: flex; flex-direction: column; align-items: stretch; gap: 8px; height: 100%; background: transparent; border: none; font-family: inherit; cursor: pointer; padding: 8px 0 6px; border-radius: 10px; transition: background 0.15s; min-width: 0; }
         .trend-col:hover { background: var(--bg-secondary); }
         .trend-col.active { background: var(--bg-secondary); }
         .trend-summary { margin-top: 16px; padding: 14px 16px; background: var(--bg-secondary); border-left: 3px solid var(--border); border-radius: 12px; display: flex; flex-direction: column; gap: 6px; }
@@ -445,10 +449,10 @@ export default function MetricsView() {
         .trend-summary-day { font-size: 15px; font-weight: 700; color: var(--foreground); }
         .trend-summary-rec { font-size: 14px; font-weight: 700; }
         .trend-summary-text { font-size: 15px; line-height: 1.55; color: var(--foreground); }
-        .trend-bar-wrap { flex: 1; width: 100%; max-width: 44px; display: flex; align-items: flex-end; background: var(--bg-secondary); border-radius: 8px; overflow: hidden; }
-        .trend-bar { width: 100%; border-radius: 8px 8px 0 0; min-height: 4px; }
-        .trend-val { font-size: 13px; font-weight: 700; color: var(--foreground); }
-        .trend-day { font-size: 12px; }
+        .trend-area { position: relative; flex: 1; margin-top: 22px; border-bottom: 1px solid var(--border-med); }
+        .trend-bar { position: absolute; left: 50%; bottom: 0; width: 24px; max-width: 70%; transform: translateX(-50%); border-radius: 4px 4px 0 0; min-height: 3px; }
+        .trend-val { position: absolute; left: 0; right: 0; text-align: center; font-size: 13px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; line-height: 1; }
+        .trend-day { font-size: 12px; text-align: center; }
 
         .health-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
         .hm-card { position: relative; display: flex; flex-direction: column; gap: 3px; padding: 16px; }
@@ -465,7 +469,8 @@ export default function MetricsView() {
           .sleep-body { flex-direction: column; align-items: stretch; gap: 18px; }
           .sleep-stages { min-width: 0; }
           .rc-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
-          .stage-legend { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; }
+          /* One phase per line on a phone: two columns broke "Бодрствование" mid-word */
+          .stage-legend { grid-template-columns: minmax(0, 1fr); gap: 8px; }
         }
       `}</style>
     </div>
