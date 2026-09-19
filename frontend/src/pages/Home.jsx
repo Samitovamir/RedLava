@@ -243,7 +243,10 @@ export default function Home() {
           /* На мобиле цитату прячем (тесно), вместо неё — кнопка «Настройки» в углу шапки
              (рейла меню на мобиле нет, поэтому настройки переезжают сюда) */
           .quote-of-day { display: none; }
+          /* Level with the greeting, not the top edge: the fixed "Demo" badge lives in the
+             top-right corner and used to cover this button for the demo account */
           .home-settings {
+            align-self: flex-end;
             display: flex; align-items: center; justify-content: center;
             flex-shrink: 0; width: 40px; height: 40px; border-radius: 12px;
             border: 1px solid var(--border-med); background: var(--bg-tile);

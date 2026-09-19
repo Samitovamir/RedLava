@@ -131,13 +131,16 @@ function DaySummaryInner({ dayContext, snapshot, eyebrow, eventCount, metrics = 
   const [loading, setLoading] = useState(false)
   const msgsRef = useRef(null)
 
+  // Russian plural: 1 событие, 2–4 события, 5–20 событий, 21 событие…
+  const n10 = eventCount % 10, n100 = eventCount % 100
+  const eventsRu = n10 === 1 && n100 !== 11 ? 'событие' : n10 >= 2 && n10 <= 4 && (n100 < 12 || n100 > 14) ? 'события' : 'событий'
   // The AI day summary (cached; the template serves as the fallback with no backend)
   const fallbackSummary = lang === 'en'
     ? (eventCount > 0
         ? `Wrap up the day calmly\nToday: ${eventCount} ${eventCount === 1 ? 'event' : 'events'}. Do the important tasks first, leave the workout for the evening.`
         : 'A good day to recover\nNo events today — rest or clear out backlog tasks.')
     : (eventCount > 0
-        ? `Спокойно закрой день\nСегодня ${eventCount} ${eventCount === 1 ? 'событие' : 'событий'}. Сначала важные дела, тренировку — на вечер.`
+        ? `Спокойно закрой день\nСегодня ${eventCount} ${eventsRu}. Сначала важные дела, тренировку — на вечер.`
         : 'Хороший день для восстановления\nСобытий нет — можно отдохнуть или закрыть отложенное.')
   const summary = useAiSummary({
     id: 'daysummary',

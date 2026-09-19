@@ -665,7 +665,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
           {/* Find time — only in extended mode */}
           {extended && (
             <div className="ds-menu-wrap">
-              <button className={`ds-findtime ${openMenu === 'findtime' ? 'active' : ''}`} onClick={() => toggleMenu('findtime')}>
+              <button className={`ds-findtime ${openMenu === 'findtime' ? 'active' : ''}`} onClick={() => toggleMenu('findtime')} title={t.findTimeTitle} aria-label={t.findTimeTitle}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>
                 <span className="ds-findtime-label">{t.findTime}</span>
               </button>
@@ -1138,6 +1138,9 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
           padding: 0;
           overflow: visible;   /* чтобы выпадашки (Найди время) не обрезались */
           height: 560px;
+          /* The toolbar adapts to the card's own width, not the window's: next to the day
+             summary on a 1440px screen the card is narrow, and every label wrapped onto two lines */
+          container-type: inline-size; container-name: dsched;
         }
         .day-schedule.extended { height: 100%; }   /* на странице Расписание — во всю доступную высоту */
         /* внутренние области сохраняют скруглённые углы карточки */
@@ -1195,6 +1198,11 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
           transition: all 0.15s;
         }
         .ds-findtime:hover, .ds-findtime.active { border-color: var(--border-hover); color: var(--primary); }
+        .ds-findtime, .ds-date, .ds-add-btn { white-space: nowrap; }
+        @container dsched (max-width: 1000px) {
+          .ds-findtime-label { display: none; }
+          .ds-findtime { padding: 8px 11px; }
+        }
         .ds-findtime svg { color: var(--primary); }
         .ft-pop { left: auto; right: 0; min-width: 300px; max-height: 70vh; overflow-y: auto; }
         .ds-ft-controls { display: flex; flex-direction: column; gap: 8px; padding: 4px 6px 8px; }
