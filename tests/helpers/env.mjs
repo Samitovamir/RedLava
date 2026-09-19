@@ -19,6 +19,9 @@ import crypto from 'crypto'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 
+// One fixed pair of ports, so test files must run one at a time (npm test passes
+// --test-concurrency=1). Run in parallel, the first file to finish stopped the servers the
+// other was still using, and its pages started answering 500.
 export const API_PORT = Number(process.env.TEST_API_PORT) || 3101
 export const WEB_PORT = Number(process.env.TEST_WEB_PORT) || 5273
 export const WEB = `http://localhost:${WEB_PORT}`
