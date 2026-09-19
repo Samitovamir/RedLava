@@ -3,6 +3,7 @@ import { GarminConnect } from 'garmin-connect'
 import { requireAuth } from '../authGuard.js'
 import { kvGetScoped, kvSetScoped, kvDelScoped, scopeOf } from '../userScope.js'
 import { msg as uiMsg } from '../messages.js'
+import { attemptKey, tooManyFails, recordFail, minutesLeft } from '../rateLimit.js'
 
 const router = Router()
 // Key prefix; the real key carries the data owner's id (see userScope.js)
@@ -317,10 +318,19 @@ function mapActivity(a) {
   }
 }
 
-// Connect: sign in with login/password → store the session token
+// Connect: sign in with login/password → store the session token.
+// This forwards a username and password to Garmin, so without a limit anyone with an account
+// here could use this server to try password lists against other people's Garmin accounts —
+// from our IP, which Garmin would then block for everyone. Failed attempts are capped per IP.
+const GARMIN_MAX_FAILS = 6
+
 router.post('/connect', requireAuth, async (req, res) => {
   const { email, password } = req.body || {}
   if (!email || !password) return res.status(400).json({ success: false, message: uiMsg(req, 'garminCreds') })
+  const key = attemptKey('garmin', req)
+  if (await tooManyFails(key, GARMIN_MAX_FAILS)) {
+    return res.status(429).json({ success: false, error: 'too_many_attempts', retryInMinutes: minutesLeft() })
+  }
   try {
     const c = new GarminConnect({ username: email, password })
     await c.login(email, password)
@@ -328,11 +338,12 @@ router.post('/connect', requireAuth, async (req, res) => {
     await kvSetScoped(TOKEN_KEY, scopeOf(req), token)
     res.json({ success: true })
   } catch (err) {
+    await recordFail(key)
     const msg = String(err?.message || '')
     if (/mfa|two|verification|code/i.test(msg)) {
-      return res.json({ success: false, mfa: true, message: 'Аккаунт требует код двухфакторной проверки — настроим на созвоне.' })
+      return res.json({ success: false, mfa: true, message: uiMsg(req, 'garminMfa') })
     }
-    res.json({ success: false, message: 'Не удалось войти в Garmin. Проверьте логин/пароль. ' + msg.slice(0, 120) })
+    res.json({ success: false, message: uiMsg(req, 'garminFailed') + msg.slice(0, 120) })
   }
 })
 

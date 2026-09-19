@@ -1,16 +1,13 @@
 import { Router } from 'express'
 import crypto from 'crypto'
 import { signToken, guestRoleForLogin, requireAuth, bumpUserEpoch } from '../authGuard.js'
-import { kvGet, kvSet } from '../store.js'
+import { attemptKey, tooManyFails, recordFail, minutesLeft } from '../rateLimit.js'
 import { createUser, verifyUserPassword, validateCredentials, publicUser, getUserById, MIN_PASSWORD_LENGTH } from '../users.js'
 
 const router = Router()
 
 // --- Brute-force protection (sign-in and registration) ---
-// The backend is serverless (Vercel) — every invocation may get a fresh process, so a counter
-// in a plain variable won't work (it resets every time). We use kvGet/kvSet — the same shared
-// store that holds the guest's daily AI limit.
-const WINDOW_MS = 15 * 60 * 1000  // a 15-minute window
+// Counters per IP in the shared KV store, see rateLimit.js for why they aren't in memory.
 const LOGIN_MAX_FAILS = 8         // failed sign-ins per window — blocked beyond that
 // Registrations from one IP per window. The real defense against outsiders is REGISTRATION_CODE;
 // this limit only exists to stop a scripted flood, which is why it's generous: a club may
@@ -18,23 +15,10 @@ const LOGIN_MAX_FAILS = 8         // failed sign-ins per window — blocked beyo
 // 5 attempts hit the wall there instantly, locking real people out for 15 minutes.
 const REGISTER_MAX = 30
 
-function attemptKey(prefix, req) {
-  const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip || 'noip'
-  const window = Math.floor(Date.now() / WINDOW_MS)
-  return `auth:${prefix}:${ip.replace(/[^a-zA-Z0-9_.:-]/g, '').slice(0, 45)}:${window}`
-}
-async function tooManyFails(key, max) {
-  return (Number(await kvGet(key)) || 0) >= max
-}
-async function recordFail(key) {
-  await kvSet(key, (Number(await kvGet(key)) || 0) + 1)
-}
 // A successful registration spends the limit too — otherwise "5 registrations from one IP"
 // would cap nothing. BUT typos in the form (a short password, a name already taken) do NOT
 // count: they create nothing, and on club Wi-Fi one person would burn the limit for everyone.
 const recordAttempt = recordFail
-// Minutes left in the window — so the response names a deadline instead of just "wait a bit"
-const minutesLeft = () => Math.max(1, Math.ceil((WINDOW_MS - (Date.now() % WINDOW_MS)) / 60000))
 
 // Constant-time comparison: the invitation code is a secret, and a plain === gives away the
 // length of the matching prefix through the response time.
