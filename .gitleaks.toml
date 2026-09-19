@@ -1,0 +1,14 @@
+# gitleaks picks this file up from the repository root.
+# Every default rule stays on. The only exception is the handful of made-up
+# passwords the browser tests register and sign in with: they are not credentials
+# for anything, but "password: '<letters+digits>'" is exactly what the
+# generic-api-key rule is built to flag.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Fake passwords used by tests/*.test.mjs"
+regexes = [
+  '''^(testpass|otherpass|brandnew)12345$''',
+]
