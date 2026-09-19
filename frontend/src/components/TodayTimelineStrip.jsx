@@ -76,8 +76,8 @@ export default function TodayTimelineStrip() {
           display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px;
           scrollbar-width: thin;
         }
-        /* В узкой колонке «Командного центра» скроллу не хватает места —
-           чипы переносятся строками, ничего не обрезается */
+        /* In the narrow "Command center" column there isn't room to scroll —
+           chips wrap into rows, nothing is clipped */
         html[data-layout="command"] .tl-row { flex-wrap: wrap; overflow-x: visible; padding-bottom: 0; }
         html[data-layout="command"] .tl-item { max-width: 100%; }
         .tl-item {

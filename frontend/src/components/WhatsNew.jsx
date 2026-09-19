@@ -3,9 +3,9 @@ import { useT } from '../context/LanguageContext.jsx'
 import { Modal, Button, Icon } from '../ui'
 
 /*
-  Окно «Что нового» — показывается ОДИН раз при первом заходе и больше не появляется.
-  Запоминается в браузере по ключу-версии. Чтобы показать новый список после
-  следующих обновлений — поменяй VERSION (например 'v2') и обнови SECTIONS.
+  The "What's new" window — shown ONCE on the first visit and never again.
+  Remembered in the browser under a versioned key. To show a new list after later
+  updates, change VERSION (e.g. 'v2') and update SECTIONS.
 */
 const VERSION = 'v1'
 const STORAGE_KEY = `albert-whatsnew-${VERSION}`

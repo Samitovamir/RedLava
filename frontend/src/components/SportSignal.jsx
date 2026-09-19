@@ -5,9 +5,9 @@ import { useSiteSnapshot } from '../hooks/useSiteSnapshot.js'
 import SignalCard from './SignalCard.jsx'
 
 /*
-  Карточка «Спорт» на Главной: пара метрик из Garmin (неделя / нагрузка или VO2max) +
-  ОДНА тренерская фраза от ИИ. Акцент на тренировках, но ИИ видит всю картину (через
-  общий снимок). Отличается от «Статуса»: тут только спорт-совет.
+  The "Sport" card on Home: a pair of Garmin metrics (week / load or VO2max) plus ONE coaching
+  sentence from the AI. The focus is training, but the AI sees the whole picture (through the
+  shared snapshot). Differs from "Status": this one is sport advice only.
 */
 
 function readGarmin() {

@@ -158,7 +158,7 @@ export default function CommandShell() {
           gap: 0;
         }
         .cmd-pane { overflow-y: auto; min-height: 0; padding: 16px; }
-        /* Контент центра не вылезает за панель: графики/таблицы ужимаются */
+        /* Centre content never spills out of the panel: charts and tables shrink */
         .cmd-center { overflow-x: hidden; }
         .cmd-center svg, .cmd-center canvas, .cmd-center img { max-width: 100%; }
         .cmd-center > * { max-width: 100%; }
@@ -170,9 +170,9 @@ export default function CommandShell() {
           text-transform: uppercase; letter-spacing: 0.07em;
         }
 
-        /* Расписание в центре: одна колонка — таймлайн на всю ширину панели,
-           сводка дня под ним целиком (вбок не влезает и уезжала под помощника).
-           Листать центр, когда курсор над боковыми панелями, помогает onWheel-мост. */
+        /* Schedule in the centre: one column — the timeline across the full panel width,
+           the day summary whole beneath it (beside it there was no room and it slid under the assistant).
+           An onWheel bridge lets the centre scroll while the cursor is over the side panels. */
         .cmd-center .schedule-layout {
           grid-template-columns: 1fr;
           height: auto; min-height: 0;
@@ -180,8 +180,8 @@ export default function CommandShell() {
         .cmd-center .schedule-col:first-child { height: calc(100vh - 280px); min-height: 480px; }
         .cmd-center .schedule-col:last-child { height: auto; }
 
-        /* Помощник в узкой панели: шапка переносится, вкладки своей строкой,
-           поле ввода не вылезает за карточку */
+        /* The assistant in a narrow panel: the header wraps, tabs get their own row,
+           the input stays inside the card */
         .cmd-right .ai-work-zone { min-width: 0; overflow: hidden; }
         .cmd-right .awz-head { flex-wrap: wrap; gap: 10px; }
         .cmd-right .awz-switch { width: 100%; display: flex; }
@@ -190,11 +190,11 @@ export default function CommandShell() {
           width: 100%; min-width: 0; max-width: 100%;
           box-sizing: border-box; resize: none;
         }
-        /* В узкой панели плейсхолдер «Здесь появится распознанный текст…»
-           переносится на 4 строки — поле выше и кегль меньше, чтобы влезал целиком */
+        /* In the narrow panel the placeholder "The recognised text will appear here…"
+           wraps onto 4 lines — the field is taller and the type smaller so it fits whole */
         .cmd-right .vi-field { min-height: 136px; font-size: 15px; }
 
-        /* Каскад только при первом входе центра */
+        /* Cascade only on the centre's first entrance */
         @media (prefers-reduced-motion: no-preference) {
           .cmd-center > * > * { animation: block-rise 0.32s var(--ease) backwards; }
           .cmd-center > * > :nth-child(2) { animation-delay: 0.04s; }
@@ -210,7 +210,7 @@ export default function CommandShell() {
           .cmd-right { border-left: none; border-top: 1px solid var(--border); }
         }
         @media (max-width: 640px) {
-          /* затухание правого края — намёк, что ряд вкладок листается вбок */
+          /* fade on the right edge — a hint that the tab row scrolls sideways */
           .cmd-tabs { margin-top: 0; -webkit-mask-image: linear-gradient(90deg, #000 86%, transparent); mask-image: linear-gradient(90deg, #000 86%, transparent); scroll-snap-type: x proximity; }
           .cmd-tab { min-height: 40px; scroll-snap-align: start; }
         }

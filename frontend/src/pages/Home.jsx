@@ -139,15 +139,15 @@ export default function Home() {
         .quote-of-day {
           max-width: 420px;
           text-align: right;
-          /* Фиксированный бейдж «Демо-режим» (position:fixed; top:14px; right:16px; высота ~34px)
-             перекрывает правый верхний угол — отступаем цитату ПОД него, чтобы не пересекались. */
+          /* The fixed "Demo mode" badge (position:fixed; top:14px; right:16px; ~34px tall)
+             covers the top-right corner — the quote is pushed BELOW it so they don't overlap. */
           padding-top: 48px;
           display: flex;
           flex-direction: column;
           gap: 8px;
         }
         .quote-text {
-          /* Inter, без засечного курсива: тихая подпись, не конкурирует с заголовком */
+          /* No serif italic: a quiet caption that doesn't compete with the heading */
           font-size: 13px;
           line-height: 1.55;
           color: var(--text-muted);
@@ -176,7 +176,7 @@ export default function Home() {
           grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 16px;
         }
-        /* Карточная сетка Главной: «Расписание» во всю ширину, Спорт/Здоровье парой под ним */
+        /* Home card grid: "Schedule" full width, Sport/Health as a pair beneath it */
         .home-cards {
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -213,7 +213,7 @@ export default function Home() {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          /* цвет приходит инлайном и зависит от состояния */
+          /* the colour comes inline and depends on the state */
         }
         .quick-card-value {
           font-size: 22px;
@@ -221,7 +221,7 @@ export default function Home() {
           color: var(--foreground);
           letter-spacing: -0.01em;
           min-width: 0;
-          overflow-wrap: anywhere;   /* длинные слова («восстановились») переносятся, не вылезают за край */
+          overflow-wrap: anywhere;   /* long words wrap instead of spilling over the edge */
         }
         .quick-card-sub {
           font-size: 12.5px;
@@ -234,14 +234,14 @@ export default function Home() {
           align-items: stretch;
         }
 
-        /* Мобайл: карточки-сводки в один столбец на всю ширину — длинные значения
-           («Хорошо восстановились») помещаются в строку, без обрезки и сжатия. */
+        /* Mobile: summary cards in a single full-width column — long values fit on one line
+           without clipping or squeezing. */
         @media (max-width: 640px) {
           .quick-cards { grid-template-columns: 1fr; gap: 12px; }
           .home-cards { grid-template-columns: 1fr; gap: 12px; }
           .greeting { font-size: 30px; }
-          /* На мобиле цитату прячем (тесно), вместо неё — кнопка «Настройки» в углу шапки
-             (рейла меню на мобиле нет, поэтому настройки переезжают сюда) */
+          /* On mobile the quote is hidden (too tight); a "Settings" button takes its place in the
+             header corner (there is no menu rail on mobile, so settings move here) */
           .quote-of-day { display: none; }
           /* Level with the greeting, not the top edge: the fixed "Demo" badge lives in the
              top-right corner and used to cover this button for the demo account */
@@ -256,7 +256,7 @@ export default function Home() {
           .home-settings:active { color: var(--accent); border-color: var(--accent); }
         }
 
-        /* ===== РАСКЛАДКА «ЛЕНТА» (journal): глава-брифинг ===== */
+        /* ===== "JOURNAL" LAYOUT: a briefing chapter ===== */
         html[data-layout="journal"] .home-page {
           max-width: 760px;
           margin-inline: auto;
@@ -267,14 +267,14 @@ export default function Home() {
         html[data-layout="journal"] .quote-of-day {
           text-align: left; padding-top: 0; max-width: none;
         }
-        /* Брифинг: сначала «главное сейчас» (события), затем вывод дня и тело */
+        /* Briefing: first "what matters now" (events), then the day's verdict and the body */
         html[data-layout="journal"] .home-header { order: 0; }
         html[data-layout="journal"] .quick-cards { order: 1; grid-template-columns: 1fr; }
         html[data-layout="journal"] .today-signal { order: 2; }
         html[data-layout="journal"] .ai-work-zone { order: 4; }
         html[data-layout="journal"] .quick-card:not(.signal-card) .quick-card-value { font-size: 30px; }
 
-        /* ===== «КОМАНДНЫЙ ЦЕНТР»: Главная = компактный обзор центральной панели ===== */
+        /* ===== "COMMAND CENTER": Home = a compact overview in the central panel ===== */
         html[data-layout="command"] .home-page { gap: 18px; max-width: none; }
         html[data-layout="command"] .greeting { font-size: 28px; }
         html[data-layout="command"] .quote-of-day { display: none; }

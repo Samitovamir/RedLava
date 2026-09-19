@@ -138,7 +138,7 @@ export default function History() {
       </div>
 
       <style>{`
-        /* Постоянный воздух снизу: лента действий никогда не упирается в нижний край окна (любая тема/высота) */
+        /* Constant breathing room at the bottom: the action feed never runs into the window's bottom edge (any theme or height) */
         .history-page { display: flex; flex-direction: column; gap: 24px; max-width: 1000px; padding-bottom: 72px; }
 
         .hist-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
@@ -146,7 +146,7 @@ export default function History() {
         .hist-stat-val { font-size: 30px; font-weight: 800; line-height: 1; color: var(--text-primary); }
         .hist-stat-lbl { font-size: 13px; color: var(--text-muted); }
 
-        /* Один ряд чипов; на узких экранах — горизонтальный скролл без переноса */
+        /* One row of chips; on narrow screens a horizontal scroll without wrapping */
         .hist-filters { display: flex; align-items: center; gap: 8px; overflow-x: auto; scrollbar-width: none; }
         .hist-filters::-webkit-scrollbar { display: none; }
         .hist-filters .ds-chip { flex-shrink: 0; white-space: nowrap; }
@@ -161,7 +161,7 @@ export default function History() {
         .hist-items { display: flex; flex-direction: column; }
         .hist-item { display: flex; gap: 14px; }
         .hist-rail { display: flex; flex-direction: column; align-items: center; }
-        /* Нейтральный тип-маркер: line-иконка на тихой плашке; цвет несёт только статус */
+        /* Neutral type marker: a line icon on a quiet tile; only the status carries colour */
         .hist-dot {
           width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
           display: flex; align-items: center; justify-content: center;
@@ -176,12 +176,12 @@ export default function History() {
         .hist-time { font-size: 12px; flex-shrink: 0; color: var(--text-muted); }
         .hist-detail { font-size: 13.5px; line-height: 1.5; color: var(--text-muted); }
         .hist-tags { display: flex; align-items: center; gap: 10px; margin-top: 3px; }
-        /* Метаданные — тихий текст (actor · тип), без пилюль; цвет остаётся только у статуса */
+        /* Metadata is quiet text (actor · type), no pills; only the status keeps its colour */
         .hist-meta { font-size: 12px; color: var(--text-muted); }
 
         @media (max-width: 640px) {
           .hist-stats { grid-template-columns: repeat(2, 1fr); }
-          /* На мобильном фильтры переносятся, а не листаются по горизонтали */
+          /* On mobile the filters wrap instead of scrolling sideways */
           .hist-filters { flex-wrap: wrap; overflow-x: visible; }
           .hist-filters .ds-chip { min-height: 44px; padding-inline: 14px; }
         }

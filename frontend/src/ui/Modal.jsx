@@ -63,7 +63,7 @@ export default function Modal({
           <style>{`
             .ds-modal-backdrop{ position:fixed; inset:0; display:flex; justify-content:center; padding:24px; background:var(--scrim, rgba(0,0,0,.5)); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); overflow-y:auto; }
             .ds-modal{ width:100%; margin:auto; max-height:92vh; overflow-y:auto; }
-            /* На телефоне модалка — bottom-sheet: прижата к низу, во всю ширину, верхние углы скруглены */
+            /* On a phone the modal is a bottom sheet: pinned to the bottom, full width, top corners rounded */
             @media (max-width: 640px){
               .ds-modal-backdrop{ padding:0; align-items:flex-end !important; }
               .ds-modal.ds-modal--sheet{ max-width:100% !important; margin:auto 0 0 0; max-height:94dvh; border-radius:var(--radius) var(--radius) 0 0; border-bottom:none; padding-bottom:max(20px, env(safe-area-inset-bottom)); }

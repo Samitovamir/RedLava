@@ -3,8 +3,8 @@ import { useHistory } from '../context/HistoryContext.jsx'
 import { useT } from '../context/LanguageContext.jsx'
 
 /*
-  Последние действия помощника — компактная карточка для колонки «Помощник»
-  (раскладка «Командный центр»). Полный журнал остаётся на /history.
+  The assistant's recent actions — a compact card for the "Assistant" column
+  ("Command center" layout). The full log stays on /history.
 */
 export default function RecentActions({ limit = 4 }) {
   const navigate = useNavigate()

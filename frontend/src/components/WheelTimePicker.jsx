@@ -259,7 +259,7 @@ export default function WheelTimePicker({ value = '07:00', onChange, minuteStep 
                       transform var(--dur-fast, 150ms) var(--ease, ease),
                       color var(--dur-fast, 150ms) var(--ease, ease);
         }
-        /* затухание/уменьшение по удалению от центра */
+        /* fade and shrink with distance from the centre */
         .wtp-item[data-dist="0"] { opacity: 1;    transform: scale(1); }
         .wtp-item[data-dist="1"] { opacity: 0.55; transform: scale(0.88); color: var(--text-secondary, var(--muted)); }
         .wtp-item[data-dist="2"] { opacity: 0.32; transform: scale(0.78); color: var(--text-muted, var(--muted)); }
@@ -274,7 +274,7 @@ export default function WheelTimePicker({ value = '07:00', onChange, minuteStep 
           padding-bottom: 2px;
         }
 
-        /* центральная полоса выбора */
+        /* the central selection band */
         .wtp-band {
           position: absolute;
           left: var(--space-2, 8px);
@@ -290,7 +290,7 @@ export default function WheelTimePicker({ value = '07:00', onChange, minuteStep 
           z-index: 0;
         }
 
-        /* растушёвка краёв */
+        /* feathered edges */
         .wtp-fade {
           position: absolute;
           left: 0; right: 0;

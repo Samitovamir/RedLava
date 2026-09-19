@@ -86,7 +86,7 @@ export default function NutritionCoach({ target, eaten = 0, remaining = 0, intak
           padding: 16px 18px;
           border-radius: var(--radius, 18px);
           background: var(--bg-surface, #1B2027);
-          /* рамка/тень — от .ai-glow (кольцо «цвета ИИ» + волна свечения) */
+          /* border/shadow come from .ai-glow (a ring in the "AI colour" plus the glow wave) */
         }
         .nuc-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
         .nuc-badge {

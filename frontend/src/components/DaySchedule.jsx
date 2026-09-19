@@ -1136,14 +1136,14 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
           display: flex;
           flex-direction: column;
           padding: 0;
-          overflow: visible;   /* чтобы выпадашки (Найди время) не обрезались */
+          overflow: visible;   /* so the dropdowns (Find time) aren't clipped */
           height: 560px;
           /* The toolbar adapts to the card's own width, not the window's: next to the day
              summary on a 1440px screen the card is narrow, and every label wrapped onto two lines */
           container-type: inline-size; container-name: dsched;
         }
-        .day-schedule.extended { height: 100%; }   /* на странице Расписание — во всю доступную высоту */
-        /* внутренние области сохраняют скруглённые углы карточки */
+        .day-schedule.extended { height: 100%; }   /* on the Schedule page it takes all the available height */
+        /* the inner areas keep the card's rounded corners */
         .ds-scroll, .ds-week, .ds-month, .ds-columns {
           border-radius: 0 0 var(--radius) var(--radius);
         }
@@ -1268,11 +1268,11 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
         }
         .ds-ft-apply:hover { opacity: 0.9; }
 
-        /* Недельный вид */
+        /* Week view */
         .ds-week {
           flex: 1; overflow-y: auto;
-          /* minmax(0,1fr): колонки могут сжиматься УЖЕ контента — иначе 7 колонок
-             раздувают карточку шире экрана и страница листается по горизонтали (мобайл). */
+          /* minmax(0,1fr): columns may shrink NARROWER than their content — otherwise 7 columns
+             blow the card wider than the screen and the page scrolls sideways (mobile). */
           display: grid; grid-template-columns: repeat(7, minmax(0, 1fr));
           gap: 6px; padding: 14px;
         }
@@ -1308,7 +1308,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
         .ds-wk-ev-time { font-size: 11px; font-weight: 600; color: var(--ev-color); }
         .ds-wk-ev-title { font-size: 12.5px; color: var(--foreground); line-height: 1.3; }
 
-        /* Месячный вид */
+        /* Month view */
         .ds-month { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; }
         .ds-month-week { display: grid; grid-template-columns: repeat(7, 1fr); margin-bottom: 8px; }
         .ds-month-wd { text-align: center; font-size: 11px; font-weight: 600; color: var(--muted-foreground); text-transform: uppercase; }
@@ -1362,9 +1362,9 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
         .ds-actions { display: flex; gap: 4px; }
         .ds-menu-wrap { position: relative; }
 
-        /* ── Мобайл: шапка не влезает в одну строку — дату выносим отдельной
-           строкой по центру, «Найди время» сворачиваем до иконки; интерактивы
-           под палец ≥40px (стрелки, меню события, иконки, табы вида) ── */
+        /* ── Mobile: the header doesn't fit on one line — the date moves to its own centred
+           line, "Find time" folds to an icon; touch targets are ≥40px (arrows, event menu,
+           icons, view tabs) ── */
         @media (max-width: 640px) {
           .ds-head { flex-wrap: wrap; gap: 8px 10px; padding: 12px 12px; }
           .ds-nav { order: 3; flex-basis: 100%; justify-content: center; gap: 6px; }
@@ -1376,13 +1376,13 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
           .ds-event-menu { width: 40px; height: 40px; }
           .ds-chat-send { width: 40px; height: 40px; }
           .ft-pop { min-width: 0; width: min(300px, calc(100vw - 32px)); }
-          /* Расписание течёт в общем скролле страницы (без вложенного скролла) —
-             чтобы меню действий события (Редактировать/Удалить) не обрезалось
-             контейнером агенды и было доступно для нажатия. */
+          /* The schedule flows in the page's own scroll (no nested scroll) so the event
+             actions menu (Edit/Delete) isn't clipped by the agenda container and stays
+             tappable. */
           .day-schedule.extended { height: auto; }
           .ds-agenda { overflow: visible; flex: none; }
-          /* Неделя на телефоне: вертикальная лента-агенда вместо 7 узких колонок
-             (в колонках текст ломался по буквам). День — строка: слева дата, справа события. */
+          /* Week on a phone: a vertical agenda strip instead of 7 narrow columns (in columns
+             the text broke letter by letter). A day is a row: the date on the left, events on the right. */
           .ds-week { grid-template-columns: 1fr; gap: 8px; padding: 10px; }
           .ds-wk-col { flex-direction: row; align-items: stretch; gap: 12px; padding: 10px 12px;
             background: var(--bg-tile); box-shadow: var(--inset-tile, none); }
@@ -1400,7 +1400,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
           background: var(--red); border: 1.5px solid var(--card);
         }
 
-        /* Dropdown-меню */
+        /* Dropdown menu */
         .ds-backdrop { position: fixed; inset: 0; z-index: 40; }
         .ds-dropdown {
           position: absolute;
@@ -1451,7 +1451,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
         .ds-icon-btn:hover { background: var(--bg-secondary); color: var(--foreground); }
         @media (max-width: 640px) { .ds-icon-btn { width: 40px; height: 40px; } }
 
-        /* Заметная кнопка «Добавить событие» (раньше была спрятана в меню «…») */
+        /* A visible "Add event" button (it used to be hidden in the "…" menu) */
         .ds-add-btn {
           display: inline-flex; align-items: center; gap: 7px;
           padding: 8px 14px; border-radius: 999px;
@@ -1461,11 +1461,11 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
         }
         .ds-add-btn:hover { filter: brightness(1.06); }
         .ds-add-btn:active { transform: translateY(1px); }
-        /* На узком экране кнопка теряет подпись и превращается во второй такой же «+»
-           рядом с плавающей — оставляем только плавающую (она под большим пальцем). */
+        /* On a narrow screen the button loses its label and becomes a second identical "+"
+           next to the floating one — only the floating one stays (it sits under the thumb). */
         @media (max-width: 640px) { .ds-add-btn { display: none; } }
 
-        /* Плашки «весь день» над шкалой */
+        /* "All day" chips above the time grid */
         .ds-allday { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 18px 0; flex-shrink: 0; }
         .ds-allday-chip {
           display: inline-flex; align-items: center; gap: 8px;
@@ -1484,7 +1484,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
         .ds-scroll { flex: 1; overflow-y: auto; padding: 12px 18px 18px; }
         .ds-timeline { position: relative; }
 
-        /* Agenda-список (телефон): события дня строками, без почасовой шкалы */
+        /* Agenda list (phone): the day's events as rows, without the hourly grid */
         .ds-agenda {
           flex: 1; min-height: 0; overflow-y: auto;
           -webkit-overflow-scrolling: touch;
@@ -1527,7 +1527,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
           font-variant-numeric: tabular-nums;
         }
         .ds-hour-line { flex: 1; height: 1px; background: var(--border-soft); }
-        /* получасовая отметка — слабее часовой, к ней визуально привязаны карточки */
+        /* half-hour mark — fainter than the hour line; the cards visually line up with it */
         .ds-half-row { position: absolute; left: 54px; right: 0; display: flex; align-items: center; }
         .ds-half-line { flex: 1; height: 1px; background: var(--border-soft); opacity: 0.4; }
 
@@ -1559,7 +1559,7 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
           box-shadow: var(--shadow-card);
           cursor: pointer;
           z-index: 3;
-          overflow: hidden;   /* подстраховка: контент не вылезает за карточку */
+          overflow: hidden;   /* safety net: content never spills out of the card */
           box-sizing: border-box;
         }
         .ds-event-icon {
@@ -1587,16 +1587,16 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
           transition: all 0.15s;
         }
         .ds-event-menu:hover { background: color-mix(in srgb, var(--text-primary) 6%, transparent); color: var(--foreground); }
-        /* z-index выше backdrop (40), чтобы клики по пунктам меню срабатывали */
+        /* z-index above the backdrop (40) so clicks on menu items register */
         .ds-event .ds-menu-wrap { z-index: 60; }
-        /* когда меню открыто — поднимаем карточку над backdrop И снимаем обрезку,
-           чтобы выпадашка не обрезалась (обрезка текста живёт на самом .ds-event-title) */
+        /* while the menu is open, lift the card above the backdrop AND drop the clipping so the
+           dropdown isn't cut off (text clipping lives on .ds-event-title itself) */
         .ds-event.menu-open { z-index: 50; overflow: visible; }
         .ds-event.overlapped { left: auto; }
         .ds-repeat-ic { margin-left: 6px; color: var(--muted-foreground); vertical-align: middle; }
         .ds-pri-dot { width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; flex-shrink: 0; display: inline-block; }
 
-        /* Режим колонок */
+        /* Columns mode */
         .ds-columns {
           flex: 1;
           overflow-y: auto;
@@ -1623,9 +1623,9 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
           color: var(--muted-foreground); font-size: 14px;
           text-align: center; padding: 24px;
         }
-        /* В agenda (телефон) контейнер не position:relative, поэтому absolute-плашка
-           прилипала к карточке и налезала на строку с датой. В этом контексте —
-           обычный поток. */
+        /* In the agenda (phone) the container isn't position:relative, so the absolute chip
+           stuck to the card and overlapped the date row. In this context it stays in
+           normal flow. */
         .ds-agenda .ds-empty-list {
           position: static; left: auto; right: auto; top: auto;
           padding: 32px 16px;
@@ -1647,17 +1647,17 @@ export default function DaySchedule({ extended = false, onViewDayChange }) {
         }
         .ds-fab:hover { transform: scale(1.08); }
         .ds-fab:active { transform: scale(0.95); }
-        /* На большом экране «+» уже есть в шапке с подписью — плавающая кнопка там
-           только накрывала последнюю строку недели/месяца. */
+        /* On a large screen the header already has a labelled "+" — the floating button there
+           only covered the last row of the week or month. */
         @media (min-width: 641px) { .ds-fab { display: none; } }
-        /* А на узком — оставляем под неё место, чтобы не лежала на событиях. */
+        /* On a narrow one, leave room for it so it doesn't sit on top of events. */
         @media (max-width: 640px) {
           .ds-scroll, .ds-week, .ds-month, .ds-agenda { padding-bottom: 76px; }
         }
 
         .ds-event-title { display: inline-flex; align-items: center; }
 
-        /* Окно наложения */
+        /* Overlay window */
         .ds-preview {
           width: 100%; max-width: 560px;
           display: flex; flex-direction: column; gap: 16px;

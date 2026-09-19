@@ -85,7 +85,7 @@ export default function AssistantMemory() {
         .mem-sub { font-size: 12.5px; margin-top: 2px; }
         .mem-facts { display: flex; flex-wrap: wrap; gap: 8px; }
 
-        /* Аккуратный empty-state: line-иконка + текст */
+        /* A tidy empty state: a line icon plus text */
         .mem-empty {
           display: flex; align-items: center; gap: 10px;
           width: 100%; padding: 14px 16px;
@@ -116,7 +116,7 @@ export default function AssistantMemory() {
         }
         .mem-input:focus { border-color: var(--accent); }
         .mem-input::placeholder { color: var(--text-faint); }
-        /* Кнопка не из глобального CTA-списка — применяем тот же приём токенами вручную */
+        /* This button isn't in the global CTA list, so the same technique is applied by hand with tokens */
         .mem-add-btn {
           flex-shrink: 0; padding: 9px 16px; border-radius: var(--radius-sm);
           border: none; background: linear-gradient(180deg, var(--accent-btn-top), var(--accent-btn-bot));
@@ -124,7 +124,7 @@ export default function AssistantMemory() {
           font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s;
         }
         .mem-add-btn:hover:not(:disabled) { filter: brightness(1.06); }
-        /* Честное disabled: нейтральная плашка + приглушённый текст */
+        /* An honest disabled state: a neutral tile and muted text */
         .mem-add-btn:disabled {
           background: var(--bg-tile); color: var(--text-faint);
           border: 1px solid var(--border-med); box-shadow: none;

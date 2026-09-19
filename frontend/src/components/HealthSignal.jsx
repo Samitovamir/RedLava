@@ -5,10 +5,10 @@ import { useSiteSnapshot } from '../hooks/useSiteSnapshot.js'
 import SignalCard from './SignalCard.jsx'
 
 /*
-  Карточка «Здоровье» на Главной: пара метрик Whoop (восстановление / сон) + ОДНА фраза
-  от ИИ про здоровье на сегодня. Акцент на восстановлении/сне/анализах, но ИИ держит в
-  уме всю картину (через общий снимок) — приближается пересдача анализа, мало сна и т.п.
-  Отличается от «Спорта» (тренерский совет) и «Статуса» (общий вывод).
+  The "Health" card on Home: a pair of Whoop metrics (recovery / sleep) plus ONE sentence
+  from the AI about health today. The focus is recovery, sleep and blood tests, but the AI keeps
+  the whole picture in mind (through the shared snapshot): a lab retest coming up, too little sleep.
+  Differs from "Sport" (coaching advice) and "Status" (the overall verdict).
 */
 
 function readWhoop() {

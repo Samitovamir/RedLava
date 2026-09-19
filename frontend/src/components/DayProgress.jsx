@@ -1,12 +1,12 @@
 /*
-  HP-бар сегодняшнего дня: короткая горизонтальная полоса (ширина = контейнер, обычно
-  колонка гейджа). Таймлайн от начала до конца дня, заливка до «сейчас», точки-события
-  (пройденные — акцент, будущие — приглушены), белая риска «сейчас».
-  props: todays=[{start,title,m(мин)}], nowMin. Только CSS-переменные.
+  Today's HP bar: a short horizontal strip (as wide as its container, usually the gauge
+  column). A timeline from the start to the end of the day, filled up to "now", with event
+  dots (past ones in the accent, upcoming ones muted) and a white "now" tick.
+  props: todays=[{start,title,m (minutes)}], nowMin. CSS variables only.
 */
 export default function DayProgress({ todays = [], nowMin = 0 }) {
   const times = todays.map(e => e.m).filter(x => x != null)
-  const start = Math.min(360, ...(times.length ? times : [360]))   // окно дня 6:00–23:00, расширяется под события
+  const start = Math.min(360, ...(times.length ? times : [360]))   // the day window is 6:00–23:00, widened to fit the events
   const end = Math.max(1380, ...(times.length ? times : [1380]))
   const span = Math.max(1, end - start)
   const pos = m => Math.max(0, Math.min(1, (m - start) / span)) * 100

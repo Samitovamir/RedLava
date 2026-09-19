@@ -221,7 +221,7 @@ export default function FluidMenu() {
         .fluid-menu.expanded {
           width: var(--sidebar-width-expanded);
         }
-        /* раскрытие по hover — оверлей поверх контента */
+        /* hover expands it — an overlay on top of the content */
         .fluid-menu.expanded:not(.pinned) {
           box-shadow: 24px 0 60px -28px rgba(0,0,0,0.55);
         }
@@ -277,15 +277,15 @@ export default function FluidMenu() {
           border-radius: 0 2px 2px 0;
         }
 
-        /* ── Мобильная таб-панель ── */
+        /* ── Mobile tab bar ── */
         .mobile-tabbar { display: none; }
         .tab-more-scrim { display: none; }
         .tab-more { display: none; }
 
         @media (max-width: 640px) {
           .fluid-menu { display: none; }
-          /* Плавающая панель «жидкое стекло»: отделена от краёв, скруглена,
-             полупрозрачная с размытием подложки — минимализм iOS-26. */
+          /* A floating "liquid glass" bar: inset from the edges, rounded, translucent with a
+             blurred backdrop — iOS 26 minimalism. */
           .mobile-tabbar {
             position: fixed; left: 14px; right: 14px;
             bottom: calc(10px + env(safe-area-inset-bottom));
@@ -294,36 +294,36 @@ export default function FluidMenu() {
             padding: 7px 8px;
             border-radius: 26px;
             background: color-mix(in srgb, var(--bg-surface) 58%, transparent);
-            /* blur 22px (не 30): радиус размытия — главная стоимость кадра, а оно
-               пересчитывается на каждый скролл/переход. 22px остаётся «стеклом»,
-               но заметно дешевле — убирает подвисания. */
+            /* blur 22px (not 30): the blur radius is the main per-frame cost, and it is recomputed
+               on every scroll and transition. 22px still reads as "glass" but is noticeably
+               cheaper — it removes the stutter. */
             -webkit-backdrop-filter: blur(22px) saturate(1.8);
             backdrop-filter: blur(22px) saturate(1.8);
             border: 1px solid color-mix(in srgb, var(--border-soft) 70%, transparent);
             box-shadow: 0 10px 34px -10px rgba(0,0,0,0.5), inset 0 1px 0 var(--edge-light, transparent);
             transition: transform 0.28s var(--ease), opacity 0.24s var(--ease);
           }
-          /* «С экрана Домой» (standalone): панели Safari снизу нет, и плавающая пилюля
-             висела бы над пустой чёрной зоной жеста «домой». Доковаем панель к нижнему
-             краю — стекло доходит до самого низа и закрывает зону индикатора, как нижняя
-             панель в нативном приложении (Тинькофф и т.п.). Чёрного прямоугольника нет. */
+          /* Added to Home Screen (standalone): there is no Safari toolbar below, and a floating pill
+             would hang over an empty black home-gesture area. The bar docks to the bottom edge instead —
+             the glass reaches the very bottom and covers the indicator area, like a native app's tab
+             bar. No black rectangle. */
           html[data-standalone] .mobile-tabbar {
             left: 0; right: 0; bottom: 0;
             border-radius: 20px 20px 0 0;
             border: none;
             border-top: 1px solid color-mix(in srgb, var(--border-soft) 85%, transparent);
-            /* иконки чуть ниже: меньше отступ снизу (но не залезаем под индикатор «домой») */
+            /* icons slightly lower: less bottom padding (without going under the home indicator) */
             padding: 8px 16px calc(2px + env(safe-area-inset-bottom));
-            /* Докнутая панель — СПЛОШНАЯ (как нативный таб-бар): иначе сквозь стекло
-               в зоне индикатора просвечивает фон страницы и читается чужой полосой.
-               На свету это особенно заметно (серый страничный фон под белым стеклом). */
+            /* The docked bar is SOLID (like a native tab bar): otherwise the page background shows
+               through the glass in the indicator area and reads as a stray stripe. In light themes
+               it is especially visible (grey page background under white glass). */
             background: var(--bg-surface);
             -webkit-backdrop-filter: none; backdrop-filter: none;
             box-shadow: 0 -12px 30px -18px rgba(0,0,0,0.45), inset 0 1px 0 var(--edge-light, transparent);
           }
-          /* Страховка: если iOS всё же опустит панель выше физического низа, заливаем
-             всё ПОД ней тем же цветом поверхности — серый фон страницы снизу не покажется.
-             Когда панель и так у самого низа, эта заливка просто уходит за экран. */
+          /* Safety net: if iOS still places the bar above the physical bottom, everything BELOW it
+             is filled with the same surface colour, so the grey page background never shows.
+             When the bar already sits at the bottom, this fill simply goes off-screen. */
           html[data-standalone] .mobile-tabbar::before {
             content: "";
             position: absolute;
@@ -332,9 +332,9 @@ export default function FluidMenu() {
             background: var(--bg-surface);
             pointer-events: none;
           }
-          /* В открытых модалках прячем таб-панель: иначе она перекрывает кнопки окна
-             (например «Сохранить») — модалка рендерится внутри страницы и из-за
-             stacking-context не может перекрыть плавающее меню. */
+          /* Hide the tab bar while a modal is open: otherwise it covers the window's buttons
+             (e.g. "Save") — the modal renders inside the page and, because of the
+             stacking context, can't cover the floating menu. */
           body:has(.ds-modal-backdrop) .mobile-tabbar,
           body:has(.nu-backdrop) .mobile-tabbar,
           body:has(.ro-backdrop) .mobile-tabbar,
@@ -370,7 +370,7 @@ export default function FluidMenu() {
             background: var(--scrim, rgba(0,0,0,0.5));
             -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
           }
-          /* Лист «Ещё» — то же стекло, что и панель, заметно над ней */
+          /* The "More" sheet: the same glass as the bar, clearly above it */
           .tab-more {
             display: flex; flex-direction: column; gap: 2px;
             position: fixed; left: 14px; right: 14px;
@@ -384,7 +384,7 @@ export default function FluidMenu() {
             border: 1px solid color-mix(in srgb, var(--border-soft) 70%, transparent);
             box-shadow: 0 16px 40px -12px rgba(0,0,0,0.55);
           }
-          .tab-more::after { display: none; }  /* без кожаной прошивки на стекле */
+          .tab-more::after { display: none; }  /* no leather stitching on glass */
           .tab-more-item {
             display: flex; align-items: center; gap: 12px;
             min-height: 48px; padding: 0 14px;

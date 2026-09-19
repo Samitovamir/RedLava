@@ -182,7 +182,7 @@ export default function NutritionSetup({ hasGarmin = false, onDone }) {
         @media (max-width: 900px) {
           .ns-submit {
             position: sticky;
-            /* над плавающей панелью вкладок: её низ 10px + высота ~64px = 74px */
+            /* above the floating tab bar: its bottom is 10px + height ~64px = 74px */
             bottom: calc(84px + env(safe-area-inset-bottom));
             z-index: 2;
             background: linear-gradient(to top, var(--bg-card-bot, var(--bg-surface)) 72%, transparent);

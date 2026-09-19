@@ -225,7 +225,7 @@ export default function ReadingOverlay({ open, entries = [], loading, onClose, o
             .ro-ask-send:hover:not(:disabled) { opacity: 0.9; }
             .ro-ask-send:disabled { opacity: 0.4; cursor: default; }
 
-            /* Телефон: режим чтения — bottom-sheet (как остальные модалки на мобильном) */
+            /* Phone: reading mode is a bottom sheet (like the other modals on mobile) */
             @media (max-width: 640px) {
               .ro-backdrop { padding: 0; align-items: flex-end; }
               .ro-panel {

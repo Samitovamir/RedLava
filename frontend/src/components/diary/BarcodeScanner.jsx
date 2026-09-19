@@ -5,10 +5,10 @@ import { BrowserMultiFormatReader } from '@zxing/browser'
 import { useT } from '../../context/LanguageContext.jsx'
 
 /*
-  Сканер штрих-кода: живой поток камеры (getUserMedia) + ZXing. На распознанном EAN/UPC
-  вызывает onDetected(code). getUserMedia требует HTTPS/localhost; при ошибке камеры —
-  onError (вызывающий предложит сфотографировать). Нативный BarcodeDetector НЕ используем
-  (нестабилен в iOS-PWA) — ZXing надёжнее.
+  Barcode scanner: a live camera stream (getUserMedia) + ZXing. On a recognised EAN/UPC it
+  calls onDetected(code). getUserMedia needs HTTPS or localhost; if the camera fails it calls
+  onError (the caller offers to take a photo instead). The native BarcodeDetector is NOT used
+  (unstable in iOS PWAs); ZXing is more reliable.
 */
 export default function BarcodeScanner({ onDetected, onClose, onError }) {
   const t = useT({

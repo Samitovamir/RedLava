@@ -383,7 +383,7 @@ export default function MetricsView() {
         .metrics-view { display: flex; flex-direction: column; gap: 24px; }
         .metrics-section { display: flex; flex-direction: column; gap: 12px; }
 
-        /* Переключатель источника Whoop/Garmin */
+        /* Whoop/Garmin source switch */
         .src-switch { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
         .src-title { font-size: 13px; font-weight: 600; color: var(--muted-foreground); }
         .src-segs { display: inline-flex; padding: 3px; border-radius: 999px; background: var(--bg-tile, var(--bg-secondary)); box-shadow: var(--inset-tile); border: 1px solid var(--border-med, var(--border)); }
@@ -418,8 +418,8 @@ export default function MetricsView() {
         .sleep-nap-lbl { color: var(--muted-foreground); }
         .sleep-nap-val { font-weight: 700; color: var(--foreground); font-variant-numeric: tabular-nums; }
         .sleep-nap-time { font-variant-numeric: tabular-nums; }
-        /* flex-wrap + min-width:0 + minmax(0,1fr): кольцо и фазы сна никогда не вылезают
-           за карточку — на узком фазы переносятся под кольцо, колонки легенды сжимаемы. */
+        /* flex-wrap + min-width:0 + minmax(0,1fr): the dial and the sleep phases never spill out of
+           the card — on narrow screens the phases wrap under the dial and the legend columns can shrink. */
         .sleep-body { display: flex; align-items: center; gap: 28px; flex-wrap: wrap; }
         .sleep-stages { flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
         /* A composition bar: phases touch, so a 2px gap in the card color separates them
@@ -463,8 +463,8 @@ export default function MetricsView() {
         @media (max-width: 1100px) {
           .health-metrics { grid-template-columns: repeat(2, 1fr); }
         }
-        /* Телефон: «Показатели» не должны листаться по горизонтали — сон в стопку
-           (кольцо качества над фазами), сетки сжимаемы (minmax). */
+        /* Phone: "Metrics" must not scroll sideways — sleep stacks (the quality dial above the
+           phases), grids can shrink (minmax). */
         @media (max-width: 640px) {
           .sleep-body { flex-direction: column; align-items: stretch; gap: 18px; }
           .sleep-stages { min-width: 0; }

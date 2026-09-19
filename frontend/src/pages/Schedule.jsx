@@ -47,7 +47,7 @@ export default function Schedule() {
         }
         .schedule-col { height: 100%; min-height: 0; min-width: 0; }
 
-        /* Журнал: одна колонка — сводка дня как вступление, ниже таймлайн */
+        /* Journal: one column — the day summary as an introduction, the timeline below */
         html[data-layout="journal"] .schedule-page { max-width: 820px; margin-inline: auto; }
         html[data-layout="journal"] .schedule-layout {
           grid-template-columns: 1fr;
@@ -57,16 +57,16 @@ export default function Schedule() {
         html[data-layout="journal"] .schedule-col:first-child { order: 2; height: 72vh; min-height: 520px; }
         html[data-layout="journal"] .schedule-col:last-child { order: 1; height: auto; }
 
-        /* ── Мобайл: две колонки (таймлайн + сводка) не помещаются рядом —
-           ставим в стопку: сначала таймлайн на всю ширину, ниже сводка дня ── */
+        /* ── Mobile: two columns (timeline + summary) don't fit side by side —
+           they stack: the timeline full width first, the day summary below ── */
         @media (max-width: 760px) {
           .schedule-page { gap: 16px; }
           .schedule-layout {
             grid-template-columns: 1fr;
             height: auto; min-height: 0;
           }
-          /* На телефоне расписание течёт в общем скролле страницы (без фикс. высоты и
-             вложенного скролла) — иначе меню действий события обрезается контейнером. */
+          /* On a phone the schedule flows in the page's own scroll (no fixed height, no
+             nested scroll) — otherwise the event actions menu is clipped by its container. */
           .schedule-col:first-child { height: auto; min-height: 0; }
           .schedule-col:last-child { height: auto; }
         }

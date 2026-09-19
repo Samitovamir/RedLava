@@ -5,12 +5,12 @@ import { Modal, Button, Icon } from '../ui'
 import { useT } from '../context/LanguageContext.jsx'
 
 /*
-  Подтверждение перед тем, как ИИ по-настоящему перенесёт или удалит событие.
-  Зачем это отдельным окном, а не просто выполняется сразу (как create_event):
-  ассистент строит ответ не только по словам человека, но и по данным на снимке —
-  названиям чужих событий, письмам. Если туда попадёт подставной текст,
-  который выглядит как команда, без нажатия человека ничего реального не случится.
-  Рендерится глобально (в App) — реагирует на очередь pendingAiActions.
+  Confirmation before the AI actually moves or deletes an event.
+  Why a separate window instead of running straight away (as create_event does): the
+  assistant builds its answer not only from what the person said but also from data in the
+  snapshot — other people's event titles, emails. If planted text that looks like a command
+  gets in there, nothing real happens without the person's tap.
+  Rendered globally (in App); reacts to the pendingAiActions queue.
 */
 export default function ConfirmAiActionModal() {
   const { pendingAiActions, confirmPendingAiAction, rejectPendingAiAction } = useEvents()

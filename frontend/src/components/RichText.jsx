@@ -1,7 +1,7 @@
 /*
-  Лёгкий рендер ИИ-текста для читаемости длинных ответов: **жирный**, списки (- / •),
-  абзацы по пустой строке. Без тяжёлого markdown-парсера. Оформление сдержанное:
-  жирный — ярче и с лёгким подкрасом под «цвет ИИ» (--ai), маркеры списков — точки --ai.
+  A light renderer for AI text so long answers read well: **bold**, lists (- / •), paragraphs
+  on blank lines. No heavy markdown parser. Restrained styling: bold is brighter with a light
+  tint of the "AI colour" (--ai); list markers are --ai dots.
 */
 
 function renderInline(text, kp) {

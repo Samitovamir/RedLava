@@ -548,8 +548,8 @@ export default function LabResults() {
         .lab-sync-row { display: flex; align-items: center; gap: 12px; font-size: 14px; color: var(--foreground); }
         .lab-sync-bar { height: 6px; background: var(--bg-primary); border-radius: 3px; overflow: hidden; }
         .lab-sync-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.3s; }
-        /* На узком экране заголовок и кнопка не делят строку — заголовок сжимался
-           до двух-трёх слов в столбик. */
+        /* On a narrow screen the title and the button don't share a line — the title used to
+           squeeze into a column of two or three words. */
         .lab-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
         .lab-head > div { min-width: 0; flex: 1 1 240px; }
         .lab-title { font-size: 17px; font-weight: 700; color: var(--foreground); }

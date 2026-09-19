@@ -2,9 +2,9 @@ import { motion } from 'framer-motion'
 import AiAdvice from './AiAdvice.jsx'
 
 /*
-  Общая карточка-сигнал для Главной: заголовок (иконка + ярлык) + пара ключевых метрик
-  + ОДНА короткая фраза от ИИ (в едином блоке AiAdvice). Используется парой «Спорт» и
-  «Здоровье», чтобы они были визуально одинаковы. Только CSS-переменные; числа — tabular-nums.
+  A shared signal card for Home: a header (icon + label), a pair of key metrics and ONE short
+  sentence from the AI (inside the shared AiAdvice block). Used by the "Sport" and "Health"
+  pair so they look identical. CSS variables only; numbers are tabular-nums.
 */
 export default function SignalCard({ label, icon, metrics = [], aiText = '', aiLoading = false, onClick }) {
   return (

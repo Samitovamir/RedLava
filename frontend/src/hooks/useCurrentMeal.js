@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react'
 import { currentMeal } from '../utils/nutrition.js'
 
 /*
-  Текущий приём пищи по времени суток с ЖИВЫМ обновлением: компонент ре-рендерится при СМЕНЕ
-  приёма (например, обед → перекус в 15:30), а не только при перезаходе. Без поминутной нагрузки —
-  setState срабатывает только когда бакет реально изменился (таймер 60с + возврат на вкладку).
+  The current meal by time of day, updated LIVE: the component re-renders when the meal
+  CHANGES (lunch → snack at 15:30, say), not only on the next visit. No per-minute work:
+  setState fires only when the bucket actually changes (a 60 s timer + returning to the tab).
 */
 export function useCurrentMeal() {
   const [meal, setMeal] = useState(currentMeal)

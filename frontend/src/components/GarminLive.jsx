@@ -518,18 +518,18 @@ export default function GarminLive({ embedded = false, listsOnly = false }) {
         .page-header { display: flex; align-items: baseline; gap: 12px; }
         .page-header h2 { font-size: 24px; font-weight: 700; color: var(--foreground); }
 
-        /* KPI: не растягиваем на полэкрана — узкие плашки слева, число не плавает в пустоте */
+        /* KPI: not stretched across half the screen — narrow tiles on the left, so the number doesn't float in empty space */
         .gl-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 280px)); justify-content: start; gap: 14px; }
         .gl-stat { display: flex; flex-direction: column; gap: 5px; padding: 16px 18px; }
         .gl-stat-label { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
         .gl-stat-value { font-size: 26px; font-weight: 700; letter-spacing: -0.01em; color: var(--foreground); }
         .gl-stat-sub { font-size: 12px; }
 
-        /* Гарминовская сетка гейджей */
+        /* Garmin-style gauge grid */
         .gl-gauges { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 18px 8px; justify-items: center; align-items: start; padding: 22px 18px; }
         @media (max-width: 520px) { .gl-gauges { grid-template-columns: repeat(2, 1fr); gap: 14px 4px; } }
 
-        /* Сводные виджеты: Калории + План/факт */
+        /* Summary widgets: Calories + Plan/actual */
         .gl-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
         .gl-sum-card { display: flex; flex-direction: column; gap: 14px; padding: 18px 20px; }
         .gl-sum-title { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
@@ -545,7 +545,7 @@ export default function GarminLive({ embedded = false, listsOnly = false }) {
         .gl-pf-val b { color: var(--foreground); font-weight: 700; font-size: 15px; }
         .gl-pf-sep { color: var(--muted); }
 
-        /* Левая акцентная полоса = border-left: повторяет скругление 16px углов карточки (overflow:hidden клипает) */
+        /* Left accent stripe = border-left: it follows the card's 16px corner radius (overflow:hidden clips it) */
         .gl-hero { position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 14px; padding: 22px 24px; border-left: 4px solid var(--hero-accent); }
         .gl-hero-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
         .gl-hero-badge { font-size: 12.5px; font-weight: 700; padding: 4px 12px; border-radius: 16px; }
@@ -560,12 +560,12 @@ export default function GarminLive({ embedded = false, listsOnly = false }) {
           background: var(--bg-tile, var(--bg-secondary)); border: 1px solid var(--border-med, var(--border));
           border-radius: 12px; padding: 11px 13px;
         }
-        /* Базовые метрики — мельче и приглушённее */
+        /* Basic metrics — smaller and more muted */
         .gl-metric-value { font-size: 16px; font-weight: 700; color: var(--muted); line-height: 1.1; }
-        /* Единица измерения — мелко (~0.5em) у базовой линии числа */
+        /* The unit is small (~0.5em) and sits on the number's baseline */
         .gl-metric-unit { font-size: 0.62em; font-weight: 500; color: var(--muted); }
         .gl-metric-label { font-size: 11px; color: var(--muted); }
-        /* Ключевые метрики (Дистанция/Время/Темп) — крупнее, число в --foreground */
+        /* Key metrics (Distance/Time/Pace) are larger, with the number in --foreground */
         .gl-metric.primary .gl-metric-value { font-size: 23px; color: var(--foreground); }
         .gl-metric.primary .gl-metric-unit { color: var(--muted); }
 
@@ -583,7 +583,7 @@ export default function GarminLive({ embedded = false, listsOnly = false }) {
         .gl-planned { display: flex; flex-direction: column; }
         .gl-prow { display: flex; align-items: center; gap: 14px; padding: 13px 0; border-bottom: 1px solid var(--border); }
         .gl-prow:last-child { border-bottom: none; }
-        /* Единая ширина кнопки → ровный правый край списка (время вынесено в мету) */
+        /* One button width → an even right edge to the list (the time moved into the meta line) */
         .gl-added { flex-shrink: 0; min-width: 148px; text-align: center; font-size: 13px; font-weight: 600; color: var(--green); white-space: nowrap; }
         .gl-planned-note { font-size: 12px; margin-top: 2px; }
         .gl-debug { font-size: 11px; opacity: 0.6; margin-top: 8px; word-break: break-all; }

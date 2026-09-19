@@ -110,7 +110,7 @@ export default function ConnectPrompt() {
         .cp-later:hover { color: var(--text-body); }
 
         @media (max-width: 640px) {
-          /* текст переносится в несколько строк — иконку держим у заголовка, не по центру */
+          /* the text wraps onto several lines — keep the icon level with the title, not centred */
           .connect-prompt { grid-template-columns: auto 1fr; row-gap: 14px; align-items: start; }
           .cp-actions { grid-column: 1 / -1; }
           .cp-actions .ds-btn { flex: 1; justify-content: center; }

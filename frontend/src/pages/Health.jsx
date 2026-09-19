@@ -65,8 +65,8 @@ export default function Health({ view = 'metrics', showAssistant = true }) {
         .health-page { display: flex; flex-direction: column; gap: 20px; max-width: 1400px; padding-bottom: 40px; }
         .muted { color: var(--muted-foreground); }
 
-        /* Ряд метрик тренировки (GarminLive embedded): подпись в одну строку,
-           плитки ряда одной высоты — «Эффект · аэробный» больше не растягивает плитку */
+        /* The workout metrics row (GarminLive embedded): labels on one line, tiles in a row
+           share one height — "Effect · aerobic" no longer stretches its tile */
         .health-page .gl-hero-grid { align-items: stretch; grid-auto-rows: 1fr; }
         .health-page .gl-metric { min-width: 0; }
         .health-page .gl-metric-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

@@ -394,7 +394,7 @@ export default function DiaryTab({ target, intake, setIntake, selectedDay, flash
         .nd-shoot:hover { filter: brightness(1.05); }
         .nd-shoot:active { transform: translateY(1px); }
         .nd-shoot:disabled { opacity: 0.7; cursor: default; }
-        /* Камера + галерея в одной строке: основная кнопка тянется, галерея — квадратная вторичная */
+        /* Camera + gallery on one line: the main button stretches, the gallery is a square secondary one */
         .nd-shoot-row { display: flex; gap: 8px; align-items: stretch; }
         .nd-shoot-row .nd-shoot { flex: 1; }
         .nd-shoot-gallery {
@@ -639,9 +639,9 @@ function ModalStyles() {
     <style>{`
       .nd-backdrop { position: fixed; inset: 0; z-index: 500; background: color-mix(in srgb, var(--bg-app) 70%, transparent); backdrop-filter: blur(3px); display: flex; align-items: flex-start; justify-content: center; overflow-y: auto; padding: 20px; }
       .nd-modal { width: 100%; max-width: 440px; margin: auto; display: flex; flex-direction: column; gap: 14px; }
-      /* Окно — flex-колонка. Без этого дети (flex-shrink:1 по умолчанию) сжимаются
-         под max-height вместо переполнения — тогда scrollHeight == clientHeight и
-         окно НЕ листается. Запрещаем сжатие: контент переполняет, overflow:auto скроллит. */
+      /* The window is a flex column. Without this, its children (flex-shrink:1 by default) shrink
+         to fit max-height instead of overflowing — then scrollHeight == clientHeight and the
+         window does NOT scroll. Shrinking is disabled: the content overflows and overflow:auto scrolls it. */
       .nd-modal > * { flex-shrink: 0; }
       .nd-modal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
       .nd-modal-head h3 { margin: 0; font-size: 19px; font-weight: 700; color: var(--text-primary); overflow-wrap: anywhere; }
@@ -696,12 +696,12 @@ function ModalStyles() {
       .nd-saved-del:hover { color: var(--status-crit); border-color: color-mix(in srgb, var(--status-crit) 30%, transparent); }
       @media (max-width: 640px) {
         .nd-backdrop { align-items: flex-end; padding: 0; overflow-y: hidden; }
-        /* Лист-снизу в PWA на iPhone: нижний контент (кнопки «Добавить») уезжал под
-           home-индикатор и до него нельзя было долистать — добавляем отступ под safe-area
-           и гасим scroll-chaining (как в ui/Modal, GarminLive, Nutrition).
-           БЕЗ -webkit-overflow-scrolling:touch — на современном iOS этот legacy-флаг
-           оставляет overflow-контейнер «незаведённым»: он не листается, пока фокус на
-           поле ввода не вызовет reflow. Рабочее ui/Modal его и не использует. */
+        /* Bottom sheet in the iPhone PWA: the bottom content (the "Add" buttons) slid under the
+           home indicator and couldn't be scrolled to — a safe-area inset is added and scroll
+           chaining is stopped (as in ui/Modal, GarminLive, Nutrition).
+           WITHOUT -webkit-overflow-scrolling:touch: on modern iOS that legacy flag leaves the
+           overflow container "unwired" — it won't scroll until focusing an input forces a reflow.
+           The working ui/Modal doesn't use it either. */
         .nd-modal { max-width: 100%; margin: 0; max-height: 94vh; max-height: 94dvh; overflow-y: auto; overscroll-behavior: contain; border-radius: var(--radius-lg) var(--radius-lg) 0 0; padding-bottom: max(20px, env(safe-area-inset-bottom)); }
         .nd-kcal-row { flex-direction: column; align-items: stretch; gap: 10px; }
       }

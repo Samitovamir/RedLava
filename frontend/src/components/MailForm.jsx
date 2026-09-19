@@ -110,7 +110,7 @@ export default function MailForm({ initial, onSent, onCancel, sendLabel }) {
         .mail-body-hint { font-size: 12px; color: var(--text-faint); }
         .mail-textarea {
           resize: none; line-height: 1.6; min-height: 150px; overflow: hidden;
-          padding-bottom: 48px; /* место под микрофон, чтобы текст не уезжал под него */
+          padding-bottom: 48px; /* room for the microphone so the text doesn't slide under it */
         }
         .mail-textarea::-webkit-resizer { display: none; }
         .mail-body-wrap { position: relative; }

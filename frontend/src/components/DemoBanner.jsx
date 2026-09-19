@@ -33,8 +33,8 @@ export default function DemoBanner() {
         }
         .demo-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--yellow); flex-shrink: 0; }
         .demo-label-short { display: none; }
-        /* На узких экранах бейдж компактный («Демо») — не перекрывает заголовки
-           страниц и контролы шапок (порог совпадает с переходом оболочек в колонку) */
+        /* On narrow screens the badge is compact ("Demo") so it doesn't cover page titles
+           and header controls (the breakpoint matches where the shells switch to one column) */
         @media (max-width: 1100px) {
           .demo-banner { top: calc(10px + env(safe-area-inset-top)); right: 12px; padding: 5px 11px; font-size: 11.5px; }
           .demo-label-full { display: none; }

@@ -303,8 +303,8 @@ function DaySummaryInner({ dayContext, snapshot, eyebrow, eventCount, metrics = 
           background: var(--bg-tile); border: 1px solid var(--border-med);
           color: var(--text-secondary);
         }
-        /* Готовность — нейтральная плашка с маленькой точкой-индикатором статуса (не холодное пятно).
-           Цвет точки задаётся inline от уровня восстановления: ok / warn / crit */
+        /* Readiness: a neutral tile with a small status dot (not a cold blob).
+           The dot's colour is set inline from the recovery level: ok / warn / crit */
         .summary-tag.readiness { color: var(--text-body); }
         .summary-tag-dot {
           width: 7px; height: 7px; border-radius: 50%;
@@ -340,8 +340,8 @@ function DaySummaryInner({ dayContext, snapshot, eyebrow, eventCount, metrics = 
         }
         .ds-chat-msg.thinking { color: var(--muted-foreground); font-style: italic; }
         .ds-chat-suggests { display: flex; flex-direction: column; gap: 8px; }
-        /* Кнопки-подсказки: явно «вопрос к ИИ», а не поле ввода — лёгкая плашка-чип
-           с искрой-акцентом, без рамки-как-у-инпута */
+        /* Suggestion buttons read as "ask the AI", not as an input: a light chip
+           with an accent spark, no input-style border */
         .ds-chat-suggest {
           display: flex; align-items: center; gap: 10px;
           width: 100%; text-align: left;
@@ -368,9 +368,9 @@ function DaySummaryInner({ dayContext, snapshot, eyebrow, eventCount, metrics = 
           font-family: inherit; font-size: 14.5px; color: var(--text-primary);
         }
         .ds-chat-input::placeholder { color: var(--text-faint); }
-        /* Микрофон — главный круглый «запись»: голос основной способ обращения к ИИ */
+        /* The microphone is the main round "record" button: voice is the primary way to talk to the AI */
         .ds-chat-input-row .mic-btn { width: 40px; height: 40px; border-radius: 50%; }
-        /* Отправка — тихая (призрак), не спорит акцентом с микрофоном */
+        /* Send is quiet (ghost) so it doesn't compete with the microphone's accent */
         .ds-chat-send {
           width: 36px; height: 36px; flex-shrink: 0;
           border: none; border-radius: 50%;

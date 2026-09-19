@@ -183,16 +183,16 @@ export default function HealthAssistant({ tab = 'activity' }) {
         .ha-text.muted { color: var(--muted-foreground); font-style: italic; }
         .ha-input-row { display: flex; align-items: center; gap: 8px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 14px; padding: 7px; transition: border-color 0.2s; }
         .ha-input-row:focus-within { border-color: var(--border-hover); }
-        /* Микрофон — главный, круглый («запись»); это основной способ обращения к ИИ */
+        /* The microphone is primary and round ("record"); it is the main way to talk to the AI */
         .ha-input-row .mic-btn { width: 40px; height: 40px; border-radius: 50%; }
         .ha-input { flex: 1; min-width: 0; border: none; background: transparent; outline: none; font-family: inherit; font-size: 15px; color: var(--foreground); padding: 0 4px; }
         .ha-input::placeholder { color: var(--muted-foreground); }
-        /* Отправка — тихая (призрак), чтобы не спорить акцентом с микрофоном */
+        /* Send is quiet (ghost) so it doesn't compete with the microphone's accent */
         .ha-send { width: 36px; height: 36px; flex-shrink: 0; border: none; border-radius: 50%; background: transparent; color: var(--accent); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.15s, color 0.15s; }
         .ha-send:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 14%, transparent); }
         .ha-send:disabled { color: var(--muted); cursor: default; }
         @media (max-width: 640px) { .ha-input-row .mic-btn { width: 44px; height: 44px; } .ha-send { width: 40px; height: 40px; } }
-        /* Не перекрывать плавающую таб-панель на мобильном — поднимаем FAB и панель выше неё */
+        /* Don't cover the floating tab bar on mobile — lift the FAB and the panel above it */
         @media (max-width: 640px) {
           .ha-fab { bottom: calc(86px + env(safe-area-inset-bottom)); right: 16px; }
           .ha-panel { bottom: calc(150px + env(safe-area-inset-bottom)); right: 16px; }

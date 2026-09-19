@@ -6,10 +6,10 @@ import { useT } from '../context/LanguageContext.jsx'
 import Icon from '../ui/Icon.jsx'
 
 /*
-  Плашка «переподключите Google» в Расписании.
-  Показывается, только когда токен Google протух/отозван (invalid_grant) — отличаем
-  от «никогда не подключали», чтобы не пугать пустым календарём без причины.
-  Кнопка ведёт в Настройки → Подключения, где живёт «Подключить Google».
+  The "reconnect Google" banner on Schedule.
+  Shown only when the Google token has expired or been revoked (invalid_grant) — told apart
+  from "never connected" so an empty calendar doesn't alarm anyone for no reason.
+  The button leads to Settings → Connections, where "Connect Google" lives.
 */
 export default function GoogleReconnectBanner() {
   const { googleNeedsReconnect } = useEvents()

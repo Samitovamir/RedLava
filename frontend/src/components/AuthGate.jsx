@@ -132,7 +132,7 @@ export default function AuthGate({ children }) {
         setCodeRequired(!!d.registrationCodeRequired)
         if (d.minPasswordLength) setMinPasswordLength(d.minPasswordLength)
       })
-      .catch(() => { /* не критично — поле просто не покажем */ })
+      .catch(() => { /* not critical — the field just won't be shown */ })
   }, [])
 
   async function submit(e) {
@@ -190,7 +190,7 @@ export default function AuthGate({ children }) {
           display: flex; align-items: center; justify-content: center;
           background: var(--bg-primary);
         }
-        /* align-self у марки — flex-start (она живёт в шапке Главной), здесь нужен центр */
+        /* The brand mark has align-self: flex-start (it lives in Home's header); here it needs to be centred */
         .auth-splash .brand-logo { align-self: center; animation: auth-splash-in 0.5s ease-out both; }
         @keyframes auth-splash-in {
           from { opacity: 0; transform: scale(0.96); }
@@ -251,11 +251,11 @@ export default function AuthGate({ children }) {
       </form>
 
       <style>{`
-        /* overflow-y + margin:auto вместо align-items:center — карточка центрируется, когда
-           место есть, и ЛИСТАЕТСЯ, когда его нет: горизонтальная ориентация, открытая
-           клавиатура на Android, Split View. Раньше при высоте < ~570px логотип уезжал
-           за верхний край без возможности доскроллить. Шрифт не задаём — наследуется
-           общий Plus Jakarta Sans (здесь стоял Inter, который в проекте не подключён). */
+        /* overflow-y + margin:auto instead of align-items:center: the card is centred when there is
+           room and SCROLLS when there isn't (landscape, an open keyboard on Android, Split View).
+           Below ~570px of height the logo used to slide off the top with no way to scroll back.
+           No font is set: the shared Plus Jakarta Sans is inherited (Inter was set here, and the
+           project doesn't load it). */
         .auth-screen {
           position: fixed; inset: 0;
           display: flex; justify-content: center;
@@ -273,7 +273,7 @@ export default function AuthGate({ children }) {
           padding: 36px 28px;
           box-shadow: 0 24px 60px var(--scrim);
         }
-        /* марка приходит с align-self: flex-start (её место — шапка Главной) */
+        /* the brand mark arrives with align-self: flex-start (its home is Home's header) */
         .auth-card .brand-logo { align-self: center; }
         .auth-title { font-size: 22px; font-weight: 700; color: var(--foreground); margin: 6px 0 0; }
         .auth-sub { font-size: 14px; color: var(--text-secondary); text-align: center; margin: 0 0 6px; line-height: 1.5; }
@@ -288,9 +288,9 @@ export default function AuthGate({ children }) {
         .auth-input:focus { border-color: var(--accent); }
         .auth-input::placeholder { color: var(--muted); }
         .auth-error { width: 100%; font-size: 13.5px; color: var(--red); text-align: center; }
-        /* Фон кнопки — из градиента кнопок дизайн-системы, а не из --accent: тот токен
-           предназначен для текста/иконок и на светлых темах давал контраст ~2:1,
-           из-за чего активная кнопка выглядела выключенной. */
+        /* The button background comes from the design system's button gradient, not --accent:
+           that token is meant for text and icons, and on light themes it gave ~2:1 contrast,
+           so the active button looked disabled. */
         .auth-btn {
           width: 100%; padding: 14px; border: none; border-radius: 12px;
           background: linear-gradient(var(--accent-btn-top), var(--accent-btn-bot));
@@ -299,8 +299,8 @@ export default function AuthGate({ children }) {
           transition: filter 0.15s;
         }
         .auth-btn:hover:not(:disabled) { filter: brightness(1.08); }
-        /* Честный disabled: нейтральная плашка и приглушённый текст, а не просто opacity —
-           иначе непонятно, кнопка ещё активна или уже нет. */
+        /* An honest disabled state: a neutral tile and muted text rather than just opacity —
+           otherwise it's unclear whether the button is still active. */
         .auth-btn:disabled {
           background: var(--bg-tile); color: var(--text-muted);
           cursor: default; filter: none;

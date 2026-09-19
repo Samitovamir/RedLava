@@ -117,7 +117,7 @@ export default function ThemeSwitcher() {
           width: 44px; height: 32px; border-radius: var(--radius-sm);
           border: 1px solid rgba(0, 0, 0, 0.10); overflow: hidden;
         }
-        /* «Авто»: диагональ тёмная/светлая — намёк, что тема следует за телефоном */
+        /* "Auto": a dark/light diagonal — a hint that the theme follows the phone */
         .ts-swatch--auto { background: linear-gradient(125deg, #000 0 50%, #F2F2F7 50% 100%); }
         .ts-swatch-card { position: absolute; left: 6px; top: 7px; width: 22px; height: 18px; border-radius: 4px; border: 1px solid rgba(0, 0, 0, 0.10); }
         .ts-swatch-dot { position: absolute; right: 6px; bottom: 6px; width: 10px; height: 10px; border-radius: 50%; border: 1px solid rgba(0, 0, 0, 0.10); }

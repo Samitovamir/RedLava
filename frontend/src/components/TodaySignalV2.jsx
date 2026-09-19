@@ -379,7 +379,7 @@ export default function TodaySignalV2() {
           font-size: 12px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase;
           color: var(--accent);
         }
-        /* Одна колонка — каждый домен своей строкой (по два в ряд, возможно, позже). */
+        /* One column — each domain on its own row (maybe two per row later). */
         .sv2-domains { display: flex; flex-direction: column; }
         .sv2-drow {
           display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center;
@@ -393,10 +393,10 @@ export default function TodaySignalV2() {
         .sv2-src { display: block; font-weight: 500; color: var(--text-muted); }
         .sv2-dtext { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
         .sv2-dtitle { font-size: 11.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 2px; }
-        /* ИИ-совет по домену (что делать) — вместо пересказа графика */
+        /* Per-domain AI advice (what to do) instead of retelling the chart */
         .sv2-advice { font-size: 15px; line-height: 1.5; color: var(--text-body); overflow-wrap: anywhere; }
-        /* Расписание: сетка 2×2 — [гейдж | текст] сверху, [HP-бар | след. событие] снизу.
-           HP-бар автоматически под гейджем (та же колонка = та же ось X). */
+        /* Schedule: a 2×2 grid — [gauge | text] on top, [HP bar | next event] below.
+           The HP bar sits under the gauge automatically (same column = same x axis). */
         .sv2-sched {
           display: grid; grid-template-columns: auto 1fr;
           column-gap: 18px; row-gap: 12px; align-items: center; padding: 14px 0;
@@ -411,7 +411,7 @@ export default function TodaySignalV2() {
           .status-v2 { padding: 20px 16px; }
           .sv2-drow { gap: 14px; padding: 12px 0; }
           .sv2-sched { column-gap: 14px; }
-          /* На телефоне калории и FODMAP — в столбик (разные строки), текст получает больше ширины */
+          /* On a phone calories and FODMAP stack (separate rows), giving the text more width */
           .sv2-nut { flex-direction: column; gap: 10px; }
         }
       `}</style>

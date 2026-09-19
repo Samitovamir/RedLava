@@ -68,7 +68,7 @@ export default function Settings() {
           display: flex; flex-direction: column; gap: 20px;
           max-width: 720px;
         }
-        /* Влитые «Подключения»: убираем у вложенной страницы внешние отступы */
+        /* Embedded "Connections": drop the nested page's outer margins */
         .settings-connections { margin-top: 12px; }
         .settings-connections .conn-page { max-width: none; }
         .settings-card { display: flex; flex-direction: column; gap: 16px; }

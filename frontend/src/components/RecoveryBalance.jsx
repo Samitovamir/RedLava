@@ -3,15 +3,15 @@ import { useT } from '../context/LanguageContext.jsx'
 import { Meters } from '../ui'
 
 /*
-  Виджет «Восстановление ↔ Нагрузка» — калька Whoop «Strain & Recovery».
-  Сопоставляет ёмкость (восстановление / заряд тела) с нагрузкой (strain / стресс),
-  обе величины нормированы к 0–100, и даёт короткий вердикт: есть ли запас.
+  The "Recovery ↔ Strain" widget — modelled on Whoop's "Strain & Recovery".
+  Sets capacity (recovery / Body Battery) against load (strain / stress), both normalised
+  to 0–100, and gives a short verdict: is there room to spare.
   props:
-    recovery      — 0–100, «ёмкость» (Whoop recovery или Garmin Body Battery)
-    recoveryLabel — подпись ёмкости
-    load          — 0–100, нормированная нагрузка
-    loadDisplay   — что показать пользователю по нагрузке (например «15.3 из 21» или «52 /100»)
-    loadLabel     — подпись нагрузки
+    recovery      — 0–100, the "capacity" (Whoop recovery or Garmin Body Battery)
+    recoveryLabel — label for the capacity
+    load          — 0–100, normalised load
+    loadDisplay   — how the load is shown to the user (e.g. "15.3 of 21" or "52 /100")
+    loadLabel     — label for the load
 */
 
 const STR = {

@@ -6,9 +6,9 @@ import { Modal } from '../ui'
 import { useT } from '../context/LanguageContext.jsx'
 
 /*
-  Окно предпросмотра письма, подготовленного ИИ. Открывается, когда ассистент
-  вызвал send_email. Пользователь проверяет/правит и сам нажимает «Отправить».
-  Рендерится глобально (в App) — реагирует на draft из MailContext.
+  Preview of an email the AI has drafted. Opens when the assistant calls send_email.
+  The user checks or edits it and presses "Send" themselves.
+  Rendered globally (in App); reacts to the draft in MailContext.
 */
 export default function MailModal() {
   const { draft, closeDraft } = useMail()

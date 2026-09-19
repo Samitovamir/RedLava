@@ -255,8 +255,8 @@ export default function AIWorkZone() {
           display: flex;
           flex-direction: column;
           gap: 12px;
-          /* Вертикальные паддинги сокращены ~30% (20→14) — блок ИИ не «съедает»
-             пол-экрана при минимуме контента; горизонтальные оставлены. */
+          /* Vertical padding cut by ~30% (20→14) so the AI block doesn't take half the screen
+             when there is little content; horizontal padding is unchanged. */
           padding: 14px 20px;
           min-height: 168px;
           border: 1px solid var(--border-soft);
@@ -266,7 +266,7 @@ export default function AIWorkZone() {
         .awz-title-text { display: flex; flex-direction: column; gap: 1px; }
         .awz-title-main { font-size: 16px; font-weight: 700; color: var(--foreground); }
         .awz-title-sub { font-size: 12px; color: var(--muted); }
-        /* Зелёное оформление всей карточки после выполнения */
+        /* Green styling for the whole card once the task is done */
         .ai-work-zone.is-done {
           border-color: color-mix(in srgb, var(--green) 45%, transparent);
           background: var(--bg-surface);
@@ -295,8 +295,8 @@ export default function AIWorkZone() {
           padding: 3px 8px;
           border-radius: 6px;
         }
-        /* Единый ghost-ряд: «Текстовая задача» и «Файл» оформлены одинаково —
-           иконка+текст, без постоянного фона; активный = акцент, прочий = muted. */
+        /* One ghost row: "Text task" and "File" look the same — icon plus text, no permanent
+           background; the active one takes the accent, the other stays muted. */
         .awz-switch {
           display: flex;
           gap: 4px;
@@ -343,7 +343,7 @@ export default function AIWorkZone() {
           border-color: var(--primary);
           background: color-mix(in srgb, var(--accent) 7%, transparent);
         }
-        /* «В разработке» — полупрозрачное окно + жёлтая лента */
+        /* "In development": a translucent window with a yellow ribbon */
         .awz-dropzone.awz-dev { position: relative; cursor: default; }
         .awz-dropzone.awz-dev:hover { border-color: var(--border); }
         .awz-dev-overlay {
@@ -524,7 +524,7 @@ export default function AIWorkZone() {
           color: var(--muted-foreground);
         }
         .awz-btn.ghost:hover { color: var(--foreground); border-color: var(--border-hover); }
-        /* Зелёный экран успеха */
+        /* Green success screen */
         .awz-done {
           flex: 1;
           display: flex;

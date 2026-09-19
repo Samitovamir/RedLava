@@ -819,11 +819,11 @@ export default function Nutrition() {
         .nu-page { display: flex; flex-direction: column; gap: 18px; max-width: 1400px; padding-bottom: 24px; }
         .muted { color: var(--muted); }
         .card-title { font-size: 16px; font-weight: 700; color: var(--foreground); margin-bottom: 12px; }
-        /* Зазор ≥8px от фиксированной плашки «Демо-режим» (top:14px, bottom ≈46px от вьюпорта) */
+        /* At least 8px clear of the fixed "Demo mode" badge (top:14px, bottom ≈46px from the viewport top) */
         .nu-edit { padding: 7px 13px; border-radius: var(--radius-sm); border: 1px solid var(--border-med); background: transparent; color: var(--text-secondary); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s; }
         .nu-edit:hover { color: var(--text-primary); border-color: var(--accent); }
-        /* KPI: главная «ккал» крупно, макросы Б/Ж/У — подчинённая группа, числа в --foreground */
-        /* Метаболика: микрометрики лейбл/значение + вывод в чип */
+        /* KPI: the main kcal figure is large, protein/fat/carbs are a subordinate group, numbers in --foreground */
+        /* Metabolism: label/value micro-metrics + the conclusion in a chip */
         .nu-fields { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 12px; }
         .nu-field { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--text-muted); }
         .nu-field input, .nu-field select { background: var(--bg-tile); border: 1px solid var(--border-med); border-radius: var(--radius-sm); padding: 10px 12px; font-family: inherit; font-size: 14px; color: var(--foreground); outline: none; }
@@ -834,8 +834,8 @@ export default function Nutrition() {
         .nu-seg-btn { padding: 8px 13px; border: none; background: transparent; color: var(--text-secondary); font-family: inherit; font-size: 13px; font-weight: 600; border-radius: 9px; cursor: pointer; transition: all .15s; }
         .nu-seg-btn:hover { color: var(--text-primary); }
         .nu-seg-btn.active { background: var(--bg-surface); color: var(--accent); box-shadow: var(--shadow-btn); }
-        /* Учёт съеденного */
-        /* Состав приёма (комбо) */
+        /* Food log */
+        /* Meal composition (combo) */
         .nu-comp-row { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
         .nu-comp-lbl { font-size: 13px; margin-right: 2px; }
         .nu-comp { padding: 7px 12px; border-radius: 18px; border: 1px solid var(--border-med); background: var(--bg-tile); color: var(--text-secondary); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s; }
@@ -847,9 +847,9 @@ export default function Nutrition() {
         .nu-part-sec:first-of-type { border-top: none; padding-top: 0; }
         .nu-part-head { font-size: 15px; font-weight: 700; color: var(--foreground); }
         .nu-detail-total { padding: 4px 0; }
-        /* Неделя — единственный «сильный» акцент: активный день */
+        /* The week is the only "strong" accent: the active day */
         .nu-slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-        /* Базовая рамка у всех слотов одинаковая; у выбранного меняем ТОЛЬКО цвет границы (мягкий акцент — день уже несёт сильный) */
+        /* Every slot has the same base border; the selected one changes ONLY its border colour (a soft accent — the day already carries the strong one) */
         .nu-slot { display: flex; flex-direction: column; gap: 10px; background: var(--bg-tile); border: 1px solid var(--border-soft); border-radius: var(--radius-md); padding: 14px; min-height: 120px; transition: border-color .15s; }
         .nu-slot.sel { border-color: color-mix(in srgb, var(--accent) 55%, var(--border-med)); }
         .nu-slot-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
@@ -857,7 +857,7 @@ export default function Nutrition() {
         .nu-slot-name svg { color: var(--text-muted); flex-shrink: 0; }
         .nu-slot.sel .nu-slot-name svg { color: var(--accent); }
         .nu-slot-target { font-size: 12px; white-space: nowrap; }
-        /* «Подобрать» — ghost: без рамки (не конфликтует со сплошной рамкой карточки), заливка-подложка */
+        /* "Suggest" is a ghost: no border (so it doesn't clash with the card's solid border), a background fill */
         .nu-slot-empty { flex: 1; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--accent) 7%, transparent); border: none; border-radius: var(--radius-sm); color: var(--accent); font-family: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer; transition: all .15s; }
         .nu-slot-empty:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }
         .nu-slot-empty:disabled { opacity: .55; cursor: default; }
@@ -886,11 +886,11 @@ export default function Nutrition() {
         .nu-more:disabled { opacity: .5; cursor: default; }
         .nu-empty { font-size: 14px; padding: 6px 0; line-height: 1.5; }
         .nu-results { width: 100%; max-width: 920px; max-height: 88vh; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
-        /* Прошивка (.card::after, inset:7px absolute) на скролл-окнах считает рамку по ВСЕЙ высоте
-           контента, а не по видимой области — дашед-строчка «разъезжается» и режет карточки.
-           На скроллящихся модалках подбора/рецепта/оценки убираем её (рамка и градиент остаются). */
+        /* The stitching (.card::after, inset:7px absolute) on scrolling windows is sized to the WHOLE
+           content height, not the visible area — the dashed line drifts and cuts through the cards.
+           It is removed on the scrolling suggestion/recipe/rating modals (the border and gradient stay). */
         .nu-results::after, .nu-modal::after, .nu-rate::after { display: none; }
-        /* Пустой список покупок — центрированный empty-state */
+        /* Empty shopping list — a centred empty state */
         .nu-backdrop { position: fixed; inset: 0; background: var(--scrim); backdrop-filter: blur(3px); z-index: 500; display: flex; align-items: center; justify-content: center; padding: 24px; }
         .nu-modal { width: 100%; max-width: 560px; max-height: 88vh; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
         .nu-modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
@@ -898,7 +898,7 @@ export default function Nutrition() {
         .nu-modal-head-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
         .nu-share-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-med); background: var(--bg-tile); color: var(--text-secondary); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: color .15s, border-color .15s; }
         .nu-share-btn:hover { color: var(--accent); border-color: var(--accent); }
-        /* Тумблер индикатора FODMAP в шапке страницы */
+        /* FODMAP indicator toggle in the page header */
         .nu-top-row { display: flex; justify-content: flex-end; align-items: center; gap: 10px; flex-wrap: wrap; margin: -4px 0 14px; }
         .nu-prefs-top { display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--border-med); background: var(--bg-tile); color: var(--text-secondary); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: color .15s, border-color .15s; }
         .nu-prefs-top:hover { color: var(--text-primary); border-color: var(--accent); }
@@ -918,8 +918,8 @@ export default function Nutrition() {
         .nu-credit a:hover { color: var(--foreground); }
         .nu-close { width: 32px; height: 32px; border-radius: var(--radius-sm); border: 1px solid var(--border-med); background: transparent; color: var(--text-muted); font-size: 20px; line-height: 1; cursor: pointer; flex-shrink: 0; }
         .nu-close:hover { color: var(--foreground); }
-        /* ── Мобайл: окна Питания (подбор блюда / деталь / предпочтения) —
-           bottom-sheet, как окна тренировки и события (дизайн-система) ── */
+        /* ── Mobile: Nutrition windows (dish suggestions / detail / preferences) are
+           bottom sheets, like the workout and event windows (design system) ── */
         @media (max-width: 640px) {
           .nu-backdrop { align-items: flex-end; padding: 0; }
           .nu-results, .nu-modal, .nu-rate {
@@ -937,7 +937,7 @@ export default function Nutrition() {
         .nu-ing .muted { color: var(--text-muted); }
         .nu-steps { display: flex; flex-direction: column; gap: 9px; padding-left: 20px; font-size: 15.5px; line-height: 1.6; color: var(--text-body); }
         .nu-modal-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
-        /* Слайдеры предпочтений */
+        /* Preference sliders */
         .nu-slider-row { display: flex; align-items: center; gap: 14px; }
         .nu-slider-row input[type=range] { flex: 1; accent-color: var(--accent); height: 4px; }
         .nu-slider-val { font-size: 13px; color: var(--text-secondary); min-width: 130px; text-align: right; }
@@ -950,7 +950,7 @@ export default function Nutrition() {
         .nu-food.no b { color: var(--status-crit); }
         .nu-chip { padding: 8px 13px; border-radius: 20px; border: 1px solid var(--border-med); background: var(--bg-tile); color: var(--text-secondary); font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s; }
         .nu-chip.on { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
-        /* Оценка */
+        /* Rating */
         .nu-rate { width: 100%; max-width: 440px; display: flex; flex-direction: column; gap: 12px; text-align: center; }
         .nu-rate-meal { font-size: 13px; }
         .nu-rate h3 { font-size: 20px; font-weight: 700; color: var(--foreground); }
