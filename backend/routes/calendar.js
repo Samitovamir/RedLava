@@ -189,18 +189,27 @@ router.post('/create', requireAuth, async (req, res) => {
   res.json({ success: true, id: d.id })
 })
 
+// Google event ids are base32hex (a–v, 0–9); instances of a recurring event add "_" and a
+// timestamp such as 20260918T063000Z. Anything else is refused before it reaches the URL:
+// the id used to be pasted into the path as-is, so "../../<calendarId>" turned a request to
+// delete one event into a request to delete a whole calendar, with the user's own token.
+// It is also encoded as a path segment, in case this check is ever loosened.
+const GOOGLE_ID = /^[A-Za-z0-9_]{1,1024}$/
+const eventUrl = (googleId) =>
+  `https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(googleId)}`
+
 // 7) Reschedule or edit an event (by googleId)
 router.post('/update', requireAuth, async (req, res) => {
   const access = await getAccessToken(scopeOf(req))
   if (!access) return res.json({ success: false, message: 'not_connected' })
   const { googleId, title, date, start, end, who } = req.body || {}
-  if (!googleId) return res.status(400).json({ success: false, message: 'no_id' })
+  if (!GOOGLE_ID.test(String(googleId || ''))) return res.status(400).json({ success: false, message: 'no_id' })
   const patch = {}
   if (title) patch.summary = title
   if (date && start) patch.start = { dateTime: `${date}T${start}:00`, timeZone: TZ }
   if (date && end) patch.end = { dateTime: `${date}T${end}:00`, timeZone: TZ }
   if (who !== undefined) patch.description = who ? `С кем: ${who}` : ''
-  const r = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${googleId}`, {
+  const r = await fetch(eventUrl(googleId), {
     method: 'PATCH', headers: { Authorization: `Bearer ${access}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(patch)
   })
@@ -212,8 +221,8 @@ router.post('/delete', requireAuth, async (req, res) => {
   const access = await getAccessToken(scopeOf(req))
   if (!access) return res.json({ success: false, message: 'not_connected' })
   const { googleId } = req.body || {}
-  if (!googleId) return res.status(400).json({ success: false, message: 'no_id' })
-  const r = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${googleId}`, {
+  if (!GOOGLE_ID.test(String(googleId || ''))) return res.status(400).json({ success: false, message: 'no_id' })
+  const r = await fetch(eventUrl(googleId), {
     method: 'DELETE', headers: { Authorization: `Bearer ${access}` }
   })
   res.json({ success: r.ok || r.status === 410 }) // 410 = already deleted
