@@ -25,7 +25,7 @@ export const ACTOR_INFO = {
 // Picks the label to show according to the UI language.
 export const pickLabel = (info, lang) => (lang === 'en' && info && info.labelEn) || (info && info.label) || ''
 
-// datetime in 'YYYY-MM-DD HH:MM' format (today being 2026-06-04)
+// datetime in 'YYYY-MM-DD HH:MM' format
 // The log starts out empty and fills with real actions (the demo data has been removed)
 export const INITIAL_HISTORY = []
 const _DEMO_HISTORY = [

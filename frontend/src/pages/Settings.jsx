@@ -5,8 +5,8 @@ import Connections from './Connections.jsx'
 import { useLang, useT } from '../context/LanguageContext.jsx'
 
 // Settings: language + appearance (themes) + layout + service connections.
-// The "Connections" section has been folded in here whole (the owner's decision) — there
-// is no separate page any more, and /connections redirects here.
+// The "Connections" section has been folded in here whole — there is no separate page
+// any more, and /connections redirects here.
 export default function Settings() {
   const { lang, setLang } = useLang()
   const t = useT({

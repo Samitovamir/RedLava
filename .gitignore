@@ -8,7 +8,7 @@ dist/
 *.log
 .localstore.json
 
-# Local working notes and AI tooling — kept on disk, never published
+# Local working notes and tool settings — kept on disk, never published
 CLAUDE.md
 AGENTS.md
 .claude/

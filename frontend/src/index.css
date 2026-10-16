@@ -569,7 +569,7 @@ body { transition: background-color var(--dur-base) var(--ease), color var(--dur
    above plus a soft build-up toward the edges. Intensity comes from theme tokens.
    ============================================================ */
 body::before {
-  /* Grain is OFF by the owner's decision (2026-06-10): raster noise over the
+  /* Grain is OFF: raster noise over the
      whole screen reads as "film" and pixelates when zoomed. The material feel
      stays on the cards (gradient, edges, stitching) — with no layer over the text. */
   display: none;

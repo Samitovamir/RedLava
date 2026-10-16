@@ -71,8 +71,8 @@ function AnimatedRoutes() {
 function ShellRouter() {
   const layout = useLayout()
   const isMobile = useIsMobile()
-  // On mobile it's always "classic": the other shells look bad on a narrow screen
-  // (the owner's decision). The user's own preference is kept for desktop.
+  // On mobile it's always "classic": the other shells look bad on a narrow screen.
+  // The user's own preference is kept for desktop.
   const effective = isMobile ? 'classic' : layout
   // Keep html[data-layout] in step with the effective layout, so the journal/cockpit/command
   // CSS rules don't end up applied to classic on mobile.
